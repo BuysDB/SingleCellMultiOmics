@@ -125,9 +125,10 @@ class TaggedRecord():
         if library is not None:
             self.addTagByTag( 'LY',library)
 
-        self.sequence = rawRecord.sequence
-        self.qualities = rawRecord.qual
-        self.plus = rawRecord.plus
+        if type(rawRecord) is fastqIterator.FastqRecord:
+            self.sequence = rawRecord.sequence
+            self.qualities = rawRecord.qual
+            self.plus = rawRecord.plus
 
     def addTagByTag( self,tagName,  value, isPhred=None, decodePhred=False):
 

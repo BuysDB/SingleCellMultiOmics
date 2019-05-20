@@ -6,16 +6,14 @@ import glob
 import sys,time
 import collections
 import uuid
-import alleleTools
-import tagtools
+from singlecellmultiomics.alleleTools import alleleTools
 import pickle
 import gzip
 complement = str.maketrans('ATGC', 'TACG')
-import pysamIterators
+import pysamiterators.iterators as pysamIterators
 import argparse
-import tagBamFile
-import tagtools
-import modularDemultiplexer.baseDemultiplexMethods
+from singlecellmultiomics.tagtools import tagtools
+import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 
 c = 1_000 # !!! PLEASE USE PYTHON 3.6 OR HIGHER !!!
 
@@ -295,10 +293,11 @@ class QueryNameFlagger(DigestFlagger):
             if read is None:
                 continue
             if read.query_name.startswith('UMI'): # Old format
+                import tagBamFile # this is not included anymore
                 tagBamFile.recodeRead(read)
             else:
-                tr = modularDemultiplexer.baseDemultiplexMethods.TaggedRecord(
-                    modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
+                tr = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TaggedRecord(
+                    singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
                 )
 
                 tr.fromTaggedBamRecord(read)
@@ -855,7 +854,9 @@ if __name__ == "__main__":
                         flagger.digest( [R1,R2] )
                     except Exception as e:
                         print(e)
+
                         if args.fatal:
+                            print(R1,R2)
                             raise e
 
                 try:
@@ -936,7 +937,7 @@ if __name__ == "__main__":
         tempReHeaderPath = outPathTemp+'.reheader.bam'
         if qFlagger is not None:
             #os.system(f'samtools reheader {headerSamFilePath} {outPath} > {tempReHeaderPath}; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
-            
+
             os.system(f'{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
 
 

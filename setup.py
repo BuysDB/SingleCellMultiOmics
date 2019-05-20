@@ -28,6 +28,8 @@ setup(
     scripts=[
         'singlecellmultiomics/modularDemultiplexer/demux.py',
 
+        'singlecellmultiomics/universalBamTagger/universalBamTagger.py',
+
         # Bam processing:
         'singlecellmultiomics/bamProcessing/bamTabulator.py',
         'singlecellmultiomics/bamProcessing/bamToCountTable.py',
