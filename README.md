@@ -41,6 +41,11 @@ Demultiplex all fastq.gz files in the current directory using NLAIII barcodes
 demux.py *.fastq.gz -use NLAIII384C8U3 --y
 ````
 
+Demultiplex only the specified sequencing index (GTTTGA), and everything 1 hamming distance away from GTTTGA  :
+```
+demux.py -si GTTTGA *.gz --y --hdi 1
+```
+
 For every fragment in input.bam find if it is a valid CHIC seq fragment and deduplicate. Fragments with the same barcode and umi and starting 5 bp from each other are assigned as duplicate.
 ```universalBamTagger.py --chic --ftag -moleculeRadius 5  -o tagged.bam input.bam ```
 
