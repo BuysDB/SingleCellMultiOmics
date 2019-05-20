@@ -22,7 +22,7 @@ setup(
     long_description=long_description,
     author='Buys de Barbanson',
     author_email='b.barbanson@hubrecht.eu',
-    url='https://github.com/bast/somepackage',
+    url='https://github.com/BuysDB/SingleCellMultiOmics',
     license='MPL-2.0',
     packages=['singlecelmultiomics'],
 
