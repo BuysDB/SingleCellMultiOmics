@@ -156,7 +156,7 @@ class TaggedRecord():
         if dirAtt is None:
             if self.plus is None:
                 raise ValueError()
-            dirAtt = self.dirAtt
+            dirAtt = self.plus
         if baseQualities is None:
             if self.qualities is None:
                 raise ValueError()
