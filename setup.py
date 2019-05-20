@@ -29,8 +29,8 @@ setup(
         'singlecellmultiomics/modularDemultiplexer/demux.py',
 
         # Bam processing:
-        'singlecellmultiomics/bamProcessing/bamFileTabulator.py',
-        'singlecellmultiomics/bamProcessing/bamFileToCountTable.py',
+        'singlecellmultiomics/bamProcessing/bamTabulator.py',
+        'singlecellmultiomics/bamProcessing/bamToCountTable.py',
         'singlecellmultiomics/bamProcessing/bamFilter.py',
 
         ],
