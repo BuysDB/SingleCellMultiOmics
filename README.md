@@ -1,4 +1,15 @@
-Single cell multi omics is a set of tools to deal with multiple measurements from the same cel.
+## Single cell multi omics
+Single cell multi omics is a set of tools to deal with multiple measurements from the same cell.
+
+# Installation
+```
+pip install https://github.com/BuysDB/HandleLimiter/archive/master.zip
+pip install https://github.com/BuysDB/pysamiterators/archive/master.zip
+pip install https://github.com/BuysDB/SingleCellMultiOmics/archive/master.zip
+```
+
+# Usage
+
 The following tools are available:
 
 demux.py:
