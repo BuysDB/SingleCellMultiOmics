@@ -26,7 +26,7 @@ setup(
     license='MPL-2.0',
     packages=['singlecellmultiomics'],
     scripts=[
-        'singlecellmultiomics/modularDemultiplexer/demux.py'
+        'singlecellmultiomics/modularDemultiplexer/demux.py',
 
         # Bam processing:
         'singlecellmultiomics/bamProcessing/bamFileTabulator.py',
