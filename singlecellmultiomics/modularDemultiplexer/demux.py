@@ -183,3 +183,5 @@ for library in libraries:
 				processedReadPairsForThisLib += processedReadPairs
 				if args.n and processedReadPairsForThisLib>=args.n:
 					break
+		handle.close()
+		rejectHandle.close()
