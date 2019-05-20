@@ -10,6 +10,7 @@ from colorama import Style
 import importlib
 import inspect
 import traceback
+import singlecellmultiomics.modularDemultiplexer.demultiplexModules
 import singlecellmultiomics.fastqProcessing.fastqIterator as fastqIterator
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import NonMultiplexable,IlluminaBaseDemultiplexer
 from singlecellmultiomics.fastqProcessing.fastqHandle import FastqHandle
