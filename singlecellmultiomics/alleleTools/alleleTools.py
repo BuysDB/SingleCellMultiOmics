@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import pysam
-import vcfUtils
 import argparse
 import collections
 import functools
