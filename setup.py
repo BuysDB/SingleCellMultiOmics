@@ -25,7 +25,15 @@ setup(
     url='https://github.com/BuysDB/SingleCellMultiOmics',
     license='MPL-2.0',
     packages=['singlecellmultiomics'],
-    scripts=['singlecellmultiomics/modularDemultiplexer/demux.py'],
+    scripts=[
+        'singlecellmultiomics/modularDemultiplexer/demux.py'
+
+        # Bam processing:
+        'singlecellmultiomics/bamProcessing/bamFileTabulator.py',
+        'singlecellmultiomics/bamProcessing/bamFileToCountTable.py',
+        'singlecellmultiomics/bamProcessing/bamFilter.py',
+
+        ],
   install_requires=[
        'pysam'
    ],
