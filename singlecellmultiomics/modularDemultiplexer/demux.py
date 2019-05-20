@@ -9,8 +9,8 @@ from colorama import Fore
 from colorama import Back
 from colorama import Style
 import argparse
-import barcodeFileParser
-import sequencingLibraryListing
+import singlecellmultiomics.barcodeFileParser.barcodeFileParser as barcodeFileParser
+import singlecellmultiomics.libraryDetection.sequencingLibraryListing as sequencingLibraryListing
 import importlib
 import inspect
 import traceback
