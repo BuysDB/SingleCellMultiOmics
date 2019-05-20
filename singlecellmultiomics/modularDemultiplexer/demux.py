@@ -21,6 +21,9 @@ import glob
 from colorama import init
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import NonMultiplexable,IlluminaBaseDemultiplexer
 
+# Location of this script
+demuxer_location = os.path.dirname(os.path.realpath(__file__))
+
 init()
 import logging
 logging.getLogger().setLevel(logging.WARNING)
@@ -64,7 +67,9 @@ outputArgs.add_argument('-o', help="Output (cell) file directory, when not suppl
 bcArgs = argparser.add_argument_group('Barcode', '')
 bcArgs.add_argument('-hd', help="Hamming distance barcode expansion; accept cells with barcodes N distances away from the provided barcodes. Collisions are dealt with automatically. ", type=int, default=0)
 bcArgs.add_argument('--lbi', help="Summarize the barcodes being used for cell demultiplexing and sequencing indices.", action='store_true')
-bcArgs.add_argument('-barcodeDir', default='barcodes', help="Directory from which to obtain the barcodes")
+bcArgs.add_argument('-barcodeDir', default=os.path.join(demuxer_location,'barcodes'), help="Directory from which to obtain the barcodes")
+bcArgs.add_argument('-indexDir', default=os.path.join(demuxer_location,'indices'), help="Directory from which to obtain the sequencing indices")
+
 
 bcArgs = argparser.add_argument_group('Index', '')
 bcArgs.add_argument('-hdi', help="Hamming distance INDEX sequence expansion, the hamming distance used for resolving the sequencing INDEX. For cell barcode hamming distance see -hd", type=int, default=1)
@@ -127,7 +132,7 @@ class FastqHandle:
 # Load barcodes
 barcodeParser = barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hd, barcodeDirectory=args.barcodeDir)
 
-indexParser =  barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hdi, barcodeDirectory='indices')
+indexParser =  barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hdi, barcodeDirectory=args.indexDir)
 if args.lbi:
 	barcodeParser.list()
 	indexParser.list()
@@ -241,7 +246,6 @@ class DemultiplexingStrategyLoader:
 		for processedReadPairs, reads in enumerate(fastqIterator.FastqIterator(*fastqfiles)):
 			for strategy in useStrategies:
 				try:
-
 					recodedRecords = strategy.demultiplex(reads, library=library)
 
 					if targetFile is not None:
@@ -249,7 +253,6 @@ class DemultiplexingStrategyLoader:
 
 				except NonMultiplexable:
 					#print('NonMultiplexable')
-
 					if rejectHandle is not None:
 						try:
 							rejectHandle.write( baseDemux.demultiplex(reads, library=library) )

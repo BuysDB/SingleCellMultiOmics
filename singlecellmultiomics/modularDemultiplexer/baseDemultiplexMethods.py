@@ -386,11 +386,13 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
             taggedRecords = IlluminaBaseDemultiplexer.demultiplex(self, records, inherited=True,  **kwargs)
         except NonMultiplexable:
             raise
+
+
         rawBarcode = records[self.barcodeRead].sequence[self.barcodeStart:self.barcodeStart+self.barcodeLength]
         barcodeQual =  records[self.barcodeRead].qual[self.barcodeStart:self.barcodeStart+self.barcodeLength]
 
         barcodeIdentifier, barcode, hammingDistance = self.barcodeFileParser.getIndexCorrectedBarcodeAndHammingDistance(alias=self.barcodeFileAlias, barcode=rawBarcode)
-        #print(barcodeIdentifier, barcode, hammingDistance)
+        #print(self.barcodeFileParser,self.barcodeFileAlias,rawBarcode,barcodeIdentifier, barcode, hammingDistance)
         if barcodeIdentifier is None:
             raise NonMultiplexable('barcode not set')
 
