@@ -12,7 +12,7 @@ else:
         long_description = f.read()
 
 version = {}
-with open(os.path.join(_here, '\singlecellmultiomics', 'version.py')) as f:
+with open(os.path.join(_here, 'singlecellmultiomics', 'version.py')) as f:
     exec(f.read(), version)
 
 setup(
@@ -27,7 +27,7 @@ setup(
     packages=['singlecellmultiomics'],
 
   install_requires=[
-       'pysam==0.15.0'
+       'pysam'
    ],
     include_package_data=True,
     classifiers=[
