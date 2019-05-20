@@ -135,7 +135,7 @@ if args.lbi:
 # Load strategies from the demultiplexModules folder
 class DemultiplexingStrategyLoader:
 	def __init__(self, barcodeParser, moduleSearchDir= 'demultiplexModules', indexParser=None, ignoreMethods=None):
-		package = f'singlecellmultiomics.modularDemultiplexer.{moduleSearchDir}' 
+		package = f'singlecellmultiomics.modularDemultiplexer.{moduleSearchDir}'
 		moduleSearchPath = os.path.join( os.path.dirname(os.path.realpath(__file__)), moduleSearchDir).replace('/./','/')
 		self.barcodeParser = barcodeParser
 		self.indexParser = indexParser
@@ -145,10 +145,10 @@ class DemultiplexingStrategyLoader:
 		print(f'Looking for modules in {moduleSearchPath}{Style.RESET_ALL}')
 		self.demultiplexingStrategies = []
 		for modulePath in glob.glob(f'{moduleSearchPath}/*.py'):
-			print(f"Found {modulePath}")
+			#print(f"Found {modulePath}")
 			try:
 				module = (modulePath.split('/')[-1].replace('.py',''))
-				print(f"Module:{module}, package:{package}")
+				#print(f"Module:{module}, package:{package}")
 
 				if ignoreMethods is not None and module in ignoreMethods:
 					print(f"{Style.DIM}Ignoring demultiplex method {module}, use -ignoreMethods none to re-enable{Style.RESET_ALL}")

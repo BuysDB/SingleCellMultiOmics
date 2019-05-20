@@ -1,5 +1,4 @@
-from baseDemultiplexMethods import UmiBarcodeDemuxMethod
-import barcodeFileParser
+from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod
 
 # MSPJI with 3bp UMI
 class MSPJI_c8_u3(UmiBarcodeDemuxMethod):

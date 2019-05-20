@@ -1,5 +1,4 @@
-from baseDemultiplexMethods import UmiBarcodeDemuxMethod
-import barcodeFileParser
+from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod
 
 # ScarTrace
 class ScartraceR1(UmiBarcodeDemuxMethod):

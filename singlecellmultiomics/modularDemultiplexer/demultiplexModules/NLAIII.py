@@ -1,5 +1,4 @@
-from baseDemultiplexMethods import UmiBarcodeDemuxMethod
-import barcodeFileParser
+from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod
 
 # NLAIII, 96 well format with 3bp UMI
 class NLAIII_96w_c8_u3(UmiBarcodeDemuxMethod):
