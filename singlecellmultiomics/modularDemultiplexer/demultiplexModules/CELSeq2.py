@@ -1,5 +1,4 @@
-from baseDemultiplexMethods import UmiBarcodeDemuxMethod
-import barcodeFileParser
+from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod
 
 # Cell seq 2 with 6bp UMI
 class CELSeq2_c8_u6(UmiBarcodeDemuxMethod):

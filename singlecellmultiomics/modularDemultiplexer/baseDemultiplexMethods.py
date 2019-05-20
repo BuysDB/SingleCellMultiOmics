@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import re
-import fastqIterator
+import singlecellmultiomics.fastqProcessing.fastqIterator as fastqIterator
 import string
 
 complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
