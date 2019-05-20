@@ -9,6 +9,7 @@ from colorama import Fore
 from colorama import Back
 from colorama import Style
 import argparse
+from singlecellmultiomics.fastqProcessing.fastqHandle import FastqHandle
 import singlecellmultiomics.barcodeFileParser.barcodeFileParser as barcodeFileParser
 import singlecellmultiomics.libraryDetection.sequencingLibraryListing as sequencingLibraryListing
 from singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader import DemultiplexingStrategyLoader
@@ -75,7 +76,7 @@ fragArgs.add_argument('--se', help="Allow single end reads",  action='store_true
 
 techArgs = argparser.add_argument_group('Technical', '')
 #techArgs.add_argument('-t', help="Amount of demultiplexing threads used" , type=int, default=8)
-#techArgs.add_argument('-fh', help="When demultiplexing to mutliple cell files in multiple threads, the amount of opened files can exceed the limit imposed by your operating system. The amount of open handles per thread is kept below this parameter to prevent this from happening.", default=32, type=int)
+techArgs.add_argument('-fh', help="When demultiplexing to mutliple cell files in multiple threads, the amount of opened files can exceed the limit imposed by your operating system. The amount of open handles per thread is kept below this parameter to prevent this from happening.", default=500, type=int)
 techArgs.add_argument('-dsize', help="Amount of reads used to determine barcode type" , type=int, default=10000)
 
 argparser.add_argument('-use',default=None, help='use these demultplexing strategies, comma separate to select multiple. For example for cellseq 2 data with 6 basepair umi: -use CS2C8U6 , for combined mspji and Celseq2: MSPJIC8U3,CS2C8U6 if nothing is specified, the best scoring method is selected' )
@@ -103,36 +104,6 @@ if len(args.fastqfiles)==1:
 			for line in f:
 				fqFiles.append( line.strip() )
 		args.fastqfiles = fqFiles
-
-class FastqHandle:
-	def __init__(self, path, pairedEnd=False, single_cell=False, maxHandles=500 ):
-		self.pe = pairedEnd
-		self.sc = single_cell
-		self.path = path
-		if not self.sc:
-			if pairedEnd:
-				self.handles = [ gzip.open(path+'R1.fastq.gz', 'wt'),   gzip.open(path+'R2.fastq.gz', 'wt') ]
-			else:
-				self.handles = [ gzip.open(path+'reads.fastq.gz', 'wt') ]
-		else:
-			from handlelimiter.handlelimiter import HandleLimiter
-			self.handles = HandleLimiter(compressionLevel=1, maxHandles=maxHandles)
-
-	def write(self, records ):
-		if self.sc:
-			for readIdx, record in zip(('R1','R2'), records):
-				# Obtain cell from record:
-				cell = f"{record.tags.get('BI','no_cell_id')}.{record.tags.get('MX','unk')}"
-				self.handles.write(f'{self.path}.{cell}.{readIdx}.fastq.gz',str(record), method=1)
-		else:
-			for handle, record in zip(self.handles, records):
-				handle.write(record)
-	def close(self):
-		if self.sc:
-			self.handles.close()
-		else:
-			for handle in self.handles:
-				handle.close()
 
 # Load barcodes
 barcodeParser = barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hd, barcodeDirectory=args.barcodeDir)
@@ -194,7 +165,7 @@ for library in libraries:
 		targetDir = f'{args.o}/{library}'
 		if not os.path.exists(targetDir):
 			os.makedirs(targetDir)
-		handle = FastqHandle(f'{args.o}/{library}/demultiplexed' , True, single_cell=args.scsepf)
+		handle = FastqHandle(f'{args.o}/{library}/demultiplexed' , True, single_cell=args.scsepf, maxHandles=args.fh)
 
 		rejectHandle = FastqHandle(f'{args.o}/{library}/rejects' , True)
 

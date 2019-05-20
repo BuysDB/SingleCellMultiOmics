@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import gzip
+
 
 class FastqHandle:
 	def __init__(self, path, pairedEnd=False, single_cell=False, maxHandles=500 ):
