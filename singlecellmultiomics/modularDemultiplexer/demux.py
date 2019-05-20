@@ -55,11 +55,7 @@ argparser.add_argument('--norejects', help="Do not store rejected reads",  actio
 outputArgs.add_argument('-o', help="Output (cell) file directory, when not supplied the current directory/raw_demultiplexed is used", type=str, default='./raw_demultiplexed')
 outputArgs.add_argument('--scsepf', help="Every cell gets a separate FQ file", action='store_true' )
 
-#outputArgs.add_argument('--nosepf', help="If this flag is not set every cell gets a separate FQ file, otherwise all cells are put in the same file", action='store_true' )
-#outputArgs.add_argument('--nogz', help="Output files are not gzipped", action='store_true' )
-#outputArgs.add_argument('-submit', default=None, type=str, help="Create cluster submission file")
 
-#bcArgs.add_argument('-d', help="Demultiplexing method. 0: Autodetect cs1 cs2, 1: CelSeq1, 2: Celseq2, 3: DropSeq with R2 barcodes supplied,9: nla384.bc, 100:Lennart virus 1, 900:Bulk: 20: 20:maya_mspj1.bc, There are no barcodes and UMI's, perform only concatenation", type=int, default=0)
 bcArgs = argparser.add_argument_group('Barcode', '')
 bcArgs.add_argument('-hd', help="Hamming distance barcode expansion; accept cells with barcodes N distances away from the provided barcodes. Collisions are dealt with automatically. ", type=int, default=0)
 bcArgs.add_argument('--lbi', help="Summarize the barcodes being used for cell demultiplexing and sequencing indices.", action='store_true')

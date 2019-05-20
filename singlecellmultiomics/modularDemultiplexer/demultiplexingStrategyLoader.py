@@ -12,6 +12,7 @@ import inspect
 import traceback
 import singlecellmultiomics.fastqProcessing.fastqIterator as fastqIterator
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import NonMultiplexable,IlluminaBaseDemultiplexer
+from singlecellmultiomics.fastqProcessing.fastqHandle import FastqHandle
 
 class DemultiplexingStrategyLoader:
 	def __init__(self, barcodeParser, moduleSearchDir= 'demultiplexModules', indexParser=None, ignoreMethods=None):
