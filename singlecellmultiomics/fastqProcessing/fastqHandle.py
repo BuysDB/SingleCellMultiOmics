@@ -25,7 +25,7 @@ class FastqHandle:
 				self.handles.write(f'{self.path}.{cell}.{readIdx}.fastq.gz',str(record), method=1)
 		else:
 			for handle, record in zip(self.handles, records):
-				handle.write(record)
+				handle.write(str(record))
 	def close(self):
 		if self.sc:
 			self.handles.close()

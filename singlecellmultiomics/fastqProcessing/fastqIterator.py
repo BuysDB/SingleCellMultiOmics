@@ -15,7 +15,7 @@ class FastqIterator():
 		path to fastq file, path to fastq file 2 , ...
 		example: for rec1, rec2 in FastqIterator('./R1.fastq', './R2.fastq'):
 		"""
-		
+
 		self.handles = tuple(
 			gzip.open(path, 'rt')
 			# Load as GZIP when the extension is .gz
