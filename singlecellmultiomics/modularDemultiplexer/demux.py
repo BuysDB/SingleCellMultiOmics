@@ -159,7 +159,7 @@ for library in libraries:
 		arguments = " ".join([x for x in sys.argv if x!='--dry' and not '--y' in x and not '-submit' in x and not '.fastq' in x and not '.fq' in x]) + " --y"
 
 		print(f"\n{Style.BRIGHT}--y not supplied, execute the command below to run demultiplexing on the cluster:{Style.RESET_ALL}")
-		print( os.path.dirname(os.path.abspath(__file__)) + '/../submission.py' + f' -y --nenv -time 50 -t 1 -m 8 -N NDMX%s "source /hpc/hub_oudenaarden/bdebarbanson/virtualEnvironments/py36/bin/activate; %s -use {",".join([x.shortName for x in selectedStrategies])}"\n' % (library, '%s %s'  % ( arguments, " ".join(filesForLib)) ))
+		print( '/hpc/hub_oudenaarden/bdebarbanson/internalTools/submission.py' + f' -y --nenv -time 50 -t 1 -m 8 -N NDMX%s "source /hpc/hub_oudenaarden/bdebarbanson/virtualEnvironments/py36/bin/activate; %s -use {",".join([x.shortName for x in selectedStrategies])}"\n' % (library, '%s %s'  % ( arguments, " ".join(filesForLib)) ))
 
 	if args.y:
 		targetDir = f'{args.o}/{library}'
