@@ -59,7 +59,8 @@ outputArgs.add_argument('--scsepf', help="Every cell gets a separate FQ file", a
 
 bcArgs = argparser.add_argument_group('Barcode', '')
 bcArgs.add_argument('-hd', help="Hamming distance barcode expansion; accept cells with barcodes N distances away from the provided barcodes. Collisions are dealt with automatically. ", type=int, default=0)
-bcArgs.add_argument('--lbi', help="Summarize the barcodes being used for cell demultiplexing and sequencing indices.", action='store_true')
+bcArgs.add_argument('--lbi', help="List barcodes being used for cell demultiplexing", action='store_true')
+bcArgs.add_argument('--li', help="List sequencing indices.", action='store_true')
 bcArgs.add_argument('-barcodeDir', default=os.path.join(demuxer_location,'barcodes'), help="Directory from which to obtain the barcodes")
 bcArgs.add_argument('-indexDir', default=os.path.join(demuxer_location,'indices'), help="Directory from which to obtain the sequencing indices")
 
@@ -109,8 +110,9 @@ if len(args.fastqfiles)==1:
 barcodeParser = barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hd, barcodeDirectory=args.barcodeDir)
 indexParser =  barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hdi, barcodeDirectory=args.indexDir)
 if args.lbi:
-	barcodeParser.list()
-	indexParser.list()
+	barcodeParser.list(showBarcodes=None)
+if args.li:
+	indexParser.list(showBarcodes=None)
 
 #Load the demultiplexing strategies
 dmx = DemultiplexingStrategyLoader(barcodeParser=barcodeParser, indexParser=indexParser,ignoreMethods=ignoreMethods)

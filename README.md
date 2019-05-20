@@ -49,10 +49,3 @@ Create a contig by sample matrix and divide counts when reads are multimapping. 
 
 Obtain SM and DS tags from tagged bam file ( Sample and restriction site)
 ```bamFileTabulator.py SM DS test.bam```
-
-
-Create a table
-```bamFileToCountTable.py ```
-
- 	Added and renamed bam processing tools 	3 hours ago
-bamFilter.py

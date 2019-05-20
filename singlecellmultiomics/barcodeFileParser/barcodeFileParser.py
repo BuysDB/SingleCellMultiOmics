@@ -174,7 +174,7 @@ class BarcodeParser():
         return (None,None,None)
 
 
-    def list(self, showBarcodes=5):
+    def list(self, showBarcodes=5): #showBarcodes=None show all
         for barcodeAlias,mapping in self.barcodes.items():
             print( f'{len(mapping)} barcodes{Style.DIM} obtained from {Style.RESET_ALL}{barcodeAlias}')
             if len(mapping):
@@ -183,7 +183,7 @@ class BarcodeParser():
                         print(('%s%s%s%s%s%s'  % (Fore.GREEN, bcId, Fore.WHITE,  '→',  mapping[bcId], Style.RESET_ALL )))
                     except Exception as e:
                         print(('%s%s%s%s%s%s'  % (Fore.GREEN, bcId, Fore.WHITE,  '->',  mapping[bcId], Style.RESET_ALL )))
-                if len(mapping)>showBarcodes:
+                if showBarcodes is not None and len(mapping)>showBarcodes:
                     print(f'{Style.DIM} %s more ...\n{Style.RESET_ALL}' % (len(mapping)-showBarcodes))
 
     def getBarcodeMapping(self):
