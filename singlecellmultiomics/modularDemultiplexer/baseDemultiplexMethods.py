@@ -198,16 +198,18 @@ class TaggedRecord():
         self.addTagByTag('Fi',isFiltered)
         self.addTagByTag('CN',controlNumber)
 
+
         if indexFileParser is not None and indexFileAlias is not None:
             indexIdentifier, correctedIndex, hammingDistance = indexFileParser.getIndexCorrectedBarcodeAndHammingDistance(alias=indexFileAlias, barcode=indexSequence)
 
 
             self.addTagByTag('aa',indexSequence)
             if correctedIndex is not None:
-                #raise NonMultiplexable('Could not obtain index for %s  %s %s' % ( indexSequence, correctedIndex, indexIdentifier))
+                #
                 self.addTagByTag('aA',correctedIndex)
                 self.addTagByTag('aI',indexIdentifier)
-            #else:
+            else:
+                raise NonMultiplexable('Could not obtain index for %s  %s %s' % ( indexSequence, correctedIndex, indexIdentifier))
                 #self.addTagByTag('aA',"None")
                 #self.addTagByTag('aI',-1)
                 #self.addTagByTag('ah',hammingDistance)
@@ -336,14 +338,14 @@ class DemultiplexingStrategy(object):
 
 class IlluminaBaseDemultiplexer(DemultiplexingStrategy):
 
-    def __init__(self, indexFileParser,  illuminaIndicesAlias='illumina_merged_ThruPlex48S_RP', **kwargs):
+    def __init__(self, indexFileParser,  indexFileAlias='illumina_merged_ThruPlex48S_RP', **kwargs):
         DemultiplexingStrategy.__init__(self)
         self.indexFileParser = indexFileParser
-        self.illuminaIndicesAlias = illuminaIndicesAlias
+        self.illuminaIndicesAlias = indexFileAlias
         self.shortName = 'ILLU'
         self.longName = 'IlluminaDemux'
         self.description = 'Demultiplex as a bulk sample'
-        self.indexSummary = f'sequencing indices: {illuminaIndicesAlias}'
+        self.indexSummary = f'sequencing indices: {indexFileAlias}'
 
     def demultiplex(self, records, inherited=False, library=None):
         global TagDefinitions
@@ -362,11 +364,13 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
     def __init__(self,
         umiRead=0, umiStart = 0, umiLength=6,
         barcodeRead=0, barcodeStart = 6, barcodeLength=8,
-         barcodeFileParser=None, barcodeFileAlias=None, indexFileParser=None,**kwargs ):
+         barcodeFileParser=None, barcodeFileAlias=None, indexFileParser=None,
+         indexFileAlias = 'illumina_merged_ThruPlex48S_RP',
+         **kwargs ):
         self.description=''
         self.barcodeFileAlias = barcodeFileAlias
         self.barcodeFileParser = barcodeFileParser
-        IlluminaBaseDemultiplexer.__init__(self, indexFileParser=indexFileParser)
+        IlluminaBaseDemultiplexer.__init__(self, indexFileParser=indexFileParser,indexFileAlias=indexFileAlias)
         self.barcodeSummary = self.barcodeFileAlias
         self.umiRead = umiRead # 0:Read 1, 1: Read 2 etc
         self.umiStart = umiStart # First base
@@ -445,7 +449,7 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
 
         for rid,(record, taggedRecord) in enumerate( zip(records, taggedRecords)):
             taggedRecord.sequence = record.sequence[self.sequenceCapture[rid]]
-            taggedRecord.qualities =  self.sequenceCapture[rid]
+            taggedRecord.qualities =  record.qual[self.sequenceCapture[rid]]
             taggedRecord.plus = record.plus
 
         return taggedRecords

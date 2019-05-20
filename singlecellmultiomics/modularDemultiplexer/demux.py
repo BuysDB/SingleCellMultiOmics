@@ -110,15 +110,19 @@ if len(args.fastqfiles)==1:
 # Load barcodes
 barcodeParser = barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hd, barcodeDirectory=args.barcodeDir)
 
+
+
+
 ## Setup the index parser
+indexFileAlias=None # let the multiplex methods decide which index file to use
 if args.si: ## the user defines the sequencing indices
 	useSequencingIndices = args.si.split(',')
-	print("{Fore.BRIGHT} Only these sequencing indices will be kept: {Style.RESET_ALL}")
+	print(f"{Style.BRIGHT} Only these sequencing indices will be kept: {Style.RESET_ALL}")
 	for sequencingIndex in useSequencingIndices:
-		print("{Fore.GREEN}{sequencingIndex}{Style.RESET_ALL}")
+		print(f"{Fore.GREEN}{sequencingIndex}{Style.RESET_ALL}")
 
 	indexParser = barcodeFileParser.BarcodeParser()
-
+	indexFileAlias='user'
 	for index,sequencingIndex in enumerate(useSequencingIndices):
 		indexParser.addBarcode(
 			index = str(index),
@@ -138,7 +142,7 @@ if args.li:
 	indexParser.list(showBarcodes=None)
 
 #Load the demultiplexing strategies
-dmx = DemultiplexingStrategyLoader(barcodeParser=barcodeParser, indexParser=indexParser,ignoreMethods=ignoreMethods)
+dmx = DemultiplexingStrategyLoader(barcodeParser=barcodeParser, indexParser=indexParser,ignoreMethods=ignoreMethods, indexFileAlias=indexFileAlias)
 dmx.list()
 
 if len(args.fastqfiles)==0:

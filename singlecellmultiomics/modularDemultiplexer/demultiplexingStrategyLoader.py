@@ -16,7 +16,7 @@ from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import Non
 from singlecellmultiomics.fastqProcessing.fastqHandle import FastqHandle
 
 class DemultiplexingStrategyLoader:
-	def __init__(self, barcodeParser, moduleSearchDir= 'demultiplexModules', indexParser=None, ignoreMethods=None):
+	def __init__(self, barcodeParser, moduleSearchDir= 'demultiplexModules', indexParser=None, ignoreMethods=None,indexFileAlias=None):
 		package = f'singlecellmultiomics.modularDemultiplexer.{moduleSearchDir}'
 		moduleSearchPath = os.path.join( os.path.dirname(os.path.realpath(__file__)), moduleSearchDir).replace('/./','/')
 		self.barcodeParser = barcodeParser
@@ -45,7 +45,7 @@ class DemultiplexingStrategyLoader:
 				for className, classDetails in inspect.getmembers(sys.modules[f'{package}.{module}'], is_class_member):
 					# Obtain a handle to the class and instatiate the strategy
 					class_ = getattr(loadedModule, className)
-					initiatedDemultiplexingStrategy = class_( barcodeFileParser=barcodeParser, indexFileParser=indexParser)
+					initiatedDemultiplexingStrategy = class_( barcodeFileParser=barcodeParser, indexFileParser=indexParser,indexFileAlias=indexFileAlias)
 					self.demultiplexingStrategies.append(initiatedDemultiplexingStrategy)
 					#print(initiatedDemultiplexingStrategy.name)
 
@@ -134,7 +134,7 @@ class DemultiplexingStrategyLoader:
 						try:
 							rejectHandle.write( baseDemux.demultiplex(reads, library=library) )
 						except NonMultiplexable as e:
-							print(e)
+							rejectHandle.write( reads )
 
 					continue
 				except Exception as e:
