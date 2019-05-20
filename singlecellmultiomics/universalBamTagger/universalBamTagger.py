@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-f"!!! PLEASE USE PYTHON 3.6 OR HIGHER !!!"
 import os,pysam,re
 import subprocess,multiprocessing
 import glob
@@ -17,6 +16,8 @@ import argparse
 import tagBamFile
 import tagtools
 import modularDemultiplexer.baseDemultiplexMethods
+
+c = 1_000 # !!! PLEASE USE PYTHON 3.6 OR HIGHER !!!
 
 argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""Add allelic NLA and/or MSPJI digest information to a demultiplexed bam file
 Adds the following tags:
@@ -39,6 +40,7 @@ if __name__ == "__main__":
 
     tagAlgs = argparser.add_argument_group('Tagging algorithms', '')
     tagAlgs.add_argument('--ftag', action='store_true', help='Add query name tags added by demultiplexer')
+    tagAlgs.add_argument('--atag', action='store_true', help='Add only allele tags')
     tagAlgs.add_argument('--mspji', action='store_true', help='Look for mspji digest')
     tagAlgs.add_argument('--nla', action='store_true', help='Look for nlaIII digest')
     tagAlgs.add_argument('--chic', action='store_true', help='Look for chic seq T on R1')
@@ -49,17 +51,19 @@ if __name__ == "__main__":
     argparser.add_argument('-moleculeRadius', type=int, help='Search radius for each molecule, if a cut site is found within this range with the same umi, it will be counted as the same molecule', default=0)
 
     argparser.add_argument('-alleles', type=str, help='VCF file. Add allelic info flag based on vcf file')
+    argparser.add_argument('--loadAllelesToMem',  action='store_true',help='Load allele data completely into memory')
 
     argparser.add_argument('-ref', type=str, help='reference FASTA file.')
     argparser.add_argument('-o', type=str, default='./tagged', help='output folder')
     argparser.add_argument('--dedup', action='store_true', help='Create deduplicated bam files')
     argparser.add_argument('--fatal', action='store_true', help='Crash upon any encountered error')
+    argparser.add_argument('--verbose', action='store_true', help='Be verbose')
     argparser.add_argument('-chr', help='run only on this chromosome')
 
     argparser.add_argument('-head', type=int, default=None, help='Only process first n reads of every bam file')
     args = argparser.parse_args()
 
-    if not args.mspji and not args.nla and not args.chic and not args.ftag  and args.tag is None:
+    if not args.mspji and not args.nla and not args.chic and not args.ftag  and args.tag is None and args.atag is None:
         raise ValueError('Please supply any or a combination of --ftag --nla --chic --mspji')
 
     """
@@ -148,10 +152,10 @@ class RangeCache():
 
 class DigestFlagger():
 
-    def __init__(self, reference=None, alleleResolver=None, moleculeRadius=0, **kwargs):
+    def __init__(self, reference=None, alleleResolver=None, moleculeRadius=0, verbose=False, **kwargs):
         self.reference = reference
         self.alleleResolver = alleleResolver
-
+        self.verbose = verbose
         self.siteCoordinateTag = 'DS'
         self.oversequencedMoleculeTag = 'RC'
         self.recognitionSequenceTag = 'RZ'
@@ -196,7 +200,9 @@ class DigestFlagger():
 
     def setSiteOversequencing( self, read, moleculeIndex=1 ): # 1 if first seen 2, second, -1 if None
         read.set_tag( self.oversequencedMoleculeTag, -1 if moleculeIndex is None else moleculeIndex  )
-        if moleculeIndex>0:
+        # Decribe as string and set tag:
+
+        if moleculeIndex>1:
             read.is_duplicate = True
 
     def setFragmentSize(self, read, size):
@@ -239,6 +245,8 @@ class DigestFlagger():
 
     def addAlleleInfo(self, reads):
         allele = None if self.alleleResolver is None else self.alleleResolver.getAllele(reads)
+        if self.verbose:
+            print(allele,reads)
         if allele is not None and len(allele)>0:
             allele = ','.join(sorted(list(allele)))
 
@@ -451,7 +459,12 @@ class ChicSeqFlagger( DigestFlagger ):
                 continue
             self.setSiteOversequencing( read, moleculeId )
             self.setSiteCoordinate(read, restrictionPos)
-            self.setRecognizedSequence(read, reads[0].seq[:2].translate(complement)) # the first two base, this should be A{A:80%, N:20%}, we take the complement because the reads captures the complement strand
+
+            if reads[0].is_reverse: #
+
+                self.setRecognizedSequence(read, reads[0].seq[-2:][::-1].translate(complement)) # the first two base, this should be A{A:80%, N:20%}, we take the complement because the reads captures the complement strand
+            else:
+                self.setRecognizedSequence(read, reads[0].seq[:2]) # the last two bases
             self.setSource(read, 'CHIC')
             if allele is not None:
                 self.setAllele(read, allele)
@@ -559,8 +572,12 @@ class TagFlagger( DigestFlagger ):
                 else:
                     return None
 
+            if reads[0].is_read1:
+                strand = reads[0].is_reverse
+            else:
+                strand = not reads[0].is_reverse
             self.addSite( reads,
-                strand=int(R1.is_reverse),
+                strand=int(strand),
                 siteDef=siteDef
             )
 
@@ -744,16 +761,29 @@ class ScarFlagger( DigestFlagger ):
 
         self.addSite( reads,  scarChromosome=R1.reference_name, scarPrimerStart = R1.reference_start )
 
+class AlleleTagger(DigestFlagger ):
+
+    def __init__(self, **kwargs):
+        DigestFlagger.__init__(self, **kwargs )
+
+    def digest(self, reads):
+        nonNullReads = [read for read in reads if read is not None]
+
+        self.addAlleleInfo(nonNullReads)
+
+
 if __name__ == "__main__":
     # These data sources are fed to all flaggers
     flaggerArguments ={
         'reference': None if args.ref is None else pysamIterators.CachedFasta( pysam.FastaFile(args.ref)),
-        'alleleResolver': None if args.alleles is None else   alleleTools.AlleleResolver(args.alleles, lazyLoad=True),
-        'moleculeRadius': args.moleculeRadius
+        'alleleResolver': None if args.alleles is None else   alleleTools.AlleleResolver(args.alleles, lazyLoad=not args.loadAllelesToMem),
+        'moleculeRadius': args.moleculeRadius,
+        'verbose':args.verbose
     }
 
     pairedEnd = False
     flaggers = []
+    qFlagger=None
     if args.ftag:
         qFlagger = QueryNameFlagger(**flaggerArguments)
         flaggers.append( qFlagger )
@@ -771,6 +801,18 @@ if __name__ == "__main__":
         pairedEnd=True
     if args.tag:
         flaggers.append( TagFlagger(tag=args.tag))
+    if args.atag:
+        print("Running allele tagging")
+        flaggers.append( AlleleTagger(**flaggerArguments))
+
+    if args.alleles is not None:
+        # Check if the variant file is valid..
+        if not ( args.alleles.endswith('.vcf.gz') or args.alleles.endswith('.bcf.gz') ):
+            raise ValueError(f"""Please supply an indexed (bg)zipped VCF file. You can convert your file using: bcftools view {args.alleles} -O b -o {args.alleles}.gz; then index using bcftools index {args.alleles}.gz """)
+        if not (os.path.exists(args.alleles+'.csi') or os.path.exists(args.alleles+'.tbi') ):
+            raise ValueError(f"""Please supply an indexed (bg)zipped VCF file. Index using: bcftools index {args.alleles} """)
+
+
 
     if pairedEnd:
         print('Assuming the input is paired end')
@@ -778,7 +820,10 @@ if __name__ == "__main__":
         print('Assuming the input is single end ( Has no influence on ftag)')
 
     if not os.path.exists(args.o):
-        os.makedirs(args.o)
+        try:
+            os.makedirs(args.o)
+        except Exception as e:
+            pass
 
     ## Here we walk through the bamfiles and fetch
 
@@ -822,7 +867,7 @@ if __name__ == "__main__":
                     for flagger in flaggers:
                         print(flagger)
                     raise e
-                if args.dedup and R1.has_tag('RC') and R1.get_tag('RC')==1:
+                if args.dedup and ((R1 is not None and R1.has_tag('RC') and R1.get_tag('RC')==1) or  (R2 is not None and R2.has_tag('RC') and R2.get_tag('RC')==1)):
                     if R1 is not None:
                         dedupOutputFile.write(R1)
                     if R2 is not None:
@@ -853,22 +898,24 @@ if __name__ == "__main__":
         if args.dedup:
             dedupOutputFile.close()
 
-        readGroups={}
-        for readGroup in qFlagger.assignedReadGroups:
-            flowCell,lane,sampleLib = readGroup.split('.')
-            library,sample = sampleLib.rsplit('_')
-            readGroups[readGroup] = {'ID':readGroup,'LB':library, 'PL':'ILLUMINA', 'SM':sample, 'PU':readGroup}
+        if qFlagger is not None:
+            readGroups={}
 
-        headerSamFilePath = outPathTemp.replace('.bam','')+'.header.sam'
-        hCopy = header.to_dict()
-        hCopy['RG'] = list(readGroups.values())
-        with gzip.open(outPathTemp.replace('.bam','')+'.readGroups.pickle.gz','wb') as rgzip,   pysam.AlignmentFile(headerSamFilePath,'w',header=hCopy) as headerSam:
-            pickle.dump(readGroups, rgzip)
+            for readGroup in qFlagger.assignedReadGroups:
+                flowCell,lane,sampleLib = readGroup.split('.')
+                library,sample = sampleLib.rsplit('_',1)
+                readGroups[readGroup] = {'ID':readGroup,'LB':library, 'PL':'ILLUMINA', 'SM':sample, 'PU':readGroup}
 
-            #for readGroup, fields in readGroups.items():
-            #    headerSam.write(f'@RG\tID:{readGroup}\tPL:{fields["PL"]}\tSM:{fields["SM"]}\tPU:{fields["PU"]}\tLB:{fields["LB"]}\n')
-        # Clear the read groups
-        qFlagger.assignedReadGroups=set()
+            headerSamFilePath = outPathTemp.replace('.bam','')+'.header.sam'
+            hCopy = header.to_dict()
+            hCopy['RG'] = list(readGroups.values())
+            with gzip.open(outPathTemp.replace('.bam','')+'.readGroups.pickle.gz','wb') as rgzip,   pysam.AlignmentFile(headerSamFilePath,'w',header=hCopy) as headerSam:
+                pickle.dump(readGroups, rgzip)
+
+                #for readGroup, fields in readGroups.items():
+                #    headerSam.write(f'@RG\tID:{readGroup}\tPL:{fields["PL"]}\tSM:{fields["SM"]}\tPU:{fields["PU"]}\tLB:{fields["LB"]}\n')
+            # Clear the read groups
+            qFlagger.assignedReadGroups=set()
 
 
         if not args.noSort:
@@ -876,18 +923,25 @@ if __name__ == "__main__":
             uniqueStr = str(uuid.uuid4())
             smc = f'samtools sort {outPathTemp} > {outPath}; samtools index {outPath}; rm {outPathTemp}'
             if args.dedup:
-                smc+=f';samtools sort {dedupOutPathTemp} > {dedupOutPath}; ; rm {dedupOutPathTemp}'
+                smc+=f';samtools sort {dedupOutPathTemp} > {dedupOutPath}; samtools index {dedupOutPath}; rm {dedupOutPathTemp}'
 
             if clusterExec:
                 cmd = f"submission.py -m 10 -t 1 -time 2 -y -s ./clusterWorkers/ -N 'scidx{uniqueStr}' \"{smc}\""
                 #if args.local:
                 #    cmd += ' -e local'
             else:
+                print(f"#Executing: {smc}")
                 os.system( smc )
         # Reheader the output file(s)
         tempReHeaderPath = outPathTemp+'.reheader.bam'
-        os.system(f'samtools reheader {headerSamFilePath} {outPath} > {tempReHeaderPath}; mv {tempReHeaderPath} {outPath}; rm {headerSamFilePath}; samtools index {outPath}')
+        if qFlagger is not None:
+            #os.system(f'samtools reheader {headerSamFilePath} {outPath} > {tempReHeaderPath}; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
+            
+            os.system(f'{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
 
+
+        else:
+            os.system(f'samtools index {outPath}')
 
     """
     Is:NS500414;RN:455;Fc:HYLVHBGX5;La:3;Ti:13601;CX:9882;CY:17671;Fi:N;CN:0;aa:CCGTCC;aA:CCGTCC;aI:16;LY:A3-P15-1-1;RX:ACG;RQ:GGG;BI:17;bc:ACTCGATG;BC:ACTCGATG;QT:GGKKKKKK;MX:NLAIII384C8U3;A2:TGG;AQ:E6E
