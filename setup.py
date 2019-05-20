@@ -25,7 +25,7 @@ setup(
     url='https://github.com/BuysDB/SingleCellMultiOmics',
     license='MPL-2.0',
     packages=['singlecellmultiomics'],
-
+    scripts=['singlecellmultiomics/modularDemultiplexer/demux.py'],
   install_requires=[
        'pysam'
    ],
