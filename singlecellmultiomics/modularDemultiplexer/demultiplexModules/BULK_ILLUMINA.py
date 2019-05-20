@@ -8,18 +8,19 @@ import singlecellmultiomics.barcodeFileParser.barcodeFileParser as barcodeFilePa
 
 class IlluminaBaseDemultiplexer(DemultiplexingStrategy):
 
-	def __init__(self, indexFileParser,  illuminaIndicesAlias='illumina_merged_iPCR_RP', **kwargs):
+	def __init__(self, indexFileParser, indexFileAlias = 'illumina_merged_ThruPlex48S_RP',
+	**kwargs):
 		self.barcodeFileParser = None
 		DemultiplexingStrategy.__init__(self)
 		self.indexFileParser = indexFileParser
 
-		self.illuminaIndicesAlias = illuminaIndicesAlias
+		self.illuminaIndicesAlias = indexFileAlias
 		self.shortName = 'ILLU'
 		self.longName = 'IlluminaDemux'
 		self.autoDetectable = False
 		self.description = 'Demultiplex as a bulk sample'
 		self.barcodeSummary='Bulk, no cell barcodes'
-		self.indexSummary = f'sequencing indices: {illuminaIndicesAlias}'
+		self.indexSummary = f'sequencing indices: {indexFileAlias}'
 
 	def demultiplex(self, records, library=None):
 		global TagDefinitions

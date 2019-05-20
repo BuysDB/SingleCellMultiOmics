@@ -125,9 +125,9 @@ class TaggedRecord():
         if library is not None:
             self.addTagByTag( 'LY',library)
 
-        self.sequence = None
-        self.qualities =None
-        self.plus = None
+        self.sequence = rawRecord.sequence
+        self.qualities = rawRecord.qual
+        self.plus = rawRecord.plus
 
     def addTagByTag( self,tagName,  value, isPhred=None, decodePhred=False):
 
