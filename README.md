@@ -31,3 +31,28 @@ universalBamTagger.py
 3) Supports multiple protocols: RNA:CELSEQ1 and CELSEQ2 (with 8 and 6bp UMI), methylation digest sequencing:SC MSPJI ,  lineage tracing:SCARTRACE, DNA digest sequencing: NLAIII, histone modification sequencing: CHIC.
 4) Assigns reads to molecules to allow for deduplication, adds duplication BAM flag
 5) Assigns read groups
+
+
+
+# Examples:
+
+Demultiplex all fastq.gz files in the current directory using NLAIII barcodes
+```
+demux.py *.fastq.gz -use NLAIII384C8U3 --y
+````
+
+For every fragment in input.bam find if it is a valid CHIC seq fragment and deduplicate. Fragments with the same barcode and umi and starting 5 bp from each other are assigned as duplicate.
+```universalBamTagger.py --chic --ftag -moleculeRadius 5  -o tagged.bam input.bam ```
+
+Create a contig by sample matrix and divide counts when reads are multimapping. (Used for counting transcriptome mapped reads)
+```bamToCountTable.py -featureTags chrom -sampleTags SM --divideMultimapping --dedup ./tagged/STAR_mappedAligned.sortedByCoord.out.bam -o transcriptome_counts.csv```
+
+Obtain SM and DS tags from tagged bam file ( Sample and restriction site)
+```bamFileTabulator.py SM DS test.bam```
+
+
+Create a table
+```bamFileToCountTable.py ```
+
+ 	Added and renamed bam processing tools 	3 hours ago
+bamFilter.py
