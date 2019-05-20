@@ -11,15 +11,16 @@ from colorama import Style
 import argparse
 import singlecellmultiomics.barcodeFileParser.barcodeFileParser as barcodeFileParser
 import singlecellmultiomics.libraryDetection.sequencingLibraryListing as sequencingLibraryListing
+import singlecellmultiomics.fastqProcessing.fastqIterator as fastqIterator
 import importlib
 import inspect
 import traceback
 import collections
-import fastqIterator
+
 import glob
 from colorama import init
-from baseDemultiplexMethods import NonMultiplexable,IlluminaBaseDemultiplexer
-import demultiplexModules
+from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import NonMultiplexable,IlluminaBaseDemultiplexer
+import singlecellmultiomics.modularDemultiplexer.demultiplexModules as demultiplexModules
 init()
 import logging
 logging.getLogger().setLevel(logging.WARNING)
