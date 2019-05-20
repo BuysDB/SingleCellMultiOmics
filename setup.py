@@ -12,7 +12,7 @@ else:
         long_description = f.read()
 
 version = {}
-with open(os.path.join(_here, '\singlecelmultiomics', 'version.py')) as f:
+with open(os.path.join(_here, '\singlecellmultiomics', 'version.py')) as f:
     exec(f.read(), version)
 
 setup(
@@ -24,7 +24,7 @@ setup(
     author_email='b.barbanson@hubrecht.eu',
     url='https://github.com/BuysDB/SingleCellMultiOmics',
     license='MPL-2.0',
-    packages=['singlecelmultiomics'],
+    packages=['singlecellmultiomics'],
 
   install_requires=[
        'pysam==0.15.0'
