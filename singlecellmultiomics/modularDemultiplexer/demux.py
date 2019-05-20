@@ -53,6 +53,7 @@ outputArgs = argparser.add_argument_group('Output', '')
 argparser.add_argument('--norejects', help="Do not store rejected reads",  action='store_true')
 
 outputArgs.add_argument('-o', help="Output (cell) file directory, when not supplied the current directory/raw_demultiplexed is used", type=str, default='./raw_demultiplexed')
+outputArgs.add_argument('--scsepf', help="Every cell gets a separate FQ file", action='store_true' )
 
 #outputArgs.add_argument('--nosepf', help="If this flag is not set every cell gets a separate FQ file, otherwise all cells are put in the same file", action='store_true' )
 #outputArgs.add_argument('--nogz', help="Output files are not gzipped", action='store_true' )
@@ -108,12 +109,14 @@ if len(args.fastqfiles)==1:
 		args.fastqfiles = fqFiles
 
 class FastqHandle:
-	def __init__(self, path, pairedEnd=False ):
+	def __init__(self, path, pairedEnd=False, single_cell=False ):
 		self.pe = pairedEnd
-		if pairedEnd:
-			self.handles = [ gzip.open(path+'R1.fastq.gz', 'wt'),   gzip.open(path+'R2.fastq.gz', 'wt') ]
-		else:
-			self.handles = [ gzip.open(path+'reads.fastq.gz', 'wt') ]
+		self.sc = single_cell
+		if not self.sc:
+			if pairedEnd:
+				self.handles = [ gzip.open(path+'R1.fastq.gz', 'wt'),   gzip.open(path+'R2.fastq.gz', 'wt') ]
+			else:
+				self.handles = [ gzip.open(path+'reads.fastq.gz', 'wt') ]
 	def write(self, records ):
 		for handle, record in zip(self.handles, records):
 			handle.write(record)
