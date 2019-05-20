@@ -125,6 +125,9 @@ class TaggedRecord():
         if library is not None:
             self.addTagByTag( 'LY',library)
 
+        self.sequence = None
+        self.qualities =None
+        self.plus = None
 
     def addTagByTag( self,tagName,  value, isPhred=None, decodePhred=False):
 
@@ -142,8 +145,23 @@ class TaggedRecord():
         else:
             self.tags[tagName] = fqSafe(value)
 
+    def __repr__(self):
+        return self.asFastq()
 
-    def asFastq(self, sequence, dirAtt, baseQualities, format='illumina'):
+    def asFastq(self, sequence=None, dirAtt=None, baseQualities=None, format='illumina'):
+        if sequence is None:
+            if self.sequence is None:
+                raise ValueError()
+            sequence = self.sequence
+        if dirAtt is None:
+            if self.plus is None:
+                raise ValueError()
+            dirAtt = self.dirAtt
+        if baseQualities is None:
+            if self.qualities is None:
+                raise ValueError()
+            baseQualities = self.qualities
+
         header = ";".join([ f"{attribute}:{value}" for attribute,value in self.tags.items() if not self.tagDefinitions[attribute].doNotWrite ])
         if len(header)>255: # the header length is stored as uint_8 and includes a null character. The maximum length is thus 255
             raise ValueError("The length of the demultiplexed header is longer than 255 characters. Reduce the length of the header. For example by using -merge _ which will not put the flow cell in the sample name")
@@ -387,7 +405,6 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
         except NonMultiplexable:
             raise
 
-
         rawBarcode = records[self.barcodeRead].sequence[self.barcodeStart:self.barcodeStart+self.barcodeLength]
         barcodeQual =  records[self.barcodeRead].qual[self.barcodeStart:self.barcodeStart+self.barcodeLength]
 
@@ -426,7 +443,13 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
 
             tr.addTagByTag('MX', self.shortName)
 
-        return [ tr.asFastq(record.sequence[self.sequenceCapture[rid]], record.plus, record.qual[self.sequenceCapture[rid]]) for rid,(tr,record) in enumerate(zip(taggedRecords, records))]
+        for rid,(record, taggedRecord) in enumerate( zip(records, taggedRecords)):
+            taggedRecord.sequence = record.sequence[self.sequenceCapture[rid]]
+            taggedRecord.qualities =  self.sequenceCapture[rid]
+            taggedRecord.plus = record.plus
+
+        return taggedRecords
+        #return [ tr.asFastq(record.sequence[self.sequenceCapture[rid]], record.plus, record.qual[self.sequenceCapture[rid]]) for rid,(tr,record) in enumerate(zip(taggedRecords, records))]
         # Add information and rebuild header
         #header = f'@UMI:{umi};UMIQ:{umiQual};CBI:{barcodeIdentifier};CB:{barcode};CBQ:{barcodeQual};'
 
