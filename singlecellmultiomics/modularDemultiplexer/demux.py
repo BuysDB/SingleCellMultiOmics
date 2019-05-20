@@ -60,15 +60,16 @@ outputArgs.add_argument('--scsepf', help="Every cell gets a separate FQ file", a
 bcArgs = argparser.add_argument_group('Barcode', '')
 bcArgs.add_argument('-hd', help="Hamming distance barcode expansion; accept cells with barcodes N distances away from the provided barcodes. Collisions are dealt with automatically. ", type=int, default=0)
 bcArgs.add_argument('--lbi', help="List barcodes being used for cell demultiplexing", action='store_true')
-bcArgs.add_argument('--li', help="List sequencing indices.", action='store_true')
+
 bcArgs.add_argument('-barcodeDir', default=os.path.join(demuxer_location,'barcodes'), help="Directory from which to obtain the barcodes")
-bcArgs.add_argument('-indexDir', default=os.path.join(demuxer_location,'indices'), help="Directory from which to obtain the sequencing indices")
 
 
-bcArgs = argparser.add_argument_group('Index', '')
-bcArgs.add_argument('-hdi', help="Hamming distance INDEX sequence expansion, the hamming distance used for resolving the sequencing INDEX. For cell barcode hamming distance see -hd", type=int, default=1)
-#bcArgs.add_argument('-indexAlias', help="Select which indices are used for demultiplexing", type=int, default='')
 
+indexArgs = argparser.add_argument_group('Sequencing indices', '')
+indexArgs.add_argument('--li', help="List sequencing indices.", action='store_true')
+indexArgs.add_argument('-indexDir', default=os.path.join(demuxer_location,'indices'), help="Directory from which to obtain the sequencing indices")
+indexArgs.add_argument('-si', help="Select only these sequencing indices -si CGATGT,TTAGGC")
+indexArgs.add_argument('-hdi', help="Hamming distance INDEX sequence expansion, the hamming distance used for resolving the sequencing INDEX. For cell barcode hamming distance see -hd", type=int, default=1)
 
 fragArgs = argparser.add_argument_group('Fragment configuration', '')
 #fragArgs.add_argument('--rc1', help="First mate is reverse complemented", action='store_true')
@@ -108,7 +109,29 @@ if len(args.fastqfiles)==1:
 
 # Load barcodes
 barcodeParser = barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hd, barcodeDirectory=args.barcodeDir)
-indexParser =  barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hdi, barcodeDirectory=args.indexDir)
+
+## Setup the index parser
+if args.si: ## the user defines the sequencing indices
+	useSequencingIndices = args.si.split(',')
+	print("{Fore.BRIGHT} Only these sequencing indices will be kept: {Style.RESET_ALL}")
+	for sequencingIndex in useSequencingIndices:
+		print("{Fore.GREEN}{sequencingIndex}{Style.RESET_ALL}")
+
+	indexParser = barcodeFileParser.BarcodeParser()
+
+	for index,sequencingIndex in enumerate(useSequencingIndices):
+		indexParser.addBarcode(
+			index = str(index),
+			barcodeFileAlias='user',
+			barcode=sequencingIndex,
+			hammingDistance=0,
+			originBarcode=None)
+	# Perform expansion:
+	indexParser.expand(args.hdi, alias='user')
+
+else: # the sequencing indices are automatically detected
+	indexParser =  barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hdi, barcodeDirectory=args.indexDir)
+
 if args.lbi:
 	barcodeParser.list(showBarcodes=None)
 if args.li:
