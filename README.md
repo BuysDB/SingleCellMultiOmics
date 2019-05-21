@@ -45,6 +45,3 @@ Obtain SM and DS tags from tagged bam file ( Sample and restriction site)
 
 Create a table
 ```bamFileToCountTable.py ```
-
- 	Added and renamed bam processing tools 	3 hours ago
-bamFilter.py
