@@ -23,13 +23,13 @@ def downsampleRow(args):
         currentCount = downsampledRow.sum()
     return downsampledRow
 
+# downsample_to = sample to this amount of counts per column
+# min_feature_abundance = remove all rows which have less than these counts
 def downsampleDataFrame(df,downsample_to,min_feature_abundance=50):
-
     pool = multiprocessing.Pool(8)
     try:
         df = df.loc[:,df.sum() > downsample_to]
         df = df.loc[df.sum(1)>min_feature_abundance,:]
-
         subset = df.transpose()
         dfDownsampled = subset.copy()
         for idx,drow in enumerate(pool.map(downsampleRow, [ (row, downsample_to) for i,row in subset.iterrows()])):
