@@ -3,9 +3,10 @@ Single cell multi omics is a set of tools to deal with multiple measurements fro
 
 # Installation
 ```
-pip install https://github.com/BuysDB/HandleLimiter/archive/master.zip
-pip install https://github.com/BuysDB/pysamiterators/archive/master.zip
-pip install https://github.com/BuysDB/SingleCellMultiOmics/archive/master.zip
+git clone https://github.com/BuysDB/HandleLimiter
+git clone https://github.com/BuysDB/pysamiterators
+git clone https://github.com/BuysDB/SingleCellMultiOmics
+pip install ./HandleLimiter  ./pysamiterators  ./SingleCellMultiOmics
 ```
 
 # Usage
@@ -36,21 +37,14 @@ universalBamTagger.py
 
 # Examples:
 
-Demultiplex all fastq.gz files in the current directory using NLAIII barcodes
-```
-demux.py *.fastq.gz -use NLAIII384C8U3 --y
-````
-
-Demultiplex only the specified sequencing index (GTTTGA), and everything 1 hamming distance away from GTTTGA  :
-```
-demux.py -si GTTTGA *.gz --y --hdi 1
-```
-
 For every fragment in input.bam find if it is a valid CHIC seq fragment and deduplicate. Fragments with the same barcode and umi and starting 5 bp from each other are assigned as duplicate.
 ```universalBamTagger.py --chic --ftag -moleculeRadius 5  -o tagged.bam input.bam ```
 
-Create a contig by sample matrix and divide counts when reads are multimapping. (Used for counting transcriptome mapped reads)
-```bamToCountTable.py -featureTags chrom -sampleTags SM --divideMultimapping --dedup ./tagged/STAR_mappedAligned.sortedByCoord.out.bam -o transcriptome_counts.csv```
-
 Obtain SM and DS tags from tagged bam file ( Sample and restriction site)
 ```bamFileTabulator.py SM DS test.bam```
+
+Create a table
+```bamFileToCountTable.py ```
+
+ 	Added and renamed bam processing tools 	3 hours ago
+bamFilter.py
