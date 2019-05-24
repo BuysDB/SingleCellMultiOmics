@@ -10,17 +10,24 @@ import singlecellmultiomics
 import singlecellmultiomics.modularDemultiplexer
 TagDefinitions = singlecellmultiomics.modularDemultiplexer.TagDefinitions
 
+
 argparser = argparse.ArgumentParser(
  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
  description='Tabulate a bam file to a file where every line corresponds to the features of a single read')
 argparser.add_argument('-o',  type=str, help="output csv path", required=False)
-argparser.add_argument('-featureTags',  type=str, default=None, help='These define the columns of your output matrix. For example if you want sample (SM) allele (DA) and restriction site (DS) use SM,DA,DS. If you want a column containing the chromosome mapped to use "chrom" as feature.')
+argparser.add_argument('-featureTags',  type=str, default=None, help='These define the columns of your output matrix. For example if you want sample (SM) allele (DA) and restriction site (DS) use SM,DA,DS. If you want a column containing the chromosome mapped to use "chrom" as feature. All pysam attributes of the read can be used. (reference_name, reference_start, reference_end, ..)')
 
 argparser.add_argument('alignmentfiles',  type=str, nargs='*')
 argparser.add_argument('-head',  type=int, help='Run the algorithm only on the first N reads to check if the result looks like what you expect.')
 argparser.add_argument('--dedup', action='store_true', help='Count only the first occurence of a molecule. Requires RC tag to be set. Reads without RC tag will be ignored!')
 argparser.add_argument('--showtags',action='store_true', help='Show a list of commonly used tags, and tags present in your bam file' )
 args = argparser.parse_args()
+
+if args.featureTags is None:
+    print('Please Supply feature tags. Select from:')
+    args.o = None
+    args.featureTags = None
+    args.showtags=True
 
 if args.showtags:
     # Find which tags are available in the file:
@@ -59,8 +66,7 @@ if args.showtags:
 if args.alignmentfiles is None:
     raise ValueError('Supply alignment (BAM) files')
 
-if args.featureTags is None:
-    raise ValueError('Supply feature tags')
+
 
 featureTags= args.featureTags.split(',')
 countTable = collections.defaultdict(collections.Counter) # cell->feature->count
@@ -82,7 +88,8 @@ for bamFile in args.alignmentfiles:
             if args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1)):
                 continue
             line = '%s\n' % '\t'.join([
-                str(read.reference_name) if tag=='chrom' else (str(read.get_tag(tag) if read.has_tag(tag) else 'None'))
+                #str(read.reference_name) if tag=='chrom' else (str(read.get_tag(tag) if read.has_tag(tag) else 'None'))
+                str(singlecellmultiomics.modularDemultiplexer.metaFromRead(read,tag))
                 for tag in featureTags
             ])
             if args.o is None:

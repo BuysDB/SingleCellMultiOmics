@@ -97,11 +97,27 @@ tags = [
 
 
 
-
-
 ]
 
 TagDefinitions =  { tag.tag: tag for tag in tags }
+
+## Obtain metadata from read
+
+def metaFromRead(read, tag):
+
+    if tag=='chrom':
+        return read.reference_name
+
+    if read.has_tag(tag):
+        return read.get_tag(tag)
+
+    try:
+        return getattr(read, tag)
+    except Exception as e:
+        pass
+        #print(e)
+
+    return None
 
 
 # Clean a string to be able to be used in a fastq file header
