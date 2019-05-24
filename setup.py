@@ -35,6 +35,9 @@ setup(
         'singlecellmultiomics/bamProcessing/bamToCountTable.py',
         'singlecellmultiomics/bamProcessing/bamFilter.py',
 
+        # Library processing:
+        'singlecellmultiomics/libraryProcessing/libraryStatistics.py'
+
         ],
   install_requires=[
        'pysam'
