@@ -98,7 +98,7 @@ class BarcodeParser():
             sortedDistances = sorted(hammingSpace[hammingBarcode])
             if len(sortedDistances)>1 and ( sortedDistances[0][0] ==  sortedDistances[1][0]):
                 # We cannot resolve this, two or more origins are at the same distance:
-                print('Cannot resolve %s' % hammingBarcode)
+                #print('Cannot resolve %s' % hammingBarcode)
                 continue
 
             hammingDistance, origin = sortedDistances[0]
