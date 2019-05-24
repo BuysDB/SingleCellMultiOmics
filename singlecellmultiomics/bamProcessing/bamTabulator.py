@@ -6,8 +6,9 @@ import pysam
 import collections
 import argparse
 import pandas as pd
-import baseDemultiplexMethods
-TagDefinitions = baseDemultiplexMethods.TagDefinitions
+import singlecellmultiomics
+import singlecellmultiomics.modularDemultiplexer
+TagDefinitions = singlecellmultiomics.modularDemultiplexer.TagDefinitions
 
 argparser = argparse.ArgumentParser(
  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
