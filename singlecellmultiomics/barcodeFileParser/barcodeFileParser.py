@@ -82,7 +82,31 @@ class BarcodeParser():
         return( len(self.barcodes[barcodeFileAlias] ), len(self.extendedBarcodes[barcodeFileAlias]) )
 
 
-    def expand(self,hammingDistanceExpansion, alias, reportCollisions=True, spaceFill=None ): # Space fill fills all hamming instances, even if they are not resolvable
+    def expand(self,hammingDistanceExpansion, alias, reportCollisions=True, spaceFill=None):
+
+        barcodes = self.barcodes[alias]
+        hammingSpace = collections.defaultdict(list) # hammingBarcode -> ( ( distance,origin) )
+        for barcode in barcodes:
+
+            for hammingDistance in range(0, hammingDistanceExpansion+1):
+                for hammingInstance  in hamming_circle(barcode,hammingDistance,'ACTGN' ):
+                    hammingSpace[hammingInstance].append((hammingDistance,barcode))
+        # Resolve all
+        for hammingBarcode in hammingSpace:
+
+            # Check if there is a closest origin:
+            sortedDistances = sorted(hammingSpace[hammingBarcode])
+            if len(sortedDistances)>1 and ( sortedDistances[0][0] ==  sortedDistances[1][0]):
+                # We cannot resolve this, two or more origins are at the same distance:
+                print('Cannot resolve %s' % hammingBarcode)
+                continue
+
+            hammingDistance, origin = sortedDistances[0]
+
+            self.addBarcode( alias, barcode=hammingBarcode, index=self.barcodes[alias][origin], hammingDistance=hammingDistance, originBarcode=origin)
+
+
+    def expand_old(self,hammingDistanceExpansion, alias, reportCollisions=True, spaceFill=None ): # Space fill fills all hamming instances, even if they are not resolvable
 
         if spaceFill is None:
             spaceFill=self.spaceFill
@@ -185,6 +209,7 @@ class BarcodeParser():
                         print(('%s%s%s%s%s%s'  % (Fore.GREEN, bcId, Fore.WHITE,  '->',  mapping[bcId], Style.RESET_ALL )))
                 if showBarcodes is not None and len(mapping)>showBarcodes:
                     print(f'{Style.DIM} %s more ...\n{Style.RESET_ALL}' % (len(mapping)-showBarcodes))
+
 
     def getBarcodeMapping(self):
         return self.barcodes
