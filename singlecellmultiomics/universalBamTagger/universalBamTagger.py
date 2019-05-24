@@ -54,11 +54,16 @@ if __name__ == "__main__":
     argparser.add_argument('-ref', type=str, help='reference FASTA file.')
     argparser.add_argument('-o', type=str, default='./tagged', help='output folder')
     argparser.add_argument('--dedup', action='store_true', help='Create deduplicated bam files')
-    argparser.add_argument('--fatal', action='store_true', help='Crash upon any encountered error')
-    argparser.add_argument('--verbose', action='store_true', help='Be verbose')
+
     argparser.add_argument('-chr', help='run only on this chromosome')
 
     argparser.add_argument('-head', type=int, default=None, help='Only process first n reads of every bam file')
+
+    devArgs = argparser.add_argument_group('Development options', '')
+    devArgs.add_argument('--fatal', action='store_true', help='Crash upon any encountered error')
+    devArgs.add_argument('--verbose', action='store_true', help='Be verbose')
+    devArgs.add_argument('--knh', action='store_true', help='Keep non-headered bam file')
+
     args = argparser.parse_args()
 
     if not args.mspji and not args.nla and not args.chic and not args.ftag  and args.tag is None and args.atag is None:
@@ -937,8 +942,11 @@ if __name__ == "__main__":
         tempReHeaderPath = outPathTemp+'.reheader.bam'
         if qFlagger is not None:
             #os.system(f'samtools reheader {headerSamFilePath} {outPath} > {tempReHeaderPath}; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
-
-            os.system(f'{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
+            if args.knh:
+                nonHeaderedPath = outPathTemp+'.noHead.bam'
+                os.system(f'{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ; mv {outPath} {nonHeaderedPath}; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
+            else:
+                os.system(f'{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
 
 
         else:
