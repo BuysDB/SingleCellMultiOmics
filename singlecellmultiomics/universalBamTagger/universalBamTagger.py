@@ -842,6 +842,7 @@ if __name__ == "__main__":
         print(f'Now reading {bamFilePath}, writing to {outPath}')
         if args.dedup:
             dedupOutPathTemp = f'{args.o}/%s.dedup.unsorted' % os.path.basename(bamFilePath)
+            dedupOutPathTempWithHeader = f'{args.o}/%s.dedup.with_header.bam' % os.path.basename(bamFilePath)
             dedupOutPath = f'{args.o}/%s.dedup.bam' % os.path.basename(bamFilePath).replace('.bam', '')
             dedupOutputFile = pysam.AlignmentFile(dedupOutPathTemp, "wb", header=header)
         outputFile = pysam.AlignmentFile(outPathTemp, "wb", header=header)
@@ -913,7 +914,7 @@ if __name__ == "__main__":
                 library,sample = sampleLib.rsplit('_',1)
                 readGroups[readGroup] = {'ID':readGroup,'LB':library, 'PL':'ILLUMINA', 'SM':sample, 'PU':readGroup}
 
-            headerSamFilePath = outPathTemp.replace('.bam','')+'.header.sam'
+            headerSamFilePath = outPath.replace('.bam','')+'.header.sam'
             hCopy = header.to_dict()
             hCopy['RG'] = list(readGroups.values())
             with gzip.open(outPathTemp.replace('.bam','')+'.readGroups.pickle.gz','wb') as rgzip,   pysam.AlignmentFile(headerSamFilePath,'w',header=hCopy) as headerSam:
@@ -932,42 +933,22 @@ if __name__ == "__main__":
         samtools index {outPath};
         rm {outPathTempWithHeader};
         """
-        #print(f"# Executing: {rehead_cmd}")
+        print(f"Adding read groups to header and sorting.")
         os.system(rehead_cmd)
 
-        """
-        if not args.noSort:
-            clusterExec = False
-            uniqueStr = str(uuid.uuid4())
-            smc = f'samtools sort {outPathTemp} > {outPath}; samtools index {outPath}; rm {outPathTemp}'
-            if args.dedup:
-                smc+=f';samtools sort {dedupOutPathTemp} > {dedupOutPath}; samtools index {dedupOutPath}; rm {dedupOutPathTemp}'
-
-            if clusterExec:
-                cmd = f"submission.py -m 10 -t 1 -time 2 -y -s ./clusterWorkers/ -N 'scidx{uniqueStr}' \"{smc}\""
-                #if args.local:
-                #    cmd += ' -e local'
-            else:
-                print(f"#Executing: {smc}")
-                os.system( smc )
-
-        # Reheader the output file(s)
-        tempReHeaderPath = outPathTemp+'.reheader.bam'
-        if qFlagger is not None:
-            #os.system(f'samtools reheader {headerSamFilePath} {outPath} > {tempReHeaderPath}; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
-            if args.knh:
-                nonHeaderedPath = outPathTemp+'.noHead.bam'
-                print(f"{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ;
-                mv {outPath} {nonHeaderedPath};
-                mv {tempReHeaderPath} {outPath};
-                samtools index {outPath}")
-            else:
-                os.system(f'{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
+        # Same procedure for dedup:
+        if args.dedup:
+            rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {dedupOutPathTemp}; }} | samtools view -bS > {dedupOutPathTempWithHeader} ;
+            rm {dedupOutPathTemp};
+            samtools sort {dedupOutPathTempWithHeader} > {dedupOutPath}; samtools index {dedupOutPath};
+            samtools index {dedupOutPath};
+            rm {dedupOutPathTempWithHeader};
+            """
+            print(f"Dedup file: adding read groups to header and sorting.")
+            os.system(rehead_cmd)
 
 
-        else:
-            os.system(f'samtools index {outPath}')
-        """
+
 
     """
     Is:NS500414;RN:455;Fc:HYLVHBGX5;La:3;Ti:13601;CX:9882;CY:17671;Fi:N;CN:0;aa:CCGTCC;aA:CCGTCC;aI:16;LY:A3-P15-1-1;RX:ACG;RQ:GGG;BI:17;bc:ACTCGATG;BC:ACTCGATG;QT:GGKKKKKK;MX:NLAIII384C8U3;A2:TGG;AQ:E6E
