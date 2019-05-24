@@ -32,7 +32,7 @@ Which tags are filled in depends on which files you supply, for example if you d
 if __name__ == "__main__":
     argparser.add_argument('bamfiles', metavar='bamfile', type=str, nargs='+')
     argparser.add_argument('--local', action='store_true', help='Do not qsub sorting and indexing [deprecated]')
-    argparser.add_argument('--noSort', action='store_true', help='Do not sort and index')
+    #argparser.add_argument('--noSort', action='store_true', help='Do not sort and index')
     #argparser.add_argument('--cluster', action='store_true', help='Do not qsub sorting and indexing')
 
 
@@ -836,6 +836,7 @@ if __name__ == "__main__":
         bamFile = pysam.AlignmentFile(bamFilePath, "rb")
         header = bamFile.header.copy()
         outPathTemp = f'{args.o}/%s.unsorted' % os.path.basename(bamFilePath)
+        outPathTempWithHeader = f'{args.o}/%s.unsorted.with_header.bam' % os.path.basename(bamFilePath)
         outPath = f'{args.o}/%s.bam' % os.path.basename(bamFilePath).replace('.bam', '')
 
         print(f'Now reading {bamFilePath}, writing to {outPath}')
@@ -924,6 +925,17 @@ if __name__ == "__main__":
             qFlagger.assignedReadGroups=set()
 
 
+        # Perform a reheading, sort and index
+        rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {outPathTemp}; }} | samtools view -bS > {outPathTempWithHeader} ;
+        rm {outPathTemp};
+        samtools sort {outPathTempWithHeader} > {outPath}; samtools index {outPath};
+        samtools index {outPath};
+        rm {outPathTempWithHeader};
+        """
+        #print(f"# Executing: {rehead_cmd}")
+        os.system(rehead_cmd)
+
+        """
         if not args.noSort:
             clusterExec = False
             uniqueStr = str(uuid.uuid4())
@@ -938,22 +950,24 @@ if __name__ == "__main__":
             else:
                 print(f"#Executing: {smc}")
                 os.system( smc )
+
         # Reheader the output file(s)
         tempReHeaderPath = outPathTemp+'.reheader.bam'
         if qFlagger is not None:
             #os.system(f'samtools reheader {headerSamFilePath} {outPath} > {tempReHeaderPath}; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
             if args.knh:
                 nonHeaderedPath = outPathTemp+'.noHead.bam'
-                print(f"""{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ;
+                print(f"{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ;
                 mv {outPath} {nonHeaderedPath};
                 mv {tempReHeaderPath} {outPath};
-                samtools index {outPath}""")
+                samtools index {outPath}")
             else:
                 os.system(f'{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
 
 
         else:
             os.system(f'samtools index {outPath}')
+        """
 
     """
     Is:NS500414;RN:455;Fc:HYLVHBGX5;La:3;Ti:13601;CX:9882;CY:17671;Fi:N;CN:0;aa:CCGTCC;aA:CCGTCC;aI:16;LY:A3-P15-1-1;RX:ACG;RQ:GGG;BI:17;bc:ACTCGATG;BC:ACTCGATG;QT:GGKKKKKK;MX:NLAIII384C8U3;A2:TGG;AQ:E6E
