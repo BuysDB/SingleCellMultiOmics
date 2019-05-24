@@ -5,10 +5,13 @@ import itertools
 
 import singlecellmultiomics.barcodeFileParser.barcodeFileParser as barcodeFileParser
 
+<<<<<<< HEAD
 """
 These tests check if the barcode file parser is working correctly
 
 """
+=======
+>>>>>>> 9e4982e0d64ff8f0edabeca7668328c6874417fa
 class TestBarcodeParser(unittest.TestCase):
 
     def test_insert(self):
