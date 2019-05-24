@@ -59,7 +59,7 @@ bamToCountTable.py -featureTags chrom -sampleTags SM --divideMultimapping --dedu
 
 Obtain sample, chromosome, restrictionsite, read start, and read end from test.bam file:
 ```
-bamFileTabulator.py -featureTags SM,reference_name,reference_start,reference_end test.bam
+bamFileTabulator.py -featureTags SM,reference_name,DS,reference_start,reference_end test.bam
 ```
 List all available tags:
 ```
