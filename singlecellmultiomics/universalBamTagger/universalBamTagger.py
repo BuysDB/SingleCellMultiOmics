@@ -944,7 +944,10 @@ if __name__ == "__main__":
             #os.system(f'samtools reheader {headerSamFilePath} {outPath} > {tempReHeaderPath}; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
             if args.knh:
                 nonHeaderedPath = outPathTemp+'.noHead.bam'
-                os.system(f'{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ; mv {outPath} {nonHeaderedPath}; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
+                print(f"""{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ;
+                mv {outPath} {nonHeaderedPath};
+                mv {tempReHeaderPath} {outPath};
+                samtools index {outPath}""")
             else:
                 os.system(f'{{ cat {headerSamFilePath}; samtools view {outPath}; }} | samtools view -bS > {tempReHeaderPath} ; mv {tempReHeaderPath} {outPath}; samtools index {outPath}')
 
