@@ -48,10 +48,16 @@ demux.py -si GTTTGA *.gz --y --hdi 1
 ```
 
 For every fragment in input.bam find if it is a valid CHIC seq fragment and deduplicate. Fragments with the same barcode and umi and starting 5 bp from each other are assigned as duplicate.
-```universalBamTagger.py --chic --ftag -moleculeRadius 5  -o tagged.bam input.bam ```
+```
+universalBamTagger.py --chic --ftag -moleculeRadius 5  -o tagged.bam input.bam
+ ```
 
 Create a contig by sample matrix and divide counts when reads are multimapping. (Used for counting transcriptome mapped reads)
-```bamToCountTable.py -featureTags chrom -sampleTags SM --divideMultimapping --dedup ./tagged/STAR_mappedAligned.sortedByCoord.out.bam -o transcriptome_counts.csv```
+```
+bamToCountTable.py -featureTags chrom -sampleTags SM --divideMultimapping --dedup ./tagged/STAR_mappedAligned.sortedByCoord.out.bam -o transcriptome_counts.csv
+```
 
 Obtain sample, chromosome, restrictionsite, read start, and read end from test.bam file:
-```bamFileTabulator.py -featureTags SM,reference_name,reference_start,reference_end test.bam```
+```
+bamFileTabulator.py -featureTags SM,reference_name,reference_start,reference_end test.bam
+```
