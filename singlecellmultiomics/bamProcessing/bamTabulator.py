@@ -82,22 +82,26 @@ if args.o is not None:
     tf.write( '\t'.join([tagToHumanName(t, TagDefinitions) for t in featureTags])+'\n' )
 
 wrote=0
-for bamFile in args.alignmentfiles:
-    with pysam.AlignmentFile(bamFile) as f:
-        for i,read in enumerate(f):
-            if args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1)):
-                continue
-            line = '%s\n' % '\t'.join([
-                #str(read.reference_name) if tag=='chrom' else (str(read.get_tag(tag) if read.has_tag(tag) else 'None'))
-                str(singlecellmultiomics.modularDemultiplexer.metaFromRead(read,tag))
-                for tag in featureTags
-            ])
-            if args.o is None:
-                print(line,end="")
-            else:
-                tf.write( line )
-            wrote+=1
-            if args.head and wrote>args.head:
-                break
+try:
+    for bamFile in args.alignmentfiles:
+        with pysam.AlignmentFile(bamFile) as f:
+            for i,read in enumerate(f):
+                if args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1)):
+                    continue
+                line = '%s\n' % '\t'.join([
+                    #str(read.reference_name) if tag=='chrom' else (str(read.get_tag(tag) if read.has_tag(tag) else 'None'))
+                    str(singlecellmultiomics.modularDemultiplexer.metaFromRead(read,tag))
+                    for tag in featureTags
+                ])
+                if args.o is None:
+                    print(line,end="")
+                else:
+                    tf.write( line )
+                wrote+=1
+                if args.head and wrote>args.head:
+                    break
+except KeyboardInterrupt:
+    pass
+
 if args.o is not None:
     tf.close()
