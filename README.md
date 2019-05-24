@@ -53,5 +53,5 @@ For every fragment in input.bam find if it is a valid CHIC seq fragment and dedu
 Create a contig by sample matrix and divide counts when reads are multimapping. (Used for counting transcriptome mapped reads)
 ```bamToCountTable.py -featureTags chrom -sampleTags SM --divideMultimapping --dedup ./tagged/STAR_mappedAligned.sortedByCoord.out.bam -o transcriptome_counts.csv```
 
-Obtain SM and DS tags from tagged bam file ( Sample and restriction site)
-```bamFileTabulator.py SM DS test.bam```
+Obtain sample, chromosome, restrictionsite, read start, and read end from test.bam file:
+```bamFileTabulator.py -featureTags SM,reference_name,reference_start,reference_end test.bam```
