@@ -6,8 +6,9 @@ import pysam
 import collections
 import argparse
 import pandas as pd
-import baseDemultiplexMethods
-TagDefinitions = baseDemultiplexMethods.TagDefinitions
+import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
+TagDefinitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
+import singlecellmultiomics.modularDemultiplexer
 
 argparser = argparse.ArgumentParser(
  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -81,19 +82,12 @@ if args.joinedFeatureTags is not None:
 sampleTags= args.sampleTags.split(',')
 countTable = collections.defaultdict(collections.Counter) # cell->feature->count
 
-def readTag(read, tag, missing='Missing', defective='Defective'):
-    value=None
-    if tag=='chrom':
-        return str(read.reference_name)
-    if not read.has_tag(tag):
-        return missing
-    else:
-        try:
-            value = read.get_tag(tag)
-        except Exception as e:
-            value = defective
+def readTag(read, tag, defective='Defective'):
+    try:
+        value=singlecellmultiomics.modularDemultiplexer.metaFromRead(read,tag)
+    except Exception as e:
+        value = defective
     return value
-
 
 
 for bamFile in args.alignmentfiles:
