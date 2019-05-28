@@ -95,6 +95,13 @@ if __name__ == "__main__":
     """
 
 
+def random_primer_iterator(molecule):
+    rp = collections.defaultdict(list)
+    for R1, R2 in molecule:
+        rp[(R1.get_tag('rP'), R1.get_tag('rS'))].append([R1,R2])
+    for k,p in rp.items():
+        yield p
+
 
 class MoleculeIterator():
 
@@ -124,56 +131,67 @@ class MoleculeIterator():
         current position: {self.current_chromosome}:{self.current_position}
         yielded {self.molecules_yielded} so far
         currently {len(self.molecule_cache)} positions cached
-        keeping {self.total_fragments()} fragments cached
+        keeping {self.get_cached_fragment_count()} fragments cached
         """
 
-    def getCachedFragmentCount(self):
+    def get_cached_fragment_count(self):
         total_fragments = 0
-        for position, data_per_molecule in self.molecule_cache:
-            for molecule_id, molecule_reads in data_per_molecule:
+        for position, data_per_molecule in self.molecule_cache.items():
+            for molecule_id, molecule_reads in data_per_molecule.items():
                 total_fragments+=len(molecule_reads)
         return total_fragments
 
     def assignment_function(self, fragment):
         return  fragment[0].get_tag('SM'),fragment[0].get_tag('RX'),fragment[0].get_tag('RS')
 
+    def _yield_all_in_current_cache(self):
+        for position, data_per_molecule in self.molecule_cache.items():
+            for molecule_id, molecule_reads in data_per_molecule.items():
+                self.molecules_yielded +=1
+                yield molecule_reads
+        self._clear()
+
+    def _purge(self):
+        drop= []
+        for pos in self.molecule_cache:
+            if pos<(self.current_position-self.look_around_radius):
+                # purge this coordinate:
+                for molecule_id, molecule_reads in self.molecule_cache[pos].items():
+                    self.molecules_yielded +=1
+                    yield molecule_reads
+                drop.append(pos)
+
+        for pos in drop:
+            del self.molecule_cache[pos]
+
     def __iter__(self):
         for fragment in pysamIterators.MatePairIterator( self.alignmentfile ):
 
             # now yield fragments which are finished :
+            if fragment[0].reference_name is None:
+                continue
+
             if fragment[0].reference_name!=self.current_chromosome and self.current_chromosome is not None:
-                for position, data_per_molecule in self.molecule_cache:
-                    for molecule_id, molecule_reads in data_per_molecule:
-                        self.molecules_yielded +=1
-                        yield molecule_reads
-                self.clear()
 
-            # Check if we need to purge
-            drop= []
-            for pos in self.molecule_cache:
-                if pos<(self.current_position-self.look_around_radius):
-                    # purge this coordinate:
-                    for molecule_id, molecule_reads in self.molecule_cache[pos].items():
-                        self.molecules_yielded +=1
-                        yield molecule_reads
+                for molecule in self._yield_all_in_current_cache():
+                    yield molecule
 
-                    drop.append(pos)
-
-
-            for pos in drop:
-                del self.molecule_cache[pos]
-
+            # Check if we need to purge and yield results:
+            for molecule in self._purge():
+                yield molecule
 
             position = self.localisation_function(fragment)
             if position is None:
                 continue
             molecule_id = self.assignment_function(fragment)
+
             self.molecule_cache[position][molecule_id].append(fragment)
-
-
             self.current_chromosome = fragment[0].reference_name
             self.current_position = fragment[0].reference_end
 
+        # yield everything which was not yielded yet
+        for molecule in self._yield_all_in_current_cache():
+            yield molecule
 
 
 
