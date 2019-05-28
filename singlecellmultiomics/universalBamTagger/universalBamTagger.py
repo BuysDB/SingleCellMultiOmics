@@ -95,12 +95,15 @@ if __name__ == "__main__":
     """
 
 
-def random_primer_iterator(molecule):
+def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2): #1: read1 2: read2
     rp = collections.defaultdict(list)
-    for R1, R2 in molecule:
-        rp[(R1.get_tag('rP'), R1.get_tag('rS'))].append([R1,R2])
-    for k,p in rp.items():
-        yield p
+    for fragment in molecule:
+        if fragment[primer_read-1] is not None:
+            hstart, hseq = tagtools.getRandomPrimerHash(fragment[primer_read-1], onStart=True, primerLength=6)
+            rp[hstart, hseq].append(fragment)
+    return rp
+    #for k,p in rp.items():
+    #    yield p
 
 
 class MoleculeIterator():
