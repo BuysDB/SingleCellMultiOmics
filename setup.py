@@ -34,6 +34,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamTabulator.py',
         'singlecellmultiomics/bamProcessing/bamToCountTable.py',
         'singlecellmultiomics/bamProcessing/bamFilter.py',
+        'singlecellmultiomics/bamProcessing/bamPlateVisualisation.py',
 
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py'
