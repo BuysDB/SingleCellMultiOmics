@@ -104,7 +104,7 @@ class MoleculeIterator():
 
         self.current_position = None #
         self.current_chromosome = None #
-
+        self.molecules_yielded = 0
         self._clear()
 
     def _clear(self):
@@ -118,9 +118,24 @@ class MoleculeIterator():
             return None
         return fragment[0].get_tag('DS')
 
+
+    def __repr__(self):
+        return f"""Molecule iterator
+        current position: {self.current_chromosome}:{self.current_position}
+        yielded {self.molecules_yielded} so far
+        currently {len(self.molecule_cache)} positions cached
+        keeping {self.total_fragments()} fragments cached
+        """
+
+    def getCachedFragmentCount(self):
+        total_fragments = 0
+        for position, data_per_molecule in self.molecule_cache:
+            for molecule_id, molecule_reads in data_per_molecule:
+                total_fragments+=len(molecule_reads)
+        return total_fragments
+
     def assignment_function(self, fragment):
         return  fragment[0].get_tag('SM'),fragment[0].get_tag('RX'),fragment[0].get_tag('RS')
-
 
     def __iter__(self):
         for fragment in pysamIterators.MatePairIterator( self.alignmentfile ):
@@ -129,6 +144,7 @@ class MoleculeIterator():
             if fragment[0].reference_name!=self.current_chromosome and self.current_chromosome is not None:
                 for position, data_per_molecule in self.molecule_cache:
                     for molecule_id, molecule_reads in data_per_molecule:
+                        self.molecules_yielded +=1
                         yield molecule_reads
                 self.clear()
 
@@ -138,6 +154,7 @@ class MoleculeIterator():
                 if pos<(self.current_position-self.look_around_radius):
                     # purge this coordinate:
                     for molecule_id, molecule_reads in self.molecule_cache[pos].items():
+                        self.molecules_yielded +=1
                         yield molecule_reads
 
                     drop.append(pos)
