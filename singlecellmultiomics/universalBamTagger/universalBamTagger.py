@@ -95,6 +95,71 @@ if __name__ == "__main__":
     """
 
 
+
+class MoleculeIterator():
+
+    def __init__(self, alignmentfile):
+        self.alignmentfile = alignmentfile
+        self.look_around_radius = 100_000
+
+        self.current_position = None #
+        self.current_chromosome = None #
+
+        self._clear()
+
+    def _clear(self):
+
+        self.molecule_cache = collections.defaultdict(
+            lambda: collections.defaultdict(list)) # position -> cell,umi,strand,allele.. -> reads
+
+
+    def localisation_function(self, fragment):
+        if not fragment[0].has_tag('DS'):
+            return None
+        return fragment[0].get_tag('DS')
+
+    def assignment_function(self, fragment):
+        return  fragment[0].get_tag('SM'),fragment[0].get_tag('RX'),fragment[0].get_tag('RS')
+
+
+    def __iter__(self):
+        for fragment in pysamIterators.MatePairIterator( self.alignmentfile ):
+
+            # now yield fragments which are finished :
+            if fragment[0].reference_name!=self.current_chromosome and self.current_chromosome is not None:
+                for position, data_per_molecule in self.molecule_cache:
+                    for molecule_id, molecule_reads in data_per_molecule:
+                        yield molecule_reads
+                self.clear()
+
+            # Check if we need to purge
+            drop= []
+            for pos in self.molecule_cache:
+                if pos<(self.current_position-self.look_around_radius):
+                    # purge this coordinate:
+                    for molecule_id, molecule_reads in self.molecule_cache[pos].items():
+                        yield molecule_reads
+
+                    drop.append(pos)
+
+
+            for pos in drop:
+                del self.molecule_cache[pos]
+
+
+            position = self.localisation_function(fragment)
+            if position is None:
+                continue
+            molecule_id = self.assignment_function(fragment)
+            self.molecule_cache[position][molecule_id].append(fragment)
+
+
+            self.current_chromosome = fragment[0].reference_name
+            self.current_position = fragment[0].reference_end
+
+
+
+
 class RangeCache():
 
     def __init__(self, maxRange=1200):
