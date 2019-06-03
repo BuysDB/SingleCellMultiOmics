@@ -99,13 +99,15 @@ for data, name in [(rawFragmentCount,'raw_reads'),(usableCount,'usable_reads'),(
         else:
             offset = 1
         df['col'] =  [ index2well[384][(offset+int(x.rsplit('_')[-1]))][1]  for x in df.index]
-        df['row'] = [ index2well[384][(offset+int(x.rsplit('_')[-1]))][0]  for x in df.index]
-        df['rowi'] = [ -rows.index(index2well[384][(offset+int(x.rsplit('_')[-1]))][0])  for x in df.index]
+        #df['row'] = [ index2well[384][(offset+int(x.rsplit('_')[-1]))][0]  for x in df.index]
+        df['row'] = [ -rows.index(index2well[384][(offset+int(x.rsplit('_')[-1]))][0])  for x in df.index]
 
-        df.plot.scatter(x='col',y='rowi',s=(df[name]/np.percentile(df[name],99)*200),
+        df.plot.scatter(x='col',y='row',s=(df[name]/np.percentile(df[name],99)*200),
                        c=(0.2,0.2,0.5,0.9)
                        )
-        plt.yticks(sorted(df['rowi'].unique())[::-1], sorted(rows) , rotation=0)
+        plt.yticks(sorted(df['row'].unique())[::-1], sorted(rows) , rotation=0)
         plt.xticks(sorted(df['col'].unique()), sorted(columns) , rotation=0)
+        plt.title('{name}, {mux}, library:{library')
         plt.savefig(args.o + f'/{name}_{mux}_{library}.png')
+
         plt.close()
