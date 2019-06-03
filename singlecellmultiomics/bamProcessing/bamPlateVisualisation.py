@@ -146,6 +146,7 @@ for data, name in [(rawFragmentCount,'raw_reads'),(usableCount,'usable_reads'),(
                        c=[(0.2,0.2,0.5,0.9)]
                        )
 
+        # Annotate the outliers with values:
         ax = plt.gca()
         for ii,row in df.iterrows():
             if row[name]>0 and (row[name]<np.percentile(df[name],5) or row[name]>np.percentile(df[name],95)):
