@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+c = 1_000 # !!! PLEASE USE PYTHON 3.6 OR HIGHER !!!
 import os,pysam,re
 import subprocess,multiprocessing
 import glob
@@ -15,7 +16,6 @@ import argparse
 from singlecellmultiomics.tagtools import tagtools
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 
-c = 1_000 # !!! PLEASE USE PYTHON 3.6 OR HIGHER !!!
 
 argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""Add allelic NLA and/or MSPJI digest information to a demultiplexed bam file
 Adds the following tags:
