@@ -52,14 +52,16 @@ For every fragment in input.bam find if it is a valid CHIC seq fragment and dedu
 universalBamTagger.py --chic --ftag -moleculeRadius 5  -o tagged.bam input.bam
  ```
 
-Show relative abundance of reads and unique molecules across 384 well plate
+Show relative abundance of reads and unique molecules across 384 well plate.
 ```
 bamPlateVisualisation.py tagged.bam -o ./plate_plots
 ```
 Creates the folder ./plate_plots containing  
+```
 raw_reads_[LIBRARY_TYPE]_[LIBRARY_NAME].png # Distribution of total reads
 usable_reads_[LIBRARY_TYPE]_[LIBRARY_NAME].png # Distribution of reads which can be assigned to a molecule
 unique_reads_[LIBRARY_TYPE]_[LIBRARY_NAME].png # Distribution of unique reads
+```
 
 
 Create a contig by sample matrix and divide counts when reads are multimapping. (Used for counting transcriptome mapped reads)
