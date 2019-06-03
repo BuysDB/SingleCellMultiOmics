@@ -13,6 +13,7 @@ import pickle
 import subprocess
 
 import matplotlib
+import matplotlib.lines as mlines
 matplotlib.rcParams['figure.dpi'] = 160
 matplotlib.use('Agg')
 import numpy as np
@@ -22,6 +23,44 @@ import string
 import math
 import singlecellmultiomics.modularDemultiplexer
 TagDefinitions = singlecellmultiomics.modularDemultiplexer.TagDefinitions
+import matplotlib.patheffects as path_effects
+
+def human_readable( value, targetDigits=2,fp=0):
+
+    #Float:
+    if value<1 and value>0:
+        return('%.2f' % value )
+
+    if value == 0.0:
+        return('0')
+
+    baseId = int(math.floor( math.log10(float(value))/3.0 ))
+    suffix = ""
+    if baseId==0:
+        sVal =  str(round(value,targetDigits))
+        if len(sVal)>targetDigits and sVal.find('.'):
+            sVal = sVal.split('.')[0]
+
+    elif baseId>0:
+
+        sStrD = max(0,targetDigits-len(str( '{:.0f}'.format((value/(math.pow(10,baseId*3)))) )))
+
+
+        sVal = ('{:.%sf}' % min(fp, sStrD)).format((value/(math.pow(10,baseId*3))))
+        suffix = 'kMGTYZ'[baseId-1]
+    else:
+
+        sStrD = max(0,targetDigits-len(str( '{:.0f}'.format((value*(math.pow(10,-baseId*3)))) )))
+        sVal = ('{:.%sf}' %  min(fp, sStrD)).format((value*(math.pow(10,-baseId*3))))
+        suffix = 'mnpf'[-baseId-1]
+
+        if len(sVal)+1>targetDigits:
+            # :(
+            sVal = str(round(value,fp))[1:]
+            suffix = ''
+
+
+    return('%s%s' % (sVal,suffix))
 
 argparser = argparse.ArgumentParser(
  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -99,15 +138,34 @@ for data, name in [(rawFragmentCount,'raw_reads'),(usableCount,'usable_reads'),(
         else:
             offset = 1
         df['col'] =  [ index2well[384][(offset+int(x.rsplit('_')[-1]))][1]  for x in df.index]
+
         #df['row'] = [ index2well[384][(offset+int(x.rsplit('_')[-1]))][0]  for x in df.index]
         df['row'] = [ -rows.index(index2well[384][(offset+int(x.rsplit('_')[-1]))][0])  for x in df.index]
-
-        df.plot.scatter(x='col',y='row',s=(df[name]/np.percentile(df[name],99)*200),
-                       c=(0.2,0.2,0.5,0.9)
+        df['size'] = (df[name]/np.percentile(df[name],99)*200)
+        df.plot.scatter(x='col',y='row',s=df['size'],
+                       c=[(0.2,0.2,0.5,0.9)]
                        )
+
+        ax = plt.gca()
+        for ii,row in df.iterrows():
+            if row[name]>0 and (row[name]<np.percentile(df[name],5) or row[name]>np.percentile(df[name],95)):
+                text = ax.annotate( human_readable(int(row[name])), ( row['col'], row['row']),
+                ha='center',va='center_baseline',color='w',size=7)
+                text.set_path_effects([path_effects.Stroke(linewidth=3, foreground='black'),
+                       path_effects.Normal()])
+
         plt.yticks(sorted(df['row'].unique())[::-1], sorted(rows) , rotation=0)
         plt.xticks(sorted(df['col'].unique()), sorted(columns) , rotation=0)
-        plt.title('{name}, {mux}, library:{library')
+        plt.title(fr'{name} with ${mux}$ adapter'+f'\n{library}')
+
+        # Create legend:
+        #ld = []
+        #for x in np.linspace(1, max(df[name]), 4):
+    #        size = (x/np.percentile(df[name],99))*200
+        #    ld.append( mlines.Line2D([], [], color='blue', marker='.', linestyle='None',
+        ##                  markersize=np.sqrt(size), label=f'{int(x)}:{size}'))
+        #plt.legend(handles=ld)
+
         plt.savefig(args.o + f'/{name}_{mux}_{library}.png')
 
         plt.close()
