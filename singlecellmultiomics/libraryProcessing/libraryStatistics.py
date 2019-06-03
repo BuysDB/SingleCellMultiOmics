@@ -47,8 +47,6 @@ class Statistic(object):
     def __repr__(self):
         return 'dummy'
 
-    def __repr__(self):
-        return f'dummy'
 
 class ReadCount(Statistic):
     def __init__(self,args):
