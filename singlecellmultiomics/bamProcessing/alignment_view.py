@@ -12,7 +12,7 @@ Convert molecule to  HTML representation
 
 """
 def visualise_molecule( molecule,
- reference_handle=None,  # pysam handle to reference
+ reference=None,  # pysam handle to reference
  show_reference=False, # Show reference sequence
  margin_bases=0,
  start_span=None,
@@ -45,9 +45,9 @@ highlight=set()
     start = start_span
 
     # Obtain reference sequence
-    if reference_handle is not None and show_reference:
+    if reference is not None and show_reference:
         reference_sequence = reference.fetch(chrom,start_span, end_span)
-        html_str += f'ref : {referenceSequence}<br />'
+        html_str += f'ref : {reference_sequence}<br />'
 
     for R1,R2 in molecule:
         try:
@@ -62,7 +62,7 @@ highlight=set()
             visBases = ['.']*(end-start)
             visQuals = ['.']*(end-start)
             emittedRef = ['.']*(end-start)
-            it = pysamiterators.ReadCycleIterator( read, with_seq=True, matches_only=True, reference=reference_handle )
+            it = pysamiterators.ReadCycleIterator( read, with_seq=True, matches_only=True, reference=reference )
 
             for i,(cycle,qpos,refpos,refbase) in enumerate(it):
                 if i==0:
