@@ -101,7 +101,7 @@ if __name__=='__main__':
     argparser.add_argument('alignmentfiles',  type=str, nargs='*')
     argparser.add_argument('-gtf',  type=str, required=True, help="GTF file containing the features to plot")
     argparser.add_argument('-head',  type=int, default=10_000_000, help="Use this amount of reads per bam file (or less if the bam file has less reads)")
-    argparser.add_argument('--bySite',  type=str,  help="Use the DS tag to count density")
+    argparser.add_argument('--bySite',  action='store_true', help="Use the DS tag to count density")
     argparser.add_argument('--binSize',  type=int,default=25)
     argparser.add_argument('--maxDistance',  type=int,default=15_000, help='Size of the window')
     args = argparser.parse_args()
