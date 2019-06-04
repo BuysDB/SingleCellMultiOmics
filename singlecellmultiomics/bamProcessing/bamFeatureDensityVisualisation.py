@@ -151,7 +151,7 @@ if __name__=='__main__':
             print(f'{feature} {library}')
             fig, ax = plt.subplots(figsize=(12,3))
             ax.scatter( list(histogram.keys()),list(histogram.values()), s=5, alpha=0.6 )
-            ax.set_xlabel('Distance from stop codon [bp]')
+            ax.set_xlabel(f'Distance from {feature} codon [bp]')
             ax.set_ylabel('# bases')
             ax.set_title(f'{library}')
             ax.set_ylim(bottom=-10)
