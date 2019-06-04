@@ -12,9 +12,10 @@ class FeatureContainer:
         self.sorted = True # Flag containing if the features are all coordinate sorted
         self.debug = False # When set to true, the class will be (very) verbose
         self.remapKeys = {} #{'chrMT':'chrM','MT':'chrM'}  Use this to convert chromosome names between the GTF and requested locations
-
+        self.verbose = False
     def debugMsg(self, msg):
-        print(msg)
+        if self.verbose:
+            print(msg)
 
     def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'], ignChr=False, select_feature_type=None):
         """Load annotations from a GTF file.
