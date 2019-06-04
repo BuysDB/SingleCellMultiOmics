@@ -148,6 +148,7 @@ if __name__=='__main__':
     print('Plotting')
     for feature, feature_data in histograms.items():
         for library, histogram in feature_data.items():
+            print(f'{feature} {library}')
             fig, ax = plt.subplots(figsize=(12,3))
             ax.scatter( list(histogram.keys()),list(histogram.values()), s=5, alpha=0.6 )
             ax.set_xlabel('Distance from stop codon [bp]')
