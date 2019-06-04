@@ -55,7 +55,7 @@ class FeatureContainer:
                     if select_feature_type is not None and not parts[2] in select_feature_type:
                         continue
 
-                    exon = parts[5]
+                    exon = parts[6]
                     if exon_select is not None and not exon in exon_select:
                         continue
 
