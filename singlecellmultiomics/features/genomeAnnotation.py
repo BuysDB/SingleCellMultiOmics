@@ -305,7 +305,6 @@ class FeatureContainer:
             self.features[chromosome][index][1] if index<len(self.features[chromosome]) else 'No feature hit' ))
         #index = np.clip(index, 1, len(self.endCoordinates)-1)
         #Check if the index is zero, and this feature is actually more right:
-        print(len(self.features[chromosome]))
         if index>(len(self.features[chromosome])-1):
             self.debugMsg("overflow INDEX condition, decreasing index")
             index-=1
@@ -342,7 +341,7 @@ class FeatureContainer:
             self.debugMsg("Zero INDEX condition. Rejected feature.")
             return([])
 
-        print(self.features[chromosome][index])
+        #print(self.features[chromosome][index])
         hitStrand = self.features[chromosome][index][3]
         #Find first feature which is on the same strand...
         while strand is not None and (hitStrand!=strand):
