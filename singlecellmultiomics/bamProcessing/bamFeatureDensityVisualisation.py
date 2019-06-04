@@ -62,7 +62,7 @@ def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_s
                 break
             if read.is_unmapped:
                 continue
-            i+=1
+
 
             library = read.get_tag('LY')
             chromosome = read.reference_name
@@ -70,13 +70,14 @@ def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_s
                 if site_mode:
                     if not read.has_tag('DS'):
                         continue
-
+                    i+=1
                     distance = distance_to_feature_start(chromosome,
                                               int(read.get_tag('DS')),
                                               feature_container=feature_container)
                     if distance is not None and  abs(distance)<max_distance:
                         histogram[library][ np.floor(distance/bin_size)*bin_size] += 1
                 else:
+                    i+=1
                     for distance in [
                         distance_to_feature_start(chromosome, read.reference_start, feature_container=feature_container),
                         distance_to_feature_start(chromosome, read.reference_end, feature_container=feature_container)
@@ -89,7 +90,7 @@ def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_s
                     distance = distance_to_feature_start(chromosome, ref_pos, feature_container=feature_container)
                     if distance is not None and abs(distance)<max_distance:
                         histogram[library][np.floor(distance/bin_size)] += 1
-
+    print(f'{bam_path} read {i} reads')
 
 if __name__=='__main__':
     argparser = argparse.ArgumentParser(
@@ -100,7 +101,7 @@ if __name__=='__main__':
     argparser.add_argument('-features',  type=str, default='stop_codon,start_codon', help="features to plot, separate by comma without space")
     argparser.add_argument('alignmentfiles',  type=str, nargs='*')
     argparser.add_argument('-gtf',  type=str, required=True, help="GTF file containing the features to plot")
-    argparser.add_argument('-head',  type=int, default=10_000_000, help="Use this amount of reads per bam file (or less if the bam file has less reads)")
+    argparser.add_argument('-head',  type=int, default=100_000_000, help="Use this amount of reads per bam file (or less if the bam file has less reads)")
     argparser.add_argument('--bySite',  action='store_true', help="Use the DS tag to count density")
     argparser.add_argument('--binSize',  type=int,default=25)
     argparser.add_argument('--maxDistance',  type=int,default=15_000, help='Size of the window')
