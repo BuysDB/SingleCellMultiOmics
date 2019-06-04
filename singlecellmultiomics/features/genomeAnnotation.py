@@ -297,6 +297,8 @@ class FeatureContainer:
 
     """Return a feature left of the lookupCoordinate"""
     def findNearestLeftFeature(self, chromosome, lookupCoordinate, strand=None):
+        if not chromosome in self.features:
+            return([])
         if not self.sorted:
             self.sort()
         """ Find closest feature left of the supplied coordinate """
@@ -323,6 +325,8 @@ class FeatureContainer:
             return([])
         return([self.features[chromosome][index]])
     def findNearestRightFeature(self, chromosome, lookupCoordinate, strand=None):
+        if not chromosome in self.features:
+            return([])
         if not self.sorted:
             self.sort()
         """ Find closest feature left of the supplied coordinate """

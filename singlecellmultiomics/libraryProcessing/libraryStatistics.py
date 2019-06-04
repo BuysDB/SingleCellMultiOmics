@@ -48,6 +48,8 @@ class Statistic(object):
         return 'dummy'
 
 
+
+
 class ReadCount(Statistic):
     def __init__(self,args):
         Statistic.__init__(self, args)
