@@ -143,7 +143,7 @@ if __name__=='__main__':
         for library, histogram in feature_data.items():
             df = pd.DataFrame([ list(histogram.keys()),list(histogram.values())]).transpose()
             df.columns = ['bin','observations']
-            df.to_csv(f'{args.d}/{feature}_{library}.csv')
+            df.to_csv(f'{args.d}/{feature}_{library}_{args.maxDistance}_{args.binSize}.csv')
 
     # Plot the histograms
     print('Plotting')
@@ -157,5 +157,5 @@ if __name__=='__main__':
             ax.set_title(f'{library}')
             ax.set_ylim(bottom=-10)
             plt.tight_layout()
-            plt.savefig(f'{args.o}/{feature}_{library}.png')
+            plt.savefig(f'{args.o}/{feature}_{library}_{args.maxDistance}_{args.binSize}.png')
             plt.close()
