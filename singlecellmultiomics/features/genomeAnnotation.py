@@ -17,7 +17,7 @@ class FeatureContainer:
         if self.verbose:
             print(msg)
 
-    def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'], ignChr=False, select_feature_type=None, exon_select=None):
+    def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'], ignChr=False, select_feature_type=None, exon_select=None, head=None):
         """Load annotations from a GTF file.
         ignChr: ignore the chr part of the Annotation chromosome
         """
@@ -27,7 +27,9 @@ class FeatureContainer:
 
         print("Loading %s" % path)
         with open(path) as f:
-            for line in f:
+            for line_id,line in enumerate(f):
+                if head is not None and line_id>head:
+                    break
                 if line[0]!='#':
                     parts = line.rstrip().split(None,8)
 
@@ -55,7 +57,7 @@ class FeatureContainer:
                     if select_feature_type is not None and not parts[2] in select_feature_type:
                         continue
 
-                    exon = parts[6]
+                    exon = parts[7]
                     if exon_select is not None and not exon in exon_select:
                         continue
 
@@ -353,6 +355,7 @@ class FeatureContainer:
             return([])
         return([self.features[chromosome][index]])
 
+    @functools.lru_cache(maxsize=512)
     def findNearestFeature( self, chromosome, lookupCoordinate, strand=None ):
 
         s = self.findFeaturesAt(chromosome, lookupCoordinate, strand=None)
@@ -382,7 +385,7 @@ class FeatureContainer:
             else:
                 return( [ fl[0], fr[0] ] )
 
-    @functools.lru_cache(maxsize=64)
+    @functools.lru_cache(maxsize=512)
     def findFeaturesAt(self, chromosome, lookupCoordinate, strand=None, optim='bdbnb'):
         if not self.sorted:
             self.sort()
