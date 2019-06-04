@@ -5,7 +5,6 @@ import sys
 import pysam
 import collections
 import argparse
-import singlecellmultiomics.pyutils as pyutils
 import gzip
 import pickle
 import matplotlib
@@ -15,7 +14,7 @@ matplotlib.use('Agg')
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import singlecellmultiomics.features.genomeAnnotation
+import singlecellmultiomics.features
 
 
 def distance_to_hit( lookup_coordinate, hit_start, hit_end, hit_strand, lookup_strand=None,distance_from_begin=True):
@@ -94,7 +93,7 @@ if __name__=='__main__':
      description='Visualise feature density of a bam file. (Coverage around stop codons, start codons, genes etc)')
     argparser.add_argument('-o',  type=str, help="output plot folder path, every library will be visualised separately", default='./plots/')
     argparser.add_argument('-d',  type=str, help="output data folder path, the data used for plotting will be exported to this folder", default='./tables/')
-    argparser.add_argument('-features',  type=str, default='stop_codon,start_codon' help="features to plot, separate by comma without space")
+    argparser.add_argument('-features',  type=str, default='stop_codon,start_codon', help="features to plot, separate by comma without space")
     argparser.add_argument('alignmentfiles',  type=str, nargs='*')
     argparser.add_argument('-gtf',  type=str, required=True, help="GTF file containing the features to plot")
     argparser.add_argument('-head',  type=str, default=10_000_000, help="Use this amount of reads per bam file (or less if the bam file has less reads)")
@@ -116,7 +115,7 @@ if __name__=='__main__':
     for feature in features:
         annotations[feature] = singlecellmultiomics.features.genomeAnnotation.FeatureContainer()
         annotations[feature].loadGTF( args.gtf, select_feature_type=[feature] )
-    }
+
 
     histograms = collections.defaultdict(lambda:collections.defaultdict(collections.Counter)) # feature->library->hist
     # Create histogram per feature / library

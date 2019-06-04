@@ -1,7 +1,7 @@
 from setuptools import setup
 import os
 import sys
-
+from setuptools import setup, find_packages
 _here = os.path.abspath(os.path.dirname(__file__))
 
 if sys.version_info[0] < 3:
@@ -15,6 +15,21 @@ version = {}
 with open(os.path.join(_here, 'singlecellmultiomics', 'version.py')) as f:
     exec(f.read(), version)
 
+
+"""['singlecellmultiomics',
+    'singlecellmultiomics.features',
+    'singlecellmultiomics.barcodeFileParser',
+    'singlecellmultiomics.bamProcessing',
+    'singlecellmultiomics.countTableProcessing',
+    'singlecellmultiomics.fastqProcessing',
+    'singlecellmultiomics.libraryDetection',
+    'singlecellmultiomics.libraryProcessing',
+    'singlecellmultiomics.modularDemultiplexer',
+    'singlecellmultiomics.pyutils',
+    'singlecellmultiomics.tagtools',
+    'singlecellmultiomics.universalBamTagger'
+    ],"""
+    
 setup(
     name='singlecelmultiomics',
     version=version['__version__'],
@@ -24,7 +39,9 @@ setup(
     author_email='b.barbanson@hubrecht.eu',
     url='https://github.com/BuysDB/SingleCellMultiOmics',
     license='MPL-2.0',
-    packages=['singlecellmultiomics'],
+    packages=find_packages(),
+
+
     scripts=[
         'singlecellmultiomics/modularDemultiplexer/demux.py',
 

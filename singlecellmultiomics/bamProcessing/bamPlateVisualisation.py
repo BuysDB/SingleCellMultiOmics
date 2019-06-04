@@ -5,7 +5,6 @@ import sys
 import pysam
 import collections
 import argparse
-import singlecellmultiomics.pyutils as pyutils
 from singlecellmultiomics.tagtools import tagtools
 import pysamiterators.iterators as pysamIterators
 import gzip
