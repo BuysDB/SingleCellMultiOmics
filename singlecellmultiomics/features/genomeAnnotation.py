@@ -16,7 +16,7 @@ class FeatureContainer:
     def debugMsg(self, msg):
         print(msg)
 
-    def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'], ignChr=False):
+    def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'], ignChr=False, select_feature_type=None):
         """Load annotations from a GTF file.
         ignChr: ignore the chr part of the Annotation chromosome
         """
@@ -51,6 +51,9 @@ class FeatureContainer:
                     #keyValues = { part.strip().split()[0]:part.strip().split()[1].replace('"','') for part in parts[-1].split(';') }
 
                     #keyValues = {i.group(1) : i.group(2) for i in (prog.match(j) for j in parts[-1].split('; '))}
+                    if select_feature_type is not None and not parts[2] in select_feature_type:
+                        continue
+
                     keyValues = {}
                     for part in parts[-1].split(';'):
                         kv = part.strip().split()
@@ -77,6 +80,8 @@ class FeatureContainer:
                             featureName = ','.join([parts[2],parts[3],parts[4],keyValues['transcript_id']])
                     else:
                         featureName =','.join( [keyValues.get(i,'none') for i in identifierFields if i in keyValues] )
+
+
 
                     self.addFeature( self.remapKeys.get(chromosome, chromosome), int(parts[3]),
                         int(parts[4]), strand=parts[6], name=featureName, data=','.join(   ( ':'.join(('type',parts[2])), ':'.join(('gene_id',keyValues['gene_id'])))   ) )
