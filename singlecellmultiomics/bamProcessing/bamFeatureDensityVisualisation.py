@@ -33,7 +33,7 @@ def distance_to_hit( lookup_coordinate, hit_start, hit_end, hit_strand, lookup_s
     return distance
 
 # check if lookup coordinate falls within a feature:
-def distance_to_feature_start(chromosome,lookup_coordinate,feature_container):
+def distance_to_feature_start(chromosome,lookup_coordinate,feature_container,lookup_strand=None):
     distance=None
     min_distance = None
     for hit in feature_container.findFeaturesAt(chromosome=chromosome,lookupCoordinate=lookup_coordinate,strand=lookup_strand):
@@ -55,12 +55,15 @@ def distance_to_feature_start(chromosome,lookup_coordinate,feature_container):
 
 def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_size=25, max_distance=15_000, head=None, quick=True):
     histogram = add_to
-    with pysam.AlignmentFile(path) as f:
+    with pysam.AlignmentFile(bam_path) as f:
         i=0
         for read in f:
+            if head is not None and i>head:
+                break
             if read.is_unmapped:
                 continue
             i+=1
+
             library = read.get_tag('LY')
             chromosome = read.reference_name
             if quick or site_mode:
@@ -72,7 +75,7 @@ def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_s
                                               int(read.get_tag('DS')),
                                               feature_container=stopCodon)
                     if abs(distance)<max_distance:
-                        histogram[ np.floor(distance/bin_size)*bin_size] += 1
+                        histogram[library][ np.floor(distance/bin_size)*bin_size] += 1
                 else:
                     for distance in [
                         distance_to_feature_start(chromosome, read.reference_start, feature_container=feature_container),
@@ -80,12 +83,13 @@ def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_s
                     ]:
 
                         if distance is not None and  abs(distance)<max_distance:
-                            histogram[ np.floor(distance/bin_size)*bin_size] += 1
+                            histogram[library][ np.floor(distance/bin_size)*bin_size] += 1
             else:
                 for q_pos, ref_pos in read.get_aligned_pairs(matches_only=True, with_seq=False):
                     distance = distance_to_feature_start(chromosome, ref_pos, feature_container=feature_container)
                     if distance is not None and abs(distance)<max_distance:
-                        histogram[np.floor(distance/bin_size)] += 1
+                        histogram[library][np.floor(distance/bin_size)] += 1
+
 
 if __name__=='__main__':
     argparser = argparse.ArgumentParser(
@@ -96,8 +100,8 @@ if __name__=='__main__':
     argparser.add_argument('-features',  type=str, default='stop_codon,start_codon', help="features to plot, separate by comma without space")
     argparser.add_argument('alignmentfiles',  type=str, nargs='*')
     argparser.add_argument('-gtf',  type=str, required=True, help="GTF file containing the features to plot")
-    argparser.add_argument('-head',  type=str, default=10_000_000, help="Use this amount of reads per bam file (or less if the bam file has less reads)")
-    argparser.add_argument('--bySite',  type=str, required=True, help="Use the DS tag to count density")
+    argparser.add_argument('-head',  type=int, default=10_000_000, help="Use this amount of reads per bam file (or less if the bam file has less reads)")
+    argparser.add_argument('--bySite',  type=str,  help="Use the DS tag to count density")
     argparser.add_argument('--binSize',  type=int,default=25)
     argparser.add_argument('--maxDistance',  type=int,default=15_000, help='Size of the window')
     args = argparser.parse_args()
@@ -113,14 +117,16 @@ if __name__=='__main__':
 
     annotations = {}
     for feature in features:
-        annotations[feature] = singlecellmultiomics.features.genomeAnnotation.FeatureContainer()
+        annotations[feature] = singlecellmultiomics.features.FeatureContainer()
         annotations[feature].loadGTF( args.gtf, select_feature_type=[feature] )
 
 
-    histograms = collections.defaultdict(lambda:collections.defaultdict(collections.Counter)) # feature->library->hist
+    histograms = collections.defaultdict(
+                    lambda:collections.defaultdict(collections.Counter)) # feature->library->hist
     # Create histogram per feature / library
     for feature in features:
         for bam_path in args.alignmentfiles:
+            print(f"Now reading {bam_path} for annotation type {feature}")
             bam_to_histogram(
                 bam_path,
                 histograms[feature],
@@ -131,14 +137,16 @@ if __name__=='__main__':
                 head=args.head)
 
     # Write
-    for feature, feature_data in features.items():
+    print('Writing tables')
+    for feature, feature_data in histograms.items():
         for library, histogram in feature_data.items():
-            df = pd.DataFrame( list(histogram.keys()),list(histogram.values()))
+            df = pd.DataFrame([ list(histogram.keys()),list(histogram.values())]).transpose()
             df.columns = ['bin','observations']
             df.to_csv(f'{args.d}/{feature}_{library}.csv')
 
     # Plot the histograms
-    for feature, feature_data in features.items():
+    print('Plotting')
+    for feature, feature_data in histograms.items():
         for library, histogram in feature_data.items():
             fig, ax = plt.subplots(figsize=(12,3))
             ax.scatter( list(histogram.keys()),list(histogram.values()), s=5, alpha=0.6 )
@@ -146,5 +154,6 @@ if __name__=='__main__':
             ax.set_ylabel('# bases')
             ax.set_title(f'{library}')
             ax.set_ylim(bottom=-10)
+            plt.tight_layout()
             plt.savefig(f'{args.o}/{feature}_{library}.png')
             plt.close()

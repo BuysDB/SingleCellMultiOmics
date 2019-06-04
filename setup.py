@@ -16,20 +16,9 @@ with open(os.path.join(_here, 'singlecellmultiomics', 'version.py')) as f:
     exec(f.read(), version)
 
 
-"""['singlecellmultiomics',
-    'singlecellmultiomics.features',
-    'singlecellmultiomics.barcodeFileParser',
-    'singlecellmultiomics.bamProcessing',
-    'singlecellmultiomics.countTableProcessing',
-    'singlecellmultiomics.fastqProcessing',
-    'singlecellmultiomics.libraryDetection',
-    'singlecellmultiomics.libraryProcessing',
-    'singlecellmultiomics.modularDemultiplexer',
-    'singlecellmultiomics.pyutils',
-    'singlecellmultiomics.tagtools',
-    'singlecellmultiomics.universalBamTagger'
-    ],"""
-    
+""","""
+
+print(find_packages())
 setup(
     name='singlecelmultiomics',
     version=version['__version__'],
@@ -39,7 +28,19 @@ setup(
     author_email='b.barbanson@hubrecht.eu',
     url='https://github.com/BuysDB/SingleCellMultiOmics',
     license='MPL-2.0',
-    packages=find_packages(),
+    packages=['singlecellmultiomics',
+        'singlecellmultiomics.features',
+        'singlecellmultiomics.barcodeFileParser',
+        'singlecellmultiomics.bamProcessing',
+        'singlecellmultiomics.countTableProcessing',
+        'singlecellmultiomics.fastqProcessing',
+        'singlecellmultiomics.libraryDetection',
+        'singlecellmultiomics.libraryProcessing',
+        'singlecellmultiomics.modularDemultiplexer',
+        'singlecellmultiomics.pyutils',
+        'singlecellmultiomics.tagtools',
+        'singlecellmultiomics.universalBamTagger'
+        ],
 
 
     scripts=[

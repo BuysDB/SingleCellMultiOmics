@@ -1,1 +1,1 @@
-from features import genomeAnnotation
+from singlecellmultiomics.features import *
