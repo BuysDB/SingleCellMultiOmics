@@ -17,7 +17,7 @@ class FeatureContainer:
         if self.verbose:
             print(msg)
 
-    def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'], ignChr=False, select_feature_type=None):
+    def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'], ignChr=False, select_feature_type=None, exon_select=None):
         """Load annotations from a GTF file.
         ignChr: ignore the chr part of the Annotation chromosome
         """
@@ -53,6 +53,10 @@ class FeatureContainer:
 
                     #keyValues = {i.group(1) : i.group(2) for i in (prog.match(j) for j in parts[-1].split('; '))}
                     if select_feature_type is not None and not parts[2] in select_feature_type:
+                        continue
+
+                    exon = parts[5]
+                    if exon_select is not None and not exon in exon_select:
                         continue
 
                     keyValues = {}
