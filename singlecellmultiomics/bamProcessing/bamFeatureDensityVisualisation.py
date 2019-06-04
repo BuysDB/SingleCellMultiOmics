@@ -74,7 +74,7 @@ def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_s
                     distance = distance_to_feature_start(chromosome,
                                               int(read.get_tag('DS')),
                                               feature_container=feature_container)
-                    if abs(distance)<max_distance:
+                    if distance is not None and  abs(distance)<max_distance:
                         histogram[library][ np.floor(distance/bin_size)*bin_size] += 1
                 else:
                     for distance in [
