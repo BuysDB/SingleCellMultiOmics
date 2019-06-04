@@ -53,7 +53,7 @@ def distance_to_feature_start(chromosome,lookup_coordinate,feature_container,loo
 
     return distance
 
-def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_size=25, max_distance=15_000, head=None, quick=True):
+def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_size=25, min_mq=30, max_distance=15_000, head=None, quick=True):
     histogram = add_to
     with pysam.AlignmentFile(bam_path) as f:
         i=0
@@ -62,7 +62,8 @@ def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_s
                 break
             if read.is_unmapped:
                 continue
-
+            if read.mapping_quality<min_mq:
+                continue
 
             library = read.get_tag('LY')
             chromosome = read.reference_name
@@ -105,6 +106,7 @@ if __name__=='__main__':
     argparser.add_argument('--bySite',  action='store_true', help="Use the DS tag to count density")
     argparser.add_argument('--binSize',  type=int,default=25)
     argparser.add_argument('--maxDistance',  type=int,default=15_000, help='Size of the window')
+    argparser.add_argument('--minMQ',  type=int,default=30, help='Minimum mapping quality')
     args = argparser.parse_args()
 
     features = args.features.split(',')
@@ -135,6 +137,7 @@ if __name__=='__main__':
                 site_mode=args.bySite,
                 bin_size=args.binSize,
                 max_distance=args.maxDistance,
+                min_mq = args.minMQ,
                 head=args.head)
 
     # Write
