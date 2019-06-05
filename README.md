@@ -47,7 +47,8 @@ Demultiplex only the specified sequencing index (GTTTGA), and everything 1 hammi
 demux.py -si GTTTGA *.gz --y --hdi 1
 ```
 
-For every fragment in input.bam find if it is a valid CHIC seq fragment and deduplicate. Fragments with the same barcode and umi and starting 5 bp from each other are assigned as duplicate.
+For every fragment in input.bam find if it is a valid CHIC seq fragment and deduplicate. Fragments with the same cell barcode and umi and starting within a range of 5 bp from each other are assigned as duplicate.
+When alleles are specified using -alleles, the molecule assignment is split up by allele too.
 ```
 universalBamTagger.py --chic --ftag -moleculeRadius 5  -o tagged.bam input.bam
  ```

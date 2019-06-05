@@ -9,8 +9,7 @@ import gzip
 import pickle
 import matplotlib
 import matplotlib.lines as mlines
-matplotlib.rcParams['figure.dpi'] = 160
-matplotlib.use('Agg')
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -94,6 +93,9 @@ def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_s
     print(f'{bam_path} read {i} reads')
 
 if __name__=='__main__':
+    matplotlib.rcParams['figure.dpi'] = 160
+    matplotlib.use('Agg')
+    
     argparser = argparse.ArgumentParser(
      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
      description='Visualise feature density of a bam file. (Coverage around stop codons, start codons, genes etc)')
@@ -108,7 +110,6 @@ if __name__=='__main__':
     argparser.add_argument('--maxDistance',  type=int,default=15_000, help='Size of the window')
     argparser.add_argument('--minMQ',  type=int,default=30, help='Minimum mapping quality')
     args = argparser.parse_args()
-
     features = args.features.split(',')
 
     if not os.path.exists(args.o):
@@ -117,7 +118,6 @@ if __name__=='__main__':
         os.makedirs(args.d)
 
     # Load the GTF files with the desired annotations
-
     annotations = {}
     for feature in features:
         annotations[feature] = singlecellmultiomics.features.FeatureContainer()
