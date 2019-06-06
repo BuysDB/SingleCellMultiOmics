@@ -59,6 +59,8 @@ For every fragment in input.bam find NLAIII seq fragments and deduplicate these.
 universalBamTagger.py --nla --ftag  -o tagged.bam input.bam
  ```
 
+### Molecule iteration in Python
+
 
 
 
