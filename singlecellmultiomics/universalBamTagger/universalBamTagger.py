@@ -597,7 +597,7 @@ class ChicSeqFlagger( DigestFlagger ):
         Real molecule: and adapter:
         ADAPTER: 5' NNNNT 3'
                         A{A:80%,N:20%}NNN [CHIC MOLECULE]
-                                ^ real cut site
+                                      ^ real cut site
         """
         if R1.is_unmapped or R2.is_unmapped:
             return(None)
@@ -617,7 +617,8 @@ class ChicSeqFlagger( DigestFlagger ):
         self.addSite( [R1,R2],
             strand=int(R1.is_reverse), # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
             # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
-            restrictionChrom=R1.reference_name, restrictionPos=(R1.reference_end-1 if R1.is_reverse else R1.reference_start+1)  )
+            restrictionChrom=R1.reference_name,
+            restrictionPos=(R1.reference_end-1 if R1.is_reverse else R1.reference_start+1)  )
         return(( R1.reference_name, R1.reference_start))
 
 
@@ -665,7 +666,6 @@ class TagFlagger( DigestFlagger ):
         else:
             R2=None
         for read in reads:
-
             if self.tag=='chrom':
                 if R1.reference_name!=None:
                     siteDef = str(R1.reference_name)
