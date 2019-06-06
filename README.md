@@ -47,10 +47,19 @@ Demultiplex only the specified sequencing index (GTTTGA), and everything 1 hammi
 demux.py -si GTTTGA *.gz --y --hdi 1
 ```
 
+### scCHIC
 For every fragment in input.bam find CHIC seq fragments and deduplicate these. Fragments with the same cell barcode, umi, library and strand and starting within a range of 5 bp from each other are assigned as duplicate. The mnase cut site location is recorded into the DS tag. When alleles are specified using -alleles, the molecule assignment is split up by allele, this means that if two fragments map to the same location and share the same umi, but contain SNPs which indicate differing alleles, the reads are not assigned to the same molecule. For every fragment the ligation sequence is recorded into the RZ tag.
 ```
 universalBamTagger.py --chic --ftag -moleculeRadius 5  -o tagged.bam input.bam
  ```
+
+### NlaIII
+For every fragment in input.bam find NLAIII seq fragments and deduplicate these. Fragments with the same cell barcode, umi, library and strand are assigned as duplicate. The NlaIII cut site location is recorded into the DS tag. When alleles are specified using -alleles, the molecule assignment is split up by allele, this means that if two fragments map to the same location and share the same umi, but contain SNPs which indicate differing alleles, the reads are not assigned to the same molecule. For every fragment the sequenced part of the NlaIII cut site sequence is recorded into the RZ tag, this is usually CATG, but is allowed to be shifted 1 base to ATG. In the NlaIII protocol a reverse transcription (RT) is used, generally capturing more reverse transcription reactions will yield a more accurate molecule consensus sequence. For every fragment which support the molecule the reverse transcription reaction is recorded by storing the location of the random primer used for RT and the sequence of the random primer.
+```
+universalBamTagger.py --nla --ftag  -o tagged.bam input.bam
+ ```
+
+
 
 
 Show relative abundance of reads and unique molecules across 384 well plate.
