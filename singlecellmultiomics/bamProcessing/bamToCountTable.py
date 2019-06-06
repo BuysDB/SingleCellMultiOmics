@@ -22,6 +22,7 @@ argparser.add_argument('-head',  type=int, help='Run the algorithm only on the f
 argparser.add_argument('--divideMultimapping', action='store_true', help='Divide multimapping reads over all targets. Requires the XA or NH tag to be set.')
 
 argparser.add_argument('-offset', type=int, default=0, help="Add offset to bin. If bin=1000, offset=200, f=1999 -> 1200. f=4199 -> 3200")
+argparser.add_argument('-minMQ', type=int, default=0, help="minimum mapping quality")
 argparser.add_argument('-bin', type=int, help="Devide and floor to bin features. If bin=1000, f=1999 -> 1000." )
 argparser.add_argument('--showBinEnd', action='store_true', help="If True, then show DS column as 120000-220000, otherwise 120000 only. This specifies the bin range in which the read was counted" )
 argparser.add_argument('-binTag',default='DS' )
@@ -95,6 +96,8 @@ for bamFile in args.alignmentfiles:
     with pysam.AlignmentFile(bamFile) as f:
 
         for i,read in enumerate(f):
+            read.mapping_quality<args.minMQ:
+                continue
             if i%1_000_000==0:
                 print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
             if read.is_unmapped or args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1)):
