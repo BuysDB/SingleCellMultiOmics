@@ -41,7 +41,7 @@ if __name__ == "__main__":
     tagAlgs.add_argument('--atag', action='store_true', help='Add only allele tags')
     tagAlgs.add_argument('--mspji', action='store_true', help='Look for mspji digest')
     tagAlgs.add_argument('--nla', action='store_true', help='Look for nlaIII digest')
-    tagAlgs.add_argument('--chic', action='store_true', help='Look for chic seq T on R1')
+    tagAlgs.add_argument('--chic', action='store_true', help='Look for mnase (scCHIC) digest')
     tagAlgs.add_argument('--scar', action='store_true', help='Create R1 start, cigar sequence based DS tags')
     tagAlgs.add_argument('-tag', type=str, default=None, help='Determine oversequencing based on a tag (for example XT to count RNA oversequencing for featureCounts counted transcripts. chrom for chromosome/contig count)')
 
