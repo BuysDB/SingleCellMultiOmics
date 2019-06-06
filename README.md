@@ -60,8 +60,14 @@ universalBamTagger.py --nla --ftag  -o tagged.bam input.bam
  ```
 
 ### Molecule iteration in Python
-
-
+Assigned molecules can be iterated over to use in your Python code.
+Every molecule is a list of fragments which are assigned to the molecule.
+[More detailed examples here](https://github.com/BuysDB/SingleCellMultiOmics/wiki/Molecule-iteration).
+```
+with pysam.AlignmentFile('example.bam') as f:
+    for molecule in MoleculeIterator(f):
+        print(molecule)
+```
 
 
 Show relative abundance of reads and unique molecules across 384 well plate.
