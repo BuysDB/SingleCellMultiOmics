@@ -103,7 +103,7 @@ for bamFile in args.alignmentfiles:
                 continue
             if i%1_000_000==0:
                 print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
-            if read.is_unmapped or args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1)):
+            if read.is_unmapped or (args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
                 continue
             sample =tuple( readTag(read,tag) for tag in sampleTags )
 
@@ -148,7 +148,7 @@ def tagToHumanName(tag,TagDefinitions ):
         return tag
     return TagDefinitions[tag].humanName
 
-print("Finished counting, now exporting...")
+print(f"Finished counting, now exporting to {args.o}")
 df = pd.DataFrame.from_dict( countTable )
 df.columns.set_names([tagToHumanName(t,TagDefinitions ) for t in sampleTags], inplace=True)
 if joinFeatures:
