@@ -76,6 +76,9 @@ joinFeatures = False
 if args.featureTags is not None:
     featureTags= args.featureTags.split(',')
 
+if args.bin is not None:
+    featureTags = [args.binTag]
+
 if args.joinedFeatureTags is not None:
     featureTags= args.joinedFeatureTags.split(',')
     joinFeatures=True
