@@ -96,7 +96,7 @@ for bamFile in args.alignmentfiles:
     with pysam.AlignmentFile(bamFile) as f:
 
         for i,read in enumerate(f):
-            read.mapping_quality<args.minMQ:
+            if read.mapping_quality<args.minMQ:
                 continue
             if i%1_000_000==0:
                 print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
