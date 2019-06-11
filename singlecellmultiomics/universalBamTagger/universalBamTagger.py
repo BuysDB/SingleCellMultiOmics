@@ -17,19 +17,19 @@ from singlecellmultiomics.tagtools import tagtools
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 
 
-argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""Add allelic NLA and/or MSPJI digest information to a demultiplexed bam file
-Adds the following tags:
-RC: number of oversequenced molecules
-DT: Source type (NLA/MSPJI/RNA.. )
-DA: Digest allele
-RP: Recognized sequence
-RS: Recognized strand '-','?','+'
 
+if __name__ == "__main__" :
+    argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""Add allelic NLA and/or MSPJI digest information to a demultiplexed bam file
+    Adds the following tags:
+    RC: number of oversequenced molecules
+    DT: Source type (NLA/MSPJI/RNA.. )
+    DA: Digest allele
+    RP: Recognized sequence
+    RS: Recognized strand '-','?','+'
 
-Which tags are filled in depends on which files you supply, for example if you do not supply an allelic VCF file, then no allele tag will be added
-""")
+    Which tags are filled in depends on which files you supply, for example if you do not supply an allelic VCF file, then no allele tag will be added
+    """)
 
-if __name__ == "__main__":
     argparser.add_argument('bamfiles', metavar='bamfile', type=str, nargs='+')
     argparser.add_argument('--local', action='store_true', help='Do not qsub sorting and indexing [deprecated]')
     #argparser.add_argument('--noSort', action='store_true', help='Do not sort and index')
@@ -568,7 +568,6 @@ class ChicSeqFlagger( DigestFlagger ):
             self.setSiteCoordinate(read, restrictionPos)
 
             if reads[0].is_reverse: #
-
                 self.setRecognizedSequence(read, reads[0].seq[-2:][::-1].translate(complement)) # the first two base, this should be A{A:80%, N:20%}, we take the complement because the reads captures the complement strand
             else:
                 self.setRecognizedSequence(read, reads[0].seq[:2]) # the last two bases
@@ -577,7 +576,6 @@ class ChicSeqFlagger( DigestFlagger ):
                 self.setAllele(read, allele)
 
             self.setStrand(read, '+' if strand==1 else ('-' if strand==0 else '?')) #Note: strand 1 is +
-
 
     def digest(self, reads):
         if len(reads)!=2:
@@ -956,7 +954,8 @@ if __name__ == "__main__":
         #    continue
         i=0
         if pairedEnd:
-            it = pysamIterators.MatePairIterator( bamFile,performProperPairCheck=False, contig=args.chr)
+            it = pysamIterators.MatePairIterator( bamFile,
+                performProperPairCheck=False, contig=args.chr)
 
             for i, (R1, R2) in enumerate( it ):
                 for flagger in flaggers:
