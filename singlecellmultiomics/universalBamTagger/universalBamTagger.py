@@ -16,7 +16,8 @@ import argparse
 from singlecellmultiomics.tagtools import tagtools
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 
-
+def hamming_distance(a,b):
+    return sum((i!=j and i!='N' and j!='N' for i,j in zip(a,b)))
 
 if __name__ == "__main__" :
     argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""Add allelic NLA and/or MSPJI digest information to a demultiplexed bam file
@@ -108,13 +109,20 @@ def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2): #1
 
 class MoleculeIterator():
 
-    def __init__(self, alignmentfile):
+    def __init__(self,
+        alignmentfile,
+        look_around_radius=100_000,
+        umi_hamming_distance=0, # 0: only exact match, 1: single base distance
+        **pysam_kwargs
+        ):
         self.alignmentfile = alignmentfile
-        self.look_around_radius = 100_000
+        self.look_around_radius = look_around_radius
 
         self.current_position = None #
         self.current_chromosome = None #
         self.molecules_yielded = 0
+        self.umi_hamming_distance = umi_hamming_distance
+        self.pysam_kwargs = pysam_kwargs
         self._clear()
 
     def _clear(self):
@@ -122,7 +130,7 @@ class MoleculeIterator():
         self.molecule_cache = collections.defaultdict(
             lambda: collections.defaultdict(list)) # position -> cell,umi,strand,allele.. -> reads
 
-
+    # Returns postion unique identifier for a fragment
     def localisation_function(self, fragment):
         if not fragment[0].has_tag('DS'):
             return None
@@ -147,6 +155,19 @@ class MoleculeIterator():
     def assignment_function(self, fragment):
         return  fragment[0].get_tag('SM'),fragment[0].get_tag('RX'),fragment[0].get_tag('RS')
 
+    # Returns True if two fragment ids  are identical or close enough
+    def eq_function(self, assignment_a, assignment_b):
+        sample_A, umi_A, strand_A = assignment_a
+        sample_B, umi_B, strand_B = assignment_b
+
+        if sample_A!=sample_B or strand_A!=strand_B:
+            return False
+
+        if self.umi_hamming_distance==0:
+            return umi_A==umi_B
+        else:
+            return hamming_distance(umi_A,umi_B)<=self.umi_hamming_distance
+
     def _yield_all_in_current_cache(self):
         for position, data_per_molecule in self.molecule_cache.items():
             for molecule_id, molecule_reads in data_per_molecule.items():
@@ -168,14 +189,14 @@ class MoleculeIterator():
             del self.molecule_cache[pos]
 
     def __iter__(self):
-        for fragment in pysamIterators.MatePairIterator( self.alignmentfile ):
+        for fragment in pysamIterators.MatePairIterator( self.alignmentfile, **self.pysam_kwargs ):
 
             # now yield fragments which are finished :
             if fragment[0].reference_name is None:
                 continue
 
+            # We went to another chromsome, purge all in cache:
             if fragment[0].reference_name!=self.current_chromosome and self.current_chromosome is not None:
-
                 for molecule in self._yield_all_in_current_cache():
                     yield molecule
 
@@ -188,7 +209,15 @@ class MoleculeIterator():
                 continue
             molecule_id = self.assignment_function(fragment)
 
-            self.molecule_cache[position][molecule_id].append(fragment)
+            # Check if there is a molecule to assign to already present:
+            assigned = False
+            for existing_molecule in self.molecule_cache[position]:
+                if self.eq_function(existing_molecule, molecule_id):
+                    assigned  = True
+                    self.molecule_cache[position][existing_molecule].append(fragment)
+            if not assigned:
+                self.molecule_cache[position][molecule_id].append(fragment)
+
             self.current_chromosome = fragment[0].reference_name
             self.current_position = fragment[0].reference_end
 
