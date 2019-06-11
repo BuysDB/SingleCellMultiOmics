@@ -21,11 +21,16 @@ argparser.add_argument('alignmentfiles',  type=str, nargs='*')
 argparser.add_argument('-head',  type=int, help='Run the algorithm only on the first N reads to check if the result looks like what you expect.')
 argparser.add_argument('--divideMultimapping', action='store_true', help='Divide multimapping reads over all targets. Requires the XA or NH tag to be set.')
 
-argparser.add_argument('-offset', type=int, default=0, help="Add offset to bin. If bin=1000, offset=200, f=1999 -> 1200. f=4199 -> 3200")
+
+binning_args = argparser.add_argument_group('Binning', '')
+binning_args.add_argument('-offset', type=int, default=0, help="Add offset to bin. If bin=1000, offset=200, f=1999 -> 1200. f=4199 -> 3200")
+#binning_args.add_argument('-sliding', type=int,  help="make bins overlapping, the stepsize is equal to the supplied value here")
+binning_args.add_argument('-bin', type=int, help="Devide and floor to bin features. If bin=1000, f=1999 -> 1000." )
+binning_args.add_argument('--showBinEnd', action='store_true', help="If True, then show DS column as 120000-220000, otherwise 120000 only. This specifies the bin range in which the read was counted" )
+binning_args.add_argument('-binTag',default='DS' )
+
 argparser.add_argument('-minMQ', type=int, default=0, help="minimum mapping quality")
-argparser.add_argument('-bin', type=int, help="Devide and floor to bin features. If bin=1000, f=1999 -> 1000." )
-argparser.add_argument('--showBinEnd', action='store_true', help="If True, then show DS column as 120000-220000, otherwise 120000 only. This specifies the bin range in which the read was counted" )
-argparser.add_argument('-binTag',default='DS' )
+
 
 argparser.add_argument('--dedup', action='store_true', help='Count only the first occurence of a molecule. Requires RC tag to be set. Reads without RC tag will be ignored!')
 argparser.add_argument('--showtags',action='store_true', help='Show a list of commonly used tags' )
