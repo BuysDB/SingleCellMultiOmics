@@ -138,7 +138,7 @@ class MoleculeIterator():
         for read in fragment:
             if read is not None:
                 if read.has_tag(self.sample_tag):
-                    return read.get_tag(sample_tag)
+                    return read.get_tag(self.sample_tag)
         return None
 
     # Returns postion unique identifier for a fragment
