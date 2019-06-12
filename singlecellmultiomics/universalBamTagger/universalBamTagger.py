@@ -113,6 +113,7 @@ class MoleculeIterator():
         alignmentfile,
         look_around_radius=100_000,
         umi_hamming_distance=0, # 0: only exact match, 1: single base distance
+        sample_select=None, # iterable of samples to only select molecules from
         **pysam_kwargs
         ):
         self.alignmentfile = alignmentfile
@@ -123,12 +124,21 @@ class MoleculeIterator():
         self.molecules_yielded = 0
         self.umi_hamming_distance = umi_hamming_distance
         self.pysam_kwargs = pysam_kwargs
+        self.sample_select = sample_select
+        self.sample_tag = 'SM'
         self._clear()
 
     def _clear(self):
 
         self.molecule_cache = collections.defaultdict(
             lambda: collections.defaultdict(list)) # position -> cell,umi,strand,allele.. -> reads
+
+    def sample_assignment_function(self, fragment):
+        for read in fragment:
+            if read is not None:
+                if read.has_tag(self.sample_tag):
+                    return read.get_tag(sample_tag)
+        return None
 
     # Returns postion unique identifier for a fragment
     def localisation_function(self, fragment):
@@ -194,6 +204,11 @@ class MoleculeIterator():
             # now yield fragments which are finished :
             if fragment[0].reference_name is None:
                 continue
+
+            if self.sample_select:
+                sample = self.sample_assignment_function(fragment)
+                if not sample in self.sample_select:
+                    continue
 
             # We went to another chromsome, purge all in cache:
             if fragment[0].reference_name!=self.current_chromosome and self.current_chromosome is not None:
