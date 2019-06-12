@@ -114,6 +114,7 @@ class MoleculeIterator():
         look_around_radius=100_000,
         umi_hamming_distance=0, # 0: only exact match, 1: single base distance
         sample_select=None, # iterable of samples to only select molecules from
+        # when a string is supplied only a single sample is selected
         **pysam_kwargs
         ):
         self.alignmentfile = alignmentfile
@@ -207,8 +208,12 @@ class MoleculeIterator():
 
             if self.sample_select:
                 sample = self.sample_assignment_function(fragment)
-                if not sample in self.sample_select:
-                    continue
+                if type(self.sample_select)==str: # single sample
+                    if self.sample_select!=sample:
+                        continue
+                else: # list or set of samples
+                    if not sample in self.sample_select:
+                        continue
 
             # We went to another chromsome, purge all in cache:
             if fragment[0].reference_name!=self.current_chromosome and self.current_chromosome is not None:
