@@ -192,7 +192,7 @@ for bamFile in args.alignmentfiles:
                 continue
             sample =tuple( readTag(read,tag) for tag in sampleTags )
 
-            countToAdd = (0.5 if read.is_paired else 1)
+            countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
             assigned+=1
             if args.divideMultimapping:
                 if read.has_tag('XA'):
