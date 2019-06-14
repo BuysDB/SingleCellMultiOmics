@@ -224,7 +224,10 @@ for bamFile in args.alignmentfiles:
                         countTable[sample][ tuple( feature+ [start,end])] += countToAdd
                 else:
                     if len(feature):
-                        countTable[sample][tuple(feature)]+=countToAdd
+                        if len(featureTags)==1:
+                            countTable[sample][feature[0]]+=countToAdd
+                        else:
+                            countTable[sample][tuple(feature)]+=countToAdd
 
             if args.head is not None and i>args.head:
                 break
