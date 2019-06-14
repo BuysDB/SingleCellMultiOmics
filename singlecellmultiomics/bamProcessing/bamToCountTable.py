@@ -20,10 +20,10 @@ argparser.add_argument('-sampleTags',  type=str, default='SM', help='Comma separ
 argparser.add_argument('alignmentfiles',  type=str, nargs='*')
 argparser.add_argument('-head',  type=int, help='Run the algorithm only on the first N reads to check if the result looks like what you expect.')
 
-binning_args = argparser.add_argument_group('Multimapping', '')
-argparser.add_argument('--divideMultimapping', action='store_true', help='Divide multimapping reads over all targets. Requires the XA or NH tag to be set.')
-argparser.add_argument('-minMQ', type=int, default=0, help="minimum mapping quality")
-argparser.add_argument('--filterXA',action='store_true', help="Do not count reads where the XA (alternative hits) tag has been set for a non-alternative locus.")
+multimapping_args = argparser.add_argument_group('Multimapping', '')
+multimapping_args.add_argument('--divideMultimapping', action='store_true', help='Divide multimapping reads over all targets. Requires the XA or NH tag to be set.')
+multimapping_args.add_argument('-minMQ', type=int, default=0, help="minimum mapping quality")
+multimapping_args.add_argument('--filterXA',action='store_true', help="Do not count reads where the XA (alternative hits) tag has been set for a non-alternative locus.")
 
 binning_args = argparser.add_argument_group('Binning', '')
 binning_args.add_argument('-offset', type=int, default=0, help="Add offset to bin. If bin=1000, offset=200, f=1999 -> 1200. f=4199 -> 3200")
