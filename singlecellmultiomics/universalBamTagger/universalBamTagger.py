@@ -15,6 +15,7 @@ import pysamiterators.iterators as pysamIterators
 import argparse
 from singlecellmultiomics.tagtools import tagtools
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
+import singlecellmultiomics.features
 
 def hamming_distance(a,b):
     return sum((i!=j and i!='N' and j!='N' for i,j in zip(a,b)))
@@ -47,6 +48,16 @@ if __name__ == "__main__" :
     tagAlgs.add_argument('-tag', type=str, default=None, help='Determine oversequencing based on a tag (for example XT to count RNA oversequencing for featureCounts counted transcripts. chrom for chromosome/contig count)')
 
 
+    ### RNA options
+    tagAlgs.add_argument('--rna', action='store_true', help='Assign RNA molecules, requires a intronic and exonic GTF file')
+    argparser.add_argument('-introns', type=str, help='Intronic GTF file')
+    argparser.add_argument('-exons', type=str, help='Exonic GTF file.')
+    """
+    How much bases of the fragment fall inside the intron(s)
+    How much bases of the fragment fall inside the exon(s)
+    is the fragment spliced? How many bases are spliced out?
+    """
+
     argparser.add_argument('-moleculeRadius', type=int, help='Search radius for each molecule, if a cut site is found within this range with the same umi, it will be counted as the same molecule', default=0)
 
     argparser.add_argument('-alleles', type=str, help='VCF file. Add allelic info flag based on vcf file')
@@ -55,6 +66,8 @@ if __name__ == "__main__" :
     argparser.add_argument('-ref', type=str, help='reference FASTA file.')
     argparser.add_argument('-o', type=str, default='./tagged', help='output folder')
     argparser.add_argument('--dedup', action='store_true', help='Create deduplicated bam files')
+
+
 
     argparser.add_argument('-chr', help='run only on this chromosome')
 
@@ -67,8 +80,11 @@ if __name__ == "__main__" :
 
     args = argparser.parse_args()
 
-    if not args.mspji and not args.nla and not args.chic and not args.ftag  and args.tag is None and args.atag is None:
+    if not args.mspji and not args.nla and not args.chic and not args.ftag  and not args.rna and args.tag is None and args.atag is None:
         raise ValueError('Please supply any or a combination of --ftag --nla --chic --mspji')
+
+    if args.rna and (args.introns is None or args.exons is None):
+        raise ValueError('Please supply exonic and intronic GTF files -introns -exons')
 
     """
     Corrected Tags
@@ -94,6 +110,62 @@ if __name__ == "__main__" :
     LI: ligation sequence
 
     """
+class RNA_Flagger():
+
+    def __init__(self, reference=None, alleleResolver=None, moleculeRadius=0, verbose=False, exon_gtf=None, intron_gtf=None, **kwargs)
+
+        self.annotations= {}
+        self.annotations['EX'] = singlecellmultiomics.features.FeatureContainer()
+        self.annotations['EX'].loadGTF( args.exon_gtf, select_feature_type=['exon'] )
+        self.annotations['IN'] = singlecellmultiomics.features.FeatureContainer()
+        self.annotations['IN'].loadGTF( args.exon_gtf, select_feature_type=['intron'] )
+
+        self.exon_hit_tag = 'eH'
+        self.intron_hit_tag = 'iH'
+        self.assinged_exons_tag = 'AE'
+        self.assinged_introns_tag = 'AI'
+        self.is_spliced_tag = 'SP' #unused
+
+    def digest(self, reads):
+        feature_overlap = collections.Counter() #feature->overlap
+        # Go over reads and calculate overlap with features
+
+        exon_count = 0
+        intron_count = 0
+        for read in reads:
+            if read is None:
+                continue
+            for q_pos, ref_pos in read.get_aligned_pairs(matches_only=True, with_seq=False):
+
+                overlaps_with_intron = False
+                overlaps_with_exon = False
+                exon_hits = set()
+                for hit in self.annotations['EX'].findFeaturesAt(chromosome=read.reference_name,lookupCoordinate=qpos,strand=None):
+                    hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
+                    overlaps_with_exon = True
+                    exon_hits.add(hit_id)
+
+                intron_hits = set()
+                for hit in self.annotations['IN'].findFeaturesAt(chromosome=read.reference_name,lookupCoordinate=qpos,strand=None):
+                    hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
+                    overlaps_with_intron = True
+                    intron_hits.add(hit_id)
+
+                if overlaps_with_exon and not overlaps_with_intron:
+                    exon_count+=1
+                elif not overlaps_with_exon and overlaps_with_intron:
+                    intron_count+=1
+
+        for read in reads:
+            if read is not None:
+                read.set_tag(self.exon_hit_tag, exon_count)
+                read.set_tag(self.intron_hit_tag, intron_count)
+
+                read.set_tag( self.assinged_exons_tag, ','.join( (str(e) for e in exon_hits) ))
+                read.set_tag( self.assinged_introns_tag, ','.join( (str(e) for e in intron_hits) ))
+
+
+
 
 
 def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2): #1: read1 2: read2
@@ -244,6 +316,9 @@ class MoleculeIterator():
         # yield everything which was not yielded yet
         for molecule in self._yield_all_in_current_cache():
             yield molecule
+
+
+
 
 
 
