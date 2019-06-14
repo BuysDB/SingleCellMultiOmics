@@ -19,8 +19,11 @@ argparser.add_argument('-joinedFeatureTags',  type=str, default=None, help='Thes
 argparser.add_argument('-sampleTags',  type=str, default='SM', help='Comma separated tags defining the names of the ROWS in the output matrix')
 argparser.add_argument('alignmentfiles',  type=str, nargs='*')
 argparser.add_argument('-head',  type=int, help='Run the algorithm only on the first N reads to check if the result looks like what you expect.')
-argparser.add_argument('--divideMultimapping', action='store_true', help='Divide multimapping reads over all targets. Requires the XA or NH tag to be set.')
 
+binning_args = argparser.add_argument_group('Multimapping', '')
+argparser.add_argument('--divideMultimapping', action='store_true', help='Divide multimapping reads over all targets. Requires the XA or NH tag to be set.')
+argparser.add_argument('-minMQ', type=int, default=0, help="minimum mapping quality")
+argparser.add_argument('--filterXA',action='store_true', help="Do not count reads where the XA (alternative hits) tag has been set for a non-alternative locus.")
 
 binning_args = argparser.add_argument_group('Binning', '')
 binning_args.add_argument('-offset', type=int, default=0, help="Add offset to bin. If bin=1000, offset=200, f=1999 -> 1200. f=4199 -> 3200")
@@ -29,7 +32,7 @@ binning_args.add_argument('-bin', type=int, help="Devide and floor to bin featur
 binning_args.add_argument('--showBinEnd', action='store_true', help="If True, then show DS column as 120000-220000, otherwise 120000 only. This specifies the bin range in which the read was counted" )
 binning_args.add_argument('-binTag',default='DS' )
 
-argparser.add_argument('-minMQ', type=int, default=0, help="minimum mapping quality")
+
 
 
 argparser.add_argument('--dedup', action='store_true', help='Count only the first occurence of a molecule. Requires RC tag to be set. Reads without RC tag will be ignored!')
@@ -72,6 +75,18 @@ if args.showtags:
     for tag,t in TagDefinitions.items():
         print(f'{colorama.Style.BRIGHT}{tag}{colorama.Style.RESET_ALL}\t{t.humanName}\t{colorama.Style.DIM}{"PHRED" if t.isPhred else ""}{colorama.Style.RESET_ALL}')
     exit()
+
+def read_has_alternative_hits_to_non_alts(read):
+    if read.has_tag('XA'):
+        for alt_align in read.get_tag('XA').split(';'):
+            if len(alt_align)==0: # Sometimes this tag is empty for some reason
+                continue
+
+            hchrom, hpos, hcigar, hflag = alt_align.split(',')
+            if not hchrom.endswith('_alt'):
+                return True
+    return False
+
 if args.o is None:
     raise ValueError('Supply an output file')
 if args.alignmentfiles is None:
@@ -106,6 +121,10 @@ for bamFile in args.alignmentfiles:
         for i,read in enumerate(f):
             if read.mapping_quality<args.minMQ:
                 continue
+            if args.filterXA:
+                if read_has_alternative_hits_to_non_alts(read):
+                    continue
+
             if i%1_000_000==0:
                 print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
             if read.is_unmapped or (args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
