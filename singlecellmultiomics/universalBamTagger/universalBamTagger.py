@@ -110,9 +110,12 @@ if __name__ == "__main__" :
     LI: ligation sequence
 
     """
+
+
 class RNA_Flagger():
 
     def __init__(self, reference=None, alleleResolver=None, moleculeRadius=0, verbose=False, exon_gtf=None, intron_gtf=None, **kwargs):
+
 
         self.annotations= {}
         self.annotations['EX'] = singlecellmultiomics.features.FeatureContainer()
@@ -129,6 +132,7 @@ class RNA_Flagger():
         self.overlap_tag = 'XM'
 
     def digest(self, reads):
+
         feature_overlap = collections.Counter() #feature->overlap
         # Go over reads and calculate overlap with features
 
@@ -143,16 +147,18 @@ class RNA_Flagger():
             for q_pos, ref_pos in read.get_aligned_pairs(matches_only=True, with_seq=False):
 
 
+
                 overlaps_with_intron = False
                 overlaps_with_exon = False
                 exon_hits = set()
-                for hit in self.annotations['EX'].findFeaturesAt(chromosome=read.reference_name,lookupCoordinate=q_pos,strand=None):
+
+                for hit in self.annotations['EX'].findFeaturesAt(chromosome=read.reference_name,lookupCoordinate=ref_pos,strand=None):
                     hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
                     overlaps_with_exon = True
                     exon_hits.add(hit_id)
 
                 intron_hits = set()
-                for hit in self.annotations['IN'].findFeaturesAt(chromosome=read.reference_name,lookupCoordinate=q_pos,strand=None):
+                for hit in self.annotations['IN'].findFeaturesAt(chromosome=read.reference_name,lookupCoordinate=ref_pos,strand=None):
                     hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
                     overlaps_with_intron = True
                     intron_hits.add(hit_id)
