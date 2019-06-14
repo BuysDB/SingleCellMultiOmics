@@ -112,13 +112,13 @@ if __name__ == "__main__" :
     """
 class RNA_Flagger():
 
-    def __init__(self, reference=None, alleleResolver=None, moleculeRadius=0, verbose=False, exon_gtf=None, intron_gtf=None, **kwargs)
+    def __init__(self, reference=None, alleleResolver=None, moleculeRadius=0, verbose=False, exon_gtf=None, intron_gtf=None, **kwargs):
 
         self.annotations= {}
         self.annotations['EX'] = singlecellmultiomics.features.FeatureContainer()
-        self.annotations['EX'].loadGTF( args.exon_gtf, select_feature_type=['exon'] )
+        self.annotations['EX'].loadGTF( exon_gtf, select_feature_type=['exon'] )
         self.annotations['IN'] = singlecellmultiomics.features.FeatureContainer()
-        self.annotations['IN'].loadGTF( args.exon_gtf, select_feature_type=['intron'] )
+        self.annotations['IN'].loadGTF( intron_gtf, select_feature_type=['intron'] )
 
         self.exon_hit_tag = 'eH'
         self.intron_hit_tag = 'iH'
@@ -126,35 +126,48 @@ class RNA_Flagger():
         self.assinged_introns_tag = 'AI'
         self.is_spliced_tag = 'SP' #unused
 
+        self.overlap_tag = 'XM'
+
     def digest(self, reads):
         feature_overlap = collections.Counter() #feature->overlap
         # Go over reads and calculate overlap with features
 
         exon_count = 0
         intron_count = 0
+
         for read in reads:
             if read is None:
                 continue
+
+            states = ['.']*read.query_length
             for q_pos, ref_pos in read.get_aligned_pairs(matches_only=True, with_seq=False):
+
 
                 overlaps_with_intron = False
                 overlaps_with_exon = False
                 exon_hits = set()
-                for hit in self.annotations['EX'].findFeaturesAt(chromosome=read.reference_name,lookupCoordinate=qpos,strand=None):
+                for hit in self.annotations['EX'].findFeaturesAt(chromosome=read.reference_name,lookupCoordinate=q_pos,strand=None):
                     hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
                     overlaps_with_exon = True
                     exon_hits.add(hit_id)
 
                 intron_hits = set()
-                for hit in self.annotations['IN'].findFeaturesAt(chromosome=read.reference_name,lookupCoordinate=qpos,strand=None):
+                for hit in self.annotations['IN'].findFeaturesAt(chromosome=read.reference_name,lookupCoordinate=q_pos,strand=None):
                     hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
                     overlaps_with_intron = True
                     intron_hits.add(hit_id)
 
                 if overlaps_with_exon and not overlaps_with_intron:
                     exon_count+=1
+                    if self.overlap_tag is not None:
+                        states[q_pos] = 'Z'
                 elif not overlaps_with_exon and overlaps_with_intron:
                     intron_count+=1
+                    if self.overlap_tag is not None:
+                        states[q_pos] = 'X'
+
+            if self.overlap_tag is not None:
+                read.set_tag(self.overlap_tag, ''.join(states))
 
         for read in reads:
             if read is not None:
@@ -1007,7 +1020,9 @@ if __name__ == "__main__":
         'reference': None if args.ref is None else pysamIterators.CachedFasta( pysam.FastaFile(args.ref)),
         'alleleResolver': None if args.alleles is None else   alleleTools.AlleleResolver(args.alleles, lazyLoad=not args.loadAllelesToMem),
         'moleculeRadius': args.moleculeRadius,
-        'verbose':args.verbose
+        'verbose':args.verbose,
+        'exon_gtf': args.exons,
+        'intron_gtf': args.introns
     }
 
     pairedEnd = False
@@ -1033,6 +1048,9 @@ if __name__ == "__main__":
     if args.atag:
         print("Running allele tagging")
         flaggers.append( AlleleTagger(**flaggerArguments))
+    if args.rna:
+        flaggers.append( RNA_Flagger(**flaggerArguments))
+
 
     if args.alleles is not None:
         # Check if the variant file is valid..
