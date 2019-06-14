@@ -6,6 +6,7 @@ import pysam
 import collections
 import argparse
 import pandas as pd
+import numpy as np
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 TagDefinitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
 import singlecellmultiomics.modularDemultiplexer
@@ -26,19 +27,79 @@ multimapping_args.add_argument('-minMQ', type=int, default=0, help="minimum mapp
 multimapping_args.add_argument('--filterXA',action='store_true', help="Do not count reads where the XA (alternative hits) tag has been set for a non-alternative locus.")
 
 binning_args = argparser.add_argument_group('Binning', '')
-binning_args.add_argument('-offset', type=int, default=0, help="Add offset to bin. If bin=1000, offset=200, f=1999 -> 1200. f=4199 -> 3200")
-#binning_args.add_argument('-sliding', type=int,  help="make bins overlapping, the stepsize is equal to the supplied value here")
+#binning_args.add_argument('-offset', type=int, default=0, help="Add offset to bin. If bin=1000, offset=200, f=1999 -> 1200. f=4199 -> 3200")
+binning_args.add_argument('-sliding', type=int,  help="make bins overlapping, the stepsize is equal to the supplied value here. If nothing is supplied this value equals the bin size")
 binning_args.add_argument('-bin', type=int, help="Devide and floor to bin features. If bin=1000, f=1999 -> 1000." )
-binning_args.add_argument('--showBinEnd', action='store_true', help="If True, then show DS column as 120000-220000, otherwise 120000 only. This specifies the bin range in which the read was counted" )
+#binning_args.add_argument('--showBinEnd', action='store_true', help="If True, then show DS column as 120000-220000, otherwise 120000 only. This specifies the bin range in which the read was counted" ) this is now always on!
 binning_args.add_argument('-binTag',default='DS' )
-
-
 
 
 argparser.add_argument('--dedup', action='store_true', help='Count only the first occurence of a molecule. Requires RC tag to be set. Reads without RC tag will be ignored!')
 argparser.add_argument('--showtags',action='store_true', help='Show a list of commonly used tags' )
 
 args = argparser.parse_args()
+
+if args.sliding is None:
+    args.sliding = args.bin
+
+
+def coordinate_to_sliding_bin_locations(dp, bin_size, sliding_increment):
+    """
+    Convert a single value to a list of overlapping bins
+
+    Parameters
+    ----------
+    point : int
+        coordinate to look up
+
+    bin_size : int
+        bin size
+
+    sliding_increment : int
+        sliding window offset, this is the increment between bins
+
+    Returns
+    -------
+    start : int
+        the start coordinate of the first overlapping bin
+    end :int
+        the end of the last overlapping bin
+
+    start_id : int
+        the index of the first overlapping bin
+    end_id : int
+        the index of the last overlapping bin
+
+    """
+    start_id = int( np.ceil(( (dp-bin_size)/sliding_increment ))   )
+    start = start_id * sliding_increment
+    end_id = int(np.floor(dp/sliding_increment))
+    end = end_id * sliding_increment  + bin_size
+    return start, end, start_id, end_id
+
+def coordinate_to_bins(point, bin_size, sliding_increment):
+    """
+    Convert a single value to a list of overlapping bins
+
+    Parameters
+    ----------
+    point : int
+        coordinate to look up
+
+    bin_size : int
+        bin size
+
+    sliding_increment : int
+        sliding window offset, this is the increment between bins
+
+    Returns
+    -------
+    list: [(bin_start,bin_end), .. ]
+
+    """
+    start,end,start_id,end_id = coordinate_to_sliding_bin_locations(point, bin_size,sliding_increment)
+    return [ (i*sliding_increment,i*sliding_increment+bin_size) for i in range(start_id,end_id+1)]
+
 
 if args.o is None and  args.alignmentfiles is not None:
     args.showtags=True
@@ -106,7 +167,7 @@ if args.joinedFeatureTags is not None:
 sampleTags= args.sampleTags.split(',')
 countTable = collections.defaultdict(collections.Counter) # cell->feature->count
 
-def readTag(read, tag, defective='Defective'):
+def readTag(read, tag, defective='None'):
     try:
         value=singlecellmultiomics.modularDemultiplexer.metaFromRead(read,tag)
     except Exception as e:
@@ -134,36 +195,37 @@ for bamFile in args.alignmentfiles:
             countToAdd = (0.5 if read.is_paired else 1)
             assigned+=1
             if args.divideMultimapping:
-                    if read.has_tag('XA'):
-                        countToAdd = countToAdd/len( read.get_tag('XA').split(';') )
-                    elif read.has_tag('NH'):
-                        countToAdd = countToAdd/int(read.get_tag('NH') )
-                    else:
-                        countToAdd = countToAdd
+                if read.has_tag('XA'):
+                    countToAdd = countToAdd/len( read.get_tag('XA').split(';') )
+                elif read.has_tag('NH'):
+                    countToAdd = countToAdd/int(read.get_tag('NH') )
+                else:
+                    countToAdd = countToAdd
 
             if not joinFeatures:
                 for tag in featureTags:
-                    if args.bin is not None and tag == args.binTag and read.has_tag(tag):
-                        # feature = str( int( readTag(read,tag)/args.bin))
-                        feat = str( int( readTag(read,tag) ) / (args.bin + args.offset) * (args.bin) + args.offset)
-                        if args.showBinEnd:
-                            binend = int(feat) + args.bin
-                            feat = ''.join[feat, "-", binend]
+                    if args.bin is not None:
+                        raise NotImplementedError("binning for featureTags not implemented, please use joinedFeatureTags!")
                     else:
                         feat = str(readTag(read,tag))
                     countTable[sample][feat]+=countToAdd
             else:
                 feature =[]
                 for tag in featureTags:
-                    if args.bin is not None and tag == args.binTag and read.has_tag(tag):
-                        feat = str( int( readTag(read,tag)/ (args.bin + args.offset) ) * (args.bin) + args.offset)
-                        if args.showBinEnd:
-                            binend = str(int(feat) + args.bin)
-                            feat = ''.join([feat, "-", binend])
-                    else:
-                        feat =str(readTag(read,tag))
-                    feature.append( feat )
-                countTable[sample][tuple(feature)]+=countToAdd
+                    if (args.bin is None or tag != args.binTag) :
+                        feature.append( str(readTag(read,tag) ))
+                ##
+                if args.bin is not None :
+                    # Proper sliding window
+                    t = readTag(read,args.binTag)
+                    if t is None:
+                        continue
+                    for start, end in coordinate_to_bins( int(t), args.bin, args.sliding):
+                        countTable[sample][ tuple( feature+ [start,end])] += countToAdd
+                else:
+                    if len(feature):
+                        countTable[sample][tuple(feature)]+=countToAdd
+
             if args.head is not None and i>args.head:
                 break
 
@@ -174,8 +236,14 @@ def tagToHumanName(tag,TagDefinitions ):
 
 print(f"Finished counting, now exporting to {args.o}")
 df = pd.DataFrame.from_dict( countTable )
+
+
 df.columns.set_names([tagToHumanName(t,TagDefinitions ) for t in sampleTags], inplace=True)
-if joinFeatures:
+
+if args.bin is not None:
+    df.index.set_names([tagToHumanName(t,TagDefinitions ) for t in featureTags if t!=args.binTag]+['start','end'], inplace=True)
+
+elif joinFeatures:
     df.index.set_names([tagToHumanName(t, TagDefinitions) for t in featureTags], inplace=True)
 else:
     df.index.set_names(','.join([tagToHumanName(t, TagDefinitions) for t in featureTags]), inplace=True)
