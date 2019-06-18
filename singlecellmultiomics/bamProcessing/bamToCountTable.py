@@ -29,6 +29,8 @@ multimapping_args.add_argument('--filterXA',action='store_true', help="Do not co
 binning_args = argparser.add_argument_group('Binning', '')
 #binning_args.add_argument('-offset', type=int, default=0, help="Add offset to bin. If bin=1000, offset=200, f=1999 -> 1200. f=4199 -> 3200")
 binning_args.add_argument('-sliding', type=int,  help="make bins overlapping, the stepsize is equal to the supplied value here. If nothing is supplied this value equals the bin size")
+binning_args.add_argument('--keepOverBounds',action='store_true', help="Keep bins which go over chromsome bounds (start<0) end > chromsome length")
+
 binning_args.add_argument('-bin', type=int, help="Devide and floor to bin features. If bin=1000, f=1999 -> 1000." )
 #binning_args.add_argument('--showBinEnd', action='store_true', help="If True, then show DS column as 120000-220000, otherwise 120000 only. This specifies the bin range in which the read was counted" ) this is now always on!
 binning_args.add_argument('-binTag',default='DS' )
@@ -177,7 +179,13 @@ def readTag(read, tag, defective='None'):
 
 for bamFile in args.alignmentfiles:
     assigned = 0
+
     with pysam.AlignmentFile(bamFile) as f:
+
+        if args.bin and not args.keepOverBounds:
+            # Obtain the referenence sequence lengths
+            ref_lengths = {r:f.get_reference_length(r) for r in f.references}
+
 
         for i,read in enumerate(f):
             if read.mapping_quality<args.minMQ:
@@ -221,6 +229,9 @@ for bamFile in args.alignmentfiles:
                     if t is None:
                         continue
                     for start, end in coordinate_to_bins( int(t), args.bin, args.sliding):
+                        # Reject bins outside boundary
+                        if not args.keepOverBounds and (start<0 or end>ref_lengths[read.reference_name]):
+                            continue
                         countTable[sample][ tuple( feature+ [start,end])] += countToAdd
                 else:
                     if len(feature):
