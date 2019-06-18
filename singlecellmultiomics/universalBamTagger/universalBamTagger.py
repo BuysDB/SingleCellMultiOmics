@@ -1084,15 +1084,15 @@ if __name__ == "__main__":
 
         bamFile = pysam.AlignmentFile(bamFilePath, "rb")
         header = bamFile.header.copy()
-        outPathTemp = f'{args.o}/%s.unsorted' % os.path.basename(bamFilePath)
-        outPathTempWithHeader = f'{args.o}/%s.unsorted.with_header.bam' % os.path.basename(bamFilePath)
-        outPath = f'{args.o}/%s.bam' % os.path.basename(bamFilePath).replace('.bam', '')
+        outPathTemp = f'{args.o}/{os.path.basename(bamFilePath)}.unsorted'
+        outPathTempWithHeader = f'{args.o}/{os.path.basename(bamFilePath)}.unsorted.with_header.bam'
+        outPath = f"{args.o}/{os.path.basename(bamFilePath).replace('.bam', '')}.bam"
 
         print(f'Now reading {bamFilePath}, writing to {outPath}')
         if args.dedup:
-            dedupOutPathTemp = f'{args.o}/%s.dedup.unsorted' % os.path.basename(bamFilePath)
-            dedupOutPathTempWithHeader = f'{args.o}/%s.dedup.with_header.bam' % os.path.basename(bamFilePath)
-            dedupOutPath = f'{args.o}/%s.dedup.bam' % os.path.basename(bamFilePath).replace('.bam', '')
+            dedupOutPathTemp = f'{args.o}/{os.path.basename(bamFilePath)}.dedup.unsorted'
+            dedupOutPathTempWithHeader = f'{args.o}/{os.path.basename(bamFilePath)}.dedup.with_header.bam'
+            dedupOutPath = f"{args.o}/{os.path.basename(bamFilePath).replace('.bam', '')}.dedup.bam"
             dedupOutputFile = pysam.AlignmentFile(dedupOutPathTemp, "wb", header=header)
         outputFile = pysam.AlignmentFile(outPathTemp, "wb", header=header)
 
