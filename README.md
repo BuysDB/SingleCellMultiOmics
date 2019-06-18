@@ -60,6 +60,7 @@ For every fragment in input.bam find NLAIII seq fragments and deduplicate these.
 ```
 universalBamTagger.py --nla --ftag  -o tagged.bam input.bam
  ```
+ [Complete NlaIII data processing instructions from FastQ to count table here](https://github.com/BuysDB/SingleCellMultiOmics/wiki/NLA-III-data-processing)
 
 ### Molecule iteration in Python
 Assigned molecules can be iterated over to use in your Python code.
