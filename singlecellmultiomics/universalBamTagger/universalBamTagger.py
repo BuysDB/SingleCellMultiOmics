@@ -206,6 +206,7 @@ class MoleculeIterator():
         umi_hamming_distance=0, # 0: only exact match, 1: single base distance
         sample_select=None, # iterable of samples to only select molecules from
         # when a string is supplied only a single sample is selected
+
         **pysam_kwargs
         ):
         self.alignmentfile = alignmentfile
@@ -220,8 +221,10 @@ class MoleculeIterator():
         self.sample_tag = 'SM'
         self._clear()
 
-    def _clear(self):
+        self.filter_function = None # function which results given two reads if it is usable
 
+
+    def _clear(self):
         self.molecule_cache = collections.defaultdict(
             lambda: collections.defaultdict(list)) # position -> cell,umi,strand,allele.. -> reads
 
@@ -297,7 +300,8 @@ class MoleculeIterator():
             if fragment[0].reference_name is None:
                 continue
 
-            if self.sample_select:
+            # Check if we want to drop the fragment because its corresponding sample is not selected
+            if self.sample_select is not None:
                 sample = self.sample_assignment_function(fragment)
                 if type(self.sample_select)==str: # single sample
                     if self.sample_select!=sample:
@@ -335,11 +339,6 @@ class MoleculeIterator():
         # yield everything which was not yielded yet
         for molecule in self._yield_all_in_current_cache():
             yield molecule
-
-
-
-
-
 
 class RangeCache():
 
@@ -459,7 +458,7 @@ class DigestFlagger():
 
     def setFragmentTrust(self, read, start, end):
         read.set_tag( self.fragmentStartTag,start)
-        read.set_tag( self.fragmentEndTag,start)
+        read.set_tag( self.fragmentEndTag,end)
 
 
     def setAllele( self, read, allele): # 1 if first seen 2, second, -1 if None
@@ -1023,8 +1022,10 @@ class AlleleTagger(DigestFlagger ):
 if __name__ == "__main__":
     # These data sources are fed to all flaggers
     flaggerArguments ={
-        'reference': None if args.ref is None else pysamIterators.CachedFasta( pysam.FastaFile(args.ref)),
-        'alleleResolver': None if args.alleles is None else   alleleTools.AlleleResolver(args.alleles, lazyLoad=not args.loadAllelesToMem),
+        'reference': None if args.ref is None else pysamIterators.CachedFasta(
+                                                    pysam.FastaFile(args.ref)),
+        'alleleResolver': None if args.alleles is None else alleleTools.AlleleResolver(
+                                args.alleles, lazyLoad=not args.loadAllelesToMem),
         'moleculeRadius': args.moleculeRadius,
         'verbose':args.verbose,
         'exon_gtf': args.exons,
@@ -1061,11 +1062,12 @@ if __name__ == "__main__":
     if args.alleles is not None:
         # Check if the variant file is valid..
         if not ( args.alleles.endswith('.vcf.gz') or args.alleles.endswith('.bcf.gz') ):
-            raise ValueError(f"""Please supply an indexed (bg)zipped VCF file. You can convert your file using: bcftools view {args.alleles} -O b -o {args.alleles}.gz; then index using bcftools index {args.alleles}.gz """)
+            raise ValueError(f"""Please supply an indexed (bg)zipped VCF file.
+            You can convert your file using: bcftools view {args.alleles} -O b -o {args.alleles}.gz;
+            then index using bcftools index {args.alleles}.gz """)
         if not (os.path.exists(args.alleles+'.csi') or os.path.exists(args.alleles+'.tbi') ):
-            raise ValueError(f"""Please supply an indexed (bg)zipped VCF file. Index using: bcftools index {args.alleles} """)
-
-
+            raise ValueError(f"""Please supply an indexed (bg)zipped VCF file.
+            Index using: bcftools index {args.alleles} """)
 
     if pairedEnd:
         print('Assuming the input is paired end')
