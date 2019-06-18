@@ -742,7 +742,7 @@ class ChicSeqFlagger( DigestFlagger ):
         if R1.is_unmapped or R2.is_unmapped:
             return(None)
         try:
-            start, end = tagtools.getPairGenomicLocations(R1,R2, R1PrimerLength=4, R2PrimerLength=6)
+            start, end = tagtools.getPairGenomicLocations(R1,R2, R1PrimerLength=1, R2PrimerLength=6)
             self.setFragmentSize(R1, end-start)
             self.setFragmentSize(R2, end-start)
             self.setFragmentTrust(R1, start, end)
