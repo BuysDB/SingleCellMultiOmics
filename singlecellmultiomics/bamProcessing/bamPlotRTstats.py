@@ -8,13 +8,14 @@ import argparse
 import gzip
 import pickle
 import matplotlib
+matplotlib.rcParams['figure.dpi'] = 160
+matplotlib.use('Agg')
 import matplotlib.lines as mlines
 
 import pysam
 import pysamiterators.iterators as pyts
 import singlecellmultiomics.universalBamTagger.universalBamTagger as ut
 import importlib
-import tensorflow as tf
 import collections
 import scipy.misc
 import pandas as pd
@@ -24,8 +25,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import singlecellmultiomics.features
-matplotlib.rcParams['figure.dpi'] = 160
-matplotlib.use('Agg')
+
 
 def nlaIII_molecule_acceptance_function(molecule):
     first_read = molecule[0][0]
