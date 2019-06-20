@@ -161,6 +161,7 @@ if args.featureTags is not None:
 
 if args.bin is not None:
     featureTags = [args.binTag]
+    joinFeatures=True
 
 if args.joinedFeatureTags is not None:
     featureTags= args.joinedFeatureTags.split(',')
