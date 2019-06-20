@@ -57,12 +57,13 @@ argparser.add_argument('-o',  type=str, default='RT_dist')
 args = argparser.parse_args()
 
 
-
+def dd():
+    return collections.defaultdict( collections.Counter )
 
 fragment_distribution = collections.Counter()
 fragment_distribution_raw = collections.defaultdict( collections.Counter ) # overseq -> fragmentisze -> counts
 # Read size fragments
-fragment_distribution_raw_rf = collections.defaultdict( lambda: collections.defaultdict( collections.Counter ) )# lib -> overseq -> fragmentisze (span) -> counts
+fragment_distribution_raw_rf = collections.defaultdict( dd )# lib -> overseq -> fragmentisze (span) -> counts
 gc_distribution = collections.Counter()
 gc_frag_distribution = collections.defaultdict( collections.Counter ) # fragment size -> observed gc/at+gc ratio
 # fragmentSize -> umi obs
@@ -143,6 +144,7 @@ bin_size = args.binSize
 m_overseq = args.maxOverseq
 
 with gzip.open(f'{args.o}_raw_data.pickle.gz','wb') as fo:
+
     pickle.dump(fragment_distribution_raw_rf, fo)
 
 for library in fragment_distribution_raw_rf:
