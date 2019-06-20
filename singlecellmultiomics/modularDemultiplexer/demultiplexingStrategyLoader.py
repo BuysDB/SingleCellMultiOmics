@@ -44,6 +44,9 @@ class DemultiplexingStrategyLoader:
 				is_class_member = lambda member: inspect.isclass(member) and member.__module__ == f'{package}.{module}'
 				for className, classDetails in inspect.getmembers(sys.modules[f'{package}.{module}'], is_class_member):
 					# Obtain a handle to the class and instatiate the strategy
+					if 'Base_' in className:
+						continue
+
 					class_ = getattr(loadedModule, className)
 					initiatedDemultiplexingStrategy = class_( barcodeFileParser=barcodeParser, indexFileParser=indexParser,indexFileAlias=indexFileAlias)
 					self.demultiplexingStrategies.append(initiatedDemultiplexingStrategy)

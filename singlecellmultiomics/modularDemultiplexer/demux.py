@@ -84,7 +84,7 @@ techArgs.add_argument('-dsize', help="Amount of reads used to determine barcode 
 argparser.add_argument('-use',default=None, help='use these demultplexing strategies, comma separate to select multiple. For example for cellseq 2 data with 6 basepair umi: -use CS2C8U6 , for combined mspji and Celseq2: MSPJIC8U3,CS2C8U6 if nothing is specified, the best scoring method is selected' )
 
 
-argparser.add_argument('-ignoreMethods', help='Do not try to load these methods', default="restriction-bisulfite,scarsMiSeq"  )
+argparser.add_argument('-ignoreMethods', help='Do not try to load these methods', default="scarsMiSeq"  )
 
 argparser.add_argument('-maxAutoDetectMethods','-mxa', help='When --use is not specified, how many methods can the demultiplexer choose at the same time? This loosely corresponds to the amount of measurements you made in a single cell', default=1, type=int  )
 argparser.add_argument('-minAutoDetectPct','-mia', help='When --use is not specified, what is the lowest percentage yield required to select a demultplexing strategy', default=2, type=float  )
