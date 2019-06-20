@@ -52,6 +52,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamTabulator.py',
         'singlecellmultiomics/bamProcessing/bamToCountTable.py',
         'singlecellmultiomics/bamProcessing/bamFilter.py',
+        'singlecellmultiomics/bamProcessing/bamPlotRTstats.py',
         'singlecellmultiomics/bamProcessing/bamPlateVisualisation.py',
         'singlecellmultiomics/bamProcessing/bamFeatureDensityVisualisation.py',
 
