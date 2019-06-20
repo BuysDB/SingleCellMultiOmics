@@ -51,7 +51,7 @@ argparser.add_argument('-head',  type=int, help='Process this many reads')
 argparser.add_argument('-binSize',  type=int, default=30)
 argparser.add_argument('-maxfs',  type=int, default=900, help='X axis limit of fragment size plot')
 argparser.add_argument('-maxOverseq',  type=int, default=10)
-
+argparser.add_argument('--notstrict',  action='store_true')
 argparser.add_argument('-o',  type=str, default='RT_dist')
 
 args = argparser.parse_args()
@@ -62,7 +62,7 @@ args = argparser.parse_args()
 fragment_distribution = collections.Counter()
 fragment_distribution_raw = collections.defaultdict( collections.Counter ) # overseq -> fragmentisze -> counts
 # Read size fragments
-fragment_distribution_raw_rf = collections.defaultdict( collections.Counter ) # overseq -> fragmentisze (span) -> counts
+fragment_distribution_raw_rf = collections.defaultdict( lambda: collections.defaultdict( collections.Counter ) )# lib -> overseq -> fragmentisze (span) -> counts
 gc_distribution = collections.Counter()
 gc_frag_distribution = collections.defaultdict( collections.Counter ) # fragment size -> observed gc/at+gc ratio
 # fragmentSize -> umi obs
@@ -77,7 +77,9 @@ gc_capture = False
 with pysam.AlignmentFile(args.bamFile) as a:
     for i,molecule in enumerate( ut.MoleculeIterator(a, umi_hamming_distance=1
                                                     )):
-        if not nlaIII_molecule_acceptance_function(molecule):
+
+
+        if not args.notstrict and not nlaIII_molecule_acceptance_function(molecule):
             continue
 
         if args.head is not None and used>args.head:
@@ -101,6 +103,7 @@ with pysam.AlignmentFile(args.bamFile) as a:
         first_read = molecule[0][0]
         site = first_read.get_tag('DS')
         strand = first_read.get_tag('RS')
+        library = first_read.get_tag('LY')
         if gc_capture:
             sequence = reference.fetch(frag_chrom, frag_start, frag_end)
             gc = sequence.count('C')+ sequence.count('G')
@@ -131,49 +134,50 @@ with pysam.AlignmentFile(args.bamFile) as a:
             fragment_distribution_raw[len(molecule)][fragment_size]+=1
 
         mean_rt_size = int(np.mean(rt_sizes))
-        fragment_distribution_raw_rf[len(molecule)][mean_rt_size] += 1
+        fragment_distribution_raw_rf[library][len(molecule)][mean_rt_size] += 1
         rt_frag_distribution[mean_rt_size][len(rt_reactions)] += 1
         used_reads+=len(molecule)
-
-fig,axes = plt.subplots(1,1,figsize=(10,7))
-ax  = axes
-
-
 
 
 bin_size = args.binSize
 m_overseq = args.maxOverseq
-ax.set_title(f'Read fragment size distribution\n{used} molecules / {used_reads} fragments  analysed')
-table = {}
-for overseq in range(1,m_overseq):
+for library in fragment_distribution_raw_rf:
+    fig,axes = plt.subplots(1,1,figsize=(10,7))
+    ax  = axes
+    ax.set_title(f'Read fragment size distribution\n{used} molecules / {used_reads} fragments  analysed\n{library}')
+    table = {}
+
+    for overseq in range(1,m_overseq):
+        try:
+            #Rebin in 10bp bins:
+            rebinned = collections.Counter()
+            for f_size, obs in fragment_distribution_raw_rf[library][overseq].most_common():
+                rebinned[ int( f_size/bin_size)*bin_size ] += obs
+            obs_dist_fsize = np.array(list(rebinned.keys()))
+            obs_dist_freq = np.array(list(rebinned.values()))
+            sorting_order = np.argsort(obs_dist_fsize)
+            obs_dist_fsize = obs_dist_fsize[sorting_order]
+            obs_dist_freq = obs_dist_freq[sorting_order]
+            obs_dist_density = obs_dist_freq / np.sum(obs_dist_freq)
+
+            for i,x in enumerate(obs_dist_fsize):
+                table[(overseq,x)] ={'obs_dist_freq':obs_dist_freq[i],
+                    'obs_dist_density':obs_dist_density[i]}
+
+            ax.plot(obs_dist_fsize, obs_dist_density, c=(overseq/m_overseq,0,0),label=f'{overseq} read fragments / umi' )
+            ax.set_xlim(-10,args.maxfs)
+            ax.legend()
+            ax.set_xlabel('fragment size')
+            ax.set_ylabel('density')
+        except Exception as e:
+            print(e)
+            pass
+    plt.tight_layout()
+    plt.savefig(f'{args.o}_{library}.png')
+    pd.DataFrame(table).to_csv(f'{args.o}_{library}.csv')
     try:
-        #Rebin in 10bp bins:
-        rebinned = collections.Counter()
-        for f_size, obs in fragment_distribution_raw_rf[overseq].most_common():
-            rebinned[ int( f_size/bin_size)*bin_size ] += obs
-        obs_dist_fsize = np.array(list(rebinned.keys()))
-        obs_dist_freq = np.array(list(rebinned.values()))
-        sorting_order = np.argsort(obs_dist_fsize)
-        obs_dist_fsize = obs_dist_fsize[sorting_order]
-        obs_dist_freq = obs_dist_freq[sorting_order]
-        obs_dist_density = obs_dist_freq / np.sum(obs_dist_freq)
-
-        for i,x in enumerate(obs_dist_fsize):
-            table[(overseq,x)] ={'obs_dist_freq':obs_dist_freq[i],
-                'obs_dist_density':obs_dist_density[i]}
-
-        ax.plot(obs_dist_fsize, obs_dist_density, c=(overseq/m_overseq,0,0),label=f'{overseq} read fragments / umi' )
-        ax.set_xlim(-10,args.maxfs)
-        ax.legend()
-        ax.set_xlabel('fragment size')
-        ax.set_ylabel('density')
+        plt.close()
     except Exception as e:
-        print(e)
         pass
-plt.tight_layout()
-plt.savefig(f'{args.o}.png')
-
 
 # Export the table:
-
-pd.DataFrame(table).to_csv(f'{args.o}.csv')
