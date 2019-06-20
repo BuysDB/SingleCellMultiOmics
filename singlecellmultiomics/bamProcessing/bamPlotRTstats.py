@@ -141,6 +141,10 @@ with pysam.AlignmentFile(args.bamFile) as a:
 
 bin_size = args.binSize
 m_overseq = args.maxOverseq
+
+with gzip.open(f'{args.o}_raw_data.pickle.gz') as fo:
+    pickle.dump(fragment_distribution_raw_rf, fo)
+
 for library in fragment_distribution_raw_rf:
     fig,axes = plt.subplots(1,1,figsize=(10,7))
     ax  = axes
