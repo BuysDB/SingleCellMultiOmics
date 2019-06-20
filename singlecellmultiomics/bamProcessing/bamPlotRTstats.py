@@ -47,7 +47,7 @@ argparser = argparse.ArgumentParser(
      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
      description='Visualise feature density of a bam file. (Coverage around stop codons, start codons, genes etc)')
 argparser.add_argument('bamFile',  type=str)
-argparser.add_argument('-head',  type=int, help='Process this many reads')
+argparser.add_argument('-head',  type=int, help='Process this many molecules')
 argparser.add_argument('-binSize',  type=int, default=30)
 argparser.add_argument('-maxfs',  type=int, default=900, help='X axis limit of fragment size plot')
 argparser.add_argument('-maxOverseq',  type=int, default=10)
@@ -142,7 +142,7 @@ with pysam.AlignmentFile(args.bamFile) as a:
 bin_size = args.binSize
 m_overseq = args.maxOverseq
 
-with gzip.open(f'{args.o}_raw_data.pickle.gz') as fo:
+with gzip.open(f'{args.o}_raw_data.pickle.gz','wb') as fo:
     pickle.dump(fragment_distribution_raw_rf, fo)
 
 for library in fragment_distribution_raw_rf:
