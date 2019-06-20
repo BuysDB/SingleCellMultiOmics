@@ -48,6 +48,10 @@ argparser = argparse.ArgumentParser(
      description='Visualise feature density of a bam file. (Coverage around stop codons, start codons, genes etc)')
 argparser.add_argument('bamFile',  type=str)
 argparser.add_argument('-head',  type=int, help='Process this many reads')
+argparser.add_argument('-binSize',  type=int, default=30)
+argparser.add_argument('-maxfs',  type=int, default=900, help='X axis limit of fragment size plot')
+argparser.add_argument('-maxOverseq',  type=int, default=10)
+
 argparser.add_argument('-o',  type=str, default='RT_dist')
 
 args = argparser.parse_args()
@@ -137,8 +141,8 @@ ax  = axes
 
 
 
-bin_size = 30
-m_overseq = 15
+bin_size = args.binSize
+m_overseq = args.maxOverseq
 ax.set_title(f'Read fragment size distribution\n{used} molecules / {used_reads} fragments  analysed')
 table = {}
 for overseq in range(1,m_overseq):
@@ -159,7 +163,7 @@ for overseq in range(1,m_overseq):
                 'obs_dist_density':obs_dist_density[i]}
 
         ax.plot(obs_dist_fsize, obs_dist_density, c=(overseq/m_overseq,0,0),label=f'{overseq} read fragments / umi' )
-        ax.set_xlim(-10,3000)
+        ax.set_xlim(-10,args.maxfs)
         ax.legend()
         ax.set_xlabel('fragment size')
         ax.set_ylabel('density')
