@@ -132,11 +132,16 @@ class Base_RestrictionBisulfiteDemuxMethod(UmiBarcodeDemuxMethod):
 			# ISPCR sequence
 			tr.addTagByTag('IS', ispcr, isPhred=False )
 			# ISPCR quality
-			tr.addTagByTag('is', ispcrQual, isPhred=True)
+			#tr.addTagByTag('is', ispcrQual, isPhred=True)
 
 			tr.addTagByTag('MX', self.shortName)
 
-		return [ tr.asFastq(record.sequence[self.sequenceCapture[rid]], record.plus, record.qual[self.sequenceCapture[rid]]) for rid,(tr,record) in enumerate(zip(taggedRecords, records))]
+		for rid,(record, taggedRecord) in enumerate( zip(records, taggedRecords)):
+			taggedRecord.sequence = record.sequence[self.sequenceCapture[rid]]
+			taggedRecord.qualities =  record.qual[self.sequenceCapture[rid]]
+			taggedRecord.plus = record.plus
+
+		return taggedRecords
 		# Add information and rebuild header
 		#header = f'@UMI:{umi};UMIQ:{umiQual};CBI:{barcodeIdentifier};CB:{barcode};CBQ:{barcodeQual};'
 
