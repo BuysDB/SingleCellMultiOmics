@@ -30,6 +30,7 @@ setup(
     license='MPL-2.0',
     packages=['singlecellmultiomics',
         'singlecellmultiomics.features',
+        'singlecellmultiomics.alleleTools',
         'singlecellmultiomics.barcodeFileParser',
         'singlecellmultiomics.bamProcessing',
         'singlecellmultiomics.countTableProcessing',
