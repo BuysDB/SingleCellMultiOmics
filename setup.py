@@ -20,7 +20,7 @@ with open(os.path.join(_here, 'singlecellmultiomics', 'version.py')) as f:
 
 print(find_packages())
 setup(
-    name='singlecelmultiomics',
+    name='singlecellmultiomics',
     version=version['__version__'],
     description=('Tools to deal with one or more measurements from single cells'),
     long_description=long_description,
@@ -39,7 +39,8 @@ setup(
         'singlecellmultiomics.modularDemultiplexer',
         'singlecellmultiomics.pyutils',
         'singlecellmultiomics.tagtools',
-        'singlecellmultiomics.universalBamTagger'
+        'singlecellmultiomics.universalBamTagger',
+        'singlecellmultiomics.statistic'
         ],
 
 
