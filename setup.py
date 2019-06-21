@@ -63,7 +63,7 @@ setup(
 
         ],
   install_requires=[
-       'pysam'
+       'pysam','numpy','pandas'
    ],
     include_package_data=True,
     classifiers=[
