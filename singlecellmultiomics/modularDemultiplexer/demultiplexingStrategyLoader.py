@@ -116,17 +116,17 @@ class DemultiplexingStrategyLoader:
 			raise ValueError('No strategies selected')
 		return self.selectedStrategies
 
-	def demultiplex(self, fastqfiles, maxReadPairs=None, strategies=None, library=None, targetFile=None, rejectHandle=None):
+	def demultiplex(self, fastqfiles, maxReadPairs=None, strategies=None, library=None, targetFile=None, rejectHandle=None,probe=None):
 
 		useStrategies = strategies if strategies is not None else self.getAutodetectStrategies()
 		strategyYields = collections.Counter()
 		processedReadPairs=0
-		baseDemux = IlluminaBaseDemultiplexer(indexFileParser=self.indexParser, barcodeParser=self.barcodeParser)
+		baseDemux = IlluminaBaseDemultiplexer(indexFileParser=self.indexParser, barcodeParser=self.barcodeParser,probe=probe)
 
 		for processedReadPairs, reads in enumerate(fastqIterator.FastqIterator(*fastqfiles)):
 			for strategy in useStrategies:
 				try:
-					recodedRecords = strategy.demultiplex(reads, library=library)
+					recodedRecords = strategy.demultiplex(reads, library=library,probe=probe)
 
 					if targetFile is not None:
 						targetFile.write( recodedRecords )
@@ -163,9 +163,9 @@ class DemultiplexingStrategyLoader:
 
 				for readPair in readPairs:
 					if len(readPairs)==1:
-						processedReadPairs, strategyYields = self.demultiplex( [readPairs['R1'][0]],maxReadPairs=testReads,strategies=strategies  )
+						processedReadPairs, strategyYields = self.demultiplex( [readPairs['R1'][0]],maxReadPairs=testReads,strategies=strategies , probe=True )
 					elif len(readPairs)==2:
-						processedReadPairs, strategyYields  =  self.demultiplex( (readPairs['R1'][0], readPairs['R2'][0] ),maxReadPairs=testReads,strategies=strategies  )
+						processedReadPairs, strategyYields  =  self.demultiplex( (readPairs['R1'][0], readPairs['R2'][0] ),maxReadPairs=testReads,strategies=strategies , probe=True  )
 					else:
 						raise ValueError('Error: %s' % readPairs.keys())
 

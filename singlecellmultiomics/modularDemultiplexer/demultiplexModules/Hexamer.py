@@ -21,7 +21,7 @@ class HexamerBaseDemultiplexer(DemultiplexingStrategy):
         self.barcodeSummary='Bulk, no cell barcodes'
         self.indexSummary = f'sequencing indices: {illuminaIndicesAlias}'
 
-    def demultiplex(self, records, library=None):
+    def demultiplex(self, records, library=None, **kwargs):
         global TagDefinitions
 
         try:

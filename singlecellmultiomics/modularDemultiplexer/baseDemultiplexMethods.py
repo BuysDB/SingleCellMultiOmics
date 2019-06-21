@@ -72,6 +72,8 @@ tags = [
     SamTag('fe', 'fragmentEndTag'),
     SamTag('fs', 'fragmentStartTag'),
 
+    SamTag('lh', 'ligationOverhangSequence'),
+    SamTag('lq', 'ligationOverhangQuality',isPhred = True),
 
     SamTag('a1', 'Read1Clipped3primeBasesKmer'),
     SamTag('A2', 'Read2Clipped3primeBasesKmer'),
@@ -342,7 +344,7 @@ class DemultiplexingStrategy(object):
         self.indexSummary = ''
         self.barcodeSummary = ''
 
-    def demultiplex(self, records):
+    def demultiplex(self, records, **kwargs):
         raise NotImplementedError()
 
     def __repr__(self):
@@ -364,7 +366,7 @@ class IlluminaBaseDemultiplexer(DemultiplexingStrategy):
         self.description = 'Demultiplex as a bulk sample'
         self.indexSummary = f'sequencing indices: {indexFileAlias}'
 
-    def demultiplex(self, records, inherited=False, library=None):
+    def demultiplex(self, records, inherited=False, library=None, **kwargs):
         global TagDefinitions
 
         try:

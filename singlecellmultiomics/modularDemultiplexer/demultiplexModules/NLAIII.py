@@ -1,4 +1,4 @@
-from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod
+from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod, NonMultiplexable
 
 # NLAIII, 96 well format with 3bp UMI
 class NLAIII_96w_c8_u3(UmiBarcodeDemuxMethod):
@@ -13,6 +13,8 @@ class NLAIII_96w_c8_u3(UmiBarcodeDemuxMethod):
 		self.autoDetectable = True
 		self.description = '96 well format. 3bp umi followed by 8bp barcode'
 
+
+
 # NLAIII, 384 well format with 3bp UMI
 class NLAIII_384w_c8_u3(UmiBarcodeDemuxMethod):
 	def __init__(self, barcodeFileParser,  **kwargs ):
@@ -25,3 +27,9 @@ class NLAIII_384w_c8_u3(UmiBarcodeDemuxMethod):
 		self.longName = 'NLAIII, 384well CB: 8bp UMI: 3bp'
 		self.autoDetectable = True
 		self.description = '384 well format. 3bp umi followed by 8bp barcode'
+
+	def demultiplex(self, records, **kwargs):
+		if kwargs.get('probe') and records[0].sequence[self.barcodeLength+ self.umiLength : self.barcodeLength+ self.umiLength+4]!='CATG':
+			raise NonMultiplexable
+
+		taggedRecords = UmiBarcodeDemuxMethod.demultiplex(self,records)
