@@ -41,7 +41,6 @@ class FragmentSizeHistogram(StatisticHistogram):
         self.histogram[fragmentSize]+=1
 
         if read.has_tag('DS'):
-            print(str(read))
             self.histogramAccept[fragmentSize]+=1
         else:
             self.histogramReject[fragmentSize]+=1

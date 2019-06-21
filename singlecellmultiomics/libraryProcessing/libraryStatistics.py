@@ -44,7 +44,8 @@ for library in args.libraries:
         AlleleHistogram(args),
         RejectionReasonHistogram(args),
         DataTypeHistogram(args),
-        TagHistogram(args)
+        TagHistogram(args),
+        PlateStatistic(args)
     ]
 
     if 'cluster' in library:

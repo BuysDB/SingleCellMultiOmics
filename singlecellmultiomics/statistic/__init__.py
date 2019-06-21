@@ -8,3 +8,4 @@ from .rejectionreasons import *
 from .statistic import *
 from .tag import *
 from .trimming import *
+from .plate import *
