@@ -19,17 +19,21 @@ class SCCHIC_384w_c8_u3(UmiBarcodeDemuxMethod):
 
 	def demultiplex(self, records, **kwargs):
 
-		if kwargs.get('probe') and records[0].sequence[self.barcodeLength+ self.umiLength+1]!='A':
+		if kwargs.get('probe') and records[0].sequence[self.barcodeLength+ self.umiLength]!='T':
 			raise NonMultiplexable
 
-		taggedRecords = UmiBarcodeDemuxMethod.demultiplex(self,records, **kwargs)
 		# add first 2 bases as ligation tag:
-		ligation_start = self.barcodeLength+ self.umiLength+1
+		ligation_start = self.barcodeLength+ self.umiLength
 		ligation_end = ligation_start+2
-		taggedRecords[0].addTagByTag('lh', records[0].sequence[ligation_start:ligation_end], isPhred=False)
-		taggedRecords[0].addTagByTag('lq', records[0].qual[ligation_start:ligation_end], isPhred=True)
-		taggedRecords[1].addTagByTag('lh', records[0].sequence[ligation_start:ligation_end], isPhred=False)
-		taggedRecords[1].addTagByTag('lq', records[0].qual[ligation_start:ligation_end], isPhred=True)
+		ligation_sequence = records[0].sequence[ligation_start:ligation_end]
+		ligation_qualities = records[0].qual[ligation_start:ligation_end]
+
+		taggedRecords = UmiBarcodeDemuxMethod.demultiplex(self,records, **kwargs)
+
+		taggedRecords[0].addTagByTag('lh', ligation_sequence, isPhred=False)
+		taggedRecords[0].addTagByTag('lq', ligation_qualities, isPhred=True)
+		taggedRecords[1].addTagByTag('lh', ligation_sequence, isPhred=False)
+		taggedRecords[1].addTagByTag('lq', ligation_qualities, isPhred=True)
 		#taggedRecords[0].sequence = taggedRecords[0].sequence[1:]
 		#taggedRecords[0].qualities = taggedRecords[0].qualities[1:]
 		return taggedRecords
