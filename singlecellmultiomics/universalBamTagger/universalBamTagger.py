@@ -695,7 +695,7 @@ class ChicSeqFlagger( DigestFlagger ):
     def __init__(self, **kwargs):
         DigestFlagger.__init__(self, **kwargs )
 
-    def addSite(self, reads, strand, restrictionChrom, restrictionPos ):
+    def addSite(self, reads, strand, restrictionChrom, restrictionPos,is_trimmed=False ):
 
         sample = reads[0].get_tag(self.sampleTag)
         umi = reads[0].get_tag(self.umiTag)
@@ -709,10 +709,13 @@ class ChicSeqFlagger( DigestFlagger ):
             self.setSiteOversequencing( read, moleculeId )
             self.setSiteCoordinate(read, restrictionPos)
 
-            if reads[0].is_reverse: #
-                self.setRecognizedSequence(read, reads[0].seq[-2:][::-1].translate(complement)) # the first two base, this should be A{A:80%, N:20%}, we take the complement because the reads captures the complement strand
+            if is_trimmed:
+                self.setRecognizedSequence(read,read.get_tag('lh'))
             else:
-                self.setRecognizedSequence(read, reads[0].seq[:2]) # the last two bases
+                if reads[0].is_reverse: #
+                    self.setRecognizedSequence(read, reads[0].seq[-2:][::-1].translate(complement)) # the first two base, this should be A{A:80%, N:20%}, we take the complement because the reads captures the complement strand
+                else:
+                    self.setRecognizedSequence(read, reads[0].seq[:2]) # the last two bases
             self.setSource(read, 'CHIC')
             if allele is not None:
                 self.setAllele(read, allele)
@@ -739,10 +742,13 @@ class ChicSeqFlagger( DigestFlagger ):
                         A{A:80%,N:20%}NNN [CHIC MOLECULE]
                                       ^ real cut site
         """
+
+        is_trimmed = (read.has_tag('MX') and read.get_tag('MX').startswith('SCHIC'))
+
         if R1.is_unmapped or R2.is_unmapped:
             return(None)
         try:
-            start, end = tagtools.getPairGenomicLocations(R1,R2, R1PrimerLength=1, R2PrimerLength=6)
+            start, end = tagtools.getPairGenomicLocations(R1,R2, R1PrimerLength=1 - int(is_trimmed), R2PrimerLength=6)
             self.setFragmentSize(R1, end-start)
             self.setFragmentSize(R2, end-start)
             self.setFragmentTrust(R1, start, end)
@@ -754,11 +760,25 @@ class ChicSeqFlagger( DigestFlagger ):
 
 
         #if R1.seq[0]=='T': # Site on the start of R1, R2 should map behind
-        self.addSite( [R1,R2],
-            strand=int(R1.is_reverse), # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
-            # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
-            restrictionChrom=R1.reference_name,
-            restrictionPos=(R1.reference_end-1 if R1.is_reverse else R1.reference_start+1)  )
+        if is_trimmed:
+            # The first base of the read has been taken off and the lh tag is already set, this can be copied to RZ
+
+            self.addSite( [R1,R2],
+                strand=int(R1.is_reverse), # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
+                # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
+                restrictionChrom=R1.reference_name,
+                restrictionPos=(R1.reference_end if R1.is_reverse else R1.reference_start),
+                is_trimmed=True
+
+                  )
+
+        else:
+
+            self.addSite( [R1,R2],
+                strand=int(R1.is_reverse), # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
+                # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
+                restrictionChrom=R1.reference_name,
+                restrictionPos=(R1.reference_end-1 if R1.is_reverse else R1.reference_start+1)  )
         return(( R1.reference_name, R1.reference_start))
 
 
