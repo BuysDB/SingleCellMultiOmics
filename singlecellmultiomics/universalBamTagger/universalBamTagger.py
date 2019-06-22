@@ -743,7 +743,7 @@ class ChicSeqFlagger( DigestFlagger ):
                                       ^ real cut site
         """
 
-        is_trimmed = (read.has_tag('MX') and read.get_tag('MX').startswith('SCHIC'))
+        is_trimmed = (R1.has_tag('MX') and R1.get_tag('MX').startswith('SCHIC'))
 
         if R1.is_unmapped or R2.is_unmapped:
             return(None)
