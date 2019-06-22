@@ -710,7 +710,7 @@ class ChicSeqFlagger( DigestFlagger ):
             self.setSiteCoordinate(read, restrictionPos)
 
             if is_trimmed:
-                self.setRecognizedSequence(read,read.get_tag('lh')[::-1].translate(complement))
+                self.setRecognizedSequence(read,read.get_tag('lh'))
             else:
                 if reads[0].is_reverse: #
                     self.setRecognizedSequence(read, reads[0].seq[-2:][::-1].translate(complement)) # the first two base, this should be A{A:80%, N:20%}, we take the complement because the reads captures the complement strand
