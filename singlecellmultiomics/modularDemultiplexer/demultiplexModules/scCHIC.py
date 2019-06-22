@@ -16,6 +16,7 @@ class SCCHIC_384w_c8_u3(UmiBarcodeDemuxMethod):
 
 		self.sequenceCapture[0] = slice( self.barcodeLength+ self.umiLength + 1, None) # dont capture the first base
 
+
 	def demultiplex(self, records, **kwargs):
 
 		if kwargs.get('probe') and records[0].sequence[self.barcodeLength+ self.umiLength+1]!='A':
@@ -25,6 +26,8 @@ class SCCHIC_384w_c8_u3(UmiBarcodeDemuxMethod):
 		# add first 2 bases as ligation tag:
 		taggedRecords[0].addTagByTag('lh', records[0].sequence[self.barcodeLength+ self.umiLength+2], isPhred=False)
 		taggedRecords[0].addTagByTag('lq', records[0].qual[self.barcodeLength+ self.umiLength+2], isPhred=True)
+		taggedRecords[1].addTagByTag('lh', records[0].sequence[self.barcodeLength+ self.umiLength+2], isPhred=False)
+		taggedRecords[1].addTagByTag('lq', records[0].qual[self.barcodeLength+ self.umiLength+2], isPhred=True)
 		taggedRecords[0].sequence = taggedRecords[0].sequence[1:]
 		taggedRecords[0].qualities = taggedRecords[0].qualities[1:]
 		return taggedRecords
