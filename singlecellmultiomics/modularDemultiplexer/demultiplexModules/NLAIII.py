@@ -33,3 +33,4 @@ class NLAIII_384w_c8_u3(UmiBarcodeDemuxMethod):
 			raise NonMultiplexable
 
 		taggedRecords = UmiBarcodeDemuxMethod.demultiplex(self,records)
+		return taggedRecords

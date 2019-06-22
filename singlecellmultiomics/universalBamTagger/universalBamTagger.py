@@ -778,7 +778,8 @@ class ChicSeqFlagger( DigestFlagger ):
                 strand=int(R1.is_reverse), # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
                 # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
                 restrictionChrom=R1.reference_name,
-                restrictionPos=(R1.reference_end-1 if R1.is_reverse else R1.reference_start+1)  )
+                restrictionPos=(R1.reference_end-1 if R1.is_reverse else R1.reference_start+1),
+                is_trimmed=False)
         return(( R1.reference_name, R1.reference_start))
 
 
