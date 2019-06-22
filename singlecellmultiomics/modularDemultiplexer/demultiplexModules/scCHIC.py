@@ -30,6 +30,6 @@ class SCCHIC_384w_c8_u3(UmiBarcodeDemuxMethod):
 		taggedRecords[0].addTagByTag('lq', records[0].qual[ligation_start:ligation_end], isPhred=True)
 		taggedRecords[1].addTagByTag('lh', records[0].sequence[ligation_start:ligation_end], isPhred=False)
 		taggedRecords[1].addTagByTag('lq', records[0].qual[ligation_start:ligation_end], isPhred=True)
-		taggedRecords[0].sequence = taggedRecords[0].sequence[1:]
-		taggedRecords[0].qualities = taggedRecords[0].qualities[1:]
+		#taggedRecords[0].sequence = taggedRecords[0].sequence[1:]
+		#taggedRecords[0].qualities = taggedRecords[0].qualities[1:]
 		return taggedRecords
