@@ -32,5 +32,5 @@ class NLAIII_384w_c8_u3(UmiBarcodeDemuxMethod):
 		if kwargs.get('probe') and records[0].sequence[self.barcodeLength+ self.umiLength : self.barcodeLength+ self.umiLength+4]!='CATG':
 			raise NonMultiplexable
 
-		taggedRecords = UmiBarcodeDemuxMethod.demultiplex(self,records)
+		taggedRecords = UmiBarcodeDemuxMethod.demultiplex(self,records,**kwargs)
 		return taggedRecords
