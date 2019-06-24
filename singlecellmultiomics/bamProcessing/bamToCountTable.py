@@ -37,7 +37,7 @@ binning_args.add_argument('-bin', type=int, help="Devide and floor to bin featur
 binning_args.add_argument('-binTag',default='DS' )
 
 bed_args = argparser.add_argument_group('Bedfiles', '')
-bed_args.add_argument('--bedfile', type=str, help="Bed file containing 3 columns, chromo, start, end to be read for fetching counts")
+bed_args.add_argument('-bedfile', type=str, help="Bed file containing 3 columns, chromo, start, end to be read for fetching counts")
 
 
 argparser.add_argument('--dedup', action='store_true', help='Count only the first occurence of a molecule. Requires RC tag to be set. Reads without RC tag will be ignored!')
