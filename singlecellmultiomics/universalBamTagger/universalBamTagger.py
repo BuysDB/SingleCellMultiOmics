@@ -16,6 +16,14 @@ import argparse
 from singlecellmultiomics.tagtools import tagtools
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 import singlecellmultiomics.features
+import math
+import numpy as np
+
+def phred_to_prob(phred):
+    try:
+        return math.pow(10,-(ord(phred)-33)/10 )
+    except ValueError:
+        return 1
 
 def hamming_distance(a,b):
     return sum((i!=j and i!='N' and j!='N' for i,j in zip(a,b)))
@@ -958,14 +966,23 @@ class ScarFlagger( DigestFlagger ):
 
     def addSite(self, reads, scarChromosome, scarPrimerStart ):
 
+        R1_primer_length = 20
+        R2_primer_length = 18
+
         sample = reads[0].get_tag(self.sampleTag)
         allele = None if not reads[0].has_tag(self.alleleTag) else reads[0].get_tag(self.alleleTag)
 
         R1, R2 = reads
         if R1 is None or R2 is None:
+            for read in reads:
+                if read is not None:
+                    self.setRejectionReason(read,'NotPaired')
+
             return None
         # find all deletions:
         scarDescription = set()
+
+        qualities = []
         for read in reads:
 
             firstCigarOperation, firstCigarLen = read.cigartuples[0]
@@ -976,8 +993,10 @@ class ScarFlagger( DigestFlagger ):
             for cigarOperation, cigarLen in read.cigartuples:
                 expandedCigar+=[cigarOperation]*cigarLen
 
-            for queryPos, referencePos in read.get_aligned_pairs(matches_only=False):
 
+            for queryPos, referencePos in read.get_aligned_pairs(matches_only=False):
+                if queryPos is not None :
+                    qualities.append( phred_to_prob(read.qual[queryPos]) )
 
                 if queryPos is None and referencePos is None:
                     continue
@@ -1001,12 +1020,16 @@ class ScarFlagger( DigestFlagger ):
 
         scarDescription = ','.join(sorted(list(scarDescription)))
 
-
         siteInfo = tuple( [ x  for x in [ allele, scarDescription] if x is not None])
 
         moleculeId = self.increaseAndRecordOversequencing(  sample,  scarChromosome, scarPrimerStart, siteInfo=siteInfo)
 
+        # Add average base calling quality excluding primers:
+        meanQ = np.mean(qualities)
         for read in reads:
+
+            read.set_tag('SQ',1-meanQ)
+
             self.setSiteOversequencing( read, moleculeId )
             if len(scarDescription)==0:
                 scarDescription = 'WT'
@@ -1024,7 +1047,7 @@ class ScarFlagger( DigestFlagger ):
         R1,R2 = reads
 
         self.addAlleleInfo(reads)
-        if R1.is_unmapped or R2.is_unmapped:
+        if R1 is None or R1.is_unmapped or R2 is None or R2.is_unmapped:
             return(None)
 
         self.addSite( reads,  scarChromosome=R1.reference_name, scarPrimerStart = R1.reference_start )
