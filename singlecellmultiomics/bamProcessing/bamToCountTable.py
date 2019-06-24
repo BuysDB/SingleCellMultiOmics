@@ -7,6 +7,7 @@ import collections
 import argparse
 import pandas as pd
 import numpy as np
+import csv
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 TagDefinitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
 import singlecellmultiomics.modularDemultiplexer
@@ -35,11 +36,17 @@ binning_args.add_argument('-bin', type=int, help="Devide and floor to bin featur
 #binning_args.add_argument('--showBinEnd', action='store_true', help="If True, then show DS column as 120000-220000, otherwise 120000 only. This specifies the bin range in which the read was counted" ) this is now always on!
 binning_args.add_argument('-binTag',default='DS' )
 
+bed_args = argparser.add_argument_group('Bedfiles', '')
+bed_args.add_argument('--bedfile', type=str, help="Bed file containing 3 columns, chromo, start, end to be read for fetching counts")
+
 
 argparser.add_argument('--dedup', action='store_true', help='Count only the first occurence of a molecule. Requires RC tag to be set. Reads without RC tag will be ignored!')
 argparser.add_argument('--showtags',action='store_true', help='Show a list of commonly used tags' )
 
 args = argparser.parse_args()
+
+if args.bedfile is not None:
+    assert(os.path.isfile(args.bedfile))
 
 if args.sliding is None:
     args.sliding = args.bin
@@ -187,59 +194,113 @@ for bamFile in args.alignmentfiles:
             # Obtain the referenence sequence lengths
             ref_lengths = {r:f.get_reference_length(r) for r in f.references}
 
-
-        for i,read in enumerate(f):
-            if read.mapping_quality<args.minMQ:
-                continue
-            if args.filterXA:
-                if read_has_alternative_hits_to_non_alts(read):
+        if args.bedfile is None:
+            # for adding counts associated with a tag OR with binning
+            for i,read in enumerate(f):
+                if read.mapping_quality<args.minMQ:
                     continue
-
-            if i%1_000_000==0:
-                print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
-            if read.is_unmapped or (args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
-                continue
-            sample =tuple( readTag(read,tag) for tag in sampleTags )
-
-            countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
-            assigned+=1
-            if args.divideMultimapping:
-                if read.has_tag('XA'):
-                    countToAdd = countToAdd/len( read.get_tag('XA').split(';') )
-                elif read.has_tag('NH'):
-                    countToAdd = countToAdd/int(read.get_tag('NH') )
-                else:
-                    countToAdd = countToAdd
-
-            if not joinFeatures:
-                for tag in featureTags:
-                    if args.bin is not None:
-                        raise NotImplementedError("binning for featureTags not implemented, please use joinedFeatureTags!")
-                    else:
-                        feat = str(readTag(read,tag))
-                    countTable[sample][feat]+=countToAdd
-            else:
-                feature =[]
-                for tag in featureTags:
-                    if (args.bin is None or tag != args.binTag) :
-                        feature.append( str(readTag(read,tag) ))
-                ##
-                if args.bin is not None :
-                    # Proper sliding window
-                    t = readTag(read,args.binTag)
-                    if t is None:
+                if args.filterXA:
+                    if read_has_alternative_hits_to_non_alts(read):
                         continue
-                    for start, end in coordinate_to_bins( int(t), args.bin, args.sliding):
-                        # Reject bins outside boundary
-                        if not args.keepOverBounds and (start<0 or end>ref_lengths[read.reference_name]):
-                            continue
-                        countTable[sample][ tuple( feature+ [start,end])] += countToAdd
-                else:
-                    if len(feature):
-                        if len(featureTags)==1:
-                            countTable[sample][feature[0]]+=countToAdd
+                if i%1_000_000==0:
+                    print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
+                if read.is_unmapped or (args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
+                    continue
+                sample =tuple( readTag(read,tag) for tag in sampleTags )
+
+                countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
+                assigned+=1
+                if args.divideMultimapping:
+                    if read.has_tag('XA'):
+                        countToAdd = countToAdd/len( read.get_tag('XA').split(';') )
+                    elif read.has_tag('NH'):
+                        countToAdd = countToAdd/int(read.get_tag('NH') )
+                    else:
+                        countToAdd = countToAdd
+
+                if not joinFeatures:
+                    for tag in featureTags:
+                        if args.bin is not None:
+                            raise NotImplementedError("binning for featureTags not implemented, please use joinedFeatureTags!")
                         else:
-                            countTable[sample][tuple(feature)]+=countToAdd
+                            feat = str(readTag(read,tag))
+                        countTable[sample][feat]+=countToAdd
+                else:
+                    feature =[]
+                    for tag in featureTags:
+                        if (args.bin is None or tag != args.binTag) :
+                            feature.append( str(readTag(read,tag) ))
+                    ##
+                    if args.bin is not None :
+                        # Proper sliding window
+                        t = readTag(read,args.binTag)
+                        if t is None:
+                            continue
+                        for start, end in coordinate_to_bins( int(t), args.bin, args.sliding):
+                            # Reject bins outside boundary
+                            if not args.keepOverBounds and (start<0 or end>ref_lengths[read.reference_name]):
+                                continue
+                            countTable[sample][ tuple( feature+ [start,end])] += countToAdd
+                    else:
+                        if len(feature):
+                            if len(featureTags)==1:
+                                countTable[sample][feature[0]]+=countToAdd
+                            else:
+                                countTable[sample][tuple(feature)]+=countToAdd
+
+        else:
+            # for adding counts associated with a bedfile
+            with open(args.bedfile, "r") as bfile:
+                breader = csv.reader(bfile, delimiter = "\t")
+                for row in breader:
+                    chromo, start, end, bname = row[0], int(row[1]), int(row[2]), row[3]
+                    for i, read in enumerate(f.fetch(chromo, start, end)):
+                        # BEGIN: Copying Buys's count Table code: TODO put it into a function then we don't have to copy the code twice
+                        if read.mapping_quality<args.minMQ:
+                            continue
+                        if args.filterXA:
+                            if read_has_alternative_hits_to_non_alts(read):
+                                continue
+
+                        if i%1_000_000==0:
+                            print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
+                        if read.is_unmapped or (args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
+                            continue
+                        sample =tuple( readTag(read,tag) for tag in sampleTags )
+
+                        countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
+                        assigned+=1
+                        if args.divideMultimapping:
+                            if read.has_tag('XA'):
+                                countToAdd = countToAdd/len( read.get_tag('XA').split(';') )
+                            elif read.has_tag('NH'):
+                                countToAdd = countToAdd/int(read.get_tag('NH') )
+                            else:
+                                countToAdd = countToAdd
+
+                        if not joinFeatures:
+                            for tag in featureTags:
+                                if args.bin is not None:
+                                    raise NotImplementedError("binning for featureTags not implemented, please use joinedFeatureTags!")
+                                else:
+                                    feat = str(readTag(read,tag))
+                                countTable[sample][feat]+=countToAdd
+                        else:
+                            feature =[]
+                            for tag in featureTags:
+                                if (args.bin is None or tag != args.binTag) :
+                                    feature.append( str(readTag(read,tag) ))
+                                if len(feature):
+                                    # # Reject TSS regions outside boundary??
+                                    # if not args.keepOverBounds and (start<0 or end>ref_lengths[read.reference_name]):
+                                    #     continue
+                                    countTable[sample][ tuple( feature+ [start,end, bname])] += countToAdd
+                                    # if len(featureTags)==1:
+                                    #     countTable[sample][feature[0]]+=countToAdd
+                                    # else:
+                                    #     countTable[sample][tuple(feature)]+=countToAdd
+                        ## DONE COPYING
+
 
             if args.head is not None and i>args.head:
                 break
@@ -257,7 +318,8 @@ df.columns.set_names([tagToHumanName(t,TagDefinitions ) for t in sampleTags], in
 
 if args.bin is not None:
     df.index.set_names([tagToHumanName(t,TagDefinitions ) for t in featureTags if t!=args.binTag]+['start','end'], inplace=True)
-
+elif args.bedfile is not None:
+    df.index.set_names([tagToHumanName(t,TagDefinitions ) for t in featureTags if t!=args.binTag]+['start','end', 'name'], inplace=True)
 elif joinFeatures:
     df.index.set_names([tagToHumanName(t, TagDefinitions) for t in featureTags], inplace=True)
 else:
