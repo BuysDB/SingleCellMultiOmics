@@ -4,6 +4,7 @@ import re
 import singlecellmultiomics.fastqProcessing.fastqIterator as fastqIterator
 import string
 
+
 complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
 class SamTag:
@@ -67,6 +68,12 @@ tags = [
     SamTag('NH', 'occurencesOfFragment'),
     SamTag('HI', 'queryHitIndex'),
     SamTag('XS', 'assignmentStatus'),
+    SamTag('SQ', 'meanBaseQuality'),
+    SamTag('SD', 'scarDescription'),
+    SamTag('RG', 'readGroup'),
+    SamTag('XA', 'alternativeAlignmentHits'),
+    SamTag('MD', 'alignment'),
+
 
     SamTag('fS', 'fragmentSizeTag'),
     SamTag('fe', 'fragmentEndTag'),
