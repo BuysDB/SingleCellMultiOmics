@@ -100,7 +100,7 @@ try:
                 wrote+=1
                 if args.head and wrote>args.head:
                     break
-except KeyboardInterrupt:
+except (KeyboardInterrupt,BrokenPipeError) as e:
     pass
 
 if args.o is not None:

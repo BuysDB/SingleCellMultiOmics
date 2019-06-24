@@ -41,6 +41,7 @@ bed_args.add_argument('--bedfile', type=str, help="Bed file containing 3 columns
 
 
 argparser.add_argument('--dedup', action='store_true', help='Count only the first occurence of a molecule. Requires RC tag to be set. Reads without RC tag will be ignored!')
+argparser.add_argument('--noNames', action='store_true', help='Do not set names of the index and columns, this simplifies the resulting CSV/pickle file')
 argparser.add_argument('--showtags',action='store_true', help='Show a list of commonly used tags' )
 
 args = argparser.parse_args()
@@ -314,16 +315,17 @@ print(f"Finished counting, now exporting to {args.o}")
 df = pd.DataFrame.from_dict( countTable )
 
 
-df.columns.set_names([tagToHumanName(t,TagDefinitions ) for t in sampleTags], inplace=True)
 
-if args.bin is not None:
-    df.index.set_names([tagToHumanName(t,TagDefinitions ) for t in featureTags if t!=args.binTag]+['start','end'], inplace=True)
-elif args.bedfile is not None:
-    df.index.set_names([tagToHumanName(t,TagDefinitions ) for t in featureTags if t!=args.binTag]+['start','end', 'name'], inplace=True)
-elif joinFeatures:
-    df.index.set_names([tagToHumanName(t, TagDefinitions) for t in featureTags], inplace=True)
-else:
-    df.index.set_names(','.join([tagToHumanName(t, TagDefinitions) for t in featureTags]), inplace=True)
+if not args.noNames:
+    df.columns.set_names([tagToHumanName(t,TagDefinitions ) for t in sampleTags], inplace=True)
+
+    if args.bin is not None:
+        df.index.set_names([tagToHumanName(t,TagDefinitions ) for t in featureTags if t!=args.binTag]+['start','end'], inplace=True)
+
+    elif joinFeatures:
+        df.index.set_names([tagToHumanName(t, TagDefinitions) for t in featureTags], inplace=True)
+    else:
+        df.index.set_names(','.join([tagToHumanName(t, TagDefinitions) for t in featureTags]), inplace=True)
 
 if args.o.endswith('.pickle') or args.o.endswith('.pickle.gz'):
     df.to_pickle(args.o)
