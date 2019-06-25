@@ -175,8 +175,7 @@ if args.joinedFeatureTags is not None:
     featureTags= args.joinedFeatureTags.split(',')
     joinFeatures=True
 
-sampleTags= args.sampleTags.split(',')
-countTable = collections.defaultdict(collections.Counter) # cell->feature->count
+
 
 def readTag(read, tag, defective='None'):
     try:
@@ -185,11 +184,12 @@ def readTag(read, tag, defective='None'):
         value = defective
     return value
 
-def assignReads(read, args, joinFeatures, featureTags, assigned):
-    ''' 
-    Big chunk of code for assigning reads to feature is reused twice.
-    Returns countTable?
+def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags,i,assigned):
     '''
+    Big chunk of code for assigning reads to feature is reused twice.
+    #
+    '''
+
     if read.mapping_quality<args.minMQ:
         return(None)
         # continue
@@ -200,12 +200,12 @@ def assignReads(read, args, joinFeatures, featureTags, assigned):
     if i%1_000_000==0:
         print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
     if read.is_unmapped or (args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
-        return(None)
+        return(assigned)
         # continue
     sample =tuple( readTag(read,tag) for tag in sampleTags )
 
     countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
-    assigned+=1
+    assigned += 1
     if args.divideMultimapping:
         if read.has_tag('XA'):
             countToAdd = countToAdd/len( read.get_tag('XA').split(';') )
@@ -231,12 +231,12 @@ def assignReads(read, args, joinFeatures, featureTags, assigned):
             # Proper sliding window
             t = readTag(read,args.binTag)
             if t is None:
-                return(None)
+                return(assigned)
                 # continue
             for start, end in coordinate_to_bins( int(t), args.bin, args.sliding):
                 # Reject bins outside boundary
                 if not args.keepOverBounds and (start<0 or end>ref_lengths[read.reference_name]):
-                    return(None)
+                    return(assigned)
                     # continue
                 countTable[sample][ tuple( feature+ [start,end])] += countToAdd
         else:
@@ -245,11 +245,13 @@ def assignReads(read, args, joinFeatures, featureTags, assigned):
                     countTable[sample][feature[0]]+=countToAdd
                 else:
                     countTable[sample][tuple(feature)]+=countToAdd
-    return(countTable)
+    return assigned
 
+sampleTags= args.sampleTags.split(',')
+countTable = collections.defaultdict(collections.Counter) # cell->feature->count
 
+assigned=0
 for bamFile in args.alignmentfiles:
-    assigned = 0
 
     with pysam.AlignmentFile(bamFile) as f:
 
@@ -260,7 +262,7 @@ for bamFile in args.alignmentfiles:
         if args.bedfile is None:
             # for adding counts associated with a tag OR with binning
             for i,read in enumerate(f):
-                assignReads(read, args, joinFeatures, featureTags)
+                assigned = assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags,i,assigned)
 
         else:
             # for adding counts associated with a bedfile
@@ -269,7 +271,7 @@ for bamFile in args.alignmentfiles:
                 for row in breader:
                     chromo, start, end, bname = row[0], int(row[1]), int(row[2]), row[3]
                     for i, read in enumerate(f.fetch(chromo, start, end)):
-                        assignReads(read, args, joinFeatures, featureTags, assigned)
+                        assigned =  assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags,i,assigned)
 
             if args.head is not None and i>args.head:
                 break
@@ -281,7 +283,6 @@ def tagToHumanName(tag,TagDefinitions ):
 
 print(f"Finished counting, now exporting to {args.o}")
 df = pd.DataFrame.from_dict( countTable )
-
 
 
 if not args.noNames:
