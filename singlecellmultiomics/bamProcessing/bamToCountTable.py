@@ -127,7 +127,7 @@ def create_count_table(args, return_df=False):
                     return True
         return False
 
-    if args.o is None:
+    if args.o is None and not  return_df :
         raise ValueError('Supply an output file')
     if args.alignmentfiles is None:
         raise ValueError('Supply alignment (BAM) files')
@@ -173,7 +173,10 @@ def create_count_table(args, return_df=False):
             # continue
         sample =tuple( readTag(read,tag) for tag in sampleTags )
 
-        countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
+        if args.doNotDivideFragments:
+            countToAdd=1
+        else:
+            countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
         assigned += 1
         if args.divideMultimapping:
             if read.has_tag('XA'):
@@ -267,7 +270,7 @@ def create_count_table(args, return_df=False):
 
     if return_df:
         return df
-        
+
     if args.o.endswith('.pickle') or args.o.endswith('.pickle.gz'):
         df.to_pickle(args.o)
     else:
@@ -290,6 +293,7 @@ if __name__=='__main__':
 
     multimapping_args = argparser.add_argument_group('Multimapping', '')
     multimapping_args.add_argument('--divideMultimapping', action='store_true', help='Divide multimapping reads over all targets. Requires the XA or NH tag to be set.')
+    multimapping_args.add_argument('--doNotDivideFragments', action='store_true', help='When used every read is counted once, a fragment will count as two reads. 0.5 otherwise')
     multimapping_args.add_argument('-minMQ', type=int, default=0, help="minimum mapping quality")
     multimapping_args.add_argument('--filterXA',action='store_true', help="Do not count reads where the XA (alternative hits) tag has been set for a non-alternative locus.")
 
