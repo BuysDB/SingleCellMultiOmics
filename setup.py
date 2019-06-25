@@ -65,6 +65,9 @@ setup(
   install_requires=[
        'pysam','numpy','pandas','colorama'
    ],
+    setup_requires=["pytest-runner"],
+    tests_require=["pytest"],
+
     include_package_data=True,
     classifiers=[
         'Development Status :: 3 - Alpha',
