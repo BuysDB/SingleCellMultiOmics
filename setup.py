@@ -63,7 +63,7 @@ setup(
 
         ],
   install_requires=[
-       'pysam','numpy','pandas'
+       'pysam','numpy','pandas','colorama'
    ],
     include_package_data=True,
     classifiers=[
