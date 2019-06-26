@@ -160,12 +160,12 @@ class MoleculeIterator():
         self.molecules_yielded = 0
         self.umi_hamming_distance = umi_hamming_distance
         self.pysam_kwargs = pysam_kwargs
+
         self.sample_select = sample_select
         self.sample_tag = 'SM'
         self._clear()
 
         self.filter_function = None # function which results given two reads if it is usable
-
 
     def _clear(self):
         self.molecule_cache = collections.defaultdict(
@@ -205,6 +205,9 @@ class MoleculeIterator():
 
     # Returns True if two fragment ids  are identical or close enough
     def eq_function(self, assignment_a, assignment_b):
+        if assignment_a is None or assignment_b is None:
+            return False
+
         sample_A, umi_A, strand_A = assignment_a
         sample_B, umi_B, strand_B = assignment_b
 
@@ -236,12 +239,17 @@ class MoleculeIterator():
         for pos in drop:
             del self.molecule_cache[pos]
 
+    def get_fragment_chromosome(self, fragment):
+        for read in fragment:
+            if read is not None:
+                return read.reference_name
+
     def __iter__(self):
-        for fragment in pysamIterators.MatePairIterator( self.alignmentfile, **self.pysam_kwargs ):
+        for fragment in pysamIterators.MatePairIterator( self.alignmentfile, **self.pysam_kwargs, performProperPairCheck=False ):
 
             # now yield fragments which are finished :
-            if fragment[0].reference_name is None:
-                continue
+            #if fragment[0] is None or fragment[0].reference_name is None:
+        #        continue
 
             # Check if we want to drop the fragment because its corresponding sample is not selected
             if self.sample_select is not None:
@@ -254,7 +262,7 @@ class MoleculeIterator():
                         continue
 
             # We went to another chromsome, purge all in cache:
-            if fragment[0].reference_name!=self.current_chromosome and self.current_chromosome is not None:
+            if self.get_fragment_chromosome(fragment)!=self.current_chromosome and self.current_chromosome is not None:
                 for molecule in self._yield_all_in_current_cache():
                     yield molecule
 
@@ -276,12 +284,26 @@ class MoleculeIterator():
             if not assigned:
                 self.molecule_cache[position][molecule_id].append(fragment)
 
-            self.current_chromosome = fragment[0].reference_name
-            self.current_position = fragment[0].reference_end
+            self.current_chromosome = self.get_fragment_chromosome(fragment)
+            self.current_position = self.localisation_function(fragment) #[0].reference_end
 
         # yield everything which was not yielded yet
         for molecule in self._yield_all_in_current_cache():
             yield molecule
+
+
+class TranscriptIterator(MoleculeIterator):
+    def __init__(self, look_around_radius=100, informative_read=2, assignment_radius=10,**kwargs):
+        MoleculeIterator.__init__(self,look_around_radius=look_around_radius,**kwargs)
+        self.informative_read = informative_read
+        self.assignment_radius = assignment_radius
+
+    def assignment_function(self, fragment):
+        return fragment[self.informative_read-1].get_tag('SM'),fragment[self.informative_read-1].get_tag('RX'),fragment[self.informative_read-1].is_reverse
+
+    def localisation_function(self,fragment):
+        return int((fragment[self.informative_read-1].reference_start)/self.assignment_radius)*self.assignment_radius
+
 
 
 class QueryNameFlagger(DigestFlagger):
