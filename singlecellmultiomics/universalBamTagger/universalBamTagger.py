@@ -28,15 +28,7 @@ from singlecellmultiomics.universalBamTagger.mspjI import MSPJIFlagger
 from singlecellmultiomics.universalBamTagger.scar import ScarFlagger
 from singlecellmultiomics.universalBamTagger.tag import TagFlagger
 
-
-def phred_to_prob(phred):
-    try:
-        return math.pow(10,-(ord(phred)-33)/10 )
-    except ValueError:
-        return 1
-
-def hamming_distance(a,b):
-    return sum((i!=j and i!='N' and j!='N' for i,j in zip(a,b)))
+from singlecellmultiomics.utils.sequtils import hamming_distance,phred_to_prob
 
 if __name__ == "__main__" :
     argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""Add allelic NLA and/or MSPJI digest information to a demultiplexed bam file
