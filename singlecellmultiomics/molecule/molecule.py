@@ -1,6 +1,7 @@
 from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
 from singlecellmultiomics.fragment import Fragment
+import collections
 
 class Molecule():
     def __init__(self, fragments=None, cache_size=10_000):
@@ -68,6 +69,40 @@ class Molecule():
         for variant in variants.fetch( self.chromosome, self.spanStart, self.spanEnd ):
             variant_dict[ (variant.chrom, variant.pos)] = (variant.ref, variant.alts)
 
+
+        variant_calls = collections.defaultdict( collections.Counter )
+        for fragment in self:
+
+
+            R1 = fragment.get_R1()
+            R2 = fragment.get_R2()
+            start, end = pysamiterators.iterators.getPairGenomicLocations(
+                R1=R1,
+                R2=R2,
+                allow_unsafe=(R1 is None))
+
+            for read in fragment:
+                if read is None:
+                    continue
+
+                for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(read):
+
+                    if ref_pos is None or ref_pos<start or ref_pos>end:
+                        continue
+                    query_base = R2.seq[query_pos]
+
+                    k =  (R2.reference_name, ref_pos)
+                    if k in variant_dict:
+                        call = None
+                        ref, alts = variant_dict[k]
+                        if query_base == ref:
+                            call = ('ref',query_base)
+                        elif query_base in alts:
+                            call = ('alt',query_base)
+
+                        variant_calls[k][call]+=1
+
+        return variant_calls
 
     def __iter__(self):
         for fragment in self.fragments:
