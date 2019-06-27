@@ -7,10 +7,15 @@ class Fragment():
         self.umi_hamming_distance = umi_hamming_distance
         self.reads = reads
 
+        self.is_multimapped = True
         # Force R1=read1 R2=read2:
         for i, read in enumerate(self.reads):
             if read is None:
                 continue
+
+            if read.mapping_quality!=0:
+                self.is_multimapped = False
+
             if i==0:
                 read.is_read1 = True
                 read.is_read2 = False

@@ -38,6 +38,12 @@ class Molecule():
         for fragment in self.fragments:
             return fragment.get_sample()
 
+    def is_multimapped(self):
+        for fragment in self.fragments:
+            if not fragment.is_multimapped:
+                return False
+        return True
+
     def _add_fragment(self, fragment):
         self.fragments.append(fragment)
         # Update span:
@@ -64,18 +70,17 @@ class Molecule():
         return position < (self.spanStart-self.cache_size*0.5) or position > (self.spanEnd+self.cache_size*0.5)
 
 
-     def __getitem__(self, key):
-         return self.fragments[key]
+    def __getitem__(self, key):
+        return self.fragments[key]
 
-    def check_variants(self, variants):
+    def check_variants(self, variants, exclude_other_calls=True ): #when enabled other calls (non ref non alt will be set None)
         variant_dict = {}
         for variant in variants.fetch( self.chromosome, self.spanStart, self.spanEnd ):
-            variant_dict[ (variant.chrom, variant.pos)] = (variant.ref, variant.alts)
+            variant_dict[ (variant.chrom, variant.pos-1)] = (variant.ref, variant.alts)
 
 
         variant_calls = collections.defaultdict( collections.Counter )
         for fragment in self:
-
 
             R1 = fragment.get_R1()
             R2 = fragment.get_R2()
@@ -83,6 +88,8 @@ class Molecule():
                 R1=R1,
                 R2=R2,
                 allow_unsafe=(R1 is None))
+            if start is None or end is None:
+                continue
 
             for read in fragment:
                 if read is None:
@@ -90,11 +97,11 @@ class Molecule():
 
                 for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(read):
 
-                    if ref_pos is None or ref_pos<start or ref_pos>end:
+                    if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
                         continue
-                    query_base = R2.seq[query_pos]
+                    query_base = read.seq[query_pos]
 
-                    k =  (R2.reference_name, ref_pos)
+                    k =  (read.reference_name, ref_pos)
                     if k in variant_dict:
                         call = None
                         ref, alts = variant_dict[k]
@@ -103,13 +110,15 @@ class Molecule():
                         elif query_base in alts:
                             call = ('alt',query_base)
 
-                        variant_calls[k][call]+=1
+                        if not exclude_other_calls or call is not None:
+                            variant_calls[k][call]+=1
 
         return variant_calls
 
     def __iter__(self):
         for fragment in self.fragments:
             yield fragment
+
 
 def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000):
     molecules = []
