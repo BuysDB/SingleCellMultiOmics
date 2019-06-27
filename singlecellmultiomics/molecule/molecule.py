@@ -1,12 +1,14 @@
 from singlecellmultiomics.utils.sequtils import hamming_distance
+import pysamiterators.iterators
+from singlecellmultiomics.fragment import Fragment
 
 class Molecule():
-    def __init__(self, fragments=None, assignment_radius=3, umi_hamming_distance=1 ):
-        self.assignment_radius = assignment_radius
-        self.umi_hamming_distance = umi_hamming_distance
+    def __init__(self, fragments=None, cache_size=10_000):
         self.fragments  = []
-
-        self.molecule_id = None
+        self.spanStart = None
+        self.spanEnd = None
+        self.chromosome = None
+        self.cache_size = cache_size
 
         if fragments is not None:
             if type(fragments) is list:
@@ -16,63 +18,87 @@ class Molecule():
                 self.add_fragment(fragments)
 
 
+    def __len__(self):
+        return len(self.fragments)
+
     def __repr__(self):
-        frag_repr = '\n\t'.join([', '.join([str(read) for read in fragment]) for fragment in self.fragments])
+        frag_repr = '\n\t'.join([str(fragment) for fragment in self.fragments])
         return f"""Molecule
         with {len(self.fragments)} assinged fragments
-        id: {str(self.molecule_id)}\n
         """ + frag_repr
 
-    def assignment_function(self, fragment):
-        return  fragment[0].get_tag('SM'),fragment[0].get_tag('RX'),fragment[0].get_tag('RS'),int(fragment[0].get_tag('DS'))
+    def get_umi(self):
+        umi_abundance = collections.Counter()
+        for fragment in self.fragments:
+            umi_abundance[fragment.get_umi()]+=1
+        return umi_abundance.most_common(1)[0][0]
 
-    # Returns True if two molecule ids  are identical or close enough
-    def eq_function(self, assignment_a, assignment_b):
-        if assignment_a is None or assignment_b is None:
-            return False
+    def get_sample(self):
+        for fragment in self.fragments:
+            return fragment.get_sample()
 
-        sample_A, umi_A, strand_A, location_A = assignment_a
-        sample_B, umi_B, strand_B, location_B = assignment_b
-
-        # Make sure fragments map to the same strand, cheap comparisons
-        if sample_A!=sample_B or strand_A!=strand_B:
-            return False
-
-        # Make sure fragments map close enough to eachother, cheap comparison
-        if abs(location_A-location_B)>self.assignment_radius:
-            return False
-
-        # Make sure UMI's are similar enough, more expensive hamming distance calculation
-        if self.umi_hamming_distance==0:
-            return umi_A==umi_B
-        else:
-            return hamming_distance(umi_A,umi_B)<=self.umi_hamming_distance
-
-    def fragment_eq(self, fragment, fragment_molecule_id=None): # can a fragment be added to the molecule?
-        if self.molecule_id is None:
-            return True
-        if fragment_molecule_id is None:
-            fragment_molecule_id = self.assignment_function(fragment)
-        return self.eq_function(fragment_molecule_id, self.molecule_id)
-
+    def _add_fragment(self, fragment):
+        self.fragments.append(fragment)
+        # Update span:
+        add_span = fragment.get_span()
+        self.spanStart = add_span[1] if self.spanStart is None else min(add_span[1], self.spanStart)
+        self.spanEnd = add_span[2] if self.spanEnd is None else max(add_span[2], self.spanEnd)
+        self.chromosome = add_span[0]
 
     def add_fragment(self, fragment):
-        fragment_molecule_id = self.assignment_function(fragment)
-        if self.fragment_eq(fragment,fragment_molecule_id):
-            self.molecule_id = fragment_molecule_id
-            self.fragments.append(fragment)
+        if len(self.fragments)==0:
+            self._add_fragment(fragment)
             return True
-        else:
+
+        for f in self.fragments:
+            if f == fragment:
+                # it matches this molecule:
+                self._add_fragment(fragment)
+                return True
+        return False
+
+    def can_be_yielded(self, chromsome, position):
+        if chromsome!=self.chromosome:
             return False
+        return position < (self.spanStart-self.cache_size*0.5) or position > (self.spanEnd+self.cache_size*0.5)
 
-    def _localisation_function(self, fragment):
-        if not fragment[0].has_tag('DS'):
-            return None
-        return fragment[0].get_tag('DS')
 
-    def sample_assignment_function(self, fragment):
-        for read in fragment:
-            if read is not None:
-                if read.has_tag(self.sample_tag):
-                    return read.get_tag(self.sample_tag)
-        return None
+    def check_variants(self, variants):
+        variant_dict = {}
+        for variant in variants.fetch( self.chromosome, self.spanStart, self.spanEnd ):
+            variant_dict[ (variant.chrom, variant.pos)] = (variant.ref, variant.alts)
+
+
+    def __iter__(self):
+        for fragment in self.fragments:
+            yield fragment
+
+def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000):
+    molecules = []
+
+    added_fragments = 0
+    for R1,R2 in pysamiterators.iterators.MatePairIterator(alignments,performProperPairCheck=False):
+
+        fragment = fragmentClass([R1,R2])
+        added = False
+        for molecule in molecules:
+            if molecule.add_fragment(fragment):
+                added = True
+                break
+        if not added:
+            molecules.append(moleculeClass(fragment ))
+
+        added_fragments+=1
+
+        if added_fragments>check_eject_every:
+            current_chrom, _, current_position = fragment.get_span()
+            to_pop = []
+            for i,m in enumerate(molecules):
+                if m.can_be_yielded(current_chrom,current_position):
+                    to_pop.append(i)
+
+            for i,j in enumerate(to_pop):
+                yield molecules.pop(i-j)
+
+    # Yield remains
+    return iter(molecules)
