@@ -64,6 +64,8 @@ class Fragment():
                 return read.get_tag('RX')
         return None
 
+    def __iter__(self):
+        return iter(self.reads)
 
     def __eq__(self, other):
         # Make sure fragments map to the same strand, cheap comparisons
