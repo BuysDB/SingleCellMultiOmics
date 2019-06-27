@@ -49,7 +49,7 @@ argparser.add_argument('bamFile',  type=str)
 argparser.add_argument('-head',  type=int, help='Process this many molecules')
 argparser.add_argument('-binSize',  type=int, default=30)
 argparser.add_argument('-maxfs',  type=int, default=900, help='X axis limit of fragment size plot')
-argparser.add_argument('-maxOverseq',  type=int, default=10)
+argparser.add_argument('-maxOverseq',  type=int, default=4)
 argparser.add_argument('--notstrict',  action='store_true')
 argparser.add_argument('-o',  type=str, default='RT_dist')
 
@@ -79,6 +79,7 @@ with pysam.AlignmentFile(args.bamFile) as a:
                                                     )):
 
 
+
         if not args.notstrict and not nlaIII_molecule_acceptance_function(molecule):
             continue
 
@@ -91,7 +92,7 @@ with pysam.AlignmentFile(args.bamFile) as a:
 
 
         #this obtains the maximum fragment size:
-        frag_chrom, frag_start, frag_end = pyts.getListSpanningCoordinates(itertools.chain.from_iterable(molecule))
+        frag_chrom, frag_start, frag_end = pyts.getListSpanningCoordinates([v for v in itertools.chain.from_iterable(molecule) if v is not None])
 
         #Obtain the fragment sizes of all RT reactions:
         rt_sizes = []
@@ -133,7 +134,10 @@ with pysam.AlignmentFile(args.bamFile) as a:
             gc_frag_distribution[fragment_size][gc/length] += 1
             fragment_distribution_raw[len(molecule)][fragment_size]+=1
 
-        mean_rt_size = int(np.mean(rt_sizes))
+        if len(rt_sizes)==0:
+            mean_rt_size = 0
+        else:
+            mean_rt_size = int(np.mean(rt_sizes))
         fragment_distribution_raw_rf[library][len(molecule)][mean_rt_size] += 1
         rt_frag_distribution[mean_rt_size][len(rt_reactions)] += 1
         used_reads+=len(molecule)

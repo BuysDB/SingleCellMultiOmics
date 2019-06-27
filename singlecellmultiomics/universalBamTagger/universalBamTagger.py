@@ -261,9 +261,9 @@ class MoleculeIterator():
     def __iter__(self):
         for fragment in pysamIterators.MatePairIterator( self.alignmentfile, **self.pysam_kwargs, performProperPairCheck=False ):
 
-            # now yield fragments which are finished :
-            #if fragment[0] is None or fragment[0].reference_name is None:
-        #        continue
+
+            if fragment[0] is None or fragment[0].reference_name is None:
+                continue
 
             # Check if we want to drop the fragment because its corresponding sample is not selected
             if self.sample_select is not None:

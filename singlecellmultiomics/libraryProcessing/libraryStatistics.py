@@ -33,7 +33,14 @@ argparser.add_argument('-head',  type=int)
 args = argparser.parse_args()
 
 for library in args.libraries:
-    bamFile=None
+    if library.endswith('.bam'):
+        # the library is a bam file..
+        bamFile=os.path.abspath( library)
+        library= os.path.dirname(os.path.abspath( bamFile) )
+        print("Bam file was supplied:")
+        print(bamFile)
+    else:
+        bamFile=None
     rc = ReadCount(args) # Is also mappability
     statistics = [
         rc,
@@ -52,12 +59,14 @@ for library in args.libraries:
         continue
     print(f'{Style.BRIGHT}Library {library}{Style.RESET_ALL}')
     # Check if the bam file is present
-    if os.path.exists(f'{library}/tagged/sorted.bam'):
-        bamFile = f'{library}/tagged/sorted.bam'
-    if os.path.exists(f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam'):
-        bamFile = f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam'
-    if os.path.exists(f'{library}/tagged/resorted.featureCounts.bam'):
-        bamFile = f'{library}/tagged/resorted.featureCounts.bam'
+    if bamFile is None:
+        if os.path.exists(f'{library}/tagged/sorted.bam'):
+            bamFile = f'{library}/tagged/sorted.bam'
+        if os.path.exists(f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam'):
+            bamFile = f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam'
+        if os.path.exists(f'{library}/tagged/resorted.featureCounts.bam'):
+            bamFile = f'{library}/tagged/resorted.featureCounts.bam'
+
     statFile = f'{library}/statistics.pickle.gz'
 
     demuxFastqFiles = (f'{library}/demultiplexedR1.fastq.gz', f'{library}/demultiplexedR2.fastq.gz')
@@ -157,6 +166,7 @@ for library in args.libraries:
     with gzip.open(statFile,'wb') as f:
         pickle.dump(statDict, f)
 
+
     # Make plots:
     plot_dir = f'{library}/plots'
     if not os.path.exists(plot_dir):
@@ -167,3 +177,5 @@ for library in args.libraries:
         except Exception as e:
             import traceback
             traceback.print_exc()
+    # Make RT reaction plot:
+    os.system(f"bamPlotRTstats.py {bamFile} -head 2_000_000 --notstrict -o {plot_dir}/RT_")
