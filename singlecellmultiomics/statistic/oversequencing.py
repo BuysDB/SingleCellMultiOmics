@@ -31,8 +31,8 @@ class OversequencingHistogram(StatisticHistogram):
         if title is not None:
             ax.set_title(title)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-        ax.set_xlabel("UMI Oversequenced")
-        ax.set_ylabel("# Fragments")
+        ax.set_xlabel("Amount of fragments associated with molecule")
+        ax.set_ylabel("# Molecules")
         plt.tight_layout()
         plt.savefig(target_path)
         plt.close()
