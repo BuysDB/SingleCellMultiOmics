@@ -64,6 +64,9 @@ class Molecule():
         return position < (self.spanStart-self.cache_size*0.5) or position > (self.spanEnd+self.cache_size*0.5)
 
 
+     def __getitem__(self, key):
+         return self.fragments[key]
+
     def check_variants(self, variants):
         variant_dict = {}
         for variant in variants.fetch( self.chromosome, self.spanStart, self.spanEnd ):
