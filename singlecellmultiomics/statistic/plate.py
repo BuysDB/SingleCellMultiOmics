@@ -63,6 +63,7 @@ well2index = collections.defaultdict(dict)
 index2well = collections.defaultdict(dict)
 rows = string.ascii_uppercase[:16]
 columns = list(range(1,25))
+
 for ci in range(1,385):
     i = ci-1
     rowIndex = math.floor( i/len(columns) )
@@ -72,6 +73,18 @@ for ci in range(1,385):
     index2well[384][ci] = (row,column)
 
 
+rows96 = string.ascii_uppercase[:8]
+
+columns96 = list(range(1,13))
+
+for ci in range(1,97):
+    i = ci-1
+    rowIndex = math.floor( i/len(columns96) )
+    print(rowIndex)
+    row = rows96[rowIndex]
+    column = columns96[i%len(columns96)]
+    well2index[96][(row,column)] = ci
+    index2well[96][ci] = (row,column)
 
 
 class PlateStatistic(object):
@@ -113,15 +126,17 @@ class PlateStatistic(object):
 
     def cell_counts_to_dataframe(self, cell_counts, mux, name='raw_reads'):
         df = pd.DataFrame( {name:cell_counts} )
-        if mux=='CS2C8U6':
+        if mux=='CS2C8U6'  :
             offset = 0
         else:
             offset = 1
-        df['col'] =  [ index2well[384][(offset+int(x.rsplit('_')[-1]))][1]  for x in df.index]
 
-        #df['row'] = [ index2well[384][(offset+int(x.rsplit('_')[-1]))][0]  for x in df.index]
-        df['row'] = [ -rows.index(index2well[384][(offset+int(x.rsplit('_')[-1]))][0])  for x in df.index]
+        format = 384 if '384' in mux else 96
+
+        df['col'] =  [ index2well[format][(offset+int(x.rsplit('_')[-1]))][1]  for x in df.index]
+        df['row'] = [ -rows.index(index2well[format][(offset+int(x.rsplit('_')[-1]))][0])  for x in df.index]
         df['size'] = (df[name]/np.percentile(df[name],99)*200)
+
         return df
 
     def __iter__(self):
