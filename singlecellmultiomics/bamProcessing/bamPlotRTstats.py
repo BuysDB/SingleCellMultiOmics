@@ -17,7 +17,6 @@ import pysamiterators.iterators as pyts
 import singlecellmultiomics.universalBamTagger.universalBamTagger as ut
 import importlib
 import collections
-import scipy.misc
 import pandas as pd
 import itertools
 
