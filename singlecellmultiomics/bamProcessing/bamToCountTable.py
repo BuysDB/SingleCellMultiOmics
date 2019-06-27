@@ -153,25 +153,23 @@ def create_count_table(args, return_df=False):
             value = defective
         return value
 
-    def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags,i,assigned):
+    def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags):
         '''
         Big chunk of code for assigning reads to feature is reused twice.
-        #
+        # i and assigned are globals
         '''
-
+        assigned = 0
         if read.mapping_quality<args.minMQ:
-            return(None)
+            return(assigned)
             # continue
         if args.filterXA:
             if read_has_alternative_hits_to_non_alts(read):
-                return(None)
+                return(assigned)
                 # continue
-        if i%1_000_000==0:
-            print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
         if read.is_unmapped or (args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
             return(assigned)
             # continue
-        sample =tuple( readTag(read,tag) for tag in sampleTags )
+        sample = tuple( readTag(read,tag) for tag in sampleTags )
 
         if args.doNotDivideFragments:
             countToAdd=1
@@ -217,7 +215,7 @@ def create_count_table(args, return_df=False):
                         countTable[sample][feature[0]]+=countToAdd
                     else:
                         countTable[sample][tuple(feature)]+=countToAdd
-        return assigned
+        return(assigned)
 
     sampleTags= args.sampleTags.split(',')
     countTable = collections.defaultdict(collections.Counter) # cell->feature->count
@@ -234,16 +232,21 @@ def create_count_table(args, return_df=False):
             if args.bedfile is None:
                 # for adding counts associated with a tag OR with binning
                 for i,read in enumerate(f):
-                    assigned = assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags,i,assigned)
+                    if i%1_000_000==0:
+                        print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
+                    assigned += assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags)
 
             else:
                 # for adding counts associated with a bedfile
                 with open(args.bedfile, "r") as bfile:
                     breader = csv.reader(bfile, delimiter = "\t")
                     for row in breader:
+                        print(row)
                         chromo, start, end, bname = row[0], int(row[1]), int(row[2]), row[3]
                         for i, read in enumerate(f.fetch(chromo, start, end)):
-                            assigned =  assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags,i,assigned)
+                            if i%1_000_000==0:
+                                print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
+                            assigned += assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags)
 
                 if args.head is not None and i>args.head:
                     break
