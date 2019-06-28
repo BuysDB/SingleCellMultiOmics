@@ -83,6 +83,7 @@ class Fragment():
         spanSelf =  self.get_span()
         spanOther =  other.get_span()
 
+
         if min(  abs( spanSelf[1] - spanOther[1] ),  abs( spanSelf[2] - spanOther[2] ) ) >self.assignment_radius:
             return False
 
@@ -91,6 +92,9 @@ class Fragment():
             return self.get_umi()==other.get_umi()
         else:
             return hamming_distance(self.get_umi(),other.get_umi())<=self.umi_hamming_distance
+
+    def is_valid(self):
+        return True
 
     def __repr__(self):
         return f"""Fragment:
@@ -101,5 +105,5 @@ class Fragment():
         """
 
 class SingleEndTranscript(Fragment):
-    def __init__(self,reads, random_primer_length=6):
-        Fragment.__init__(self, reads, assignment_radius=1_000, umi_hamming_distance=1 )
+    def __init__(self,reads, R2_primer_length=6):
+        Fragment.__init__(self, reads, assignment_radius=1_000, umi_hamming_distance=1,R2_primer_length=R2_primer_length )
