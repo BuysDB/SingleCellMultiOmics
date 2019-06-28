@@ -430,6 +430,7 @@ if __name__ == "__main__":
         flaggers.append( RNA_Flagger(**flaggerArguments))
     if args.taps:
         flaggers.append( TAPSFlagger(**flaggerArguments))
+        pairedEnd=True
 
 
     if args.alleles is not None:
