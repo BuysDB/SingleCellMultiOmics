@@ -1,5 +1,5 @@
 import singlecellmultiomics.features
-
+import collections
 class RNA_Flagger():
 
     def __init__(self, reference=None, alleleResolver=None, moleculeRadius=0, verbose=False, exon_gtf=None, intron_gtf=None, **kwargs):
