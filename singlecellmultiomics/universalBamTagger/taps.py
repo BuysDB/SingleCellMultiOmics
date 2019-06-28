@@ -41,7 +41,7 @@ class TAPSFlagger(DigestFlagger ):
             self.context_mapping[True][ ''.join( ['C']+list(x)) ] =  'H'
             self.context_mapping[False][ ''.join( ['C']+list(x)) ] =  'h'
 
-        print(self.context_mapping)
+        #print(self.context_mapping)
 
     def digest(self, reads):
 
@@ -69,8 +69,6 @@ class TAPSFlagger(DigestFlagger ):
                 continue
             strand = read.get_tag('RS')
             methylationBlocks = []
-
-
 
             for qpos, rpos, ref_base in read.get_aligned_pairs(with_seq=True):
                 methylationStateString = '.'
