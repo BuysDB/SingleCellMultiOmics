@@ -1,6 +1,7 @@
 from singlecellmultiomics.universalBamTagger.digest import DigestFlagger
 from singlecellmultiomics.tagtools import tagtools
 from singlecellmultiomics.utils.sequtils import phred_to_prob
+import numpy as np
 
 class ScarFlagger( DigestFlagger ):
 
