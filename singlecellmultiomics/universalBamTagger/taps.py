@@ -122,9 +122,9 @@ class TAPSFlagger(DigestFlagger ):
             if read is None:
                 continue
             if len(modified_contexts):
-                read.set_tag('CM',','.join(list(sorted(set(modified_contexts)))))
-                read.set_tag('QM',','.join(list(sorted(set(modified_quad_contexts)))))
+                read.set_tag('Cm',','.join(list(sorted(set(modified_contexts)))))
+                read.set_tag('Qm',','.join(list(sorted(set(modified_quad_contexts)))))
             if len(unmodified_contexts):
-                read.set_tag('CU',','.join(list(sorted(set(unmodified_contexts)))))
-                read.set_tag('QU',','.join(list(sorted(set(unmodified_quad_contexts)))))
+                read.set_tag('Cu',','.join(list(sorted(set(unmodified_contexts)))))
+                read.set_tag('Qu',','.join(list(sorted(set(unmodified_quad_contexts)))))
             read.set_tag('MC',fragment_methylated_count)

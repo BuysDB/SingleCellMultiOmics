@@ -58,6 +58,7 @@ tags = [
     SamTag('RS', 'recognizedStrand'),
     SamTag('LI', 'ligationMotif'),
     SamTag('RC', 'moleculeOverseqCountIndex'),
+    SamTag('RR', 'rejectionReason'),
     SamTag('DT', 'sourceType'),
     SamTag('EX', 'exons'),
     SamTag('IN', 'introns'),
@@ -104,9 +105,18 @@ tags = [
     SamTag('H2', 'HexamerSequenceR2'),
     SamTag('H3', 'HexamerPhredScoreR2', isPhred = True),
 
+    SamTag('XM', 'perBaseMethylationStatus'),
+    SamTag('Cm', 'modified3BPContexts'),
+    SamTag('Qm', 'modified4BPContexts'),
+    SamTag('Cu', 'unmodified3BPContexts'),
+    SamTag('Qu', 'unmodified4BPContexts'),
+    SamTag('MC', 'methylatedBaseCountForFragment'),
 
+    SamTag('rS', 'randomPrimerStart'),
+    SamTag('rP', 'randomPrimerSequence')
 
 ]
+
 
 TagDefinitions =  { tag.tag: tag for tag in tags }
 
