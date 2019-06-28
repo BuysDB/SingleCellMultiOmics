@@ -119,6 +119,53 @@ class Molecule():
         for fragment in self.fragments:
             yield fragment
 
+    """Get the total amount of methylated bases
+    Parameters
+    -------
+    context : int
+        3 or 4 base context
+
+    Returns
+    -------
+    collections.Counter
+    sum of methylated bases in contexts
+
+    """
+    def get_methylated_count(self, context=3):
+        r = collections.Counter()
+
+
+    def get_methylation_dict(self):
+        methylated_positions =  collections.Counter () #chrom-pos->count
+        methylated_state = dict()#chrom-pos->1, 0, -1
+        for fragment in self:
+            for read in fragment:
+                if read is None or not read.has_tag('XM'):
+                    continue
+                methylation_status_string = read.get_tag('XM')
+                i = 0
+                for qpos, rpos, ref_base in read.get_aligned_pairs(with_seq=True):
+                    if qpos is None:
+                        continue
+                    if ref_base is None:
+                        continue
+                    if rpos is None:
+                        continue
+                    methylation_status = methylation_status_string[i]
+                    if methylation_status.isupper():
+                        methylated_positions[(read.reference_name, rpos)]+=1
+                        if methylated_state.get( (read.reference_name, rpos),1)==1 :
+                            methylated_state[(read.reference_name, rpos)] = 1
+                        else:
+                            methylated_state[(read.reference_name, rpos)] = -1
+                    else:
+
+                        if methylated_state.get( (read.reference_name, rpos),0)==0:
+                            methylated_state[(read.reference_name, rpos)] = 0
+                        else:
+                            methylated_state[(read.reference_name, rpos)] = -1
+                    i+=1
+        return methylated_positions,methylated_state
 
 def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000):
     molecules = []
@@ -127,6 +174,9 @@ def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment
     for R1,R2 in pysamiterators.iterators.MatePairIterator(alignments,performProperPairCheck=False):
 
         fragment = fragmentClass([R1,R2])
+        if not fragment.is_valid() :
+            continue
+
         added = False
         for molecule in molecules:
             if molecule.add_fragment(fragment):
