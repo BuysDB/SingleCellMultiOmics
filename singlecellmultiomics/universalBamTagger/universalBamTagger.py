@@ -553,10 +553,9 @@ if __name__ == "__main__":
 
 
             # Perform a reheading, sort and index
-            rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {outPathTemp}; }} | samtools view -bS > {outPathTempWithHeader} ;
+            rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {outPathTemp}; }} | samtools view -b > {outPathTempWithHeader} ;
             rm {outPathTemp};
             samtools sort {outPathTempWithHeader} > {outPath}; samtools index {outPath};
-            samtools index {outPath};
             rm {outPathTempWithHeader};
             """
             print(f"Adding read groups to header and sorting.")
@@ -564,10 +563,9 @@ if __name__ == "__main__":
 
             # Same procedure for dedup:
             if args.dedup:
-                rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {dedupOutPathTemp}; }} | samtools view -bS > {dedupOutPathTempWithHeader} ;
+                rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {dedupOutPathTemp}; }} | samtools view -b > {dedupOutPathTempWithHeader} ;
                 rm {dedupOutPathTemp};
                 samtools sort {dedupOutPathTempWithHeader} > {dedupOutPath}; samtools index {dedupOutPath};
-                samtools index {dedupOutPath};
                 rm {dedupOutPathTempWithHeader};
                 """
                 print(f"Dedup file: adding read groups to header and sorting.")
@@ -577,7 +575,6 @@ if __name__ == "__main__":
             # we cannot assign readgroups...
             rehead_cmd = f"""
             samtools sort {outPathTemp} > {outPath}; samtools index {outPath};
-            samtools index {outPath};
             rm {outPathTemp};
             """
             print(f"Adding read groups to header and sorting.")
@@ -586,7 +583,6 @@ if __name__ == "__main__":
             if args.dedup:
                 rehead_cmd = f"""
                 samtools sort {dedupOutPathTemp} > {dedupOutPath}; samtools index {dedupOutPath};
-                samtools index {dedupOutPath};
                 rm {dedupOutPathTemp};
                 """
                 print(f"Dedup file: adding read groups to header and sorting.")
