@@ -9,3 +9,4 @@ from .statistic import *
 from .tag import *
 from .trimming import *
 from .plate import *
+from .methylation import *

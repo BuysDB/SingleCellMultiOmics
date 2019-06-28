@@ -100,7 +100,7 @@ class TAPSFlagger(DigestFlagger ):
                 elif ref_base=='G' and strand=='-':
                     origin = self.reference.fetch(read.reference_name, rpos-2, rpos+1).upper()
                     context = origin.translate(complement)[::-1]
-                    quad_context= origin.translate(self.reference.fetch(read.reference_name, rpos-2, rpos+2))[::-1].upper()
+                    quad_context= self.reference.fetch(read.reference_name, rpos-2, rpos+2).translate(complement)[::-1].upper()
                     if qbase=='A':
                         methylated=True
                     methylationStateString = self.context_mapping[methylated].get(context,'uU'[methylated])
@@ -122,9 +122,9 @@ class TAPSFlagger(DigestFlagger ):
             if read is None:
                 continue
             if len(modified_contexts):
-                read.set_tag('Cm',','.join(list(sorted(set(modified_contexts)))))
-                read.set_tag('Qm',','.join(list(sorted(set(modified_quad_contexts)))))
+                read.set_tag('Cm',','.join(list(sorted(modified_contexts))))
+                read.set_tag('Qm',','.join(list(sorted(modified_quad_contexts))))
             if len(unmodified_contexts):
-                read.set_tag('Cu',','.join(list(sorted(set(unmodified_contexts)))))
-                read.set_tag('Qu',','.join(list(sorted(set(unmodified_quad_contexts)))))
+                read.set_tag('Cu',','.join(list(sorted(unmodified_contexts))))
+                read.set_tag('Qu',','.join(list(sorted(unmodified_quad_contexts))))
             read.set_tag('MC',fragment_methylated_count)

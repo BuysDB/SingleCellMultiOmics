@@ -44,6 +44,7 @@ for library in args.libraries:
     rc = ReadCount(args) # Is also mappability
     statistics = [
         rc,
+        MethylationContextHistogram(args),
         MappingQualityHistogram(args),
         OversequencingHistogram(args),
         FragmentSizeHistogram(args),

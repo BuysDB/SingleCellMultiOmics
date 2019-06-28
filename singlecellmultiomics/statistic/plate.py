@@ -168,7 +168,7 @@ class PlateStatistic(object):
                 for ii,row in df.iterrows():
                     if row[name]>0 and (row[name]<np.percentile(df[name],5) or row[name]>np.percentile(df[name],95)):
                         text = ax.annotate( human_readable(int(row[name])), ( row['col'], row['row']),
-                        ha='center',va='center_baseline',color='w',size=7)
+                        ha='center',va='baseline',color='w',size=7)
                         text.set_path_effects([path_effects.Stroke(linewidth=3, foreground='black'),
                                path_effects.Normal()])
 
