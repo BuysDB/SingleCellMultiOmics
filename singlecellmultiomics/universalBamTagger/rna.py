@@ -4,7 +4,6 @@ class RNA_Flagger():
 
     def __init__(self, reference=None, alleleResolver=None, moleculeRadius=0, verbose=False, exon_gtf=None, intron_gtf=None, **kwargs):
 
-
         self.annotations= {}
         self.annotations['EX'] = singlecellmultiomics.features.FeatureContainer()
         self.annotations['EX'].loadGTF( exon_gtf, select_feature_type=['exon'] )
@@ -33,8 +32,6 @@ class RNA_Flagger():
 
             states = ['.']*read.query_length
             for q_pos, ref_pos in read.get_aligned_pairs(matches_only=True, with_seq=False):
-
-
 
                 overlaps_with_intron = False
                 overlaps_with_exon = False
