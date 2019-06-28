@@ -159,7 +159,8 @@ class DigestFlagger():
             allele = ','.join(sorted(list(allele)))
 
             for read in reads:
-                self.setAllele(read,allele)
+                if read is not None:
+                    self.setAllele(read,allele)
         return allele
 
     # siteInfo describes the site as tuple: (allele, recognizedStrand, umiSequence, ..)
