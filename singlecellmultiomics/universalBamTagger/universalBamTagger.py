@@ -27,6 +27,7 @@ from singlecellmultiomics.universalBamTagger.scchic import ChicSeqFlagger
 from singlecellmultiomics.universalBamTagger.mspjI import MSPJIFlagger
 from singlecellmultiomics.universalBamTagger.scar import ScarFlagger
 from singlecellmultiomics.universalBamTagger.tag import TagFlagger
+from singlecellmultiomics.universalBamTagger.taps import TAPSFlagger
 
 from singlecellmultiomics.utils.sequtils import hamming_distance,phred_to_prob
 
@@ -55,6 +56,7 @@ if __name__ == "__main__" :
     tagAlgs.add_argument('--nla', action='store_true', help='Look for nlaIII digest')
     tagAlgs.add_argument('--chic', action='store_true', help='Look for mnase (scCHIC) digest')
     tagAlgs.add_argument('--scar', action='store_true', help='Create R1 start, cigar sequence based DS tags')
+    tagAlgs.add_argument('--taps', action='store_true', help='Add TAPS based methylation state ')
     tagAlgs.add_argument('-tag', type=str, default=None, help='Determine oversequencing based on a tag (for example XT to count RNA oversequencing for featureCounts counted transcripts. chrom for chromosome/contig count)')
 
 
@@ -90,8 +92,8 @@ if __name__ == "__main__" :
 
     args = argparser.parse_args()
 
-    if not args.mspji and not args.nla and not args.chic and not args.ftag  and not args.rna and args.tag is None and args.atag is None:
-        raise ValueError('Please supply any or a combination of --ftag --nla --chic --mspji')
+    if not args.mspji and not args.nla and not args.chic and not args.ftag  and not args.rna and args.tag is None and args.atag is None and args.taps is None:
+        raise ValueError('Please supply any or a combination of --ftag --nla --chic --mspji --taps')
 
     if args.rna and (args.introns is None or args.exons is None):
         raise ValueError('Please supply exonic and intronic GTF files -introns -exons')
@@ -426,6 +428,8 @@ if __name__ == "__main__":
         flaggers.append( AlleleTagger(**flaggerArguments))
     if args.rna:
         flaggers.append( RNA_Flagger(**flaggerArguments))
+    if args.taps:
+        flaggers.append( TAPSFlagger(**flaggerArguments))
 
 
     if args.alleles is not None:
