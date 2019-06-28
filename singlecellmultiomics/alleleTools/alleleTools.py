@@ -83,7 +83,7 @@ class AlleleResolver:
     def getAllele( self, reads ):
         alleles = set()
         for read in reads:
-            if read.is_unmapped:
+            if read is None or read.is_unmapped:
                 continue
             chrom = read.reference_name
             for  readPos, refPos in read.get_aligned_pairs(matches_only=True):
