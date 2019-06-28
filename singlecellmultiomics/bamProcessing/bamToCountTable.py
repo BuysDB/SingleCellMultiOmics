@@ -158,7 +158,11 @@ def create_count_table(args, return_df=False):
         Big chunk of code for assigning reads to feature is reused twice.
         # i and assigned are globals
         '''
+
         assigned = 0
+        if read is None:
+            return assigned
+
         if read.mapping_quality<args.minMQ:
             return(assigned)
             # continue
