@@ -41,7 +41,7 @@ class TAPSFlagger(DigestFlagger ):
             self.context_mapping[True][ ''.join( ['C']+list(x)) ] =  'H'
             self.context_mapping[False][ ''.join( ['C']+list(x)) ] =  'h'
 
-
+        print(self.context_mapping)
 
     def digest(self, reads):
 
@@ -51,14 +51,28 @@ class TAPSFlagger(DigestFlagger ):
 
         #fragment_size = fragment_end-fragment_start
 
+        modified_contexts  = []
+        unmodified_contexts  = []
+
+        modified_quad_contexts  = []
+        unmodified_quad_contexts  = []
+
+
+        fragment_methylated_count = 0
         for read in reads:
+
             if read is None:
                 continue
             if read.is_unmapped:
                 continue
+            if not read.has_tag('RS'):
+                continue
+            strand = read.get_tag('RS')
             methylationBlocks = []
-            for qpos, rpos, ref_base in read.get_aligned_pairs(with_seq=True):
 
+
+
+            for qpos, rpos, ref_base in read.get_aligned_pairs(with_seq=True):
                 methylationStateString = '.'
                 if qpos is None:
                     continue
@@ -68,21 +82,51 @@ class TAPSFlagger(DigestFlagger ):
                     continue
 
                 ref_base = ref_base.upper()
-                qbase = read.seq[qpos]
-                strand = read.has_tag('RS')
+                qbase = read.seq[qpos].upper()
 
                 methylated = False
                 if ref_base=='C' and strand=='+':
-                    context = self.reference.fetch(read.reference_name, rpos, rpos+3)
+                    context = self.reference.fetch(read.reference_name, rpos, rpos+3).upper()
+                    quad_context = self.reference.fetch(read.reference_name, rpos-1, rpos+3).upper()
+                    #print(ref_base, qbase, context)
                     if qbase=='T':
                         methylated=True
-                    methylationStateString = self.context_mapping[methylated].get(context)
+                    methylationStateString = self.context_mapping[methylated].get(context,'uU'[methylated])
+                    if methylated:
+                        modified_contexts.append(context)
+                        modified_quad_contexts.append(quad_context)
+                    else:
+                        unmodified_contexts.append(context)
+                        unmodified_quad_contexts.append(quad_context)
 
                 elif ref_base=='G' and strand=='-':
-                    context = self.reference.fetch(read.reference_name, rpos-3, rpos).translate(complement)[::-1]
+                    origin = self.reference.fetch(read.reference_name, rpos-2, rpos+1).upper()
+                    context = origin.translate(complement)[::-1]
+                    quad_context= origin.translate(self.reference.fetch(read.reference_name, rpos-2, rpos+2))[::-1].upper()
                     if qbase=='A':
                         methylated=True
-                    methylationStateString = self.context_mapping[methylated].get(context)
+                    methylationStateString = self.context_mapping[methylated].get(context,'uU'[methylated])
+                    if methylated:
+                        modified_contexts.append(context)
+                        modified_quad_contexts.append(quad_context)
+                    else:
+                        unmodified_contexts.append(context)
+                        unmodified_quad_contexts.append(quad_context)
 
+                if methylated:
+                    fragment_methylated_count+=1
                 methylationBlocks.append(methylationStateString)
-            read.set_tag('XM',''.join(methylationBlocks))
+
+
+            if len(methylationBlocks)>0:
+                read.set_tag('XM',''.join(methylationBlocks))
+        for read in reads:
+            if read is None:
+                continue
+            if len(modified_contexts):
+                read.set_tag('CM',','.join(list(sorted(set(modified_contexts)))))
+                read.set_tag('QM',','.join(list(sorted(set(modified_quad_contexts)))))
+            if len(unmodified_contexts):
+                read.set_tag('CU',','.join(list(sorted(set(unmodified_contexts)))))
+                read.set_tag('QU',','.join(list(sorted(set(unmodified_quad_contexts)))))
+            read.set_tag('MC',fragment_methylated_count)
