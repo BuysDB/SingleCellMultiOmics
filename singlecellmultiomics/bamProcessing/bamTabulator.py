@@ -15,9 +15,9 @@ argparser = argparse.ArgumentParser(
  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
  description='Tabulate a bam file to a file where every line corresponds to the features of a single read')
 argparser.add_argument('-o',  type=str, help="output csv path", required=False)
-argparser.add_argument('-featureTags',  type=str, default=None, help='These define the columns of your output matrix. For example if you want sample (SM) allele (DA) and restriction site (DS) use SM,DA,DS. If you want a column containing the chromosome mapped to use "chrom" as feature. All pysam attributes of the read can be used. (reference_name, reference_start, reference_end, ..)')
-
-argparser.add_argument('alignmentfiles',  type=str, nargs='*')
+#argparser.add_argument('-featureTags',  type=str, default=None, help='These define the columns of your output matrix. For example if you want sample (SM) allele (DA) and restriction site (DS) use SM,DA,DS. If you want a column containing the chromosome mapped to use "chrom" as feature. All pysam attributes of the read can be used. (reference_name, reference_start, reference_end, ..)')
+argparser.add_argument('alignmentfile',  type=str)
+argparser.add_argument('featureTags',  type=str)
 argparser.add_argument('-head',  type=int, help='Run the algorithm only on the first N reads to check if the result looks like what you expect.')
 argparser.add_argument('--dedup', action='store_true', help='Count only the first occurence of a molecule. Requires RC tag to be set. Reads without RC tag will be ignored!')
 argparser.add_argument('--showtags',action='store_true', help='Show a list of commonly used tags, and tags present in your bam file' )
@@ -33,12 +33,12 @@ if args.showtags:
     # Find which tags are available in the file:
     head = 1000
     tagObs = collections.Counter()
-    for bamFile in args.alignmentfiles:
-        with pysam.AlignmentFile(bamFile) as f:
-            for i,read in enumerate(f):
-                tagObs += collections.Counter([ k for k,v in   read.get_tags(with_value_type=False)] )
-                if i==(head-1):
-                    break
+
+    with pysam.AlignmentFile(args.alignmentfile) as f:
+        for i,read in enumerate(f):
+            tagObs += collections.Counter([ k for k,v in   read.get_tags(with_value_type=False)] )
+            if i==(head-1):
+                break
     import colorama
 
     print(f'{colorama.Style.BRIGHT}Tags seen in the supplied bam file(s):{colorama.Style.RESET_ALL}')
@@ -63,7 +63,7 @@ if args.showtags:
     exit()
 #if args.o is None:
     #raise ValueError('Supply an output file')
-if args.alignmentfiles is None:
+if args.alignmentfile is None:
     raise ValueError('Supply alignment (BAM) files')
 
 
@@ -83,23 +83,23 @@ if args.o is not None:
 
 wrote=0
 try:
-    for bamFile in args.alignmentfiles:
-        with pysam.AlignmentFile(bamFile) as f:
-            for i,read in enumerate(f):
-                if args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1)):
-                    continue
-                line = '%s\n' % '\t'.join([
-                    #str(read.reference_name) if tag=='chrom' else (str(read.get_tag(tag) if read.has_tag(tag) else 'None'))
-                    str(singlecellmultiomics.modularDemultiplexer.metaFromRead(read,tag))
-                    for tag in featureTags
-                ])
-                if args.o is None:
-                    print(line,end="")
-                else:
-                    tf.write( line )
-                wrote+=1
-                if args.head and wrote>args.head:
-                    break
+
+    with pysam.AlignmentFile(args.alignmentfile, ignore_truncation=True  ) as f:
+        for i,read in enumerate(f):
+            if args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1)):
+                continue
+            line = '%s\n' % '\t'.join([
+                #str(read.reference_name) if tag=='chrom' else (str(read.get_tag(tag) if read.has_tag(tag) else 'None'))
+                str(singlecellmultiomics.modularDemultiplexer.metaFromRead(read,tag))
+                for tag in featureTags
+            ])
+            if args.o is None:
+                print(line,end="")
+            else:
+                tf.write( line )
+            wrote+=1
+            if args.head and wrote>args.head:
+                break
 except (KeyboardInterrupt,BrokenPipeError) as e:
     pass
 
