@@ -57,6 +57,8 @@ setup(
         'singlecellmultiomics/bamProcessing/bamPlotRTstats.py',
         'singlecellmultiomics/bamProcessing/bamPlateVisualisation.py',
         'singlecellmultiomics/bamProcessing/bamFeatureDensityVisualisation.py',
+        'singlecellmultiomics/bamProcessing/bamDuprate.py',
+        
 
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py'
