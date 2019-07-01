@@ -83,7 +83,6 @@ class Fragment():
         spanSelf =  self.get_span()
         spanOther =  other.get_span()
 
-
         if min(  abs( spanSelf[1] - spanOther[1] ),  abs( spanSelf[2] - spanOther[2] ) ) >self.assignment_radius:
             return False
 

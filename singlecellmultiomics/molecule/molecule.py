@@ -164,14 +164,18 @@ class Molecule():
                             methylated_state[(read.reference_name, rpos)] = 0
                         else:
                             methylated_state[(read.reference_name, rpos)] = -1
+                            if methylated_state.get( (read.reference_name, rpos),0)==0:
+                                methylated_state[(read.reference_name, rpos)] = 0
+                            else:
+                                methylated_state[(read.reference_name, rpos)] = -1
                     i+=1
         return methylated_positions,methylated_state
 
-def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000):
+def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000, **pysamArgs):
     molecules = []
 
     added_fragments = 0
-    for R1,R2 in pysamiterators.iterators.MatePairIterator(alignments,performProperPairCheck=False):
+    for R1,R2 in pysamiterators.iterators.MatePairIterator(alignments,performProperPairCheck=False,**pysamArgs):
 
         fragment = fragmentClass([R1,R2])
         if not fragment.is_valid() :
