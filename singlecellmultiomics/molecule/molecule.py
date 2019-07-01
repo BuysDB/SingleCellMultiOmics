@@ -159,11 +159,9 @@ class Molecule():
                         else:
                             methylated_state[(read.reference_name, rpos)] = -1
                     else:
-
-                        if methylated_state.get( (read.reference_name, rpos),0)==0:
-                            methylated_state[(read.reference_name, rpos)] = 0
+                        if methylation_status=='.':
+                            pass
                         else:
-                            methylated_state[(read.reference_name, rpos)] = -1
                             if methylated_state.get( (read.reference_name, rpos),0)==0:
                                 methylated_state[(read.reference_name, rpos)] = 0
                             else:
