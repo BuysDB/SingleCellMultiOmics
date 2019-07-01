@@ -35,4 +35,10 @@ class OversequencingHistogram(StatisticHistogram):
         ax.set_ylabel("# Molecules")
         plt.tight_layout()
         plt.savefig(target_path)
+
+        ax = plt.gca()
+        ax.set_ylim(1,None)
+        ax.set_yscale('log')
+        plt.savefig(target_path.replace('.png','.log.png'))
+
         plt.close()
