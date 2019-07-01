@@ -7,6 +7,7 @@ import collections
 import argparse
 import pandas as pd
 import singlecellmultiomics
+import singlecellmultiomics.molecule
 import singlecellmultiomics.modularDemultiplexer
 TagDefinitions = singlecellmultiomics.modularDemultiplexer.TagDefinitions
 

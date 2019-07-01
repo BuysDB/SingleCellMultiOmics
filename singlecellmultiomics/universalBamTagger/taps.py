@@ -54,9 +54,8 @@ class TAPSFlagger(DigestFlagger ):
         modified_contexts  = []
         unmodified_contexts  = []
 
-        modified_quad_contexts  = []
-        unmodified_quad_contexts  = []
-
+        modified_5b_contexts  = []
+        unmodified_5b_contexts  = []
 
         fragment_methylated_count = 0
         for read in reads:
@@ -85,31 +84,35 @@ class TAPSFlagger(DigestFlagger ):
                 methylated = False
                 if ref_base=='C' and strand=='+':
                     context = self.reference.fetch(read.reference_name, rpos, rpos+3).upper()
-                    quad_context = self.reference.fetch(read.reference_name, rpos-1, rpos+3).upper()
+
+                    three_context = self.reference.fetch(read.reference_name, rpos-1, rpos+2).upper()
+
+                    penta_context = self.reference.fetch(read.reference_name, rpos-2, rpos+3).upper()
                     #print(ref_base, qbase, context)
                     if qbase=='T':
                         methylated=True
                     methylationStateString = self.context_mapping[methylated].get(context,'uU'[methylated])
                     if methylated:
-                        modified_contexts.append(context)
-                        modified_quad_contexts.append(quad_context)
+                        modified_contexts.append(three_context)
+                        modified_5b_contexts.append(penta_context)
                     else:
-                        unmodified_contexts.append(context)
-                        unmodified_quad_contexts.append(quad_context)
+                        unmodified_contexts.append(three_context)
+                        unmodified_5b_contexts.append(penta_context)
 
                 elif ref_base=='G' and strand=='-':
                     origin = self.reference.fetch(read.reference_name, rpos-2, rpos+1).upper()
                     context = origin.translate(complement)[::-1]
-                    quad_context= self.reference.fetch(read.reference_name, rpos-2, rpos+2).translate(complement)[::-1].upper()
+                    three_context = self.reference.fetch(read.reference_name, rpos-1, rpos+2).translate(complement)[::-1].upper()
+                    penta_context= self.reference.fetch(read.reference_name, rpos-2, rpos+3).translate(complement)[::-1].upper()
                     if qbase=='A':
                         methylated=True
                     methylationStateString = self.context_mapping[methylated].get(context,'uU'[methylated])
                     if methylated:
-                        modified_contexts.append(context)
-                        modified_quad_contexts.append(quad_context)
+                        modified_contexts.append(three_context)
+                        modified_5b_contexts.append(penta_context)
                     else:
-                        unmodified_contexts.append(context)
-                        unmodified_quad_contexts.append(quad_context)
+                        unmodified_contexts.append(three_context)
+                        unmodified_5b_contexts.append(penta_context)
 
                 if methylated:
                     fragment_methylated_count+=1
@@ -123,8 +126,8 @@ class TAPSFlagger(DigestFlagger ):
                 continue
             if len(modified_contexts):
                 read.set_tag('Cm',','.join(list(sorted(modified_contexts))))
-                read.set_tag('Qm',','.join(list(sorted(modified_quad_contexts))))
+                read.set_tag('Qm',','.join(list(sorted(modified_5b_contexts))))
             if len(unmodified_contexts):
                 read.set_tag('Cu',','.join(list(sorted(unmodified_contexts))))
-                read.set_tag('Qu',','.join(list(sorted(unmodified_quad_contexts))))
+                read.set_tag('Qu',','.join(list(sorted(unmodified_5b_contexts))))
             read.set_tag('MC',fragment_methylated_count)
