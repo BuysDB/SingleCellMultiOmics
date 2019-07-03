@@ -97,6 +97,10 @@ class PlateStatistic(object):
         self.moleculeCount = collections.defaultdict( collections.Counter ) # (library, mux) -> cell -> counts
         self.skipReasons = collections.Counter()
     def processRead(self,read):
+
+        if not read.has_tag('MX'):
+            return
+
         self.rawFragmentCount[(read.get_tag('LY'), read.get_tag('MX'))][read.get_tag('SM')] += 1
 
         if  read.get_tag('MX').startswith('CS2'):

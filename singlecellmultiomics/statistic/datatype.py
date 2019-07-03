@@ -18,7 +18,8 @@ class DataTypeHistogram(StatisticHistogram):
     def processRead(self,read):
         if read.has_tag('MX'):
             self.histogram[read.get_tag('MX')]+=1
-
+        else:
+            self.histogram["Not demultiplexed"]+=1
     def __repr__(self):
         rt = 'Rejection reasons:'
         for dataType, obs in self.histogram.most_common():
