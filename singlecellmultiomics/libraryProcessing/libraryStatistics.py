@@ -74,31 +74,37 @@ for library in args.libraries:
     demuxFastqFiles = (f'{library}/demultiplexedR1.fastq.gz', f'{library}/demultiplexedR2.fastq.gz')
     demuxFastqFiles_alt = (f'{library}/demultiplexedR1_val_1.fq', f'{library}/demultiplexedR2_val_2.fq')
     rejectFastqFiles =  (f'{library}/rejectsR1.fastq.gz', f'{library}/rejectsR2.fastq.gz')
+    rejectFastqFiles_alt =  (f'{library}/rejectsR1.fastq', f'{library}/rejectsR2.fastq')
 
 
-    rejectedReads =  pyutils.wccountgz(rejectFastqFiles[0])/4
-
+    if os.path.exists(rejectFastqFiles[0]):
+        print(f'\t> {rejectFastqFiles[0]}')
+        rejectedReads =  pyutils.wccountgz(rejectFastqFiles[0])/4
+    else:
+        if os.path.exists(rejectFastqFiles_alt[0]):
+            print(f'\t> {rejectFastqFiles_alt[0]}')
+            rejectedReads =  pyutils.wccount(rejectFastqFiles_alt[0])/4
+        else:
+            rejectedReads=None
 
     if os.path.exists(demuxFastqFiles[0]) and os.path.exists(demuxFastqFiles[1]):
         demuxReads = pyutils.wccountgz(demuxFastqFiles[0])/4
         # Perform fastq line count
         print(f'\t> {demuxFastqFiles[0]}')
-        rc.setRawReadCount(rejectedReads+demuxReads, paired=True)
-
-    else:
-        if os.path.exists(demuxFastqFiles_alt[0]):
-            demuxReads = pyutils.wccountgz(demuxFastqFiles_alt[0])/4
+        if rejectedReads is not None:
             rc.setRawReadCount(rejectedReads+demuxReads, paired=True)
-        print(f'Did not find demultiplexed fastq files at {demuxFastqFiles[0]} {demuxFastqFiles[1]}' )
-
-
-    if os.path.exists(demuxFastqFiles[0]) and os.path.exists(demuxFastqFiles[1]):
-        # Perform fastq line count
-        print(f'\t> {demuxFastqFiles[0]}')
-        #reads = pyutils.wccountgz(demuxFastqFiles[0])/4
         rc.setRawDemuxCount(demuxReads, paired=True)
     else:
-        print(f'Did not find demultiplexed fastq files at {demuxFastqFiles[0]} {demuxFastqFiles[1]}' )
+        if os.path.exists(demuxFastqFiles_alt[0]):
+            print(f'\t> {demuxFastqFiles_alt[0]}')
+            demuxReads = pyutils.wccountgz(demuxFastqFiles_alt[0])/4
+            if rejectedReads is not None:
+                rc.setRawReadCount(rejectedReads+demuxReads, paired=True)
+            rc.setRawDemuxCount(demuxReads, paired=True)
+        else:
+            print(f'Did not find demultiplexed fastq files at {demuxFastqFiles[0]} {demuxFastqFiles[1]}' )
+
+
 
     if bamFile is not None and os.path.exists(bamFile):
         print(f'\t> {bamFile}')
