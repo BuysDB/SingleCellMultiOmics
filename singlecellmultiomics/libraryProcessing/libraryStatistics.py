@@ -32,6 +32,25 @@ argparser.add_argument('libraries',  type=str, nargs='*')
 argparser.add_argument('-head',  type=int)
 args = argparser.parse_args()
 
+
+def select_bam_file(lookup):
+    for l in lookup:
+        if os.path.exists(l):
+            return l
+    return None
+
+def select_fastq_file(lookup):
+    for paths in lookup:
+        if type(paths)==tuple:
+            for path in paths:
+                if os.path.exists(path):
+                    return paths
+        elif os.path.exists(paths):
+            return (paths,)
+    return None
+
+
+
 for library in args.libraries:
     if library.endswith('.bam'):
         # the library is a bam file..
@@ -57,57 +76,64 @@ for library in args.libraries:
         PlateStatistic(args)
     ]
 
+    demuxFastqFilesLookup = [
+        (f'{library}/demultiplexedR1.fastq.gz', f'{library}/demultiplexedR2.fastq.gz'),
+        (f'{library}/demultiplexedR1_val_1.fq.gz', f'{library}/demultiplexedR2_val_2.fq.gz'),
+        (f'{library}/demultiplexedR1_val_1.fq', f'{library}/demultiplexedR2_val_2.fq')
+    ]
+
+    rejectFilesLookup = [
+        (f'{library}/rejectsR1.fastq.gz', f'{library}/rejectsR2.fastq.gz'),
+        (f'{library}/rejectsR1.fastq', f'{library}/rejectsR2.fastq'),
+        (f'{library}/rejectsR1.fq.gz', f'{library}/rejectsR2.fq.gz'),
+        (f'{library}/rejectsR1.fq', f'{library}/rejectsR2.fq'),
+    ]
+
+    taggedFilesLookup = [
+
+        f'{library}/tagged/marked_duplicates.bam',
+        f'{library}/tagged/resorted.featureCounts.bam',
+        f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam',
+        f'{library}/tagged/sorted.bam'
+    ]
+
+
     if 'cluster' in library:
         continue
     print(f'{Style.BRIGHT}Library {library}{Style.RESET_ALL}')
     # Check if the bam file is present
     if bamFile is None:
-        if os.path.exists(f'{library}/tagged/sorted.bam'):
-            bamFile = f'{library}/tagged/sorted.bam'
-        if os.path.exists(f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam'):
-            bamFile = f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam'
-        if os.path.exists(f'{library}/tagged/resorted.featureCounts.bam'):
-            bamFile = f'{library}/tagged/resorted.featureCounts.bam'
+        bamFile = select_bam_file(taggedFilesLookup)
 
     statFile = f'{library}/statistics.pickle.gz'
 
-    demuxFastqFiles = (f'{library}/demultiplexedR1.fastq.gz', f'{library}/demultiplexedR2.fastq.gz')
-    demuxFastqFiles_alt = (f'{library}/demultiplexedR1_val_1.fq', f'{library}/demultiplexedR2_val_2.fq')
-    rejectFastqFiles =  (f'{library}/rejectsR1.fastq.gz', f'{library}/rejectsR2.fastq.gz')
-    rejectFastqFiles_alt =  (f'{library}/rejectsR1.fastq', f'{library}/rejectsR2.fastq')
+    demuxFastqFiles = select_fastq_file(demuxFastqFilesLookup)
+    rejectFastqFiles = select_fastq_file(rejectFilesLookup)
 
-
-    if os.path.exists(rejectFastqFiles[0]):
-        print(f'\t> {rejectFastqFiles[0]}')
-        rejectedReads =  pyutils.wccountgz(rejectFastqFiles[0])/4
-    else:
-        if os.path.exists(rejectFastqFiles_alt[0]):
-            print(f'\t> {rejectFastqFiles_alt[0]}')
-            rejectedReads =  pyutils.wccount(rejectFastqFiles_alt[0])/4
+    if demuxFastqFiles is not None:
+        firstMate = demuxFastqFiles[0]
+        print(f'\tDemuxed > {firstMate}')
+        if firstMate.endswith('.gz'):
+            demuxReads = pyutils.wccountgz(firstMate)/4
         else:
-            rejectedReads=None
+            demuxReads = pyutils.wccount(firstMate)/4
 
-    if os.path.exists(demuxFastqFiles[0]) and os.path.exists(demuxFastqFiles[1]):
-        demuxReads = pyutils.wccountgz(demuxFastqFiles[0])/4
-        # Perform fastq line count
-        print(f'\t> {demuxFastqFiles[0]}')
+    if rejectFastqFiles is not None:
+        firstMate = rejectFastqFiles[0]
+        print(f'\tRejects > {firstMate}')
+        if firstMate.endswith('.gz'):
+            rejectedReads = pyutils.wccountgz(firstMate)/4
+        else:
+            rejectedReads = pyutils.wccount(firstMate)/4
+
+    if demuxReads is not None:
+        rc.setRawDemuxCount(demuxReads, paired=True)
+
         if rejectedReads is not None:
             rc.setRawReadCount(rejectedReads+demuxReads, paired=True)
-        rc.setRawDemuxCount(demuxReads, paired=True)
-    else:
-        if os.path.exists(demuxFastqFiles_alt[0]):
-            print(f'\t> {demuxFastqFiles_alt[0]}')
-            demuxReads = pyutils.wccountgz(demuxFastqFiles_alt[0])/4
-            if rejectedReads is not None:
-                rc.setRawReadCount(rejectedReads+demuxReads, paired=True)
-            rc.setRawDemuxCount(demuxReads, paired=True)
-        else:
-            print(f'Did not find demultiplexed fastq files at {demuxFastqFiles[0]} {demuxFastqFiles[1]}' )
-
-
 
     if bamFile is not None and os.path.exists(bamFile):
-        print(f'\t> {bamFile}')
+        print(f'\tTagged > {bamFile}')
         with pysam.AlignmentFile(bamFile) as f:
             for i,read in enumerate(f):
                 for statistic in statistics:
