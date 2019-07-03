@@ -42,6 +42,7 @@ for library in args.libraries:
     else:
         bamFile=None
     rc = ReadCount(args) # Is also mappability
+
     statistics = [
         rc,
         MethylationContextHistogram(args),
@@ -71,17 +72,23 @@ for library in args.libraries:
     statFile = f'{library}/statistics.pickle.gz'
 
     demuxFastqFiles = (f'{library}/demultiplexedR1.fastq.gz', f'{library}/demultiplexedR2.fastq.gz')
+    demuxFastqFiles_alt = (f'{library}/demultiplexedR1_val_1.fq', f'{library}/demultiplexedR2_val_2.fq')
     rejectFastqFiles =  (f'{library}/rejectsR1.fastq.gz', f'{library}/rejectsR2.fastq.gz')
 
-    demuxReads = pyutils.wccountgz(demuxFastqFiles[0])/4
+
     rejectedReads =  pyutils.wccountgz(rejectFastqFiles[0])/4
 
+
     if os.path.exists(demuxFastqFiles[0]) and os.path.exists(demuxFastqFiles[1]):
+        demuxReads = pyutils.wccountgz(demuxFastqFiles[0])/4
         # Perform fastq line count
         print(f'\t> {demuxFastqFiles[0]}')
         rc.setRawReadCount(rejectedReads+demuxReads, paired=True)
 
     else:
+        if os.path.exists(demuxFastqFiles_alt[0]):
+            demuxReads = pyutils.wccountgz(demuxFastqFiles_alt[0])/4
+            rc.setRawReadCount(rejectedReads+demuxReads, paired=True)
         print(f'Did not find demultiplexed fastq files at {demuxFastqFiles[0]} {demuxFastqFiles[1]}' )
 
 
