@@ -20,6 +20,16 @@ class OversequencingHistogram(StatisticHistogram):
             self.histogram[overseq]+=1
             if overseq>1:
                 self.histogram[overseq-1]-=1
+
+            # Compatibility with picard --TAG_DUPLICATE_SET_MEMBERS
+            """
+            java -jar `which picard.jar` MarkDuplicates I=sorted.bam O=marked_duplicates.bam M=marked_dup_metrics.txt TAG_DUPLICATE_SET_MEMBERS=1
+            """
+        elif read.has_tag('PG'):
+            if read.has_tag('DS') and not read.is_duplicate:
+                self.histogram[read.get_tag('DS')]+=1
+            else:
+                self.histogram[1]+=1
     def __repr__(self):
         return f'The average oversequencing is {pyutils.meanOfCounter(self.histogram)}, SD:{pyutils.varianceOfCounter(self.histogram)}'
 

@@ -68,15 +68,30 @@ class ReadCount(Statistic):
             else:
                 self.unmappedReads['R?']+=1
 
-        if read.has_tag('DS'):
 
-            if read.is_read1:
-                self.totalAssignedSiteReads['R1']+=1
-            else:
-                self.totalAssignedSiteReads['R2']+=1
+        # Compatibility with picard --TAG_DUPLICATE_SET_MEMBERS
+        """
+        java -jar `which picard.jar` MarkDuplicates I=sorted.bam O=marked_duplicates.bam M=marked_dup_metrics.txt TAG_DUPLICATE_SET_MEMBERS=1
+        """
+        if not read.has_tag('MX'): # Bulk sample
+            if not read.is_unmapped:
+                if read.is_duplicate:
+                    pass
+                else:
+                    if read.is_read1:
+                        self.totalDedupReads['R1']+=1
+                    else:
+                        self.totalDedupReads['R2']+=1
 
-        if read.has_tag('RC') and read.get_tag('RC')==1:
-            if  not read.is_secondary:
+        else:
+            if read.has_tag('DS'):
+                if read.is_read1:
+                    self.totalAssignedSiteReads['R1']+=1
+                else:
+                    self.totalAssignedSiteReads['R2']+=1
+
+            if read.has_tag('RC') and read.get_tag('RC')==1:
+
                 if read.is_read1:
                     self.totalDedupReads['R1']+=1
                 else:
@@ -101,5 +116,6 @@ class ReadCount(Statistic):
         yield 'Demultiplexed reads', self.demuxReadCount
         yield 'Mapped reads', self.totalMappedReads
         yield 'UnmappedReads', self.unmappedReads
-        yield 'AssignedSiteReads', self.totalAssignedSiteReads
+        if self.totalAssignedSiteReads['R1']>0 or self.totalAssignedSiteReads['R2']>0 or self.totalAssignedSiteReads['R?']>0:
+            yield 'AssignedSiteReads', self.totalAssignedSiteReads
         yield 'Deduplicated reads', self.totalDedupReads
