@@ -80,7 +80,6 @@ columns96 = list(range(1,13))
 for ci in range(1,97):
     i = ci-1
     rowIndex = math.floor( i/len(columns96) )
-    print(rowIndex)
     row = rows96[rowIndex]
     column = columns96[i%len(columns96)]
     well2index[96][(row,column)] = ci

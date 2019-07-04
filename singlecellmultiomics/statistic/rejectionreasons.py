@@ -18,6 +18,7 @@ class RejectionReasonHistogram(StatisticHistogram):
     def processRead(self,read):
         if read.has_tag('RR'):
             self.histogram[read.get_tag('RR')]+=1
+
     def __repr__(self):
         rt = 'Rejection reasons:'
         for reason, obs in self.histogram.most_common():
@@ -27,6 +28,10 @@ class RejectionReasonHistogram(StatisticHistogram):
         return iter(self.histogram.most_common())
 
     def plot(self, target_path, title=None):
+        if len(self.histogram)==0:
+            print('Not plotting rejection reasons, rejection tag RR was never seen')
+            return
+
         df = pd.DataFrame.from_dict({'Reason':dict(self)}).T
 
         df.plot.bar(figsize=(10,4)).legend(bbox_to_anchor=(1, 0.98))

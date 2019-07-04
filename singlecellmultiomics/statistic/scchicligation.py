@@ -40,7 +40,7 @@ class ScCHICLigation():
         if title is not None:
             ax.set_title(title)
 
-        ax.set_ylabel("Fraction unique cuts with A")
+        ax.set_ylabel("Fraction unique cuts starting with A")
         ax.set_xlabel("# Molecules")
         ax.set_xlim(1,None)
         ax.set_ylim(0,1)

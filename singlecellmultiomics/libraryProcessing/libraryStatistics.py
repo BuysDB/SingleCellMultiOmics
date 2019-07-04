@@ -165,7 +165,7 @@ for library in args.libraries:
                              shell=True
                              ).communicate()[0]
         read2mapped = int(out.partition(b' ')[0])
-        print(read1mapped,read2mapped)
+        
         rc.totalMappedReads['R1'] = read1mapped
         rc.totalMappedReads['R2'] = read2mapped
         # Deduplicated reads have RC:i:1 set, -f 64 selects for R2
@@ -217,6 +217,9 @@ for library in args.libraries:
     if not os.path.exists(plot_dir):
         os.makedirs(plot_dir)
     for statistic in statistics:
+        if not hasattr(statistic, 'plot'):
+            print(f'Not making a plot for {statistic.__class__.__name__} as no plot method is defined')
+            continue
         try:
             statistic.plot(f'{plot_dir}/{statistic.__class__.__name__}.png', title=library_name)
         except Exception as e:

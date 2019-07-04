@@ -45,11 +45,14 @@ class MethylationContextHistogram(StatisticHistogram):
     def plot(self, target_path, title=None):
 
 
+
         for d, name, ncol in [(self.histograms_three_un,'3bp_context_unmodified',1),
             (self.histograms_three,'3bp_context_modified',1),
             (self.histograms_quad_un,'4bp_context_unmodified',3),
             (self.histograms_quad,'4bp_context_modified',3)]:
-
+            if len(d)<1:
+                print(f'No methylation data [{name}], not making plot')
+                continue
             df = pd.DataFrame.from_dict({'obs':d}).T
             df.plot.bar(figsize=(15,6)).legend(bbox_to_anchor=(1, 0.98), ncol=3)
             if title is not None:
