@@ -10,3 +10,4 @@ from .tag import *
 from .trimming import *
 from .plate import *
 from .methylation import *
+from .scchicligation import *

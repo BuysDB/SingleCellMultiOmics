@@ -56,6 +56,7 @@ for library in args.libraries:
         # the library is a bam file..
         bamFile=os.path.abspath( library)
         library= os.path.dirname(os.path.abspath( bamFile) )
+        library_name = os.path.basename( os.path.abspath( bamFile) )
         print("Bam file was supplied:")
         print(bamFile)
     else:
@@ -73,7 +74,9 @@ for library in args.libraries:
         RejectionReasonHistogram(args),
         DataTypeHistogram(args),
         TagHistogram(args),
-        PlateStatistic(args)
+        PlateStatistic(args),
+        ScCHICLigation(args)
+
     ]
 
     demuxFastqFilesLookup = [
@@ -110,6 +113,8 @@ for library in args.libraries:
     demuxFastqFiles = select_fastq_file(demuxFastqFilesLookup)
     rejectFastqFiles = select_fastq_file(rejectFilesLookup)
 
+    demuxReads = None
+    rejectedReads=None
     if demuxFastqFiles is not None:
         firstMate = demuxFastqFiles[0]
         print(f'\tDemuxed > {firstMate}')
@@ -213,7 +218,7 @@ for library in args.libraries:
         os.makedirs(plot_dir)
     for statistic in statistics:
         try:
-            statistic.plot(f'{plot_dir}/{statistic.__class__.__name__}.png', title=library)
+            statistic.plot(f'{plot_dir}/{statistic.__class__.__name__}.png', title=library_name)
         except Exception as e:
             import traceback
             traceback.print_exc()
