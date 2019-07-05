@@ -43,7 +43,7 @@ class ScCHICLigation():
         ax.set_ylabel("Fraction unique cuts starting with A")
         ax.set_xlabel("# Molecules")
         ax.set_xlim(1,None)
-        ax.set_ylim(0,1)
+        ax.set_ylim(-0.5,1.05)
         plt.tight_layout()
         plt.savefig(target_path)
         plt.close()
