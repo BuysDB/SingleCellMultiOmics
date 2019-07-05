@@ -92,6 +92,9 @@ class Fragment():
         else:
             return hamming_distance(self.get_umi(),other.get_umi())<=self.umi_hamming_distance
 
+    def __getitem__(self, index):
+        return self.reads[index]
+
     def is_valid(self):
         return True
 
