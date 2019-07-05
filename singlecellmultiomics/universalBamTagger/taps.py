@@ -10,7 +10,8 @@ class TAPSFlagger(DigestFlagger ):
         DigestFlagger.__init__(self, **kwargs )
         self.overlap_tag = 'XM'
         self.reference = reference
-
+        if self.reference is None:
+            raise ValueError('A reference fasta file is required!')
 
         """
         z unmethylated C in CpG context (CG)
