@@ -2,6 +2,17 @@ from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
 from singlecellmultiomics.fragment import Fragment
 import collections
+import singlecellmultiomics.tagtools as tagtools
+import itertools
+import numpy as np
+
+def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2): #1: read1 2: read2
+    rp = collections.defaultdict(list)
+    for fragment in molecule:
+        if fragment[primer_read-1] is not None:
+            hstart, hseq = tagtools.getRandomPrimerHash(fragment[primer_read-1], onStart=True, primerLength=6)
+            rp[hstart, hseq].append(fragment)
+    return rp
 
 class Molecule():
     def __init__(self, fragments=None, cache_size=10_000):
@@ -68,6 +79,20 @@ class Molecule():
         if chromsome!=self.chromosome:
             return False
         return position < (self.spanStart-self.cache_size*0.5) or position > (self.spanEnd+self.cache_size*0.5)
+
+    def get_mean_rt_fragment_size(self):
+        rt_reactions = molecule_to_random_primer_dict(self)
+        amount_of_rt_reactions = len(rt_reactions)
+
+        #this obtains the maximum fragment size:
+        frag_chrom, frag_start, frag_end = pysamiterators.iterators.getListSpanningCoordinates([v for v in itertools.chain.from_iterable(self) if v is not None])
+
+        #Obtain the fragment sizes of all RT reactions:
+        rt_sizes = []
+        for (rt_end,hexamer), fragment in rt_reactions.items():
+            rt_chrom, rt_start, rt_end = pysamiterators.iterators.getListSpanningCoordinates(itertools.chain.from_iterable(fragment))
+            rt_sizes.append([rt_end-rt_start])
+        return np.mean(rt_sizes)
 
 
     def __getitem__(self, key):
