@@ -21,7 +21,7 @@ class ReadCount(Statistic):
         self.rawReadCount = None
         self.unmappedReads = collections.Counter()
         self.totalDedupReads = collections.Counter()
-        self.totalAssignedSiteReads = collections.Counter()
+        self.totalAssignedSiteReads = collections.Counter({'R1':0,'R2':0})
         self.rejectionReasons = collections.Counter()
         self.demuxReadCount=0
         self.rawReadCount=0
@@ -30,7 +30,10 @@ class ReadCount(Statistic):
         df = pd.DataFrame.from_dict(dict(self))
         df['Raw reads']/=2 # They are paired and only present one time in the dict but are expanded by pandas
         df['Demultiplexed reads']/=2 # same
+
         df = df[['Raw reads', 'Demultiplexed reads', 'Mapped reads','AssignedSiteReads','Deduplicated reads']] #,'UnmappedReads']]
+
+        print(df)
         df.plot.bar(figsize=(10,4)).legend(bbox_to_anchor=(1, 0.98))
         if title is not None:
             plt.title(title)
@@ -116,6 +119,6 @@ class ReadCount(Statistic):
         yield 'Demultiplexed reads', self.demuxReadCount
         yield 'Mapped reads', self.totalMappedReads
         yield 'UnmappedReads', self.unmappedReads
-        if self.totalAssignedSiteReads['R1']>0 or self.totalAssignedSiteReads['R2']>0 or self.totalAssignedSiteReads['R?']>0:
-            yield 'AssignedSiteReads', self.totalAssignedSiteReads
+        #if self.totalAssignedSiteReads['R1']>0 or self.totalAssignedSiteReads['R2']>0 or self.totalAssignedSiteReads['R?']>0:
+        yield 'AssignedSiteReads', self.totalAssignedSiteReads
         yield 'Deduplicated reads', self.totalDedupReads

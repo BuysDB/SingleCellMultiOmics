@@ -25,6 +25,9 @@ class ScCHICLigation():
     def __repr__(self):
         return 'ScCHICLigation: no description'
 
+    def __iter__(self):
+        return iter(self.per_cell_ta_obs)
+
     def plot(self, target_path, title=None):
         fig, ax = plt.subplots(figsize=(4,4))
 
