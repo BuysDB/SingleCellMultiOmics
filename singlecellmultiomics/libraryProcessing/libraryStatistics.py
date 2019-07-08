@@ -52,6 +52,7 @@ def select_fastq_file(lookup):
 
 
 for library in args.libraries:
+    library_name = library
     if library.endswith('.bam'):
         # the library is a bam file..
         bamFile=os.path.abspath( library)
@@ -165,7 +166,7 @@ for library in args.libraries:
                              shell=True
                              ).communicate()[0]
         read2mapped = int(out.partition(b' ')[0])
-        
+
         rc.totalMappedReads['R1'] = read1mapped
         rc.totalMappedReads['R2'] = read2mapped
         # Deduplicated reads have RC:i:1 set, -f 64 selects for R2
