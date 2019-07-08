@@ -30,6 +30,7 @@ argparser = argparse.ArgumentParser(
  description='Obtain statistics from your libraries')
 argparser.add_argument('libraries',  type=str, nargs='*')
 argparser.add_argument('-head',  type=int)
+argparser.add_argument('--v',  action='store_true')
 args = argparser.parse_args()
 
 
@@ -207,7 +208,8 @@ for library in args.libraries:
             statDict[statistic.__class__.__name__] = dict(statistic)
             print(dict(statistic))
         except Exception as e:
-            print(e)
+            if args.v:
+                print(e)
 
     with gzip.open(statFile,'wb') as f:
         pickle.dump(statDict, f)
@@ -224,7 +226,8 @@ for library in args.libraries:
         try:
             statistic.plot(f'{plot_dir}/{statistic.__class__.__name__}.png', title=library_name)
         except Exception as e:
-            import traceback
-            traceback.print_exc()
+            if args.v:
+                import traceback
+                traceback.print_exc()
     # Make RT reaction plot:
     os.system(f"bamPlotRTstats.py {bamFile} -head 2_000_000 --notstrict -o {plot_dir}/RT_")
