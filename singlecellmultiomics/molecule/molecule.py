@@ -140,6 +140,12 @@ class Molecule():
 
         return variant_calls
 
+    def iter_reads(self):
+        for fragment in self.fragments:
+            for read in fragment:
+                if read is not None:
+                    yield read
+
     def __iter__(self):
         for fragment in self.fragments:
             yield fragment
