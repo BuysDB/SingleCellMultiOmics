@@ -80,7 +80,7 @@ class Molecule():
             return False
         return position < (self.spanStart-self.cache_size*0.5) or position > (self.spanEnd+self.cache_size*0.5)
 
-    def get_mean_rt_fragment_size(self):
+    def get_rt_reaction_fragment_sizes(self):
         rt_reactions = molecule_to_random_primer_dict(self)
         amount_of_rt_reactions = len(rt_reactions)
 
@@ -92,11 +92,39 @@ class Molecule():
         for (rt_end,hexamer), fragment in rt_reactions.items():
             rt_chrom, rt_start, rt_end = pysamiterators.iterators.getListSpanningCoordinates(itertools.chain.from_iterable(fragment))
             rt_sizes.append([rt_end-rt_start])
-        return np.mean(rt_sizes)
+        return rt_sizes
+
+    def get_mean_rt_fragment_size(self):
+
+        return np.nanmean(
+            self.get_rt_reaction_fragment_sizes()
+        )
 
 
     def __getitem__(self, key):
         return self.fragments[key]
+
+    '''
+    Obtain consensus bases at locations in genome
+    '''
+    def get_consensus(self):
+        baseObs = collections.Counter()
+        for fragment in self:
+            R1 = fragment.get_R1()
+            R2 = fragment.get_R2()
+            start, end = pysamiterators.iterators.getPairGenomicLocations(
+                R1=R1,
+                R2=R2,
+                allow_unsafe=(R1 is None))
+
+            for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(read):
+                if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
+                    continue
+                query_base = read.seq[query_pos]
+                baseObs[refPos]=query_base
+
+
+
 
     def check_variants(self, variants, exclude_other_calls=True ): #when enabled other calls (non ref non alt will be set None)
         variant_dict = {}
