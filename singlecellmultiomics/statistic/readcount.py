@@ -26,12 +26,19 @@ class ReadCount(Statistic):
         self.demuxReadCount=0
         self.rawReadCount=0
 
-    def plot(self, target_path, title=None):
+    def get_df(self):
         df = pd.DataFrame.from_dict(dict(self))
         df['Raw reads']/=2 # They are paired and only present one time in the dict but are expanded by pandas
         df['Demultiplexed reads']/=2 # same
 
-        df = df[['Raw reads', 'Demultiplexed reads', 'Mapped reads','AssignedSiteReads','Deduplicated reads']] #,'UnmappedReads']]
+        df = df[['Raw reads', 'Demultiplexed reads', 'Mapped reads','AssignedSiteReads','Deduplicated reads']]
+        return df
+
+    def to_csv(self, path):
+        self.get_df().to_csv(path)
+    
+    def plot(self, target_path, title=None):
+        df = self.get_df() #,'UnmappedReads']]
 
         print(df)
         df.plot.bar(figsize=(10,4)).legend(bbox_to_anchor=(1, 0.98))
