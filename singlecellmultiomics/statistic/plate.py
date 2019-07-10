@@ -95,6 +95,13 @@ class PlateStatistic(object):
         self.usableCount = collections.defaultdict( collections.Counter ) # (library, mux) -> cell -> counts
         self.moleculeCount = collections.defaultdict( collections.Counter ) # (library, mux) -> cell -> counts
         self.skipReasons = collections.Counter()
+
+    def to_csv(self, path):
+        pd.DataFrame(self.moleculeCount).to_csv(path.replace('.csv','molecules.csv'))
+        pd.DataFrame(self.usableCount).to_csv(path.replace('.csv','usable_reads.csv'))
+        pd.DataFrame(self.rawFragmentCount).to_csv(path.replace('.csv','raw_fragments.csv'))
+
+
     def processRead(self,read):
 
         if not read.has_tag('MX'):
