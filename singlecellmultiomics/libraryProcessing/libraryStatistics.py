@@ -31,6 +31,7 @@ argparser = argparse.ArgumentParser(
 argparser.add_argument('libraries',  type=str, nargs='*')
 argparser.add_argument('-head',  type=int)
 argparser.add_argument('--v',  action='store_true')
+argparser.add_argument('--nort',  action='store_true')
 args = argparser.parse_args()
 
 
@@ -229,5 +230,22 @@ for library in args.libraries:
             if args.v:
                 import traceback
                 traceback.print_exc()
+
+    # Make tables:
+    table_dir = f'{library}/tables'
+    if not os.path.exists(table_dir):
+        os.makedirs(table_dir)
+    for statistic in statistics:
+        if not hasattr(statistic, 'to_csv'):
+            print(f'Not making a table for {statistic.__class__.__name__} as to_csv method is not defined')
+            continue
+        try:
+            statistic.to_csv(f'{table_dir}/{statistic.__class__.__name__}_{library_name}.csv')
+        except Exception as e:
+            if args.v:
+                import traceback
+                traceback.print_exc()
+
     # Make RT reaction plot:
-    os.system(f"bamPlotRTstats.py {bamFile} -head 2_000_000 --notstrict -o {plot_dir}/RT_")
+    if not args.nort:
+        os.system(f"bamPlotRTstats.py {bamFile} -head 2_000_000 --notstrict -o {plot_dir}/RT_")

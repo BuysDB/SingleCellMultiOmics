@@ -49,3 +49,6 @@ class StatisticHistogram(Statistic):
 
     def __iter__(self):
         return iter(self.histogram.most_common())
+
+    def to_csv(self, path):
+        pd.DataFrame({__class__.__name__:self.histogram}).to_csv(path)

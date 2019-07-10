@@ -14,9 +14,9 @@ class MethylationContextHistogram(StatisticHistogram):
     def __init__(self,args):
         StatisticHistogram.__init__(self, args)
         self.histograms_three = collections.Counter()
-        self.histograms_quad = collections.Counter()
+        self.histograms_pent = collections.Counter()
         self.histograms_three_un = collections.Counter()
-        self.histograms_quad_un = collections.Counter()
+        self.histograms_pent_un = collections.Counter()
 
 
     def processRead(self,read):
@@ -25,11 +25,11 @@ class MethylationContextHistogram(StatisticHistogram):
 
         if read.has_tag('Qm'):
             for modified_context in read.get_tag('Qm').split(','):
-                self.histograms_quad[modified_context]+=1
+                self.histograms_pent[modified_context]+=1
 
         if read.has_tag('Qu'):
             for modified_context in read.get_tag('Qu').split(','):
-                self.histograms_quad_un[modified_context]+=1
+                self.histograms_pent_un[modified_context]+=1
 
         if read.has_tag('Cu'):
             for modified_context in read.get_tag('Cu').split(','):
@@ -48,8 +48,8 @@ class MethylationContextHistogram(StatisticHistogram):
 
         for d, name, ncol in [(self.histograms_three_un,'3bp_context_unmodified',1),
             (self.histograms_three,'3bp_context_modified',1),
-            (self.histograms_quad_un,'4bp_context_unmodified',3),
-            (self.histograms_quad,'4bp_context_modified',3)]:
+            (self.histograms_pent_un,'4bp_context_unmodified',3),
+            (self.histograms_pent,'4bp_context_modified',3)]:
             if len(d)<1:
                 print(f'No methylation data [{name}], not making plot')
                 continue
@@ -66,3 +66,11 @@ class MethylationContextHistogram(StatisticHistogram):
             ax.set_yscale('log')
             plt.savefig(target_path.replace('.png',f'{name}.log.png'))
             plt.close()
+
+
+    def to_csv(self, path):
+
+        pd.DataFrame(self.histograms_three_un).to_csv(path.replace('.csv','unmodified_3_base_context.csv'))
+        pd.DataFrame(self.histograms_pent_un).to_csv(path.replace('.csv','unmodified_5_base_context.csv'))
+        pd.DataFrame(self.histograms_three).to_csv(path.replace('.csv','modified_3_base_context.csv'))
+        pd.DataFrame(self.histograms_pent).to_csv(path.replace('.csv','modified_5_base_context.csv'))

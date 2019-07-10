@@ -3,6 +3,7 @@
 from .statistic import StatisticHistogram
 import singlecellmultiomics.pyutils as pyutils
 import collections
+import pandas as pd
 
 import matplotlib
 matplotlib.rcParams['figure.dpi'] = 160
@@ -50,3 +51,8 @@ class ScCHICLigation():
         plt.tight_layout()
         plt.savefig(target_path)
         plt.close()
+
+
+    def to_csv(self, path):
+
+        pd.DataFrame(self.per_cell_ta_obs).to_csv(path.replace('.csv','TA_obs_per_cell.csv'))
