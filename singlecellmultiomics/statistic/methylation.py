@@ -70,7 +70,7 @@ class MethylationContextHistogram(StatisticHistogram):
 
     def to_csv(self, path):
 
-        pd.DataFrame(self.histograms_three_un).to_csv(path.replace('.csv','unmodified_3_base_context.csv'))
-        pd.DataFrame(self.histograms_pent_un).to_csv(path.replace('.csv','unmodified_5_base_context.csv'))
-        pd.DataFrame(self.histograms_three).to_csv(path.replace('.csv','modified_3_base_context.csv'))
-        pd.DataFrame(self.histograms_pent).to_csv(path.replace('.csv','modified_5_base_context.csv'))
+        pd.DataFrame({'obs':self.histograms_three_un}).to_csv(path.replace('.csv','unmodified_3_base_context.csv'))
+        pd.DataFrame({'obs':self.histograms_pent_un}).to_csv(path.replace('.csv','unmodified_5_base_context.csv'))
+        pd.DataFrame({'obs':self.histograms_three}).to_csv(path.replace('.csv','modified_3_base_context.csv'))
+        pd.DataFrame({'obs':self.histograms_pent}).to_csv(path.replace('.csv','modified_5_base_context.csv'))
