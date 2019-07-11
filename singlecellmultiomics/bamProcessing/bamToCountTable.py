@@ -371,6 +371,7 @@ def create_count_table(args, return_df=False):
             if args.head is not None and i>args.head:
                 break
 
+    print(f"{bamFile} Processed {i} reads, assigned {assigned}")
     print(f"Finished counting, now exporting to {args.o}")
     df = pd.DataFrame.from_dict( countTable )
 
