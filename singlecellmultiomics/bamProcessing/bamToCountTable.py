@@ -71,6 +71,34 @@ def coordinate_to_bins(point, bin_size, sliding_increment):
     return [ (i*sliding_increment,i*sliding_increment+bin_size) for i in range(start_id,end_id+1)]
 
 
+def readTag(read, tag, defective='None'):
+    try:
+        value=singlecellmultiomics.modularDemultiplexer.metaFromRead(read,tag)
+    except Exception as e:
+        value = defective
+    return value
+
+# define if a read should be used
+def read_should_be_counted(read, args):
+    # Read is empty
+    if read is None:
+        return False
+
+    # Mapping quality below threshold
+    if read.mapping_quality<args.minMQ:
+        return False
+
+    # Read has alternative hits
+    if args.filterXA:
+        if read_has_alternative_hits_to_non_alts(read):
+            return False
+
+    # Read is a duplicate
+    if read.is_unmapped or (args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
+        return False
+
+    return True
+
 def create_count_table(args, return_df=False):
 
     if args.bedfile is not None:
@@ -129,6 +157,7 @@ def create_count_table(args, return_df=False):
 
     if args.o is None and not  return_df :
         raise ValueError('Supply an output file')
+
     if args.alignmentfiles is None:
         raise ValueError('Supply alignment (BAM) files')
 
@@ -145,41 +174,31 @@ def create_count_table(args, return_df=False):
         joinFeatures=True
 
 
+    # Define what counts to add ;
+    # iterate counts
 
-    def readTag(read, tag, defective='None'):
-        try:
-            value=singlecellmultiomics.modularDemultiplexer.metaFromRead(read,tag)
-        except Exception as e:
-            value = defective
-        return value
+    # Add the counts to the table given the counting function ( raw / binned / bed / .. )
+
+    # assign a count to a table
+    #def assign_count_to_countTable(countTable, sample, features, args, countToAdd):
+
 
     def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, more_args = []):
-        '''
-        Big chunk of code for assigning reads to feature is reused twice.
-        # i and assigned are globals
-        '''
 
         assigned = 0
-        if read is None:
+        if not read_should_be_counted(read, args):
             return assigned
 
-        if read.mapping_quality<args.minMQ:
-            return(assigned)
-            # continue
-        if args.filterXA:
-            if read_has_alternative_hits_to_non_alts(read):
-                return(assigned)
-                # continue
-        if read.is_unmapped or (args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
-            return(assigned)
-            # continue
+        # Get the sample to which this read belongs
         sample = tuple( readTag(read,tag) for tag in sampleTags )
 
+        # Decide how many counts this read yields
         if args.doNotDivideFragments:
             countToAdd=1
         else:
             countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
         assigned += 1
+
         if args.divideMultimapping:
             if read.has_tag('XA'):
                 countToAdd = countToAdd/len( read.get_tag('XA').split(';') )
