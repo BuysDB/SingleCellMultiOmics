@@ -30,6 +30,8 @@ class TestMoleculeIteration(unittest.TestCase):
                 dedup=False,
                 divideMultimapping=False,
                 doNotDivideFragments=True,
+                splitFeatures=False,
+                feature_delimiter=',',
                  noNames=False) , return_df=True)
         # !samtools idxstats ./singlecellmultiomics/data/mini_nla_test.bam | head -n 1 | cut -f 3
         self.assertEqual(df.loc['chr1'].sum(),563)
@@ -51,6 +53,8 @@ class TestMoleculeIteration(unittest.TestCase):
                 dedup=True,
                 divideMultimapping=False,
                 doNotDivideFragments=True,
+                splitFeatures=False,
+                feature_delimiter=',',
                  noNames=False) , return_df=True)
         # !samtools view ./singlecellmultiomics/data/mini_nla_test.bam | grep 'RC:i:1' | wc -l
         self.assertEqual(df.loc['chr1'].sum(),383)

@@ -7,7 +7,7 @@ import collections
 import argparse
 import pandas as pd
 import numpy as np
-import csv
+import itertools
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 TagDefinitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
 import singlecellmultiomics.modularDemultiplexer
@@ -166,18 +166,53 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
         joined_feature.append(feat)
 
     if joinFeatures:
-        count_increment.append({
-            'key':tuple(joined_feature) ,
-            'features':feature_dict,
-            'samples':[sample],
-            'increment':countToAdd})
-    else:
-        for feature, value in feature_dict.items():
+        if args.splitFeatures:
+            # Obtain all key states:
+            key_states = []
+            for tag in featureTags:
+                value = feature_dict.get(tag)
+                key_states.append(value.split(args.featureDelimiter))
+
+            for state in itertools.product(*key_states):
+                joined_feature = []
+                feature_dict = {
+                    feature:value
+                    for feature, value in zip(featureTags, state)
+                }
+                for feature, value in zip(featureTags, state):
+                    if len(value)>0:
+                        joined_feature.append(value)
+                    else:
+                        joined_feature.append('None')
+
+                count_increment.append({
+                        'key':tuple(joined_feature) ,
+                        'features':feature_dict,
+                        'samples':[sample],
+                        'increment':countToAdd})
+
+        else:
             count_increment.append({
-                'key':(feature, ) ,
-                'features':{feature:value},
+                'key':tuple(joined_feature) ,
+                'features':feature_dict,
                 'samples':[sample],
                 'increment':countToAdd})
+    else:
+        for feature, value in feature_dict.items():
+            if args.splitFeatures:
+                for f in value.split(args.featureDelimiter):
+                    count_increment.append({
+                        'key':(f) ,
+                        'features':{feature:f},
+                        'samples':[sample],
+                        'increment':countToAdd})
+
+            else:
+                count_increment.append({
+                    'key':(feature, ) ,
+                    'features':{feature:value},
+                    'samples':[sample],
+                    'increment':countToAdd})
 
     """
     Now we have a list of dicts:
@@ -237,81 +272,6 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
 
     return assigned
 
-def assignReads_old(read, countTable, args, joinFeatures, featureTags, sampleTags, more_args = []):
-
-    assigned = 0
-    if not read_should_be_counted(read, args):
-        return assigned
-
-    # Get the sample to which this read belongs
-    sample = tuple( readTag(read,tag) for tag in sampleTags )
-
-    # Decide how many counts this read yields
-    if args.doNotDivideFragments:
-        countToAdd=1
-    else:
-        countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
-    assigned += 1
-
-    if args.divideMultimapping:
-        if read.has_tag('XA'):
-            countToAdd = countToAdd/len( read.get_tag('XA').split(';') )
-        elif read.has_tag('NH'):
-            countToAdd = countToAdd/int(read.get_tag('NH') )
-        else:
-            countToAdd = countToAdd
-
-    # Define what counts to add to what samples
-    # [ (sample, feature, increment), .. ]
-    count_increment = []
-
-
-    # bin the increments if binning is enabled
-
-
-
-    # Add the counts to the table given the counting function ( raw / binned / bed / .. )
-
-
-    if not joinFeatures:
-        for tag in featureTags:
-            if args.bin is not None or args.bedfile is not None:
-                raise NotImplementedError("binning for featureTags not implemented, please use joinedFeatureTags!")
-            else:
-                feat = str(readTag(read,tag))
-            countTable[sample][feat]+=countToAdd
-    else:
-        # count a feature multiple times when the record contains multiple values
-        feature =[]
-        for tag in featureTags:
-            if (args.bin is None or tag != args.binTag) :
-                feature.append( str(readTag(read,tag) ))
-        ##
-        if args.bin is not None :
-            # Proper sliding window
-            t = readTag(read,args.binTag)
-            if t is None:
-                return(assigned)
-                # continue
-            for start, end in coordinate_to_bins( int(t), args.bin, args.sliding):
-                # Reject bins outside boundary
-                if not args.keepOverBounds and (start<0 or end>ref_lengths.ref_lengths[read.reference_name]):
-                    return(assigned)
-                    # continue
-                countTable[sample][ tuple( feature+ [start,end])] += countToAdd
-        if args.bedfile is not None:
-            # Get features from bedfile
-            start, end, bname = more_args[0], more_args[1], more_args[2]
-            jfeat = tuple( feature + [start, end, bname])
-            if len(feature):
-                countTable[sample][ tuple( feature + [start, end, bname])] += countToAdd
-        else:
-            if len(feature):
-                if len(featureTags)==1:
-                    countTable[sample][feature[0]]+=countToAdd
-                else:
-                    countTable[sample][tuple(feature)]+=countToAdd
-    return(assigned)
 
 def create_count_table(args, return_df=False):
 
@@ -396,7 +356,6 @@ def create_count_table(args, return_df=False):
                     if i%1_000_000==0:
                         print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
                     assigned += assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags)
-
             else:
                 # for adding counts associated with a bedfile
                 with open(args.bedfile, "r") as bfile:
@@ -450,11 +409,19 @@ if __name__=='__main__':
     argparser.add_argument('alignmentfiles',  type=str, nargs='*')
     argparser.add_argument('-head',  type=int, help='Run the algorithm only on the first N reads to check if the result looks like what you expect.')
 
+    argparser.add_argument('--splitFeatures', action='store_true', help='Split features by , . For example if a read has a feature Foo,Bar increase counts for both Foo and Bar')
+    argparser.add_argument('-featureDelimiter',type=str,default=',')
+
+
+
     multimapping_args = argparser.add_argument_group('Multimapping', '')
     multimapping_args.add_argument('--divideMultimapping', action='store_true', help='Divide multimapping reads over all targets. Requires the XA or NH tag to be set.')
     multimapping_args.add_argument('--doNotDivideFragments', action='store_true', help='When used every read is counted once, a fragment will count as two reads. 0.5 otherwise')
     multimapping_args.add_argument('-minMQ', type=int, default=0, help="minimum mapping quality")
     multimapping_args.add_argument('--filterXA',action='store_true', help="Do not count reads where the XA (alternative hits) tag has been set for a non-alternative locus.")
+
+
+
 
     binning_args = argparser.add_argument_group('Binning', '')
     #binning_args.add_argument('-offset', type=int, default=0, help="Add offset to bin. If bin=1000, offset=200, f=1999 -> 1200. f=4199 -> 3200")
