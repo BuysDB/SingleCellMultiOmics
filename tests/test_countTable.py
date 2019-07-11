@@ -26,6 +26,7 @@ class TestMoleculeIteration(unittest.TestCase):
                 showtags=False,
                 featureTags=None,
                 joinedFeatureTags='reference_name',
+                byValue=None,
                 sampleTags='SM',
                 minMQ=0,
                 filterXA=False,
@@ -46,6 +47,7 @@ class TestMoleculeIteration(unittest.TestCase):
                 head=None,
                 bin=None,
                 binTag='DS',
+                byValue=None,
                 sliding=None,
                 bedfile=None,
                 showtags=False,
@@ -72,6 +74,7 @@ class TestMoleculeIteration(unittest.TestCase):
                 head=None,
                 bin=None,
                 binTag='DS',
+                byValue=None,
                 sliding=None,
                 bedfile='./data/mini_test.bed',
                 showtags=False,
@@ -90,6 +93,34 @@ class TestMoleculeIteration(unittest.TestCase):
         self.assertEqual( df.xs( 'test4',level='bname', drop_level=False).iloc[0].sum() , 1)
         self.assertEqual( df.xs( 'test3',level='bname', drop_level=False).iloc[0].sum() , 383)
 
+    def test_byValue(self):
+        df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
+            SimpleNamespace(
+                alignmentfiles=['./data/mini_nla_test.bam'],
+                o=None,
+                head=None,
+                bin=30,
+                sliding=None,
+                binTag='DS',
+                byValue='RC',
+                bedfile=None,
+                showtags=False,
+                featureTags=None,
+                joinedFeatureTags='reference_name,RC',
+                sampleTags='SM',
+                minMQ=0,
+                filterXA=False,
+                dedup=False,
+                divideMultimapping=False,
+                keepOverBounds=False,
+                doNotDivideFragments=True,
+
+                splitFeatures=False,
+                feature_delimiter=',',
+                 noNames=False) , return_df=True)
+
+        self.assertEqual( df.sum(1).sum(), 765 )
+        self.assertEqual( df['A3-P15-1-1_25'].sum().sum(), 12.0 )
 
 
 if __name__ == '__main__':
