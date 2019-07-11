@@ -70,6 +70,17 @@ def coordinate_to_bins(point, bin_size, sliding_increment):
     start,end,start_id,end_id = coordinate_to_sliding_bin_locations(point, bin_size,sliding_increment)
     return [ (i*sliding_increment,i*sliding_increment+bin_size) for i in range(start_id,end_id+1)]
 
+def read_has_alternative_hits_to_non_alts(read):
+    if read.has_tag('XA'):
+        for alt_align in read.get_tag('XA').split(';'):
+            if len(alt_align)==0: # Sometimes this tag is empty for some reason
+                continue
+
+            hchrom, hpos, hcigar, hflag = alt_align.split(',')
+            if not hchrom.endswith('_alt'):
+                return True
+    return False
+
 
 def readTag(read, tag, defective='None'):
     try:
@@ -107,7 +118,6 @@ def create_count_table(args, return_df=False):
     if args.sliding is None:
         args.sliding = args.bin
 
-
     if not return_df and args.o is None and  args.alignmentfiles is not None:
         args.showtags=True
 
@@ -144,16 +154,7 @@ def create_count_table(args, return_df=False):
             print(f'{colorama.Style.BRIGHT}{tag}{colorama.Style.RESET_ALL}\t{t.humanName}\t{colorama.Style.DIM}{"PHRED" if t.isPhred else ""}{colorama.Style.RESET_ALL}')
         exit()
 
-    def read_has_alternative_hits_to_non_alts(read):
-        if read.has_tag('XA'):
-            for alt_align in read.get_tag('XA').split(';'):
-                if len(alt_align)==0: # Sometimes this tag is empty for some reason
-                    continue
 
-                hchrom, hpos, hcigar, hflag = alt_align.split(',')
-                if not hchrom.endswith('_alt'):
-                    return True
-        return False
 
     if args.o is None and not  return_df :
         raise ValueError('Supply an output file')
