@@ -160,12 +160,16 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
 
     feature_dict = {}
     joined_feature = []
+    used_features =  []
     for tag in featureTags:
         feat = str(readTag(read,tag))
         feature_dict[tag] = feat
         if args.bin is not None and args.binTag==tag:
             continue
+        if args.byValue is not None and tag==args.byValue:
+            continue
         joined_feature.append(feat)
+        used_features.append(tag)
 
     if joinFeatures:
         if args.splitFeatures:
@@ -190,19 +194,36 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
                     else:
                         joined_feature.append('None')
 
-                count_increment.append({
-                        'key':tuple(joined_feature) ,
-                        'features':feature_dict,
-                        'samples':[sample],
-                        'increment':countToAdd})
+                if args.byValue is not None:
+                    raise NotImplementedError('By value is not implemented for --splitFeatures')
 
+                else:
+                    count_increment.append({
+                            'key':tuple(joined_feature) ,
+                            'features':feature_dict,
+                            'samples':[sample],
+                            'increment':countToAdd})
+                    joined_feature[0]
         else:
+            if args.byValue is not None:
 
-            count_increment.append({
-                'key':tuple(joined_feature) ,
-                'features':feature_dict,
-                'samples':[sample],
-                'increment':countToAdd})
+                try:
+                    add = float(feature_dict.get(args.byValue,0))
+                except ValueError:
+                    add = 0
+
+                count_increment.append({
+                    'key':tuple(joined_feature) ,
+                    'features':feature_dict,
+                    'samples':[sample],
+                    'increment':add})
+
+            else:
+                count_increment.append({
+                    'key':tuple(joined_feature) ,
+                    'features':feature_dict,
+                    'samples':[sample],
+                    'increment':countToAdd})
     else:
         if args.bin is not None:
             raise NotImplementedError('Try using -joinedFeatureTags')
@@ -440,8 +461,6 @@ if __name__=='__main__':
     argparser.add_argument('--splitFeatures', action='store_true', help='Split features by , . For example if a read has a feature Foo,Bar increase counts for both Foo and Bar')
     argparser.add_argument('-featureDelimiter',type=str,default=',')
 
-
-
     multimapping_args = argparser.add_argument_group('Multimapping', '')
     multimapping_args.add_argument('--divideMultimapping', action='store_true', help='Divide multimapping reads over all targets. Requires the XA or NH tag to be set.')
     multimapping_args.add_argument('--doNotDivideFragments', action='store_true', help='When used every read is counted once, a fragment will count as two reads. 0.5 otherwise')
@@ -459,6 +478,7 @@ if __name__=='__main__':
     binning_args.add_argument('-bin', type=int, help="Devide and floor to bin features. If bin=1000, f=1999 -> 1000." )
     #binning_args.add_argument('--showBinEnd', action='store_true', help="If True, then show DS column as 120000-220000, otherwise 120000 only. This specifies the bin range in which the read was counted" ) this is now always on!
     binning_args.add_argument('-binTag',default='DS' )
+    binning_args.add_argument('--byValue',type='str', help='Extract the value from the supplied tag and use this as count to add')
 
     bed_args = argparser.add_argument_group('Bedfiles', '')
     bed_args.add_argument('-bedfile', type=str, help="Bed file containing 3 columns, chromo, start, end to be read for fetching counts")
