@@ -163,6 +163,8 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
     for tag in featureTags:
         feat = str(readTag(read,tag))
         feature_dict[tag] = feat
+        if args.bin is not None and args.binTag==tag:
+            continue
         joined_feature.append(feat)
 
     if joinFeatures:
@@ -180,6 +182,9 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
                     for feature, value in zip(featureTags, state)
                 }
                 for feature, value in zip(featureTags, state):
+                    if args.bin is not None and args.binTag==feature:
+                        continue
+
                     if len(value)>0:
                         joined_feature.append(value)
                     else:
@@ -192,12 +197,16 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
                         'increment':countToAdd})
 
         else:
+
             count_increment.append({
                 'key':tuple(joined_feature) ,
                 'features':feature_dict,
                 'samples':[sample],
                 'increment':countToAdd})
     else:
+        if args.bin is not None:
+            raise NotImplementedError('Try using -joinedFeatureTags')
+
         for feature, value in feature_dict.items():
             if args.splitFeatures:
                 for f in value.split(args.featureDelimiter):
@@ -205,7 +214,8 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
                         'key':(f) ,
                         'features':{feature:f},
                         'samples':[sample],
-                        'increment':countToAdd})
+                        'increment':countToAdd
+                        })
 
             else:
                 count_increment.append({
@@ -230,8 +240,9 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
             key = dtable['key']
             countToAdd = dtable['increment']
             samples = dtable['samples']
-
             value_to_be_binned = dtable['features'].get(args.binTag, None)
+
+
             if value_to_be_binned is None or  value_to_be_binned == 'None':
                 continue
 
@@ -286,6 +297,7 @@ def create_count_table(args, return_df=False):
     if not return_df and args.o is None and  args.alignmentfiles is not None:
         args.showtags=True
 
+
     if args.showtags:
         # Find which tags are available in the file:
         head = 1000
@@ -331,13 +343,14 @@ def create_count_table(args, return_df=False):
     if args.featureTags is not None:
         featureTags= args.featureTags.split(',')
 
-    if args.bin is not None:
-        featureTags = [args.binTag]
-        joinFeatures=True
-
     if args.joinedFeatureTags is not None:
         featureTags= args.joinedFeatureTags.split(',')
         joinFeatures=True
+
+    if args.bin is not None and not args.binTag in featureTags:
+        print("The bin tag was not supplied as feature, automatically appending the bin feature.")
+        featureTags.append(args.binTag)
+
 
 
     sampleTags= args.sampleTags.split(',')
@@ -385,14 +398,22 @@ def create_count_table(args, return_df=False):
     if not args.noNames:
         df.columns.set_names([tagToHumanName(t,TagDefinitions ) for t in sampleTags], inplace=True)
 
-        if args.bin is not None:
-            df.index.set_names([tagToHumanName(t,TagDefinitions ) for t in featureTags if t!=args.binTag]+['start','end'], inplace=True)
-        if args.bedfile is not None:
-            df.index.set_names([tagToHumanName(t,TagDefinitions ) for t in featureTags if t!=args.binTag]+['start','end', 'bname'], inplace=True)
-        elif joinFeatures:
-            df.index.set_names([tagToHumanName(t, TagDefinitions) for t in featureTags], inplace=True)
-        else:
-            df.index.set_names(','.join([tagToHumanName(t, TagDefinitions) for t in featureTags]), inplace=True)
+        try:
+            if args.bin is not None:
+                index_names = [tagToHumanName(t,TagDefinitions ) for t in featureTags if t!=args.binTag]+['start','end']
+                df.index.set_names(index_names, inplace=True)
+            elif args.bedfile is not None:
+                index_names = [tagToHumanName(t,TagDefinitions ) for t in featureTags if t!=args.binTag]+['start','end', 'bname']
+                df.index.set_names(index_names, inplace=True)
+            elif joinFeatures:
+                index_names = [tagToHumanName(t, TagDefinitions) for t in featureTags]
+                df.index.set_names(index_names, inplace=True)
+            else:
+                index_names = ','.join([tagToHumanName(t, TagDefinitions) for t in featureTags])
+                df.index.set_names(index_names, inplace=True)
+        except Exception as e:
+            pass
+        print(index_names)
 
     if return_df:
         return df
