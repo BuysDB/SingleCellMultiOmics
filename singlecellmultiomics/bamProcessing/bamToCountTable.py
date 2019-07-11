@@ -91,7 +91,20 @@ def readTag(read, tag, defective='None'):
 
 # define if a read should be used
 def read_should_be_counted(read, args):
-    # Read is empty
+    """
+    Check if a read should be counted given the filter arguments
+
+    Parameters
+    ----------
+    read : pysam.AlignedSegment or None
+        read to check if it should be counted
+
+    Returns
+    -------
+    bool
+    """
+
+# Read is empty
     if read is None:
         return False
 
@@ -310,7 +323,6 @@ def create_count_table(args, return_df=False):
         df.to_csv(args.o)
     return args.o
     print("Finished export.")
-
 
 
 if __name__=='__main__':
