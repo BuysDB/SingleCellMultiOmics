@@ -155,6 +155,116 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
 
     # Define what counts to add to what samples
     # [ (sample, feature, increment), .. ]
+    count_increment = []
+
+
+    feature_dict = {}
+    joined_feature = []
+    for tag in featureTags:
+        feat = str(readTag(read,tag))
+        feature_dict[tag] = feat
+        joined_feature.append(feat)
+
+    if joinFeatures:
+        count_increment.append({
+            'key':tuple(joined_feature) ,
+            'features':feature_dict,
+            'samples':[sample],
+            'increment':countToAdd})
+    else:
+        for feature, value in feature_dict.items():
+            count_increment.append({
+                'key':(feature, ) ,
+                'features':{feature:value},
+                'samples':[sample],
+                'increment':countToAdd})
+
+    """
+    Now we have a list of dicts:
+    {
+    'key':feature,
+    'features':{feature:value},
+    'samples':[sample],
+    'increment':countToAdd})
+    }
+    """
+
+    # increment the count table accordingly:
+    if args.bin is not None :
+        for dtable in count_increment:
+            key = dtable['key']
+            countToAdd = dtable['increment']
+            samples = dtable['samples']
+
+            value_to_be_binned = dtable['features'].get(args.binTag, None)
+            if value_to_be_binned is None or  value_to_be_binned == 'None':
+                continue
+
+            for start, end in coordinate_to_bins( int(value_to_be_binned), args.bin, args.sliding):
+                # Reject bins outside boundary
+                if not args.keepOverBounds and (start<0 or end>args.ref_lengths[read.reference_name]):
+                    continue
+                for sample in samples:
+                    countTable[sample][ tuple( list(key)+ [start,end])] += countToAdd
+
+
+    elif args.bedfile is not None:
+
+        for dtable in count_increment:
+            key = dtable['key']
+            countToAdd = dtable['increment']
+            samples = dtable['samples']
+
+            # Get features from bedfile
+            start, end, bname = more_args[0], more_args[1], more_args[2]
+            jfeat = tuple( list( key) + [start, end, bname])
+            if len(key):
+                countTable[sample][ jfeat ] += countToAdd
+            #else: this will also emit non assigned reads
+            #    countTable[sample][ 'None' ] += countToAdd
+
+    else:
+        for dtable in count_increment:
+            key = dtable['key']
+            countToAdd = dtable['increment']
+            samples = dtable['samples']
+
+            for sample in samples:
+                if len(key)==1:
+                    countTable[sample][key[0]]+=countToAdd
+                else:
+                    countTable[sample][key]+=countToAdd
+
+    return assigned
+
+def assignReads_old(read, countTable, args, joinFeatures, featureTags, sampleTags, more_args = []):
+
+    assigned = 0
+    if not read_should_be_counted(read, args):
+        return assigned
+
+    # Get the sample to which this read belongs
+    sample = tuple( readTag(read,tag) for tag in sampleTags )
+
+    # Decide how many counts this read yields
+    if args.doNotDivideFragments:
+        countToAdd=1
+    else:
+        countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
+    assigned += 1
+
+    if args.divideMultimapping:
+        if read.has_tag('XA'):
+            countToAdd = countToAdd/len( read.get_tag('XA').split(';') )
+        elif read.has_tag('NH'):
+            countToAdd = countToAdd/int(read.get_tag('NH') )
+        else:
+            countToAdd = countToAdd
+
+    # Define what counts to add to what samples
+    # [ (sample, feature, increment), .. ]
+    count_increment = []
+
 
     # bin the increments if binning is enabled
 
@@ -162,7 +272,7 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
 
     # Add the counts to the table given the counting function ( raw / binned / bed / .. )
 
-    count_increment = []
+
     if not joinFeatures:
         for tag in featureTags:
             if args.bin is not None or args.bedfile is not None:
@@ -185,7 +295,7 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
                 # continue
             for start, end in coordinate_to_bins( int(t), args.bin, args.sliding):
                 # Reject bins outside boundary
-                if not args.keepOverBounds and (start<0 or end>ref_lengths[read.reference_name]):
+                if not args.keepOverBounds and (start<0 or end>ref_lengths.ref_lengths[read.reference_name]):
                     return(assigned)
                     # continue
                 countTable[sample][ tuple( feature+ [start,end])] += countToAdd
@@ -276,10 +386,10 @@ def create_count_table(args, return_df=False):
 
         with pysam.AlignmentFile(bamFile) as f:
 
-            if args.bin and not args.keepOverBounds:
+            if args.bin:
                 # Obtain the reference sequence lengths
                 ref_lengths = {r:f.get_reference_length(r) for r in f.references}
-
+                args.ref_lengths = ref_lengths
             if args.bedfile is None:
                 # for adding counts associated with a tag OR with binning
                 for i,read in enumerate(f):
