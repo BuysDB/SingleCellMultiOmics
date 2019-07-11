@@ -110,6 +110,75 @@ def read_should_be_counted(read, args):
 
     return True
 
+def tagToHumanName(tag,TagDefinitions ):
+    if not tag in TagDefinitions:
+        return tag
+    return TagDefinitions[tag].humanName
+
+
+def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, more_args = []):
+
+    assigned = 0
+    if not read_should_be_counted(read, args):
+        return assigned
+
+    # Get the sample to which this read belongs
+    sample = tuple( readTag(read,tag) for tag in sampleTags )
+
+    # Decide how many counts this read yields
+    if args.doNotDivideFragments:
+        countToAdd=1
+    else:
+        countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
+    assigned += 1
+
+    if args.divideMultimapping:
+        if read.has_tag('XA'):
+            countToAdd = countToAdd/len( read.get_tag('XA').split(';') )
+        elif read.has_tag('NH'):
+            countToAdd = countToAdd/int(read.get_tag('NH') )
+        else:
+            countToAdd = countToAdd
+
+    if not joinFeatures:
+        for tag in featureTags:
+            if args.bin is not None or args.bedfile is not None:
+                raise NotImplementedError("binning for featureTags not implemented, please use joinedFeatureTags!")
+            else:
+                feat = str(readTag(read,tag))
+            countTable[sample][feat]+=countToAdd
+    else:
+        feature =[]
+        for tag in featureTags:
+            if (args.bin is None or tag != args.binTag) :
+                feature.append( str(readTag(read,tag) ))
+        ##
+        if args.bin is not None :
+            # Proper sliding window
+            t = readTag(read,args.binTag)
+            if t is None:
+                return(assigned)
+                # continue
+            for start, end in coordinate_to_bins( int(t), args.bin, args.sliding):
+                # Reject bins outside boundary
+                if not args.keepOverBounds and (start<0 or end>ref_lengths[read.reference_name]):
+                    return(assigned)
+                    # continue
+                countTable[sample][ tuple( feature+ [start,end])] += countToAdd
+        if args.bedfile is not None:
+            # Get features from bedfile
+            start, end, bname = more_args[0], more_args[1], more_args[2]
+            jfeat = tuple( feature + [start, end, bname])
+            if len(feature):
+                countTable[sample][ tuple( feature + [start, end, bname])] += countToAdd
+        else:
+            if len(feature):
+                if len(featureTags)==1:
+                    countTable[sample][feature[0]]+=countToAdd
+                else:
+                    countTable[sample][tuple(feature)]+=countToAdd
+    return(assigned)
+
 def create_count_table(args, return_df=False):
 
     if args.bedfile is not None:
@@ -155,7 +224,6 @@ def create_count_table(args, return_df=False):
         exit()
 
 
-
     if args.o is None and not  return_df :
         raise ValueError('Supply an output file')
 
@@ -182,70 +250,6 @@ def create_count_table(args, return_df=False):
 
     # assign a count to a table
     #def assign_count_to_countTable(countTable, sample, features, args, countToAdd):
-
-
-    def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, more_args = []):
-
-        assigned = 0
-        if not read_should_be_counted(read, args):
-            return assigned
-
-        # Get the sample to which this read belongs
-        sample = tuple( readTag(read,tag) for tag in sampleTags )
-
-        # Decide how many counts this read yields
-        if args.doNotDivideFragments:
-            countToAdd=1
-        else:
-            countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
-        assigned += 1
-
-        if args.divideMultimapping:
-            if read.has_tag('XA'):
-                countToAdd = countToAdd/len( read.get_tag('XA').split(';') )
-            elif read.has_tag('NH'):
-                countToAdd = countToAdd/int(read.get_tag('NH') )
-            else:
-                countToAdd = countToAdd
-
-        if not joinFeatures:
-            for tag in featureTags:
-                if args.bin is not None or args.bedfile is not None:
-                    raise NotImplementedError("binning for featureTags not implemented, please use joinedFeatureTags!")
-                else:
-                    feat = str(readTag(read,tag))
-                countTable[sample][feat]+=countToAdd
-        else:
-            feature =[]
-            for tag in featureTags:
-                if (args.bin is None or tag != args.binTag) :
-                    feature.append( str(readTag(read,tag) ))
-            ##
-            if args.bin is not None :
-                # Proper sliding window
-                t = readTag(read,args.binTag)
-                if t is None:
-                    return(assigned)
-                    # continue
-                for start, end in coordinate_to_bins( int(t), args.bin, args.sliding):
-                    # Reject bins outside boundary
-                    if not args.keepOverBounds and (start<0 or end>ref_lengths[read.reference_name]):
-                        return(assigned)
-                        # continue
-                    countTable[sample][ tuple( feature+ [start,end])] += countToAdd
-            if args.bedfile is not None:
-                # Get features from bedfile
-                start, end, bname = more_args[0], more_args[1], more_args[2]
-                jfeat = tuple( feature + [start, end, bname])
-                if len(feature):
-                    countTable[sample][ tuple( feature + [start, end, bname])] += countToAdd
-            else:
-                if len(feature):
-                    if len(featureTags)==1:
-                        countTable[sample][feature[0]]+=countToAdd
-                    else:
-                        countTable[sample][tuple(feature)]+=countToAdd
-        return(assigned)
 
     sampleTags= args.sampleTags.split(',')
     countTable = collections.defaultdict(collections.Counter) # cell->feature->count
@@ -280,11 +284,6 @@ def create_count_table(args, return_df=False):
 
                 if args.head is not None and i>args.head:
                     break
-
-    def tagToHumanName(tag,TagDefinitions ):
-        if not tag in TagDefinitions:
-            return tag
-        return TagDefinitions[tag].humanName
 
     print(f"Finished counting, now exporting to {args.o}")
     df = pd.DataFrame.from_dict( countTable )
