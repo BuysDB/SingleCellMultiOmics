@@ -358,9 +358,9 @@ def create_count_table(args, return_df=False):
                     if i%1_000_000==0:
                         print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
 
-                        if args.head is not None and i>args.head:
-                            break
-                            
+                    if args.head is not None and i>args.head:
+                        break
+
                     assigned += assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags)
             else:
                 # for adding counts associated with a bedfile
