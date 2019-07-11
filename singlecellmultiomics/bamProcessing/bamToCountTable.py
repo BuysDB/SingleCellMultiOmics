@@ -153,6 +153,16 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
         else:
             countToAdd = countToAdd
 
+    # Define what counts to add to what samples
+    # [ (sample, feature, increment), .. ]
+
+    # bin the increments if binning is enabled
+
+
+
+    # Add the counts to the table given the counting function ( raw / binned / bed / .. )
+
+    count_increment = []
     if not joinFeatures:
         for tag in featureTags:
             if args.bin is not None or args.bedfile is not None:
@@ -161,6 +171,7 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
                 feat = str(readTag(read,tag))
             countTable[sample][feat]+=countToAdd
     else:
+        # count a feature multiple times when the record contains multiple values
         feature =[]
         for tag in featureTags:
             if (args.bin is None or tag != args.binTag) :
@@ -243,6 +254,7 @@ def create_count_table(args, return_df=False):
     if args.alignmentfiles is None:
         raise ValueError('Supply alignment (BAM) files')
 
+
     joinFeatures = False
     if args.featureTags is not None:
         featureTags= args.featureTags.split(',')
@@ -256,14 +268,6 @@ def create_count_table(args, return_df=False):
         joinFeatures=True
 
 
-    # Define what counts to add ;
-    # iterate counts
-
-    # Add the counts to the table given the counting function ( raw / binned / bed / .. )
-
-    # assign a count to a table
-    #def assign_count_to_countTable(countTable, sample, features, args, countToAdd):
-
     sampleTags= args.sampleTags.split(',')
     countTable = collections.defaultdict(collections.Counter) # cell->feature->count
 
@@ -273,7 +277,7 @@ def create_count_table(args, return_df=False):
         with pysam.AlignmentFile(bamFile) as f:
 
             if args.bin and not args.keepOverBounds:
-                # Obtain the referenence sequence lengths
+                # Obtain the reference sequence lengths
                 ref_lengths = {r:f.get_reference_length(r) for r in f.references}
 
             if args.bedfile is None:
@@ -286,10 +290,10 @@ def create_count_table(args, return_df=False):
             else:
                 # for adding counts associated with a bedfile
                 with open(args.bedfile, "r") as bfile:
-                    breader = csv.reader(bfile, delimiter = "\t")
-                    for row in breader:
-                        print(row)
-                        chromo, start, end, bname = row[0], int(row[1]), int(row[2]), row[3]
+                    #breader = csv.reader(bfile, delimiter = "\t")
+                    for row in bfile:
+                        parts = row.strip().split()
+                        chromo, start, end, bname = parts[0], int(parts[1]), int(parts[2]), parts[3]
                         for i, read in enumerate(f.fetch(chromo, start, end)):
                             if i%1_000_000==0:
                                 print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
@@ -301,7 +305,7 @@ def create_count_table(args, return_df=False):
     print(f"Finished counting, now exporting to {args.o}")
     df = pd.DataFrame.from_dict( countTable )
 
-
+    # Set names of indices
     if not args.noNames:
         df.columns.set_names([tagToHumanName(t,TagDefinitions ) for t in sampleTags], inplace=True)
 
