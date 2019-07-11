@@ -275,6 +275,8 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
 
 def create_count_table(args, return_df=False):
 
+    if len(args.alignmentfiles)==0:
+        raise ValueError("Supply at least one bam file")
     if args.bedfile is not None:
         assert(os.path.isfile(args.bedfile))
 
@@ -355,6 +357,10 @@ def create_count_table(args, return_df=False):
                 for i,read in enumerate(f):
                     if i%1_000_000==0:
                         print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
+
+                        if args.head is not None and i>args.head:
+                            break
+                            
                     assigned += assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags)
             else:
                 # for adding counts associated with a bedfile
@@ -368,10 +374,10 @@ def create_count_table(args, return_df=False):
                                 print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
                             assigned += assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, more_args = [start, end, bname])
 
-            if args.head is not None and i>args.head:
-                break
+                            if args.head is not None and i>args.head:
+                                break
 
-    print(f"{bamFile} Processed {i} reads, assigned {assigned}")
+            print(f"Finished: {bamFile} Processed {i} reads, assigned {assigned}")
     print(f"Finished counting, now exporting to {args.o}")
     df = pd.DataFrame.from_dict( countTable )
 
