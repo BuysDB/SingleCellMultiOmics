@@ -17,8 +17,10 @@ class TestMoleculeIteration(unittest.TestCase):
         df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
             SimpleNamespace(
                 alignmentfiles=['./data/mini_nla_test.bam'],
+                head=None,
                 o=None,
                 bin=None,
+                binTag='DS',
                 sliding=None,
                 bedfile=None,
                 showtags=False,
@@ -41,7 +43,9 @@ class TestMoleculeIteration(unittest.TestCase):
             SimpleNamespace(
                 alignmentfiles=['./data/mini_nla_test.bam'],
                 o=None,
+                head=None,
                 bin=None,
+                binTag='DS',
                 sliding=None,
                 bedfile=None,
                 showtags=False,
@@ -58,6 +62,34 @@ class TestMoleculeIteration(unittest.TestCase):
                  noNames=False) , return_df=True)
         # !samtools view ./singlecellmultiomics/data/mini_nla_test.bam | grep 'RC:i:1' | wc -l
         self.assertEqual(df.loc['chr1'].sum(),383)
+
+
+    def test_bed_counting(self):
+        df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
+            SimpleNamespace(
+                alignmentfiles=['./data/mini_nla_test.bam'],
+                o=None,
+                head=None,
+                bin=None,
+                binTag='DS',
+                sliding=None,
+                bedfile='./data/mini_test.bed',
+                showtags=False,
+                featureTags=None,
+                joinedFeatureTags='reference_name',
+                sampleTags='SM',
+                minMQ=0,
+                filterXA=False,
+                dedup=True,
+                divideMultimapping=False,
+                doNotDivideFragments=True,
+                splitFeatures=False,
+                feature_delimiter=',',
+                 noNames=False) , return_df=True)
+        # !samtools view ./singlecellmultiomics/data/mini_nla_test.bam | grep 'RC:i:1' | wc -l
+        self.assertEqual( df.xs( 'test4',level='bname', drop_level=False).iloc[0].sum() , 1)
+        self.assertEqual( df.xs( 'test3',level='bname', drop_level=False).iloc[0].sum() , 383)
+
 
 
 if __name__ == '__main__':
