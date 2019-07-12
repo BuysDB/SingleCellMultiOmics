@@ -478,7 +478,7 @@ if __name__=='__main__':
     binning_args.add_argument('-bin', type=int, help="Devide and floor to bin features. If bin=1000, f=1999 -> 1000." )
     #binning_args.add_argument('--showBinEnd', action='store_true', help="If True, then show DS column as 120000-220000, otherwise 120000 only. This specifies the bin range in which the read was counted" ) this is now always on!
     binning_args.add_argument('-binTag',default='DS' )
-    binning_args.add_argument('--byValue',type='str', help='Extract the value from the supplied tag and use this as count to add')
+    binning_args.add_argument('-byValue', type=str, help='Extract the value from the supplied tag and use this as count to add')
 
     bed_args = argparser.add_argument_group('Bedfiles', '')
     bed_args.add_argument('-bedfile', type=str, help="Bed file containing 3 columns, chromo, start, end to be read for fetching counts")
