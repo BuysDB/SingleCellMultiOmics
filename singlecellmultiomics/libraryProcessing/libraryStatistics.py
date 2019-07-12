@@ -100,6 +100,7 @@ for library in args.libraries:
         f'{library}/tagged/marked_duplicates.bam',
         f'{library}/tagged/resorted.featureCounts.bam',
         f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam',
+        f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.bam',
         f'{library}/tagged/sorted.bam'
     ]
 
