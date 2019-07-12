@@ -65,6 +65,39 @@ class TestMoleculeIteration(unittest.TestCase):
         # !samtools view ./singlecellmultiomics/data/mini_nla_test.bam | grep 'RC:i:1' | wc -l
         self.assertEqual(df.loc['chr1'].sum(),383)
 
+    def test_singleFeatureTags_molecule_counting(self):
+        df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
+            SimpleNamespace(
+                alignmentfiles=['./data/mini_nla_test.bam'],
+                o=None,
+                head=None,
+                bin=None,
+                sliding=None,
+                binTag=None,
+                byValue=None,
+                bedfile=None,
+                showtags=False,
+                featureTags='reference_name,RC',
+                joinedFeatureTags=None,
+                sampleTags='SM',
+                minMQ=0,
+                filterXA=False,
+                dedup=False,
+                divideMultimapping=False,
+                keepOverBounds=False,
+                doNotDivideFragments=True,
+
+                splitFeatures=False,
+                feature_delimiter=',',
+                 noNames=False) , return_df=True)
+        # !samtools view ./singlecellmultiomics/data/mini_nla_test.bam | grep 'RC:i:1' | wc -l
+        self.assertEqual(df.loc['chr1'].sum(),563)
+        self.assertEqual(df.loc['1'].sum(),383)
+
+        # Amount of RC:2 obs:
+        self.assertEqual(df.loc['2'].sum(),97)
+
+
 
     def test_bed_counting(self):
         df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(

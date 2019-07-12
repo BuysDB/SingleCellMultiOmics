@@ -240,7 +240,7 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
 
             else:
                 count_increment.append({
-                    'key':(feature, ) ,
+                    'key':(value, ) ,
                     'features':{feature:value},
                     'samples':[sample],
                     'increment':countToAdd})
