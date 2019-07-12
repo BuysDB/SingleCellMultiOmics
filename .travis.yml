@@ -9,6 +9,6 @@ python:
 install:
     - git clone https://github.com/BuysDB/HandleLimiter
     - git clone https://github.com/BuysDB/pysamiterators
-    pip install -e ./HandleLimiter  -e ./pysamiterators -e .
+    - pip install -e ./HandleLimiter  -e ./pysamiterators -e .
 # command to run tests
 script: pytest
