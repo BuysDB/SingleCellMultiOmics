@@ -1,12 +1,19 @@
 from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
+import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 
 class Fragment():
-    def __init__(self, reads, assignment_radius=3, umi_hamming_distance=1,R1_primer_length=0,R2_primer_length=6 ):
+    def __init__(self, reads, assignment_radius=3, umi_hamming_distance=1,R1_primer_length=0,R2_primer_length=6,tag_definitions=None ):
+        if tag_definitions is None:
+            tag_definitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
+        self.tag_definitions = tag_definitions
         self.assignment_radius = assignment_radius
         self.umi_hamming_distance = umi_hamming_distance
         self.reads = reads
+        self.strand = None
+        self.meta = {} # dictionary of meta data
 
+        ### Check for multimapping
         self.is_multimapped = True
         # Force R1=read1 R2=read2:
         for i, read in enumerate(self.reads):
@@ -17,6 +24,8 @@ class Fragment():
                 self.is_multimapped = False
 
             if i==0:
+                if read.is_read2:
+                    raise ValueError('Supply first R1 then R2')
                 read.is_read1 = True
                 read.is_read2 = False
             elif i==1:
@@ -26,6 +35,14 @@ class Fragment():
         self.R1_primer_length = R1_primer_length
         self.R2_primer_length = R2_primer_length
         self.set_sample()
+        self.set_strand(self.identify_strand())
+
+    def identify_strand(self):
+        if self.reads[0]!=None:
+            return not self.reads[0].is_reverse
+
+    def set_meta(self, key, value):
+        self.meta[key] = value
 
     def get_R1(self):
         return self.reads[0]
@@ -41,12 +58,15 @@ class Fragment():
                 continue
             if contig is None and read.reference_name is not None:
                 contig = read.reference_name
-            if surfaceStart is None or read.reference_start<surfaceStart:
+            if read.reference_start is not None and (surfaceStart is None or read.reference_start<surfaceStart):
                 surfaceStart=read.reference_start
-            if surfaceEnd is None or read.reference_end>surfaceEnd:
+            if read.reference_end is not None and( surfaceEnd is None or read.reference_end>surfaceEnd):
                 surfaceEnd=read.reference_end
 
         return contig,surfaceStart,surfaceEnd
+
+    def has_valid_span(self):
+        return not any([x is None for x in self.get_span()])
 
     def set_sample(self):
         for read in self.reads:
@@ -57,11 +77,12 @@ class Fragment():
     def get_sample(self):
         return self.sample
 
+
+    def set_strand(self, strand):
+        self.strand = strand
+
     def get_strand(self):
-        for read in self.reads:
-            if read is not None and  read.has_tag('RS'):
-                return read.get_tag('RS')
-        return None
+        return self.strand
 
     def get_umi(self):
         for read in self.reads:
@@ -82,6 +103,10 @@ class Fragment():
 
         spanSelf =  self.get_span()
         spanOther =  other.get_span()
+        if any([x is None for x in spanSelf]):
+            print(spanSelf)
+        if any([x is None for x in spanOther]):
+            print(spanOther)
 
         if min(  abs( spanSelf[1] - spanOther[1] ),  abs( spanSelf[2] - spanOther[2] ) ) >self.assignment_radius:
             return False
@@ -96,7 +121,7 @@ class Fragment():
         return self.reads[index]
 
     def is_valid(self):
-        return True
+        return self.has_valid_span()
 
     def __repr__(self):
         return f"""Fragment:
@@ -105,6 +130,13 @@ class Fragment():
         span:{('%s %s-%s' % self.get_span())}
         strand:{self.get_strand()}
         """
+
+    def set_rejection_reason(self, reason):
+        self.set_meta('RR',reason)
+
+    def set_recognized_sequence(self, seq):
+        self.set_meta('RZ',seq)
+
 
 class SingleEndTranscript(Fragment):
     def __init__(self,reads, R2_primer_length=6):
