@@ -105,10 +105,15 @@ class Molecule():
         return self.fragments[key]
 
     '''
-    Obtain consensus bases at locations in genome
+    Obtain observed bases at reference aligned locations
+
+    Returns
+    -------
+    genome_location (tuple) -> base (string) -> obs (int)
     '''
-    def get_consensus(self):
-        baseObs = collections.Counter()
+
+    def get_base_observation_dict(self):
+        base_obs = collections.defaultdict(collections.Counter)
         for fragment in self:
             R1 = fragment.get_R1()
             R2 = fragment.get_R2()
@@ -117,14 +122,38 @@ class Molecule():
                 R2=R2,
                 allow_unsafe=(R1 is None))
 
-            for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(read):
-                if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
+            for read in [R1,R2]:
+                if read is None:
                     continue
-                query_base = read.seq[query_pos]
-                baseObs[refPos]=query_base
+                for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(read):
+                    if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
+                        continue
+                    query_base = read.seq[query_pos]
+                    base_obs[(read.reference_name,ref_pos)][query_base]+=1
+        return base_obs
 
 
+    """Get dictionary containing consensus calls in respect to reference
+    Parameters
+    -------
+    base_obs : collections.defaultdict(collections.Counter)
+        genome_location (tuple) -> base (string) -> obs (int)
 
+    Returns
+    -------
+    dict
+    location -> base
+    """
+    def get_consensus(self, base_obs=None):
+        consensus = {} # postion -> base , key is not set when not decided
+        if base_obs is None:
+            base_obs = self.get_base_observation_dict().items()
+
+        for location, obs in base_obs:
+            votes = obs.most_common()
+            if len(votes)==1 or votes[1][1]<votes[0][1]:
+                consensus[location] = votes[0][0]
+        return consensus
 
     def check_variants(self, variants, exclude_other_calls=True ): #when enabled other calls (non ref non alt will be set None)
         variant_dict = {}
@@ -259,4 +288,4 @@ def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment
                 yield molecules.pop(i-j)
 
     # Yield remains
-    return iter(molecules)
+    yield from iter(molecules)
