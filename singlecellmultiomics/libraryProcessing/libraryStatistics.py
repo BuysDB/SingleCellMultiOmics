@@ -112,10 +112,16 @@ for library in args.libraries:
     if bamFile is None:
         bamFile = select_bam_file(taggedFilesLookup)
 
+
     statFile = f'{library}/statistics.pickle.gz'
 
     demuxFastqFiles = select_fastq_file(demuxFastqFilesLookup)
     rejectFastqFiles = select_fastq_file(rejectFilesLookup)
+
+    print("Selected files:")
+    print(demuxFastqFiles)
+    print(rejectFastqFiles)
+    print(bamFile)
 
     demuxReads = None
     rejectedReads=None
