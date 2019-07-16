@@ -1,0 +1,299 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.tagtools.tagtools &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.tagtools.tagtools</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">import</span> <span class="nn">pysam</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">pysamiterators.iterators</span> <span class="k">as</span> <span class="nn">pysamIterators</span>
+
+<span class="n">complement</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s1">&#39;ATCGN&#39;</span><span class="p">,</span> <span class="s1">&#39;TAGCN&#39;</span><span class="p">)</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains functions which use data encoded in bam or fastq tags</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+
+<span class="c1"># For a mapped read pair it is very important to figure out which bases are actual genomic signal</span>
+<span class="c1"># Al sequence behind and on top of the random primer cannot be trusted and should be masked out</span>
+<span class="c1"># secondly all signal before the starting location of R1 cannot be trusted</span>
+<span class="c1"># Due to dovetailing this cannot be detected before mapping</span>
+<span class="c1"># This function returns a lower and higher bound of the locations within the fragment that can be trusted</span>
+<span class="c1"># ASCII art: (H is primer sequence)</span>
+<span class="c1">#           R1 H------------------------&gt;</span>
+<span class="c1">#   &lt;------------------HH R2</span>
+
+<span class="c1"># Output: (E is emitted)</span>
+<span class="c1">#           R1 HEEEEEEE-----------------&gt;</span>
+<span class="c1">#   &lt;------------------HH R2</span>
+
+<div class="viewcode-block" id="getPairGenomicLocations"><a class="viewcode-back" href="../../../source/singlecellmultiomics.tagtools.html#singlecellmultiomics.tagtools.tagtools.getPairGenomicLocations">[docs]</a><span class="k">def</span> <span class="nf">getPairGenomicLocations</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span><span class="n">R2</span><span class="p">,</span> <span class="n">R1PrimerLength</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">R2PrimerLength</span><span class="o">=</span><span class="mi">6</span><span class="p">):</span>
+
+
+    <span class="k">if</span>  <span class="n">R1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">R2</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_unmapped</span><span class="p">:</span>
+        <span class="c1"># This is an annoying situation, we cannot determine what bases can be trusted</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Genomic locations cannot be determined&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">R2</span><span class="o">.</span><span class="n">is_unmapped</span><span class="p">:</span>
+        <span class="c1"># This is an annoying situation, we cannot determine what bases can be trusted</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Genomic locations cannot be determined&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="o">==</span><span class="n">R2</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Fragment incorrectly mapped&#39;</span><span class="p">)</span> <span class="c1"># The fragment is not correctly mapped</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span> <span class="c1"># R1 is forward, R2 is reverse</span>
+        <span class="c1">#           R1 H------------------------&gt;</span>
+        <span class="c1">#   &lt;------------------HH R2</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_start</span><span class="o">+</span><span class="n">R1PrimerLength</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="n">R2</span><span class="o">.</span><span class="n">reference_end</span> <span class="o">-</span>  <span class="n">R2PrimerLength</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1">#           R2 HH------------------------&gt;</span>
+        <span class="c1">#   &lt;------------------HH R1</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">R2</span><span class="o">.</span><span class="n">reference_start</span><span class="o">+</span><span class="n">R2PrimerLength</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_end</span> <span class="o">-</span>  <span class="n">R1PrimerLength</span>
+
+    <span class="k">if</span> <span class="n">start</span><span class="o">&gt;=</span><span class="n">end</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Fragment has no size&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">start</span><span class="p">,</span><span class="n">end</span></div>
+
+
+
+
+<span class="c1"># Get an identifier which identifies the reverse transcription reaction</span>
+<span class="c1"># (hexamerStart, hexamerBases)</span>
+<div class="viewcode-block" id="getRandomPrimerHash"><a class="viewcode-back" href="../../../source/singlecellmultiomics.tagtools.html#singlecellmultiomics.tagtools.tagtools.getRandomPrimerHash">[docs]</a><span class="k">def</span> <span class="nf">getRandomPrimerHash</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="n">onStart</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">primerLength</span><span class="o">=</span><span class="mi">6</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">R2</span><span class="o">.</span><span class="n">query_sequence</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span><span class="kc">None</span>
+    <span class="c1"># The read was not mapped</span>
+    <span class="k">if</span> <span class="n">R2</span><span class="o">.</span><span class="n">is_unmapped</span><span class="p">:</span>
+        <span class="c1"># Guess the orientation does not matter</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">R2</span><span class="o">.</span><span class="n">query_sequence</span><span class="p">[:</span><span class="n">primerLength</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">R2</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+        <span class="k">global</span> <span class="n">complement</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">R2</span><span class="o">.</span><span class="n">reference_end</span><span class="p">,</span> <span class="n">R2</span><span class="o">.</span><span class="n">query_sequence</span><span class="p">[</span><span class="o">-</span><span class="n">primerLength</span><span class="p">:][::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">complement</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">R2</span><span class="o">.</span><span class="n">reference_start</span><span class="p">,</span> <span class="n">R2</span><span class="o">.</span><span class="n">query_sequence</span><span class="p">[:</span><span class="n">primerLength</span><span class="p">])</span>
+
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="getListAllPositions"><a class="viewcode-back" href="../../../source/singlecellmultiomics.tagtools.html#singlecellmultiomics.tagtools.tagtools.getListAllPositions">[docs]</a><span class="k">def</span> <span class="nf">getListAllPositions</span><span class="p">(</span><span class="n">l</span><span class="p">):</span>
+    <span class="n">positions</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">l</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">read</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">list</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">read</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="n">x</span><span class="o">.</span><span class="n">get_blocks</span><span class="p">():</span>
+                    <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span><span class="n">end</span><span class="p">):</span>
+                        <span class="n">positions</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="n">read</span><span class="o">.</span><span class="n">get_blocks</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span><span class="n">end</span><span class="p">):</span>
+                    <span class="n">positions</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">positions</span></div>
+
+<div class="viewcode-block" id="getCoverageAllPositions"><a class="viewcode-back" href="../../../source/singlecellmultiomics.tagtools.html#singlecellmultiomics.tagtools.tagtools.getCoverageAllPositions">[docs]</a><span class="k">def</span> <span class="nf">getCoverageAllPositions</span><span class="p">(</span><span class="n">l</span><span class="p">):</span>
+    <span class="n">positions</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">l</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="n">read</span><span class="o">.</span><span class="n">get_blocks</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span><span class="n">end</span><span class="p">):</span>
+                <span class="n">positions</span><span class="p">[</span><span class="n">x</span><span class="p">]</span><span class="o">+=</span><span class="mi">1</span>
+    <span class="k">return</span> <span class="n">positions</span></div>
+
+<div class="viewcode-block" id="getMateDictSpanningCoordinates"><a class="viewcode-back" href="../../../source/singlecellmultiomics.tagtools.html#singlecellmultiomics.tagtools.tagtools.getMateDictSpanningCoordinates">[docs]</a><span class="k">def</span> <span class="nf">getMateDictSpanningCoordinates</span><span class="p">(</span><span class="n">md</span><span class="p">):</span>
+    <span class="n">surfaceStart</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">surfaceEnd</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">contig</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">fragmentId</span><span class="p">,</span> <span class="n">reads</span> <span class="ow">in</span> <span class="n">md</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">reads</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">contig</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">contig</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_name</span>
+            <span class="k">if</span> <span class="n">surfaceStart</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_start</span><span class="o">&lt;</span><span class="n">surfaceStart</span><span class="p">:</span>
+                <span class="n">surfaceStart</span><span class="o">=</span><span class="n">read</span><span class="o">.</span><span class="n">reference_start</span>
+            <span class="k">if</span> <span class="n">surfaceEnd</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_end</span><span class="o">&gt;</span><span class="n">surfaceEnd</span><span class="p">:</span>
+                <span class="n">surfaceEnd</span><span class="o">=</span><span class="n">read</span><span class="o">.</span><span class="n">reference_end</span>
+    <span class="k">return</span> <span class="n">contig</span><span class="p">,</span><span class="n">surfaceStart</span><span class="p">,</span><span class="n">surfaceEnd</span></div>
+
+
+<div class="viewcode-block" id="getUniqueRandomPrimers"><a class="viewcode-back" href="../../../source/singlecellmultiomics.tagtools.html#singlecellmultiomics.tagtools.tagtools.getUniqueRandomPrimers">[docs]</a><span class="k">def</span> <span class="nf">getUniqueRandomPrimers</span><span class="p">(</span><span class="n">readIter</span><span class="p">,</span><span class="n">primerLength</span><span class="o">=</span><span class="mi">6</span><span class="p">):</span>
+    <span class="n">randomPrimers</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">readIter</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">is_read2</span><span class="p">:</span>
+            <span class="n">randomPrimers</span><span class="o">.</span><span class="n">add</span><span class="p">(</span> <span class="n">getRandomPrimerHash</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="n">primerLength</span><span class="o">=</span><span class="n">primerLength</span><span class="p">)</span> <span class="p">)</span>
+    <span class="k">return</span> <span class="n">randomPrimers</span></div>
+
+<span class="c1"># Obtain from how many sources the reads are derived</span>
+<span class="c1"># The sequencer, lane and tile are taken into account for this metric</span>
+<div class="viewcode-block" id="getSources"><a class="viewcode-back" href="../../../source/singlecellmultiomics.tagtools.html#singlecellmultiomics.tagtools.tagtools.getSources">[docs]</a><span class="k">def</span> <span class="nf">getSources</span><span class="p">(</span><span class="n">readIter</span><span class="p">):</span>
+    <span class="n">instruments</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="n">lanes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span> <span class="c1">#instrument, flowcell, lane</span>
+    <span class="n">tiles</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span> <span class="c1">#instrument, lane, tile</span>
+    <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">readIter</span><span class="p">:</span>
+        <span class="n">instrument</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;Is&#39;</span><span class="p">)</span>
+        <span class="n">flowcell</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;Fc&#39;</span><span class="p">)</span>
+        <span class="n">lane</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;La&#39;</span><span class="p">)</span>
+        <span class="n">tile</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;Ti&#39;</span><span class="p">)</span>
+        <span class="n">instruments</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">instrument</span><span class="p">)</span>
+        <span class="n">lanes</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">instrument</span><span class="p">,</span><span class="n">flowcell</span><span class="p">,</span><span class="n">lane</span><span class="p">))</span>
+        <span class="n">tiles</span><span class="o">.</span><span class="n">add</span><span class="p">((</span><span class="n">instrument</span><span class="p">,</span><span class="n">flowcell</span><span class="p">,</span><span class="n">lane</span><span class="p">,</span> <span class="n">tile</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">instruments</span><span class="p">,</span><span class="n">lanes</span><span class="p">,</span><span class="n">tiles</span></div>
+
+<div class="viewcode-block" id="getCycleOffset"><a class="viewcode-back" href="../../../source/singlecellmultiomics.tagtools.html#singlecellmultiomics.tagtools.tagtools.getCycleOffset">[docs]</a><span class="k">def</span> <span class="nf">getCycleOffset</span><span class="p">(</span><span class="n">read</span><span class="p">):</span>
+
+    <span class="n">start</span><span class="o">=</span><span class="mi">0</span>
+    <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">is_read1</span><span class="p">:</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;eB&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;eB&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="k">elif</span> <span class="n">read</span><span class="o">.</span><span class="n">is_read2</span><span class="p">:</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;EB&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;EB&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Designed for single or mate pair only&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">start</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="getReadTotalCycles"><a class="viewcode-back" href="../../../source/singlecellmultiomics.tagtools.html#singlecellmultiomics.tagtools.tagtools.getReadTotalCycles">[docs]</a><span class="k">def</span> <span class="nf">getReadTotalCycles</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">cycleOffset</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="c1"># The obvious part:</span>
+    <span class="n">totalCycles</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">infer_read_length</span><span class="p">()</span>
+    <span class="c1"># Add trimmed cycles:</span>
+    <span class="k">if</span> <span class="n">cycleOffset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cycleOffset</span>  <span class="o">=</span> <span class="n">getCycleOffset</span><span class="p">(</span><span class="n">read</span><span class="p">)</span>
+    <span class="n">totalCycles</span> <span class="o">+=</span> <span class="n">cycleOffset</span> <span class="c1">#@warn: end is not defined!</span>
+    <span class="k">return</span> <span class="n">totalCycles</span></div>
+
+<span class="c1"># This iterator is similar and a wrapper of the Pysam get_aligned_pairs function</span>
+<span class="c1"># The difference is that the cycle of the sequencer is emitted (distToFirstCycle) (int or float)</span>
+<span class="c1"># yields cycle, queryIndex, referencePos, (refbase)</span>
+<span class="c1"># The cycle of the sequencer is obtained by the index, the read orientation and the eB/EB tags</span>
+<span class="c1"># The second added feature is that a reference handle can be added which will yield reference bases from the supplied fasta file. This feature is neccesary when mapping to masked genomes</span>
+
+<div class="viewcode-block" id="ReadCycleIterator"><a class="viewcode-back" href="../../../source/singlecellmultiomics.tagtools.html#singlecellmultiomics.tagtools.tagtools.ReadCycleIterator">[docs]</a><span class="k">class</span> <span class="nc">ReadCycleIterator</span><span class="p">():</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+        <span class="n">read</span><span class="p">,</span>
+        <span class="n">matches_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="c1"># transfered to pysam api</span>
+        <span class="n">with_seq</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="c1"># emit reference bases</span>
+        <span class="n">emitFloats</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># Emit as percentage of total cycles instead of absolute cycles</span>
+        <span class="n">reference</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="c1"># obtain reference base from a reference (Should be type pysam FastaFile)</span>
+
+        <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">read</span> <span class="o">=</span> <span class="n">read</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">with_seq</span> <span class="o">=</span> <span class="n">with_seq</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">matches_only</span> <span class="o">=</span> <span class="n">matches_only</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emitFloats</span> <span class="o">=</span> <span class="n">emitFloats</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">getCycleOffset</span><span class="p">(</span><span class="n">read</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">len</span> <span class="o">=</span> <span class="n">getReadTotalCycles</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">cycleOffset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="o">=</span> <span class="n">reference</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{read}</span><span class="s1">, </span><span class="si">{self.len}</span><span class="s1"> cycles starting at </span><span class="si">{self.start}</span><span class="s1">&#39;</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">iterator</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">get_aligned_pairs</span><span class="p">(</span><span class="n">matches_only</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">matches_only</span><span class="p">,</span> <span class="n">with_seq</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">with_seq</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">iterator</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">pysamIterators</span><span class="o">.</span><span class="n">ReferenceBackedGetAlignedPairs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reference</span><span class="p">,</span> <span class="n">matches_only</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">matches_only</span><span class="p">,</span> <span class="n">with_seq</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__next__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">with_seq</span><span class="p">:</span>
+            <span class="n">readIndex</span><span class="p">,</span> <span class="n">referencePos</span><span class="p">,</span> <span class="n">referenceBase</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iterator</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">readIndex</span><span class="p">,</span> <span class="n">referencePos</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iterator</span><span class="p">)</span>
+        <span class="c1"># Obtain cycle:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+            <span class="n">cycle</span> <span class="o">=</span> <span class="n">readIndex</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cycle</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">len</span> <span class="o">-</span> <span class="n">readIndex</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">-</span><span class="mi">1</span> <span class="c1"># minus one as the index starts at 0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">emitFloats</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">len</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                <span class="n">cycle</span><span class="o">=</span><span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cycle</span> <span class="o">/=</span> <span class="bp">self</span><span class="o">.</span><span class="n">len</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">with_seq</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cycle</span><span class="p">,</span> <span class="n">readIndex</span><span class="p">,</span> <span class="n">referencePos</span><span class="p">,</span> <span class="n">referenceBase</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cycle</span><span class="p">,</span> <span class="n">readIndex</span><span class="p">,</span> <span class="n">referencePos</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

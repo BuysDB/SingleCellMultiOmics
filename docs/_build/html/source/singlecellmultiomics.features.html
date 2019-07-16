@@ -1,0 +1,223 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.features package &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="singlecellmultiomics-features-package">
+<h1>singlecellmultiomics.features package<a class="headerlink" href="#singlecellmultiomics-features-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-singlecellmultiomics.features.features">
+<span id="singlecellmultiomics-features-features-module"></span><h2>singlecellmultiomics.features.features module<a class="headerlink" href="#module-singlecellmultiomics.features.features" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="singlecellmultiomics.features.features.FeatureContainer">
+<em class="property">class </em><code class="descclassname">singlecellmultiomics.features.features.</code><code class="descname">FeatureContainer</code><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.addFeature">
+<code class="descname">addFeature</code><span class="sig-paren">(</span><em>chromosome</em>, <em>start</em>, <em>end</em>, <em>name</em>, <em>strand=None</em>, <em>data=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.addFeature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.addFeature" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.addVariant">
+<code class="descname">addVariant</code><span class="sig-paren">(</span><em>chromosome</em>, <em>start</em>, <em>value=None</em>, <em>name='SNP'</em>, <em>variantType='SNP'</em>, <em>end=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.addVariant"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.addVariant" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.annotateUTRs">
+<code class="descname">annotateUTRs</code><span class="sig-paren">(</span><em>utrs=['three_prime_utr', 'five_prime_utr']</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.annotateUTRs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.annotateUTRs" title="Permalink to this definition">¶</a></dt>
+<dd><p>flag the exons that contain a utr</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.debugMsg">
+<code class="descname">debugMsg</code><span class="sig-paren">(</span><em>msg</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.debugMsg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.debugMsg" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.findFeaturesAt">
+<code class="descname">findFeaturesAt</code><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.findFeaturesAt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.findFeaturesAt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.findFeaturesAtPysamAlign">
+<code class="descname">findFeaturesAtPysamAlign</code><span class="sig-paren">(</span><em>pysamRead</em>, <em>strand=None</em>, <em>method=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.findFeaturesAtPysamAlign"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.findFeaturesAtPysamAlign" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain all features mapping the pysam aligned segment.
+method 0: Query EVERY base
+method 1: Query every subsequent block of reads (pysam aligned segment .get_blocks)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.findFeaturesBetween">
+<code class="descname">findFeaturesBetween</code><span class="sig-paren">(</span><em>chromosome</em>, <em>sampleStart</em>, <em>sampleEnd</em>, <em>strand=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.findFeaturesBetween"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.findFeaturesBetween" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.findFeaturesBetweenBRK">
+<code class="descname">findFeaturesBetweenBRK</code><span class="sig-paren">(</span><em>chromosome</em>, <em>lookupCoordinateStart</em>, <em>lookupCoordinateEnd</em>, <em>strand=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.findFeaturesBetweenBRK"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.findFeaturesBetweenBRK" title="Permalink to this definition">¶</a></dt>
+<dd><p>Obtain all features between Start and end coordinate.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.findNearestFeature">
+<code class="descname">findNearestFeature</code><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.findNearestFeature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.findNearestFeature" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.findNearestLeftFeature">
+<code class="descname">findNearestLeftFeature</code><span class="sig-paren">(</span><em>chromosome</em>, <em>lookupCoordinate</em>, <em>strand=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.findNearestLeftFeature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.findNearestLeftFeature" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.findNearestRightFeature">
+<code class="descname">findNearestRightFeature</code><span class="sig-paren">(</span><em>chromosome</em>, <em>lookupCoordinate</em>, <em>strand=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.findNearestRightFeature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.findNearestRightFeature" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.getCentroids">
+<code class="descname">getCentroids</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.getCentroids"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.getCentroids" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.getReferenceList">
+<code class="descname">getReferenceList</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.getReferenceList"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.getReferenceList" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.loadBED">
+<code class="descname">loadBED</code><span class="sig-paren">(</span><em>path</em>, <em>ignChr=False</em>, <em>parseBlocks=True</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.loadBED"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.loadBED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load UCSC based table.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.loadGTF">
+<code class="descname">loadGTF</code><span class="sig-paren">(</span><em>path, thirdOnly=None, identifierFields=['gene_id'], ignChr=False, select_feature_type=None, exon_select=None, head=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.loadGTF"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.loadGTF" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load annotations from a GTF file.
+ignChr: ignore the chr part of the Annotation chromosome</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.loadSNPSFromVcf">
+<code class="descname">loadSNPSFromVcf</code><span class="sig-paren">(</span><em>vcfFilePath</em>, <em>locations=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.loadSNPSFromVcf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.loadSNPSFromVcf" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="singlecellmultiomics.features.features.FeatureContainer.sort">
+<code class="descname">sort</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#FeatureContainer.sort"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.FeatureContainer.sort" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build coordinate sorted datastructure to perform fast lookups.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="singlecellmultiomics.features.features.massIdConvert">
+<code class="descclassname">singlecellmultiomics.features.features.</code><code class="descname">massIdConvert</code><span class="sig-paren">(</span><em>baseIds</em>, <em>pathToIdMapping='/media/sf_data/references/human/HUMAN_9606_idmapping_selected.tab.gz'</em>, <em>targetCol=1</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/singlecellmultiomics/features/features.html#massIdConvert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#singlecellmultiomics.features.features.massIdConvert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert GENE identifiers into another format.
+Get a conversion table from <a class="reference external" href="ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/by_organism/">ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/by_organism/</a></p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-singlecellmultiomics.features">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-singlecellmultiomics.features" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">singlecellmultiomics.features package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-singlecellmultiomics.features.features">singlecellmultiomics.features.features module</a></li>
+<li><a class="reference internal" href="#module-singlecellmultiomics.features">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/source/singlecellmultiomics.features.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/source/singlecellmultiomics.features.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

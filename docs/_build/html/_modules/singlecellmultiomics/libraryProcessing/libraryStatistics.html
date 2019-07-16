@@ -1,0 +1,347 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.libraryProcessing.libraryStatistics &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.libraryProcessing.libraryStatistics</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">pysam</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+
+<span class="kn">from</span> <span class="nn">colorama</span> <span class="k">import</span> <span class="n">Fore</span>
+<span class="kn">from</span> <span class="nn">colorama</span> <span class="k">import</span> <span class="n">Back</span>
+<span class="kn">from</span> <span class="nn">colorama</span> <span class="k">import</span> <span class="n">Style</span>
+<span class="kn">import</span> <span class="nn">singlecellmultiomics.pyutils</span> <span class="k">as</span> <span class="nn">pyutils</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.tagtools</span> <span class="k">import</span> <span class="n">tagtools</span>
+<span class="kn">import</span> <span class="nn">pysamiterators.iterators</span> <span class="k">as</span> <span class="nn">pysamIterators</span>
+<span class="kn">import</span> <span class="nn">gzip</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="n">matplotlib</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;figure.dpi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">160</span>
+<span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;Agg&#39;</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.statistic</span> <span class="k">import</span> <span class="o">*</span>
+
+
+
+
+<div class="viewcode-block" id="select_bam_file"><a class="viewcode-back" href="../../../source/singlecellmultiomics.libraryProcessing.html#singlecellmultiomics.libraryProcessing.libraryStatistics.select_bam_file">[docs]</a><span class="k">def</span> <span class="nf">select_bam_file</span><span class="p">(</span><span class="n">lookup</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lookup</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">l</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">l</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="select_fastq_file"><a class="viewcode-back" href="../../../source/singlecellmultiomics.libraryProcessing.html#singlecellmultiomics.libraryProcessing.libraryStatistics.select_fastq_file">[docs]</a><span class="k">def</span> <span class="nf">select_fastq_file</span><span class="p">(</span><span class="n">lookup</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">paths</span> <span class="ow">in</span> <span class="n">lookup</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span><span class="o">==</span><span class="nb">tuple</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="n">paths</span>
+        <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">paths</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">paths</span><span class="p">,)</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span><span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">argparser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+     <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">,</span>
+     <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Obtain statistics from your libraries&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;libraries&#39;</span><span class="p">,</span>  <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;*&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-head&#39;</span><span class="p">,</span>  <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--v&#39;</span><span class="p">,</span>  <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--nort&#39;</span><span class="p">,</span>  <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">argparser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">library</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">libraries</span><span class="p">:</span>
+        <span class="n">library_name</span> <span class="o">=</span> <span class="n">library</span>
+        <span class="k">if</span> <span class="n">library</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.bam&#39;</span><span class="p">):</span>
+            <span class="c1"># the library is a bam file..</span>
+            <span class="n">bamFile</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span> <span class="n">library</span><span class="p">)</span>
+            <span class="n">library</span><span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span> <span class="n">bamFile</span><span class="p">)</span> <span class="p">)</span>
+            <span class="n">library_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span> <span class="n">bamFile</span><span class="p">)</span> <span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Bam file was supplied:&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">bamFile</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bamFile</span><span class="o">=</span><span class="kc">None</span>
+        <span class="n">rc</span> <span class="o">=</span> <span class="n">ReadCount</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="c1"># Is also mappability</span>
+
+        <span class="n">statistics</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">rc</span><span class="p">,</span>
+            <span class="n">MethylationContextHistogram</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+            <span class="n">MappingQualityHistogram</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+            <span class="n">OversequencingHistogram</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+            <span class="n">FragmentSizeHistogram</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+            <span class="n">TrimmingStats</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+            <span class="n">AlleleHistogram</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+            <span class="n">RejectionReasonHistogram</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+            <span class="n">DataTypeHistogram</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+            <span class="n">TagHistogram</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+            <span class="n">PlateStatistic</span><span class="p">(</span><span class="n">args</span><span class="p">),</span>
+            <span class="n">ScCHICLigation</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+        <span class="p">]</span>
+
+        <span class="n">demuxFastqFilesLookup</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/demultiplexedR1.fastq.gz&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/demultiplexedR2.fastq.gz&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/demultiplexedR1_val_1.fq.gz&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/demultiplexedR2_val_2.fq.gz&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/demultiplexedR1_val_1.fq&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/demultiplexedR2_val_2.fq&#39;</span><span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="n">rejectFilesLookup</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/rejectsR1.fastq.gz&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/rejectsR2.fastq.gz&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/rejectsR1.fastq&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/rejectsR2.fastq&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/rejectsR1.fq.gz&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/rejectsR2.fq.gz&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/rejectsR1.fq&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/rejectsR2.fq&#39;</span><span class="p">),</span>
+        <span class="p">]</span>
+
+        <span class="n">taggedFilesLookup</span> <span class="o">=</span> <span class="p">[</span>
+
+            <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/tagged/marked_duplicates.bam&#39;</span><span class="p">,</span>
+            <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/tagged/resorted.featureCounts.bam&#39;</span><span class="p">,</span>
+            <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam&#39;</span><span class="p">,</span>
+            <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/tagged/STAR_mappedAligned.sortedByCoord.out.bam&#39;</span><span class="p">,</span>
+            <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/tagged/sorted.bam&#39;</span>
+        <span class="p">]</span>
+
+
+        <span class="k">if</span> <span class="s1">&#39;cluster&#39;</span> <span class="ow">in</span> <span class="n">library</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{Style.BRIGHT}</span><span class="s1">Library </span><span class="si">{library}{Style.RESET_ALL}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="c1"># Check if the bam file is present</span>
+        <span class="k">if</span> <span class="n">bamFile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">bamFile</span> <span class="o">=</span> <span class="n">select_bam_file</span><span class="p">(</span><span class="n">taggedFilesLookup</span><span class="p">)</span>
+
+
+        <span class="n">statFile</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/statistics.pickle.gz&#39;</span>
+
+        <span class="n">demuxFastqFiles</span> <span class="o">=</span> <span class="n">select_fastq_file</span><span class="p">(</span><span class="n">demuxFastqFilesLookup</span><span class="p">)</span>
+        <span class="n">rejectFastqFiles</span> <span class="o">=</span> <span class="n">select_fastq_file</span><span class="p">(</span><span class="n">rejectFilesLookup</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Selected files:&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">demuxFastqFiles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">Fore</span><span class="o">.</span><span class="n">RED</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">demuxFastqFiles</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">rejectFastqFiles</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">bamFile</span><span class="p">)</span>
+
+        <span class="n">demuxReads</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">rejectedReads</span><span class="o">=</span><span class="kc">None</span>
+        <span class="k">if</span> <span class="n">demuxFastqFiles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">firstMate</span> <span class="o">=</span> <span class="n">demuxFastqFiles</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Demuxed &gt; </span><span class="si">{firstMate}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">firstMate</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.gz&#39;</span><span class="p">):</span>
+                <span class="n">demuxReads</span> <span class="o">=</span> <span class="n">pyutils</span><span class="o">.</span><span class="n">wccountgz</span><span class="p">(</span><span class="n">firstMate</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">demuxReads</span> <span class="o">=</span> <span class="n">pyutils</span><span class="o">.</span><span class="n">wccount</span><span class="p">(</span><span class="n">firstMate</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span>
+
+        <span class="k">if</span> <span class="n">rejectFastqFiles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">firstMate</span> <span class="o">=</span> <span class="n">rejectFastqFiles</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Rejects &gt; </span><span class="si">{firstMate}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">firstMate</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.gz&#39;</span><span class="p">):</span>
+                <span class="n">rejectedReads</span> <span class="o">=</span> <span class="n">pyutils</span><span class="o">.</span><span class="n">wccountgz</span><span class="p">(</span><span class="n">firstMate</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">rejectedReads</span> <span class="o">=</span> <span class="n">pyutils</span><span class="o">.</span><span class="n">wccount</span><span class="p">(</span><span class="n">firstMate</span><span class="p">)</span><span class="o">/</span><span class="mi">4</span>
+
+        <span class="k">if</span> <span class="n">demuxReads</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">rc</span><span class="o">.</span><span class="n">setRawDemuxCount</span><span class="p">(</span><span class="n">demuxReads</span><span class="p">,</span> <span class="n">paired</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">rejectedReads</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">rc</span><span class="o">.</span><span class="n">setRawReadCount</span><span class="p">(</span><span class="n">rejectedReads</span><span class="o">+</span><span class="n">demuxReads</span><span class="p">,</span> <span class="n">paired</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">bamFile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">bamFile</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Tagged &gt; </span><span class="si">{bamFile}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">bamFile</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">read</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">statistic</span> <span class="ow">in</span> <span class="n">statistics</span><span class="p">:</span>
+                        <span class="n">statistic</span><span class="o">.</span><span class="n">processRead</span><span class="p">(</span><span class="n">read</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">head</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">i</span><span class="o">&gt;=</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">head</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                        <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Did not find a bam file at </span><span class="si">{bamFile}</span><span class="s1">&#39;</span> <span class="p">)</span>
+
+        <span class="n">statDict</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam&#39;</span><span class="p">):</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;samtools view </span><span class="si">{bamFile}</span><span class="s1"> -F 4 -f 64 | cut -f 1 | sort | uniq | wc -l&#39;</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span>
+                                 <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                                 <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span>
+                                 <span class="n">shell</span><span class="o">=</span><span class="kc">True</span>
+                                 <span class="p">)</span><span class="o">.</span><span class="n">communicate</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">read1mapped</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;samtools view </span><span class="si">{bamFile}</span><span class="s1"> -F 4 -f 128 | cut -f 1 | sort | uniq | wc -l&#39;</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span>
+                                 <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                                 <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span>
+                                 <span class="n">shell</span><span class="o">=</span><span class="kc">True</span>
+                                 <span class="p">)</span><span class="o">.</span><span class="n">communicate</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">read2mapped</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+            <span class="n">rc</span><span class="o">.</span><span class="n">totalMappedReads</span><span class="p">[</span><span class="s1">&#39;R1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">read1mapped</span>
+            <span class="n">rc</span><span class="o">.</span><span class="n">totalMappedReads</span><span class="p">[</span><span class="s1">&#39;R2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">read2mapped</span>
+            <span class="c1"># Deduplicated reads have RC:i:1 set, -f 64 selects for R2</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;samtools view </span><span class="si">{bamFile}</span><span class="s1"> -F 4 -f 64 | grep RC:i:1 | cut -f 1 | sort | uniq | wc -l&#39;</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span>
+                                 <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                                 <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span>
+                                 <span class="n">shell</span><span class="o">=</span><span class="kc">True</span>
+                                 <span class="p">)</span><span class="o">.</span><span class="n">communicate</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">read1mappeddedup</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="c1"># Deduplicated reads have RC:i:1 set, -f 128 selects for R2</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;samtools view </span><span class="si">{bamFile}</span><span class="s1"> -F 4 -f 128 | grep RC:i:1 |  cut -f 1 | sort | uniq | wc -l&#39;</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span>
+                                 <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span>
+                                 <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span>
+                                 <span class="n">shell</span><span class="o">=</span><span class="kc">True</span>
+                                 <span class="p">)</span><span class="o">.</span><span class="n">communicate</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">read2mappeddedup</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+            <span class="n">rc</span><span class="o">.</span><span class="n">totalDedupReads</span><span class="p">[</span><span class="s1">&#39;R1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">read1mappeddedup</span>
+            <span class="n">rc</span><span class="o">.</span><span class="n">totalDedupReads</span><span class="p">[</span><span class="s1">&#39;R2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">read2mappeddedup</span>
+
+
+
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">statFile</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">statFile</span><span class="p">,</span><span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">statDict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+
+        <span class="k">for</span> <span class="n">statistic</span> <span class="ow">in</span> <span class="n">statistics</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="si">{statistic.__class__.__name__}</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="se">\t\t</span><span class="si">{statistic}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="n">statDict</span><span class="p">[</span><span class="n">statistic</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">statistic</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">statistic</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">v</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">statFile</span><span class="p">,</span><span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">statDict</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+
+        <span class="c1"># Make plots:</span>
+        <span class="n">plot_dir</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/plots&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">plot_dir</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">plot_dir</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">statistic</span> <span class="ow">in</span> <span class="n">statistics</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">statistic</span><span class="p">,</span> <span class="s1">&#39;plot&#39;</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Not making a plot for </span><span class="si">{statistic.__class__.__name__}</span><span class="s1"> as no plot method is defined&#39;</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">statistic</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{plot_dir}</span><span class="s1">/</span><span class="si">{statistic.__class__.__name__}</span><span class="s1">.png&#39;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">library_name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">v</span><span class="p">:</span>
+                    <span class="kn">import</span> <span class="nn">traceback</span>
+                    <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+
+        <span class="c1"># Make tables:</span>
+        <span class="n">table_dir</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{library}</span><span class="s1">/tables&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">table_dir</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">table_dir</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">statistic</span> <span class="ow">in</span> <span class="n">statistics</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">statistic</span><span class="p">,</span> <span class="s1">&#39;to_csv&#39;</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Not making a table for </span><span class="si">{statistic.__class__.__name__}</span><span class="s1"> as to_csv method is not defined&#39;</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">statistic</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{table_dir}</span><span class="s1">/</span><span class="si">{statistic.__class__.__name__}</span><span class="s1">_</span><span class="si">{library_name}</span><span class="s1">.csv&#39;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">v</span><span class="p">:</span>
+                    <span class="kn">import</span> <span class="nn">traceback</span>
+                    <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+
+        <span class="c1"># Make RT reaction plot:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">nort</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;bamPlotRTstats.py </span><span class="si">{bamFile}</span><span class="s2"> -head 2_000_000 --notstrict -o </span><span class="si">{plot_dir}</span><span class="s2">/RT_&quot;</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

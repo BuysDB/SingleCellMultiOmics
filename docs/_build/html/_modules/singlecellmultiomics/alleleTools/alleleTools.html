@@ -1,0 +1,201 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.alleleTools.alleleTools &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.alleleTools.alleleTools</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">import</span> <span class="nn">pysam</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+
+<div class="viewcode-block" id="AlleleResolver"><a class="viewcode-back" href="../../../source/singlecellmultiomics.alleleTools.html#singlecellmultiomics.alleleTools.alleleTools.AlleleResolver">[docs]</a><span class="k">class</span> <span class="nc">AlleleResolver</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vcffile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">chrom</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">uglyMode</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">lazyLoad</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vcffile</span><span class="o">=</span><span class="n">vcffile</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lazyLoad</span> <span class="o">=</span> <span class="n">lazyLoad</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span>  <span class="n">pysam</span><span class="o">.</span><span class="n">VariantFile</span><span class="p">(</span><span class="n">vcffile</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="n">uglyMode</span><span class="o">=</span><span class="kc">True</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Pysam cannot read the VCF, rolling back to slower homebrew parser&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">lazyLoad</span> <span class="ow">and</span> <span class="n">uglyMode</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Lazy loading is not supported for non proper VCFs. Loading all variants to memory.&#39;</span><span class="p">)</span>
+            <span class="n">lazyLoad</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="c1">#self.locationToAllele = collections.defaultdict( lambda: collections.defaultdict(set) ) #(chrom, pos)-&gt; base -&gt; sample(s)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span>  <span class="k">lambda</span><span class="p">:</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span>  <span class="k">lambda</span><span class="p">:</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span> <span class="p">))</span> <span class="c1">#chrom -&gt; pos-&gt; base -&gt; sample(s)</span>
+        <span class="k">if</span> <span class="n">vcffile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">uglyMode</span><span class="p">:</span>
+            <span class="n">foundIt</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1"># If the target chromosome was found</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">vcffile</span><span class="p">,</span><span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">!=</span><span class="s1">&#39;#&#39;</span><span class="p">:</span>
+                        <span class="n">chromosome</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">ref</span><span class="p">,</span> <span class="n">alt</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">chrom</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">chromosome</span><span class="o">==</span><span class="n">chrom</span><span class="p">:</span>
+                            <span class="n">pos</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">location</span><span class="p">)</span>
+                            <span class="n">foundIt</span><span class="o">=</span><span class="kc">True</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span><span class="p">[</span><span class="n">chromosome</span><span class="p">][</span><span class="n">pos</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">ref</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;REF&quot;</span><span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span><span class="p">[</span><span class="n">chromosome</span><span class="p">][</span><span class="n">pos</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">alt</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;ALT&quot;</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="n">chrom</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">foundIt</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Stopping for speed&#39;</span><span class="p">)</span>
+                            <span class="k">break</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Finished loading dirty vcf file&#39;</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">lazyLoad</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fetchChromosome</span><span class="p">(</span><span class="n">vcffile</span><span class="p">,</span><span class="n">chrom</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Lazy loading allele file&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AlleleResolver.addAlleleInfoOneBased"><a class="viewcode-back" href="../../../source/singlecellmultiomics.alleleTools.html#singlecellmultiomics.alleleTools.alleleTools.AlleleResolver.addAlleleInfoOneBased">[docs]</a>    <span class="k">def</span> <span class="nf">addAlleleInfoOneBased</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">chromosome</span><span class="p">,</span> <span class="n">location</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">alleleName</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span><span class="p">[</span><span class="n">chromosome</span><span class="p">][</span><span class="n">location</span><span class="p">][</span><span class="n">base</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">alleleName</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AlleleResolver.fetchChromosome"><a class="viewcode-back" href="../../../source/singlecellmultiomics.alleleTools.html#singlecellmultiomics.alleleTools.alleleTools.AlleleResolver.fetchChromosome">[docs]</a>    <span class="k">def</span> <span class="nf">fetchChromosome</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vcffile</span><span class="p">,</span> <span class="n">chrom</span><span class="p">,</span> <span class="n">clear</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">clear</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span>  <span class="k">lambda</span><span class="p">:</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span>  <span class="k">lambda</span><span class="p">:</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span> <span class="p">))</span> <span class="c1">#chrom -&gt; pos-&gt; base -&gt; sample(s)</span>
+        <span class="c1">#allocate:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span><span class="p">[</span><span class="n">chrom</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;N&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;Nop&#39;</span><span class="p">)</span>
+
+        <span class="n">unTrusted</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">added</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Reading variants for </span><span class="si">{chrom}</span><span class="s1"> &#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">pysam</span><span class="o">.</span><span class="n">VariantFile</span><span class="p">(</span><span class="n">vcffile</span><span class="p">)</span> <span class="k">as</span> <span class="n">v</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">v</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">chrom</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">sample</span><span class="p">,</span> <span class="n">sampleData</span> <span class="ow">in</span> <span class="n">rec</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="n">sampleData</span><span class="o">.</span><span class="n">alleles</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">base</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">unTrusted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">chrom</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">pos</span> <span class="p">)</span> <span class="p">)</span>
+                            <span class="k">continue</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">base</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span><span class="p">[</span><span class="n">rec</span><span class="o">.</span><span class="n">chrom</span><span class="p">][</span> <span class="n">rec</span><span class="o">.</span><span class="n">pos</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="n">base</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+                            <span class="n">added</span><span class="o">+=</span><span class="mi">1</span>
+                        <span class="k">else</span><span class="p">:</span> <span class="c1"># This location cannot be trusted:</span>
+                            <span class="n">unTrusted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">chrom</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">pos</span> <span class="p">)</span> <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">unTrusted</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span><span class="p">[</span><span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="n">t</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+        <span class="k">del</span> <span class="n">unTrusted</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{added}</span><span class="s1"> variants [OK]&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AlleleResolver.getAllele"><a class="viewcode-back" href="../../../source/singlecellmultiomics.alleleTools.html#singlecellmultiomics.alleleTools.alleleTools.AlleleResolver.getAllele">[docs]</a>    <span class="k">def</span> <span class="nf">getAllele</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">reads</span> <span class="p">):</span>
+        <span class="n">alleles</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">reads</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">read</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">read</span><span class="o">.</span><span class="n">is_unmapped</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">chrom</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_name</span>
+            <span class="k">for</span>  <span class="n">readPos</span><span class="p">,</span> <span class="n">refPos</span> <span class="ow">in</span> <span class="n">read</span><span class="o">.</span><span class="n">get_aligned_pairs</span><span class="p">(</span><span class="n">matches_only</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+                <span class="n">readBase</span> <span class="o">=</span> <span class="n">read</span><span class="o">.</span><span class="n">query_sequence</span><span class="p">[</span><span class="n">readPos</span><span class="p">]</span>
+                <span class="n">c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getAllelesAt</span><span class="p">(</span><span class="n">chrom</span><span class="p">,</span> <span class="n">refPos</span><span class="p">,</span> <span class="n">readBase</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">c</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">c</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">alleles</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">alleles</span></div>
+
+
+    <span class="c1">#@functools.lru_cache(maxsize=1000) not necessary anymore... complete data is already saved in dict</span>
+<div class="viewcode-block" id="AlleleResolver.getAllelesAt"><a class="viewcode-back" href="../../../source/singlecellmultiomics.alleleTools.html#singlecellmultiomics.alleleTools.alleleTools.AlleleResolver.getAllelesAt">[docs]</a>    <span class="k">def</span> <span class="nf">getAllelesAt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chrom</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="n">base</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lazyLoad</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">chrom</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fetchChromosome</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vcffile</span><span class="p">,</span> <span class="n">chrom</span><span class="p">,</span> <span class="n">clear</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">chrom</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">pos</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span><span class="p">[</span><span class="n">chrom</span><span class="p">]</span> <span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">base</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span><span class="p">[</span><span class="n">chrom</span><span class="p">][</span><span class="n">pos</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">locationToAllele</span><span class="p">[</span><span class="n">chrom</span><span class="p">][</span><span class="n">pos</span><span class="p">][</span><span class="n">base</span><span class="p">]</span></div></div>
+
+<span class="c1"># FWD_-13_C REV_-16_C</span>
+<span class="c1"># FWD_-16_C REV_+12_C</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,685 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.universalBamTagger.universalBamTagger &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.universalBamTagger.universalBamTagger</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="n">c</span> <span class="o">=</span> <span class="mi">1</span><span class="n">_000</span> <span class="c1"># !!! PLEASE USE PYTHON 3.6 OR HIGHER !!!</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span><span class="nn">pysam</span><span class="o">,</span><span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">subprocess</span><span class="o">,</span><span class="nn">multiprocessing</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span><span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.alleleTools</span> <span class="k">import</span> <span class="n">alleleTools</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">gzip</span>
+<span class="n">complement</span> <span class="o">=</span> <span class="nb">str</span><span class="o">.</span><span class="n">maketrans</span><span class="p">(</span><span class="s1">&#39;ATGC&#39;</span><span class="p">,</span> <span class="s1">&#39;TACG&#39;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">pysamiterators.iterators</span> <span class="k">as</span> <span class="nn">pysamIterators</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.tagtools</span> <span class="k">import</span> <span class="n">tagtools</span>
+<span class="kn">import</span> <span class="nn">singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods</span>
+<span class="kn">import</span> <span class="nn">singlecellmultiomics.features</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="c1">#Modules:</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.universalBamTagger.rna</span> <span class="k">import</span> <span class="n">RNA_Flagger</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.universalBamTagger.digest</span> <span class="k">import</span> <span class="n">DigestFlagger</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.universalBamTagger.nlaIII</span> <span class="k">import</span> <span class="n">NlaIIIFlagger</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.universalBamTagger.scchic</span> <span class="k">import</span> <span class="n">ChicSeqFlagger</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.universalBamTagger.mspjI</span> <span class="k">import</span> <span class="n">MSPJIFlagger</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.universalBamTagger.scar</span> <span class="k">import</span> <span class="n">ScarFlagger</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.universalBamTagger.tag</span> <span class="k">import</span> <span class="n">TagFlagger</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.universalBamTagger.taps</span> <span class="k">import</span> <span class="n">TAPSFlagger</span>
+
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.utils.sequtils</span> <span class="k">import</span> <span class="n">hamming_distance</span><span class="p">,</span><span class="n">phred_to_prob</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span> <span class="p">:</span>
+    <span class="n">argparser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;Add allelic NLA and/or MSPJI digest information to a demultiplexed bam file</span>
+<span class="s2">    Adds the following tags:</span>
+<span class="s2">    RC: number of oversequenced molecules</span>
+<span class="s2">    DT: Source type (NLA/MSPJI/RNA.. )</span>
+<span class="s2">    DA: Digest allele</span>
+<span class="s2">    RP: Recognized sequence</span>
+<span class="s2">    RS: Recognized strand &#39;-&#39;,&#39;?&#39;,&#39;+&#39;</span>
+
+<span class="s2">    Which tags are filled in depends on which files you supply, for example if you do not supply an allelic VCF file, then no allele tag will be added</span>
+<span class="s2">    &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;bamfiles&#39;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s1">&#39;bamfile&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;+&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--local&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Do not qsub sorting and indexing [deprecated]&#39;</span><span class="p">)</span>
+    <span class="c1">#argparser.add_argument(&#39;--noSort&#39;, action=&#39;store_true&#39;, help=&#39;Do not sort and index&#39;)</span>
+    <span class="c1">#argparser.add_argument(&#39;--cluster&#39;, action=&#39;store_true&#39;, help=&#39;Do not qsub sorting and indexing&#39;)</span>
+
+
+    <span class="n">tagAlgs</span> <span class="o">=</span> <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument_group</span><span class="p">(</span><span class="s1">&#39;Tagging algorithms&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">tagAlgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--ftag&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Add query name tags added by demultiplexer&#39;</span><span class="p">)</span>
+    <span class="n">tagAlgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--atag&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Add only allele tags&#39;</span><span class="p">)</span>
+    <span class="n">tagAlgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--mspji&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Look for mspji digest&#39;</span><span class="p">)</span>
+    <span class="n">tagAlgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--nla&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Look for nlaIII digest&#39;</span><span class="p">)</span>
+    <span class="n">tagAlgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--chic&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Look for mnase (scCHIC) digest&#39;</span><span class="p">)</span>
+    <span class="n">tagAlgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--scar&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Create R1 start, cigar sequence based DS tags&#39;</span><span class="p">)</span>
+    <span class="n">tagAlgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--taps&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Add TAPS based methylation state &#39;</span><span class="p">)</span>
+    <span class="n">tagAlgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-tag&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Determine oversequencing based on a tag (for example XT to count RNA oversequencing for featureCounts counted transcripts. chrom for chromosome/contig count)&#39;</span><span class="p">)</span>
+
+
+    <span class="c1">### RNA options</span>
+    <span class="n">tagAlgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--rna&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Assign RNA molecules, requires a intronic and exonic GTF file&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-introns&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Intronic GTF file&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-exons&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Exonic GTF file.&#39;</span><span class="p">)</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    How much bases of the fragment fall inside the intron(s)</span>
+<span class="sd">    How much bases of the fragment fall inside the exon(s)</span>
+<span class="sd">    is the fragment spliced? How many bases are spliced out?</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-moleculeRadius&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Search radius for each molecule, if a cut site is found within this range with the same umi, it will be counted as the same molecule&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-alleles&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;VCF file. Add allelic info flag based on vcf file&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--loadAllelesToMem&#39;</span><span class="p">,</span>  <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span><span class="n">help</span><span class="o">=</span><span class="s1">&#39;Load allele data completely into memory&#39;</span><span class="p">)</span>
+
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-ref&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;reference FASTA file.&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-o&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;./tagged&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;output folder&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--dedup&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Create deduplicated bam files&#39;</span><span class="p">)</span>
+
+
+
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-chr&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;run only on this chromosome&#39;</span><span class="p">)</span>
+
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-head&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Only process first n reads of every bam file&#39;</span><span class="p">)</span>
+
+    <span class="n">devArgs</span> <span class="o">=</span> <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument_group</span><span class="p">(</span><span class="s1">&#39;Development options&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">devArgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--fatal&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Crash upon any encountered error&#39;</span><span class="p">)</span>
+    <span class="n">devArgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--verbose&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Be verbose&#39;</span><span class="p">)</span>
+    <span class="n">devArgs</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--knh&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Keep non-headered bam file&#39;</span><span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">argparser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">mspji</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">nla</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">chic</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">ftag</span>  <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">rna</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">tag</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">atag</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">taps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Please supply any or a combination of --ftag --nla --chic --mspji --taps&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">rna</span> <span class="ow">and</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">introns</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">exons</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Please supply exonic and intronic GTF files -introns -exons&#39;</span><span class="p">)</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Corrected Tags</span>
+<span class="sd">    BC: This should be used for the sample-barcode so that there is no conflict in case that both sample- and molecular-barcodes are used</span>
+<span class="sd">    QT: This should be the quality for the sample-barcode BC</span>
+
+<span class="sd">    New Tags</span>
+<span class="sd">    RX: The raw sequence bases of the molecular-barcode(s) of the read(s) can be placed in this tag</span>
+<span class="sd">    QX: The original qualites (as QUAL) of the bases in RX</span>
+
+<span class="sd">    BX: Sequence bases of the unique molecular identifier, may be corrected or raw</span>
+<span class="sd">    BZ: Quality score the unique molecular identifier. May be corrected or raw. See BX tag for qualities</span>
+
+<span class="sd">    MI: Molecular-barcode sequence or identifier, may include non-sequence bases (Here, it is BC+RX)</span>
+<span class="sd">    QM: Molecular-barcode qualities, QT+QX</span>
+
+<span class="sd">    DS: coordinate of site</span>
+<span class="sd">    RC: number of oversequenced molecules</span>
+<span class="sd">    DT: Source type (NLA/MSPJI/RNA..? )</span>
+<span class="sd">    DA: Digest allele</span>
+<span class="sd">    RP: Recognized sequence</span>
+<span class="sd">    RS: Recognized strand &#39;-&#39;,&#39;?&#39;,&#39;+&#39;</span>
+<span class="sd">    LI: ligation sequence</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="molecule_to_random_primer_dict"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.molecule_to_random_primer_dict">[docs]</a><span class="k">def</span> <span class="nf">molecule_to_random_primer_dict</span><span class="p">(</span><span class="n">molecule</span><span class="p">,</span> <span class="n">primer_length</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">primer_read</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span> <span class="c1">#1: read1 2: read2</span>
+    <span class="n">rp</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">fragment</span> <span class="ow">in</span> <span class="n">molecule</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">fragment</span><span class="p">[</span><span class="n">primer_read</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hstart</span><span class="p">,</span> <span class="n">hseq</span> <span class="o">=</span> <span class="n">tagtools</span><span class="o">.</span><span class="n">getRandomPrimerHash</span><span class="p">(</span><span class="n">fragment</span><span class="p">[</span><span class="n">primer_read</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">onStart</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">primerLength</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+            <span class="n">rp</span><span class="p">[</span><span class="n">hstart</span><span class="p">,</span> <span class="n">hseq</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fragment</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rp</span></div>
+    <span class="c1">#for k,p in rp.items():</span>
+    <span class="c1">#    yield p</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Iterate over molecules in a bam file</span>
+
+<span class="sd">Parameters</span>
+<span class="sd">----------</span>
+<span class="sd">alignmentfile : pysam.AlignmentFile</span>
+<span class="sd">    file to read the molecules from</span>
+
+<span class="sd">look_around_radius : int</span>
+<span class="sd">    buffer to accumulate molecules in. All fragments belonging to one molecule should fit this radius</span>
+
+<span class="sd">umi_hamming_distance : int</span>
+<span class="sd">    Edit distance on UMI, 0: only exact match, 1: single base distance</span>
+
+<span class="sd">sample_select : iterable</span>
+<span class="sd">    Iterable of samples to only select molecules from</span>
+
+<span class="sd">Yields</span>
+<span class="sd">----------</span>
+<span class="sd">list of molecules : list [ pysam.AlignedSegment ]</span>
+<span class="sd">[ (R1,R2), (R1,R2) ... ]</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="MoleculeIterator"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.MoleculeIterator">[docs]</a><span class="k">class</span> <span class="nc">MoleculeIterator</span><span class="p">():</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+        <span class="n">alignmentfile</span><span class="p">,</span>
+        <span class="n">look_around_radius</span><span class="o">=</span><span class="mi">100</span><span class="n">_000</span><span class="p">,</span>
+        <span class="n">umi_hamming_distance</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="c1"># 0: only exact match, 1: single base distance</span>
+        <span class="n">sample_select</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="c1"># iterable of samples to only select molecules from</span>
+        <span class="c1"># when a string is supplied only a single sample is selected</span>
+
+        <span class="o">**</span><span class="n">pysam_kwargs</span>
+        <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alignmentfile</span> <span class="o">=</span> <span class="n">alignmentfile</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">look_around_radius</span> <span class="o">=</span> <span class="n">look_around_radius</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1">#</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_chromosome</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1">#</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">molecules_yielded</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">umi_hamming_distance</span> <span class="o">=</span> <span class="n">umi_hamming_distance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pysam_kwargs</span> <span class="o">=</span> <span class="n">pysam_kwargs</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_select</span> <span class="o">=</span> <span class="n">sample_select</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_tag</span> <span class="o">=</span> <span class="s1">&#39;SM&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">filter_function</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># function which results given two reads if it is usable</span>
+
+    <span class="k">def</span> <span class="nf">_clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">molecule_cache</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">))</span> <span class="c1"># position -&gt; cell,umi,strand,allele.. -&gt; reads</span>
+
+<div class="viewcode-block" id="MoleculeIterator.sample_assignment_function"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.MoleculeIterator.sample_assignment_function">[docs]</a>    <span class="k">def</span> <span class="nf">sample_assignment_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fragment</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">fragment</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">read</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_tag</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_tag</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+    <span class="c1"># Returns postion unique identifier for a fragment</span>
+<div class="viewcode-block" id="MoleculeIterator.localisation_function"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.MoleculeIterator.localisation_function">[docs]</a>    <span class="k">def</span> <span class="nf">localisation_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fragment</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">fragment</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;DS&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">fragment</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;DS&#39;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">f</span><span class="s2">&quot;&quot;&quot;Molecule iterator</span>
+<span class="s2">        current position: </span><span class="si">{self.current_chromosome}</span><span class="s2">:</span><span class="si">{self.current_position}</span><span class="s2"></span>
+<span class="s2">        yielded </span><span class="si">{self.molecules_yielded}</span><span class="s2"> so far</span>
+<span class="s2">        currently {len(self.molecule_cache)} positions cached</span>
+<span class="s2">        keeping {self.get_cached_fragment_count()} fragments cached</span>
+<span class="s2">        &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MoleculeIterator.get_cached_fragment_count"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.MoleculeIterator.get_cached_fragment_count">[docs]</a>    <span class="k">def</span> <span class="nf">get_cached_fragment_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">total_fragments</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">data_per_molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecule_cache</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">molecule_id</span><span class="p">,</span> <span class="n">molecule_reads</span> <span class="ow">in</span> <span class="n">data_per_molecule</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">total_fragments</span><span class="o">+=</span><span class="nb">len</span><span class="p">(</span><span class="n">molecule_reads</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">total_fragments</span></div>
+
+<div class="viewcode-block" id="MoleculeIterator.assignment_function"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.MoleculeIterator.assignment_function">[docs]</a>    <span class="k">def</span> <span class="nf">assignment_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fragment</span><span class="p">):</span>
+        <span class="k">return</span>  <span class="n">fragment</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;SM&#39;</span><span class="p">),</span><span class="n">fragment</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;RX&#39;</span><span class="p">),</span><span class="n">fragment</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;RS&#39;</span><span class="p">)</span></div>
+
+    <span class="c1"># Returns True if two fragment ids  are identical or close enough</span>
+<div class="viewcode-block" id="MoleculeIterator.eq_function"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.MoleculeIterator.eq_function">[docs]</a>    <span class="k">def</span> <span class="nf">eq_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">assignment_a</span><span class="p">,</span> <span class="n">assignment_b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">assignment_a</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">assignment_b</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">sample_A</span><span class="p">,</span> <span class="n">umi_A</span><span class="p">,</span> <span class="n">strand_A</span> <span class="o">=</span> <span class="n">assignment_a</span>
+        <span class="n">sample_B</span><span class="p">,</span> <span class="n">umi_B</span><span class="p">,</span> <span class="n">strand_B</span> <span class="o">=</span> <span class="n">assignment_b</span>
+
+        <span class="k">if</span> <span class="n">sample_A</span><span class="o">!=</span><span class="n">sample_B</span> <span class="ow">or</span> <span class="n">strand_A</span><span class="o">!=</span><span class="n">strand_B</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">umi_hamming_distance</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">umi_A</span><span class="o">==</span><span class="n">umi_B</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">hamming_distance</span><span class="p">(</span><span class="n">umi_A</span><span class="p">,</span><span class="n">umi_B</span><span class="p">)</span><span class="o">&lt;=</span><span class="bp">self</span><span class="o">.</span><span class="n">umi_hamming_distance</span></div>
+
+    <span class="k">def</span> <span class="nf">_yield_all_in_current_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">data_per_molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecule_cache</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">molecule_id</span><span class="p">,</span> <span class="n">molecule_reads</span> <span class="ow">in</span> <span class="n">data_per_molecule</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">molecules_yielded</span> <span class="o">+=</span><span class="mi">1</span>
+                <span class="k">yield</span> <span class="n">molecule_reads</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_purge</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">drop</span><span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecule_cache</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">pos</span><span class="o">&lt;</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_position</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">look_around_radius</span><span class="p">):</span>
+                <span class="c1"># purge this coordinate:</span>
+                <span class="k">for</span> <span class="n">molecule_id</span><span class="p">,</span> <span class="n">molecule_reads</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecule_cache</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">molecules_yielded</span> <span class="o">+=</span><span class="mi">1</span>
+                    <span class="k">yield</span> <span class="n">molecule_reads</span>
+                <span class="n">drop</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="n">drop</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecule_cache</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span>
+
+<div class="viewcode-block" id="MoleculeIterator.get_fragment_chromosome"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.MoleculeIterator.get_fragment_chromosome">[docs]</a>    <span class="k">def</span> <span class="nf">get_fragment_chromosome</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fragment</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">fragment</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">read</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_name</span></div>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">fragment</span> <span class="ow">in</span> <span class="n">pysamIterators</span><span class="o">.</span><span class="n">MatePairIterator</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">alignmentfile</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">pysam_kwargs</span><span class="p">,</span> <span class="n">performProperPairCheck</span><span class="o">=</span><span class="kc">False</span> <span class="p">):</span>
+
+
+            <span class="k">if</span> <span class="n">fragment</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">fragment</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">reference_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Check if we want to drop the fragment because its corresponding sample is not selected</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_select</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_assignment_function</span><span class="p">(</span><span class="n">fragment</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_select</span><span class="p">)</span><span class="o">==</span><span class="nb">str</span><span class="p">:</span> <span class="c1"># single sample</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_select</span><span class="o">!=</span><span class="n">sample</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                <span class="k">else</span><span class="p">:</span> <span class="c1"># list or set of samples</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">sample</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_select</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+            <span class="c1"># We went to another chromsome, purge all in cache:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_fragment_chromosome</span><span class="p">(</span><span class="n">fragment</span><span class="p">)</span><span class="o">!=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_chromosome</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_chromosome</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_yield_all_in_current_cache</span><span class="p">():</span>
+                    <span class="k">yield</span> <span class="n">molecule</span>
+
+            <span class="c1"># Check if we need to purge and yield results:</span>
+            <span class="k">for</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_purge</span><span class="p">():</span>
+                <span class="k">yield</span> <span class="n">molecule</span>
+
+            <span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">localisation_function</span><span class="p">(</span><span class="n">fragment</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">position</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">molecule_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">assignment_function</span><span class="p">(</span><span class="n">fragment</span><span class="p">)</span>
+
+            <span class="c1"># Check if there is a molecule to assign to already present:</span>
+            <span class="n">assigned</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">existing_molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">molecule_cache</span><span class="p">[</span><span class="n">position</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">eq_function</span><span class="p">(</span><span class="n">existing_molecule</span><span class="p">,</span> <span class="n">molecule_id</span><span class="p">):</span>
+                    <span class="n">assigned</span>  <span class="o">=</span> <span class="kc">True</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">molecule_cache</span><span class="p">[</span><span class="n">position</span><span class="p">][</span><span class="n">existing_molecule</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fragment</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">assigned</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">molecule_cache</span><span class="p">[</span><span class="n">position</span><span class="p">][</span><span class="n">molecule_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fragment</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_chromosome</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_fragment_chromosome</span><span class="p">(</span><span class="n">fragment</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">localisation_function</span><span class="p">(</span><span class="n">fragment</span><span class="p">)</span> <span class="c1">#[0].reference_end</span>
+
+        <span class="c1"># yield everything which was not yielded yet</span>
+        <span class="k">for</span> <span class="n">molecule</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_yield_all_in_current_cache</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">molecule</span></div>
+
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Iterate over transcripts in a bam file</span>
+
+<span class="sd">Parameters</span>
+<span class="sd">----------</span>
+<span class="sd">alignmentfile : pysam.AlignmentFile</span>
+<span class="sd">    file to read the molecules from</span>
+
+<span class="sd">look_around_radius : int</span>
+<span class="sd">    buffer to accumulate molecules in. All fragments belonging to one molecule should fit this radius</span>
+
+<span class="sd">informative_read : int</span>
+<span class="sd">    which read is used to define the mapping coordinate of the fragment, 1 or 2.</span>
+
+<span class="sd">umi_hamming_distance : int</span>
+<span class="sd">    Edit distance on UMI, 0: only exact match, 1: single base distance, 2 base distance ...</span>
+
+<span class="sd">assignment_radius : int</span>
+<span class="sd">    tolerance on fragment starting coordinates</span>
+
+<span class="sd">sample_select : iterable</span>
+<span class="sd">    Iterable of samples to only select molecules from</span>
+
+<span class="sd">Yields</span>
+<span class="sd">----------</span>
+<span class="sd">list of molecules : list [ pysam.AlignedSegment ]</span>
+<span class="sd">[ (R1,R2), (R1,R2) ... ]</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="TranscriptIterator"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.TranscriptIterator">[docs]</a><span class="k">class</span> <span class="nc">TranscriptIterator</span><span class="p">(</span><span class="n">MoleculeIterator</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">look_around_radius</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">informative_read</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">assignment_radius</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">MoleculeIterator</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">look_around_radius</span><span class="o">=</span><span class="n">look_around_radius</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">informative_read</span> <span class="o">=</span> <span class="n">informative_read</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assignment_radius</span> <span class="o">=</span> <span class="n">assignment_radius</span>
+
+<div class="viewcode-block" id="TranscriptIterator.assignment_function"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.TranscriptIterator.assignment_function">[docs]</a>    <span class="k">def</span> <span class="nf">assignment_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fragment</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">fragment</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">informative_read</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;SM&#39;</span><span class="p">),</span><span class="n">fragment</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">informative_read</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;RX&#39;</span><span class="p">),</span><span class="n">fragment</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">informative_read</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">is_reverse</span></div>
+
+<div class="viewcode-block" id="TranscriptIterator.localisation_function"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.TranscriptIterator.localisation_function">[docs]</a>    <span class="k">def</span> <span class="nf">localisation_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">fragment</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">((</span><span class="n">fragment</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">informative_read</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">reference_start</span><span class="p">)</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment_radius</span><span class="p">)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">assignment_radius</span></div></div>
+
+
+
+<div class="viewcode-block" id="QueryNameFlagger"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.QueryNameFlagger">[docs]</a><span class="k">class</span> <span class="nc">QueryNameFlagger</span><span class="p">(</span><span class="n">DigestFlagger</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assignedReadGroups</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">DigestFlagger</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+
+<div class="viewcode-block" id="QueryNameFlagger.digest"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.QueryNameFlagger.digest">[docs]</a>    <span class="k">def</span> <span class="nf">digest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reads</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">reads</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">read</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">query_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;UMI&#39;</span><span class="p">):</span> <span class="c1"># Old format</span>
+                <span class="kn">import</span> <span class="nn">tagBamFile</span> <span class="c1"># this is not included anymore</span>
+                <span class="n">tagBamFile</span><span class="o">.</span><span class="n">recodeRead</span><span class="p">(</span><span class="n">read</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tr</span> <span class="o">=</span> <span class="n">singlecellmultiomics</span><span class="o">.</span><span class="n">modularDemultiplexer</span><span class="o">.</span><span class="n">baseDemultiplexMethods</span><span class="o">.</span><span class="n">TaggedRecord</span><span class="p">(</span>
+                    <span class="n">singlecellmultiomics</span><span class="o">.</span><span class="n">modularDemultiplexer</span><span class="o">.</span><span class="n">baseDemultiplexMethods</span><span class="o">.</span><span class="n">TagDefinitions</span>
+                <span class="p">)</span>
+
+                <span class="n">tr</span><span class="o">.</span><span class="n">fromTaggedBamRecord</span><span class="p">(</span><span class="n">read</span><span class="p">)</span>
+
+                <span class="n">newHeader</span> <span class="o">=</span> <span class="n">tr</span><span class="o">.</span><span class="n">asIlluminaHeader</span><span class="p">()</span>
+                <span class="n">read</span><span class="o">.</span><span class="n">query_name</span> <span class="o">=</span> <span class="n">newHeader</span>
+
+                <span class="n">tr</span><span class="o">.</span><span class="n">tagPysamRead</span><span class="p">(</span><span class="n">read</span><span class="p">)</span>
+                <span class="n">rg</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;{read.get_tag(&#39;Fc&#39;) if read.has_tag(&#39;Fc&#39;) else &#39;NONE&#39;}.{read.get_tag(&#39;La&#39;) if read.has_tag(&#39;La&#39;) else &#39;NONE&#39;}.{read.get_tag(&#39;SM&#39;) if read.has_tag(&#39;SM&#39;) else &#39;NONE&#39;}&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">assignedReadGroups</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">rg</span><span class="p">)</span>
+                <span class="c1"># Add read group:</span>
+                <span class="n">read</span><span class="o">.</span><span class="n">set_tag</span><span class="p">(</span><span class="s1">&#39;RG&#39;</span><span class="p">,</span> <span class="n">rg</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="AlleleTagger"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.AlleleTagger">[docs]</a><span class="k">class</span> <span class="nc">AlleleTagger</span><span class="p">(</span><span class="n">DigestFlagger</span> <span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">DigestFlagger</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+
+<div class="viewcode-block" id="AlleleTagger.digest"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.universalBamTagger.AlleleTagger.digest">[docs]</a>    <span class="k">def</span> <span class="nf">digest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reads</span><span class="p">):</span>
+        <span class="n">nonNullReads</span> <span class="o">=</span> <span class="p">[</span><span class="n">read</span> <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">reads</span> <span class="k">if</span> <span class="n">read</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">addAlleleInfo</span><span class="p">(</span><span class="n">nonNullReads</span><span class="p">)</span></div></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># These data sources are fed to all flaggers</span>
+    <span class="n">flaggerArguments</span> <span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;reference&#39;</span><span class="p">:</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">ref</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">pysamIterators</span><span class="o">.</span><span class="n">CachedFasta</span><span class="p">(</span>
+                                                    <span class="n">pysam</span><span class="o">.</span><span class="n">FastaFile</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ref</span><span class="p">)),</span>
+        <span class="s1">&#39;alleleResolver&#39;</span><span class="p">:</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">alleles</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">alleleTools</span><span class="o">.</span><span class="n">AlleleResolver</span><span class="p">(</span>
+                                <span class="n">args</span><span class="o">.</span><span class="n">alleles</span><span class="p">,</span> <span class="n">lazyLoad</span><span class="o">=</span><span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">loadAllelesToMem</span><span class="p">),</span>
+        <span class="s1">&#39;moleculeRadius&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">moleculeRadius</span><span class="p">,</span>
+        <span class="s1">&#39;verbose&#39;</span><span class="p">:</span><span class="n">args</span><span class="o">.</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="s1">&#39;exon_gtf&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">exons</span><span class="p">,</span>
+        <span class="s1">&#39;intron_gtf&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">introns</span>
+    <span class="p">}</span>
+
+    <span class="n">pairedEnd</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">flaggers</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">qFlagger</span><span class="o">=</span><span class="kc">None</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">ftag</span><span class="p">:</span>
+        <span class="n">qFlagger</span> <span class="o">=</span> <span class="n">QueryNameFlagger</span><span class="p">(</span><span class="o">**</span><span class="n">flaggerArguments</span><span class="p">)</span>
+        <span class="n">flaggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">qFlagger</span> <span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">nla</span><span class="p">:</span>
+        <span class="n">flaggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">NlaIIIFlagger</span><span class="p">(</span><span class="o">**</span><span class="n">flaggerArguments</span><span class="p">)</span> <span class="p">)</span>
+        <span class="n">pairedEnd</span><span class="o">=</span><span class="kc">True</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mspji</span><span class="p">:</span>
+        <span class="n">flaggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">MSPJIFlagger</span><span class="p">(</span><span class="o">**</span><span class="n">flaggerArguments</span><span class="p">)</span> <span class="p">)</span>
+        <span class="n">pairedEnd</span><span class="o">=</span><span class="kc">True</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">chic</span><span class="p">:</span>
+        <span class="n">flaggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">ChicSeqFlagger</span><span class="p">(</span><span class="o">**</span><span class="n">flaggerArguments</span><span class="p">)</span> <span class="p">)</span>
+        <span class="n">pairedEnd</span><span class="o">=</span><span class="kc">True</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">scar</span><span class="p">:</span>
+        <span class="n">flaggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">ScarFlagger</span><span class="p">(</span><span class="o">**</span><span class="n">flaggerArguments</span><span class="p">)</span> <span class="p">)</span>
+        <span class="n">pairedEnd</span><span class="o">=</span><span class="kc">True</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">tag</span><span class="p">:</span>
+        <span class="n">flaggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">TagFlagger</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">tag</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">atag</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Running allele tagging&quot;</span><span class="p">)</span>
+        <span class="n">flaggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">AlleleTagger</span><span class="p">(</span><span class="o">**</span><span class="n">flaggerArguments</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">rna</span><span class="p">:</span>
+        <span class="n">flaggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">RNA_Flagger</span><span class="p">(</span><span class="o">**</span><span class="n">flaggerArguments</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">taps</span><span class="p">:</span>
+        <span class="n">flaggers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">TAPSFlagger</span><span class="p">(</span><span class="o">**</span><span class="n">flaggerArguments</span><span class="p">))</span>
+        <span class="n">pairedEnd</span><span class="o">=</span><span class="kc">True</span>
+
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">alleles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Check if the variant file is valid..</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span> <span class="n">args</span><span class="o">.</span><span class="n">alleles</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.vcf.gz&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">alleles</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.bcf.gz&#39;</span><span class="p">)</span> <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;&quot;&quot;Please supply an indexed (bg)zipped VCF file.</span>
+<span class="s2">            You can convert your file using: bcftools view </span><span class="si">{args.alleles}</span><span class="s2"> -O b -o </span><span class="si">{args.alleles}</span><span class="s2">.gz;</span>
+<span class="s2">            then index using bcftools index </span><span class="si">{args.alleles}</span><span class="s2">.gz &quot;&quot;&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">alleles</span><span class="o">+</span><span class="s1">&#39;.csi&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">alleles</span><span class="o">+</span><span class="s1">&#39;.tbi&#39;</span><span class="p">)</span> <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;&quot;&quot;Please supply an indexed (bg)zipped VCF file.</span>
+<span class="s2">            Index using: bcftools index </span><span class="si">{args.alleles}</span><span class="s2"> &quot;&quot;&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">pairedEnd</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Assuming the input is paired end&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Assuming the input is single end ( Has no influence on ftag)&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">o</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">o</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="c1">## Here we walk through the bamfiles and fetch</span>
+
+    <span class="k">for</span> <span class="n">bamFilePath</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">bamfiles</span><span class="p">:</span>
+
+        <span class="n">bamFile</span> <span class="o">=</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">bamFilePath</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="n">bamFile</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">outPathTemp</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{args.o}</span><span class="s1">/{os.path.basename(bamFilePath)}.unsorted&#39;</span>
+        <span class="n">outPathTempWithHeader</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{args.o}</span><span class="s1">/{os.path.basename(bamFilePath)}.unsorted.with_header.bam&#39;</span>
+        <span class="n">outPath</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;</span><span class="si">{args.o}</span><span class="s2">/{os.path.basename(bamFilePath).replace(&#39;.bam&#39;, &#39;&#39;)}.bam&quot;</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Now reading </span><span class="si">{bamFilePath}</span><span class="s1">, writing to </span><span class="si">{outPath}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dedup</span><span class="p">:</span>
+            <span class="n">dedupOutPathTemp</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{args.o}</span><span class="s1">/{os.path.basename(bamFilePath)}.dedup.unsorted&#39;</span>
+            <span class="n">dedupOutPathTempWithHeader</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{args.o}</span><span class="s1">/{os.path.basename(bamFilePath)}.dedup.with_header.bam&#39;</span>
+            <span class="n">dedupOutPath</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;</span><span class="si">{args.o}</span><span class="s2">/{os.path.basename(bamFilePath).replace(&#39;.bam&#39;, &#39;&#39;)}.dedup.bam&quot;</span>
+            <span class="n">dedupOutputFile</span> <span class="o">=</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">dedupOutPathTemp</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+        <span class="n">outputFile</span> <span class="o">=</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">outPathTemp</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+
+
+        <span class="n">bamName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">bamFilePath</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.bam&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="c1">#if os.path.exists(outPath+&#39;.bai&#39;):</span>
+        <span class="c1">#    continue</span>
+        <span class="n">i</span><span class="o">=</span><span class="mi">0</span>
+        <span class="k">if</span> <span class="n">pairedEnd</span><span class="p">:</span>
+            <span class="n">it</span> <span class="o">=</span> <span class="n">pysamIterators</span><span class="o">.</span><span class="n">MatePairIterator</span><span class="p">(</span> <span class="n">bamFile</span><span class="p">,</span>
+                <span class="n">performProperPairCheck</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">contig</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">chr</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="n">R2</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span> <span class="n">it</span> <span class="p">):</span>
+                <span class="k">for</span> <span class="n">flagger</span> <span class="ow">in</span> <span class="n">flaggers</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">flagger</span><span class="o">.</span><span class="n">digest</span><span class="p">(</span> <span class="p">[</span><span class="n">R1</span><span class="p">,</span><span class="n">R2</span><span class="p">]</span> <span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+                        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">fatal</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span><span class="n">R2</span><span class="p">)</span>
+                            <span class="k">raise</span> <span class="n">e</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">R1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">outputFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">R1</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">R2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">outputFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">R2</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">flagger</span> <span class="ow">in</span> <span class="n">flaggers</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">flagger</span><span class="p">)</span>
+                    <span class="k">raise</span> <span class="n">e</span>
+                <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dedup</span> <span class="ow">and</span> <span class="p">((</span><span class="n">R1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">R1</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;RC&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">R1</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;RC&#39;</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">)</span> <span class="ow">or</span>  <span class="p">(</span><span class="n">R2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">R2</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;RC&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">R2</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;RC&#39;</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">)):</span>
+                    <span class="k">if</span> <span class="n">R1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">dedupOutputFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">R1</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">R2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">dedupOutputFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">R2</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">head</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">i</span><span class="o">&gt;=</span><span class="n">args</span><span class="o">.</span><span class="n">head</span><span class="p">:</span>
+                    <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">iterator</span> <span class="o">=</span> <span class="n">bamFile</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span> <span class="n">contig</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">chr</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">chr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">bamFile</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">R1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span> <span class="n">iterator</span> <span class="p">):</span>
+
+                <span class="k">for</span> <span class="n">flagger</span> <span class="ow">in</span> <span class="n">flaggers</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">flagger</span><span class="o">.</span><span class="n">digest</span><span class="p">(</span> <span class="p">[</span><span class="n">R1</span><span class="p">])</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">fatal</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="n">e</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+                <span class="n">outputFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">R1</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">head</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">i</span><span class="o">&gt;=</span><span class="n">args</span><span class="o">.</span><span class="n">head</span><span class="p">:</span>
+                    <span class="k">break</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{bamFilePath}</span><span class="s1">: processed </span><span class="si">{i}</span><span class="s1"> reads&#39;</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Finishing files (forcing close)&quot;</span><span class="p">)</span>
+        <span class="n">outputFile</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dedup</span><span class="p">:</span>
+            <span class="n">dedupOutputFile</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">qFlagger</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">readGroups</span><span class="o">=</span><span class="p">{}</span>
+
+            <span class="k">for</span> <span class="n">readGroup</span> <span class="ow">in</span> <span class="n">qFlagger</span><span class="o">.</span><span class="n">assignedReadGroups</span><span class="p">:</span>
+                <span class="n">flowCell</span><span class="p">,</span><span class="n">lane</span><span class="p">,</span><span class="n">sampleLib</span> <span class="o">=</span> <span class="n">readGroup</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+                <span class="n">library</span><span class="p">,</span><span class="n">sample</span> <span class="o">=</span> <span class="n">sampleLib</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">readGroups</span><span class="p">[</span><span class="n">readGroup</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ID&#39;</span><span class="p">:</span><span class="n">readGroup</span><span class="p">,</span><span class="s1">&#39;LB&#39;</span><span class="p">:</span><span class="n">library</span><span class="p">,</span> <span class="s1">&#39;PL&#39;</span><span class="p">:</span><span class="s1">&#39;ILLUMINA&#39;</span><span class="p">,</span> <span class="s1">&#39;SM&#39;</span><span class="p">:</span><span class="n">sample</span><span class="p">,</span> <span class="s1">&#39;PU&#39;</span><span class="p">:</span><span class="n">readGroup</span><span class="p">}</span>
+
+            <span class="n">headerSamFilePath</span> <span class="o">=</span> <span class="n">outPath</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.bam&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;.header.sam&#39;</span>
+            <span class="n">hCopy</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+            <span class="n">hCopy</span><span class="p">[</span><span class="s1">&#39;RG&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">readGroups</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="k">with</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">outPathTemp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.bam&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;.readGroups.pickle.gz&#39;</span><span class="p">,</span><span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">rgzip</span><span class="p">,</span>   <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">headerSamFilePath</span><span class="p">,</span><span class="s1">&#39;w&#39;</span><span class="p">,</span><span class="n">header</span><span class="o">=</span><span class="n">hCopy</span><span class="p">)</span> <span class="k">as</span> <span class="n">headerSam</span><span class="p">:</span>
+                <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">readGroups</span><span class="p">,</span> <span class="n">rgzip</span><span class="p">)</span>
+
+                <span class="c1">#for readGroup, fields in readGroups.items():</span>
+                <span class="c1">#    headerSam.write(f&#39;@RG\tID:{readGroup}\tPL:{fields[&quot;PL&quot;]}\tSM:{fields[&quot;SM&quot;]}\tPU:{fields[&quot;PU&quot;]}\tLB:{fields[&quot;LB&quot;]}\n&#39;)</span>
+            <span class="c1"># Clear the read groups</span>
+            <span class="n">qFlagger</span><span class="o">.</span><span class="n">assignedReadGroups</span><span class="o">=</span><span class="nb">set</span><span class="p">()</span>
+
+
+            <span class="c1"># Perform a reheading, sort and index</span>
+            <span class="n">rehead_cmd</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;&quot;&quot;{{ cat </span><span class="si">{headerSamFilePath}</span><span class="s2">; samtools view </span><span class="si">{outPathTemp}</span><span class="s2">; }} | samtools view -b &gt; </span><span class="si">{outPathTempWithHeader}</span><span class="s2"> ;</span>
+<span class="s2">            rm </span><span class="si">{outPathTemp}</span><span class="s2">;</span>
+<span class="s2">            samtools sort </span><span class="si">{outPathTempWithHeader}</span><span class="s2"> &gt; </span><span class="si">{outPath}</span><span class="s2">; samtools index </span><span class="si">{outPath}</span><span class="s2">;</span>
+<span class="s2">            rm </span><span class="si">{outPathTempWithHeader}</span><span class="s2">;</span>
+<span class="s2">            &quot;&quot;&quot;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Adding read groups to header and sorting.&quot;</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">rehead_cmd</span><span class="p">)</span>
+
+            <span class="c1"># Same procedure for dedup:</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dedup</span><span class="p">:</span>
+                <span class="n">rehead_cmd</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;&quot;&quot;{{ cat </span><span class="si">{headerSamFilePath}</span><span class="s2">; samtools view </span><span class="si">{dedupOutPathTemp}</span><span class="s2">; }} | samtools view -b &gt; </span><span class="si">{dedupOutPathTempWithHeader}</span><span class="s2"> ;</span>
+<span class="s2">                rm </span><span class="si">{dedupOutPathTemp}</span><span class="s2">;</span>
+<span class="s2">                samtools sort </span><span class="si">{dedupOutPathTempWithHeader}</span><span class="s2"> &gt; </span><span class="si">{dedupOutPath}</span><span class="s2">; samtools index </span><span class="si">{dedupOutPath}</span><span class="s2">;</span>
+<span class="s2">                rm </span><span class="si">{dedupOutPathTempWithHeader}</span><span class="s2">;</span>
+<span class="s2">                &quot;&quot;&quot;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Dedup file: adding read groups to header and sorting.&quot;</span><span class="p">)</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">rehead_cmd</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># we cannot assign readgroups...</span>
+            <span class="n">rehead_cmd</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">            samtools sort </span><span class="si">{outPathTemp}</span><span class="s2"> &gt; </span><span class="si">{outPath}</span><span class="s2">; samtools index </span><span class="si">{outPath}</span><span class="s2">;</span>
+<span class="s2">            rm </span><span class="si">{outPathTemp}</span><span class="s2">;</span>
+<span class="s2">            &quot;&quot;&quot;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Adding read groups to header and sorting.&quot;</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">rehead_cmd</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dedup</span><span class="p">:</span>
+                <span class="n">rehead_cmd</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                samtools sort </span><span class="si">{dedupOutPathTemp}</span><span class="s2"> &gt; </span><span class="si">{dedupOutPath}</span><span class="s2">; samtools index </span><span class="si">{dedupOutPath}</span><span class="s2">;</span>
+<span class="s2">                rm </span><span class="si">{dedupOutPathTemp}</span><span class="s2">;</span>
+<span class="s2">                &quot;&quot;&quot;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Dedup file: adding read groups to header and sorting.&quot;</span><span class="p">)</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="n">rehead_cmd</span><span class="p">)</span>
+
+
+
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Is:NS500414;RN:455;Fc:HYLVHBGX5;La:3;Ti:13601;CX:9882;CY:17671;Fi:N;CN:0;aa:CCGTCC;aA:CCGTCC;aI:16;LY:A3-P15-1-1;RX:ACG;RQ:GGG;BI:17;bc:ACTCGATG;BC:ACTCGATG;QT:GGKKKKKK;MX:NLAIII384C8U3;A2:TGG;AQ:E6E</span>
+<span class="sd">    for f in $(ls *.bam | cut -f 1,2,3 -d &#39;-&#39; | sort | uniq | grep -v bam); do submission.py -y -time 20 -t 1 &quot;addTagsToLennartNLABam.py $f*cell*.bam&quot;; done</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
