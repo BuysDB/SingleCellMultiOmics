@@ -2,6 +2,8 @@ from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 
+complement = str.maketrans('ATCGN', 'TAGCN')
+
 class Fragment():
     def __init__(self, reads, assignment_radius=3, umi_hamming_distance=1,R1_primer_length=0,R2_primer_length=6,tag_definitions=None ):
         if tag_definitions is None:
@@ -44,6 +46,30 @@ class Fragment():
         elif self.get_R2()!=None:
             return not self.get_R2().is_reverse
         return None
+
+    """Obtain hash describing the random primer
+    Returns None,None when the random primer cannot be described
+    Returns
+    -------
+    reference_start : int or None
+    sequence : str or None
+    """
+    def get_random_primer_hash(self):
+        R2 = self.get_R2()
+        if R2 is None or R2.query_sequence is None:
+            return None,None
+        # The read was not mapped
+        if R2.is_unmapped:
+            # Guess the orientation does not matter
+            return None, R2.query_sequence[:self.R2_primer_length]
+
+        if R2.is_reverse:
+            global complement
+            return(R2.reference_end, R2.query_sequence[-self.R2_primer_length:][::-1].translate(complement))
+        else:
+            return(R2.reference_start, R2.query_sequence[:self.R2_primer_length])
+        raise ValueError()
+
 
     def set_meta(self, key, value):
         self.meta[key] = value
