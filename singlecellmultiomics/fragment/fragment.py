@@ -38,8 +38,12 @@ class Fragment():
         self.set_strand(self.identify_strand())
 
     def identify_strand(self):
-        if self.reads[0]!=None:
-            return not self.reads[0].is_reverse
+        # If R2 is rev complement:
+        if self.get_R1()!=None:
+            return self.get_R1().is_reverse
+        elif self.get_R2()!=None:
+            return not self.get_R2().is_reverse
+        return None
 
     def set_meta(self, key, value):
         self.meta[key] = value
