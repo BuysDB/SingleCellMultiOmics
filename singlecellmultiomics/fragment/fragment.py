@@ -127,12 +127,21 @@ class Fragment():
     def is_valid(self):
         return self.has_valid_span()
 
+    def get_strand_repr(self):
+        s = self.get_strand()
+        if s is None:
+            return '?'
+        if s:
+            return '-'
+        else:
+            return '+'
+
     def __repr__(self):
         return f"""Fragment:
         sample:{self.get_sample()}
         umi:{self.get_umi()}
         span:{('%s %s-%s' % self.get_span())}
-        strand:{self.get_strand()}
+        strand:{self.get_strand_repr()}
         """
 
     def set_rejection_reason(self, reason):
