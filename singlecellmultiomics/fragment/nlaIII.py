@@ -4,13 +4,16 @@ class NLAIIIFragment(Fragment):
     def __init__(self,reads, random_primer_length=6,assignment_radius=1_000, umi_hamming_distance=1  ):
         Fragment.__init__(self, reads, assignment_radius=assignment_radius, umi_hamming_distance=umi_hamming_distance )
         # set NLAIII cut site given reads
+        self.strand = None
         self.site_location = None
+        self.cut_site_strand = None
         self.identify_site()
 
-
     def set_site(self, site_chrom, site_pos, site_strand=None ):
+
         self.set_strand(site_strand)
         self.site_location = (site_chrom, site_pos)
+        self.cut_site_strand = site_strand
 
     def identify_site(self):
 
