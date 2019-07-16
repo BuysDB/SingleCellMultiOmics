@@ -237,6 +237,53 @@ class Molecule():
     def get_methylated_count(self, context=3):
         r = collections.Counter()
 
+    """Get dictionary of TAPS methylated bases
+    Parameters
+    -------
+    None
+
+    Returns
+    -------
+    dict( tuple(chrom,pos): bool converted )
+
+    """
+    def get_TAPS_methylation_calls(self, capture_context=None, reference=None):
+
+        if self.is_multimapped():
+            return None
+
+        strand =  self.get_strand() #molecule.fragments[0][0].get_tag('RS')=='-'
+        if strand is None:
+            return None
+
+        try:
+            base_obs, ref_bases = self.get_base_observation_dict(return_refbases=True)
+        except ValueError:
+            # We cannot determine a reliable consensus sequence
+            return None
+
+        consensus = self.get_consensus(base_obs=base_obs)
+        methylation_status = {} # location-> call
+        for location, ref_base in ref_bases.items():
+            if not location in consensus:
+                continue
+            query_base = consensus[location]
+            k = (*location, strand)
+            if ref_base=='C' and strand: # fwd
+                if query_base=='T':
+                    methylation_status[k] = True #  modified
+                elif query_base=='C':
+                    methylation_status[k] = False # not modified
+
+            elif ref_base=='G' and not strand: # rev
+
+                if query_base=='A':
+                    methylation_status[k] = True #  modified
+                elif query_base=='G':
+                    methylation_status[k] = False # not modified
+
+        return methylation_status
+
 
     def get_methylation_dict(self):
         methylated_positions =  collections.Counter () #chrom-pos->count
