@@ -17,7 +17,7 @@ argparser = argparse.ArgumentParser(
  description='Obtain duplication rate on the fly')
 
 argparser.add_argument('alignmentfile',  type=str)
-argparser.add_argument('-u',  type=int, 10_000)
+argparser.add_argument('-u',  type=int, default=10_000)
 
 args = argparser.parse_args()
 
