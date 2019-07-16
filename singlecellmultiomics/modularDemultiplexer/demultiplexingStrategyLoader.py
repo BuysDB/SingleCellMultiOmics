@@ -10,10 +10,10 @@ from colorama import Style
 import importlib
 import inspect
 import traceback
-import singlecellmultiomics.modularDemultiplexer.demultiplexModules
+import singlecellmultiomics.modularDemultiplexer.demultiplexModules as dm
 import singlecellmultiomics.fastqProcessing.fastqIterator as fastqIterator
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import NonMultiplexable,IlluminaBaseDemultiplexer
-from singlecellmultiomics.fastqProcessing.fastqHandle import FastqHandle
+
 
 class DemultiplexingStrategyLoader:
 	def __init__(self, barcodeParser, moduleSearchDir= 'demultiplexModules', indexParser=None, ignoreMethods=None,indexFileAlias=None):
@@ -25,7 +25,25 @@ class DemultiplexingStrategyLoader:
 		print(f'{Style.DIM}Current script location: {__file__}')
 		print(f'Searchdir: {moduleSearchDir}')
 		print(f'Looking for modules in {moduleSearchPath}{Style.RESET_ALL}')
-		self.demultiplexingStrategies = []
+		self.demultiplexingStrategies = [
+			dm.CELSeq2_c8_u8,
+			dm.MSPJI_c8_u3,
+			dm.ScartraceR1,
+			dm.Base_RestrictionBisulfiteDemuxMethod,
+			dm.CELSeq2_c8_u8_NNLAIII,
+			dm.ScartraceR2,
+			dm.DemultiplexingStrategy,
+			dm.NLAIII_384w_c8_u3,
+			dm.CELSeq1_c8_u4,
+			dm.NLAIII_96w_c8_u3,
+			dm.Nla_384w_u8_c8_ad3_is15,
+			dm.CELSeq2_c8_u6,
+			dm.IlluminaBaseDemultiplexer,
+			dm.CELSeq2_c8_u6_swapped_reads,
+			dm.SCCHIC_384w_c8_u3
+		]
+
+		"""
 		for modulePath in glob.glob(f'{moduleSearchPath}/*.py'):
 			#print(f"Found {modulePath}")
 			try:
@@ -63,7 +81,7 @@ class DemultiplexingStrategyLoader:
 
 				print(f'Contact {Style.BRIGHT}%s{Style.RESET_ALL} for help\n' % getpwuid(stat(modulePath).st_uid).pw_name)
 				print('The error only affects this module.\nProceeding to load more modules...\n')
-
+		"""
 	def getSelectedStrategiesFromStringList(self, strList):
 		selectedStrategies = []
 
