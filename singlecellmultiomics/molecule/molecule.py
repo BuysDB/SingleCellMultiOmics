@@ -81,8 +81,6 @@ class Molecule():
     def __len__(self):
         return len(self.fragments)
 
-
-
     def get_strand(self):
         """Obtain mapping strand of molecule
         Returns:
