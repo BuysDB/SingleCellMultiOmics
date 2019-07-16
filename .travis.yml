@@ -6,8 +6,6 @@ python:
 
 # command to install dependencies
 install:
-    - git clone https://github.com/BuysDB/HandleLimiter
-    - git clone https://github.com/BuysDB/pysamiterators
-    - pip install -e ./HandleLimiter  -e ./pysamiterators -e .
+    - pip install .
 # command to run tests
 script: pytest
