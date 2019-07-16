@@ -93,8 +93,15 @@ class Molecule():
     def can_be_yielded(self, chromsome, position):
         if chromsome!=self.chromosome:
             return False
+        if chromosome!=self.chromosome:
+            return True
         return position < (self.spanStart-self.cache_size*0.5) or position > (self.spanEnd+self.cache_size*0.5)
 
+    """Obtain all RT reaction fragment sizes
+    Returns
+    -------
+    rt_sizes : list of ints
+    """
     def get_rt_reaction_fragment_sizes(self):
         rt_reactions = molecule_to_random_primer_dict(self)
         amount_of_rt_reactions = len(rt_reactions)
@@ -109,6 +116,12 @@ class Molecule():
             rt_sizes.append([rt_end-rt_start])
         return rt_sizes
 
+    """Obtain the mean RT reaction fragment size
+    Returns
+    -------
+    mean_rt_size : float
+    """
+
     def get_mean_rt_fragment_size(self):
 
         return np.nanmean(
@@ -116,19 +129,36 @@ class Molecule():
         )
 
 
-    def __getitem__(self, key):
+    """Obtain a fragment belonging to this molecule.
+    Parameters
+    -------
+    index : int
+        index of the fragment [0 ,1 , 2 ..]
+
+    Returns
+    -------
+    fragment : singlecellmultiomics.fragment.Fragment
+    """
+    def __getitem__(self, index):
         return self.fragments[key]
 
     '''
     Obtain observed bases at reference aligned locations
+    Parameters
+    -------
+    return_refbases : bool
+        return both observed bases and reference bases
 
     Returns
     -------
     genome_location (tuple) -> base (string) -> obs (int)
+    genome_location (tuple) -> base (string) if return_refbases is True
     '''
 
-    def get_base_observation_dict(self):
+    def get_base_observation_dict(self, return_refbases=False):
         base_obs = collections.defaultdict(collections.Counter)
+        if return_refbases:
+            ref_bases = {}
         for fragment in self:
             R1 = fragment.get_R1()
             R2 = fragment.get_R2()
@@ -140,11 +170,17 @@ class Molecule():
             for read in [R1,R2]:
                 if read is None:
                     continue
-                for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(read):
+                for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(read,with_seq=True):
                     if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
                         continue
                     query_base = read.seq[query_pos]
+                    if query_base=='N':
+                        continue
                     base_obs[(read.reference_name,ref_pos)][query_base]+=1
+                    if return_refbases:
+                        ref_bases[(read.reference_name,ref_pos)]=ref_base.upper()
+        if return_refbases:
+            return base_obs, ref_bases
         return base_obs
 
 
@@ -212,12 +248,23 @@ class Molecule():
 
         return variant_calls
 
+    """Iterate over all associated reads
+    Returns
+    -------
+    generator (pysam.AlignedSegment)
+    """
     def iter_reads(self):
         for fragment in self.fragments:
             for read in fragment:
                 if read is not None:
                     yield read
 
+
+    """Iterate over all associated fragments
+    Returns
+    -------
+    generator (Fragment)
+    """
     def __iter__(self):
         for fragment in self.fragments:
             yield fragment
