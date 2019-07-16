@@ -107,8 +107,20 @@ class Molecule():
                 return True
         return False
 
-    def can_be_yielded(self, chromsome, position):
-        if chromsome!=self.chromosome:
+    """Check if the molecule is far enough away from the supplied location to be ejected from a buffer.
+    Parameters
+    -------
+    chromosome : str
+        chromosome / contig of location to test
+    position : int
+        genomic location of location to test
+    Returns
+    -------
+    can_be_yielded : bool
+    """
+
+    def can_be_yielded(self, chromosome, position):
+        if chromosome is None:
             return False
         if chromosome!=self.chromosome:
             return True
