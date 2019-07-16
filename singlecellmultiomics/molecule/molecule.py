@@ -62,6 +62,23 @@ class Molecule():
         for fragment in self.fragments:
             return fragment.get_sample()
 
+    '''
+    For restriction based protocol data, obtain genomic location of cut site
+    Returns
+    -------
+    None if site is not available
+
+    chromosome : str
+    position : int
+    strand : bool
+    '''
+    def get_cut_site(self):
+        for fragment in self.fragments:
+            site = fragment.get_site_location()
+            if site is not None:
+                return tuple( (*site, fragment.get_strand()))
+        return None
+
     def is_multimapped(self):
         for fragment in self.fragments:
             if not fragment.is_multimapped:
