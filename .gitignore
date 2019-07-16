@@ -26,3 +26,6 @@ share/python-wheels/
 .installed.cfg
 *.egg
 *-checkpoint.ipynb
+_build
+_static
+_templates
