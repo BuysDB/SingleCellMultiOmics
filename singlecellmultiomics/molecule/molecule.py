@@ -162,9 +162,9 @@ class Molecule():
     def get_consensus(self, base_obs=None):
         consensus = {} # postion -> base , key is not set when not decided
         if base_obs is None:
-            base_obs = self.get_base_observation_dict().items()
+            base_obs = self.get_base_observation_dict()
 
-        for location, obs in base_obs:
+        for location, obs in base_obs.items():
             votes = obs.most_common()
             if len(votes)==1 or votes[1][1]<votes[0][1]:
                 consensus[location] = votes[0][0]
