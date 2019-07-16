@@ -41,7 +41,11 @@ setup(
         'singlecellmultiomics.libraryProcessing',
         'singlecellmultiomics.modularDemultiplexer',
         'singlecellmultiomics.pyutils',
+        'singlecellmultiomics.utils',
+        'singlecellmultiomics.variantCalling',
         'singlecellmultiomics.tagtools',
+        'singlecellmultiomics.molecule',
+        'singlecellmultiomics.fragment',
         'singlecellmultiomics.universalBamTagger',
         'singlecellmultiomics.statistic',
         'singlecellmultiomics.modularDemultiplexer.demultiplexModules'
