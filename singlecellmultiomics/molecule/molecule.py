@@ -2,16 +2,36 @@ from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
 from singlecellmultiomics.fragment import Fragment
 import collections
-import singlecellmultiomics.tagtools as tagtools
 import itertools
 import numpy as np
 
-def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2): #1: read1 2: read2
+def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2, max_N_distance=0): #1: read1 2: read2
     rp = collections.defaultdict(list)
+
+    # First add all reactions without a N in the sequence:
     for fragment in molecule:
         if fragment[primer_read-1] is not None:
-            hstart, hseq = tagtools.getRandomPrimerHash(fragment[primer_read-1], onStart=True, primerLength=6)
-            rp[hstart, hseq].append(fragment)
+            hstart, hseq = fragment.get_random_primer_hash()
+            if not 'N' in hseq:
+                rp[hstart, hseq].append(fragment)
+
+    # Try to match reactions with N with reactions without a N
+    for fragment in molecule:
+        if fragment[primer_read-1] is not None:
+            hstart, hseq = fragment.get_random_primer_hash()
+            if 'N' in hseq:
+                # find nearest
+                for other_start, other_seq in rp:
+                    if other_start!=hstart:
+                        continue
+
+                    if 'N' in other_seq:
+                        continue
+
+                    if hamming_distance(hseq,other_seq)<=max_N_distance:
+                        rp[other_start, other_seq].append(fragment)
+
+
     return rp
 
 class Molecule():
