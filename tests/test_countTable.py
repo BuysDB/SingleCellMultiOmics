@@ -2,18 +2,12 @@
 # -*- coding: utf-8 -*-
 import unittest
 from types import SimpleNamespace
-
-
 import singlecellmultiomics.bamProcessing.bamToCountTable
 
-
-"""
-These tests check if the tagger is working correctly
-"""
-
-class TestMoleculeIteration(unittest.TestCase):
+class TestCountTable(unittest.TestCase):
 
     def test_total_read_counting(self):
+        """ Test if the amount of raw reads in a bam file is counted properly """
         df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
             SimpleNamespace(
                 alignmentfiles=['./data/mini_nla_test.bam'],
@@ -36,10 +30,11 @@ class TestMoleculeIteration(unittest.TestCase):
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
-        # !samtools idxstats ./singlecellmultiomics/data/mini_nla_test.bam | head -n 1 | cut -f 3
+        # !samtools idxstats ./data/mini_nla_test.bam | head -n 1 | cut -f 3
         self.assertEqual(df.loc['chr1'].sum(),563)
 
     def test_total_molecule_counting(self):
+        """ Test if the amount of molecules in a bam file is counted properly """
         df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
             SimpleNamespace(
                 alignmentfiles=['./data/mini_nla_test.bam'],
@@ -66,6 +61,7 @@ class TestMoleculeIteration(unittest.TestCase):
         self.assertEqual(df.loc['chr1'].sum(),383)
 
     def test_singleFeatureTags_molecule_counting(self):
+        """ Test if the single feature counting feature works """
         df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
             SimpleNamespace(
                 alignmentfiles=['./data/mini_nla_test.bam'],
@@ -100,6 +96,7 @@ class TestMoleculeIteration(unittest.TestCase):
 
 
     def test_bed_counting(self):
+        """ Test if the bed feature counting feature works """
         df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
             SimpleNamespace(
                 alignmentfiles=['./data/mini_nla_test.bam'],
@@ -127,6 +124,7 @@ class TestMoleculeIteration(unittest.TestCase):
         self.assertEqual( df.xs( 'test3',level='bname', drop_level=False).iloc[0].sum() , 383)
 
     def test_byValue(self):
+        """ Test if the by value counting feature works, this counts the value of a feature instead of its presence"""
         df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
             SimpleNamespace(
                 alignmentfiles=['./data/mini_nla_test.bam'],
@@ -147,14 +145,12 @@ class TestMoleculeIteration(unittest.TestCase):
                 divideMultimapping=False,
                 keepOverBounds=False,
                 doNotDivideFragments=True,
-
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
 
         self.assertEqual( df.sum(1).sum(), 765 )
         self.assertEqual( df['A3-P15-1-1_25'].sum().sum(), 12.0 )
-
 
 if __name__ == '__main__':
     unittest.main()
