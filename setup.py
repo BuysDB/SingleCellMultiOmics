@@ -1,17 +1,25 @@
 from setuptools import setup
 import os
 import sys
-from setuptools import setup, find_packages
+
 _here = os.path.abspath(os.path.dirname(__file__))
 version = {}
 with open(os.path.join(_here, 'singlecellmultiomics', 'version.py')) as f:
     exec(f.read(), version)
 
-print(find_packages())
+if sys.version_info[0] < 3:
+    with open(os.path.join(_here, 'README.md')) as f:
+        long_description = f.read()
+else:
+    with open(os.path.join(_here, 'README.md'), encoding='utf-8') as f:
+        long_description = f.read()
+
 setup(
     name='singlecellmultiomics',
     version=version['__version__'],
     description='Tools to deal with one or more measurements from single cells',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     author='Buys de Barbanson',
     author_email='b.barbanson@hubrecht.eu',
     url='https://github.com/BuysDB/SingleCellMultiOmics',
