@@ -27,7 +27,9 @@ setup(
     author='Buys de Barbanson',
     author_email='b.barbanson@hubrecht.eu',
     url='https://github.com/BuysDB/SingleCellMultiOmics',
-    license='MPL-2.0',
+    download_url = 'https://github.com/BuysDB/SingleCellMultiOmics/archive/v0.0.2-alpha.tar.gz',
+
+    license='MIT',
     packages=['singlecellmultiomics',
         'singlecellmultiomics.features',
         'singlecellmultiomics.alleleTools',
@@ -41,7 +43,8 @@ setup(
         'singlecellmultiomics.pyutils',
         'singlecellmultiomics.tagtools',
         'singlecellmultiomics.universalBamTagger',
-        'singlecellmultiomics.statistic'
+        'singlecellmultiomics.statistic',
+        'singlecellmultiomics.modularDemultiplexer.demultiplexModules'
         ],
 
 
@@ -58,21 +61,25 @@ setup(
         'singlecellmultiomics/bamProcessing/bamPlateVisualisation.py',
         'singlecellmultiomics/bamProcessing/bamFeatureDensityVisualisation.py',
         'singlecellmultiomics/bamProcessing/bamDuprate.py',
-        
+
 
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py'
 
         ],
   install_requires=[
-       'pysam','numpy','pandas','colorama'
+       'pysam','numpy','pandas','colorama','pysamiterators'
    ],
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],
 
     include_package_data=True,
+
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Science/Research',
-        'Programming Language :: Python :: 3.6'],
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+         'License :: OSI Approved :: MIT License'
+        ],
 )
