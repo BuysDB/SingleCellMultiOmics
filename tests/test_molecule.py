@@ -54,13 +54,16 @@ class TestMolecule(unittest.TestCase):
             alignments=f,
             moleculeClass=singlecellmultiomics.molecule.Molecule,
             fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
-            fragment_class_args={'umi_hamming_distance':0}
+            fragment_class_args={'umi_hamming_distance':1}
 
         )
 
         hand_curated_truth = {
             # hd: 1:
-            #'APKS2-P8-2-2_52':{'rt_count':2},
+            # hard example with N in random primer and N in UMI:
+            'APKS2-P8-2-2_52':{'rt_count':3},
+
+            # Simple examples:
             'APKS2-P18-1-1_318':{'rt_count':1},
             'APKS2-P18-1-1_369':{'rt_count':2},
             'APKS2-P18-2-1_66':{'rt_count':1},
