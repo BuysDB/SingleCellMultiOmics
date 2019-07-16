@@ -30,12 +30,39 @@ def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2, max
 
                     if hamming_distance(hseq,other_seq)<=max_N_distance:
                         rp[other_start, other_seq].append(fragment)
-
-
     return rp
 
 class Molecule():
+    """Molecule class, contains one or more associated fragments
+
+    Attributes:
+        fragments (list): associated fragments
+
+        spanStart (int): starting coordinate of molecule, None if not available
+
+        spanEnd (int): ending coordinate of molecule, None if not available
+
+        chromosome (str): mapping chromosome of molecule, None if not available
+
+        cache_size (int): radius of molecule assignment cache
+
+        strand (bool): mapping strand.
+            True when strand is REVERSE
+            False when strand is FORWARD
+            None when strand is not determined
+    """
+
     def __init__(self, fragments=None, cache_size=10_000):
+        """Initialise Molecule
+
+        Parameters
+        ----------
+        fragments :  list(singlecellmultiomics.fragment.Fragment)
+            Fragment to assign to Molecule. More fragments can be added later
+
+        cache_size (int): radius of molecule assignment cache
+        """
+
         self.fragments  = []
         self.spanStart = None
         self.spanEnd = None
@@ -54,16 +81,16 @@ class Molecule():
     def __len__(self):
         return len(self.fragments)
 
-    """Obtain mapping strand of molecule
-    Returns
-    -------
-        strand : True,False,None
-            True when strand is REVERSE
-            False when strand is FORWARD
-            None when strand is not determined
-    """
+
 
     def get_strand(self):
+        """Obtain mapping strand of molecule
+        Returns:
+            strand : True,False,None
+                True when strand is REVERSE
+                False when strand is FORWARD
+                None when strand is not determined
+        """
         return self.strand
 
     def __repr__(self):
@@ -79,20 +106,28 @@ class Molecule():
         return umi_abundance.most_common(1)[0][0]
 
     def get_sample(self):
+        """Obtain sample
+
+        Returns:
+            sample (str):
+                Sample associated with the molecule. Usually extracted from SM tag.
+                Calls fragment.get_sample() to obtain the sample
+        """
         for fragment in self.fragments:
             return fragment.get_sample()
 
-    '''
-    For restriction based protocol data, obtain genomic location of cut site
-    Returns
-    -------
-    None if site is not available
 
-    chromosome : str
-    position : int
-    strand : bool
-    '''
     def get_cut_site(self):
+        """For restriction based protocol data, obtain genomic location of cut site
+
+        Returns:
+            None if site is not available
+
+            chromosome (str)
+            position (int)
+            strand (bool)
+        """
+
         for fragment in self.fragments:
             site = fragment.get_site_location()
             if site is not None:
@@ -127,31 +162,31 @@ class Molecule():
                 return True
         return False
 
-    """Check if the molecule is far enough away from the supplied location to be ejected from a buffer.
-    Parameters
-    -------
-    chromosome : str
-        chromosome / contig of location to test
-    position : int
-        genomic location of location to test
-    Returns
-    -------
-    can_be_yielded : bool
-    """
-
     def can_be_yielded(self, chromosome, position):
+
+        """Check if the molecule is far enough away from the supplied location to be ejected from a buffer.
+
+        Args:
+            chromosome (str) : chromosome / contig of location to test
+            position (int) : genomic location of location to test
+
+        Returns:
+            can_be_yielded (bool)
+        """
+
         if chromosome is None:
             return False
         if chromosome!=self.chromosome:
             return True
         return position < (self.spanStart-self.cache_size*0.5) or position > (self.spanEnd+self.cache_size*0.5)
 
-    """Obtain all RT reaction fragment sizes
-    Returns
-    -------
-    rt_sizes : list of ints
-    """
     def get_rt_reaction_fragment_sizes(self):
+
+        """Obtain all RT reaction fragment sizes
+        Returns:
+            rt_sizes (list of ints)
+        """
+
         rt_reactions = molecule_to_random_primer_dict(self)
         amount_of_rt_reactions = len(rt_reactions)
 
@@ -165,46 +200,45 @@ class Molecule():
             rt_sizes.append([rt_end-rt_start])
         return rt_sizes
 
-    """Obtain the mean RT reaction fragment size
-    Returns
-    -------
-    mean_rt_size : float
-    """
-
     def get_mean_rt_fragment_size(self):
+        """Obtain the mean RT reaction fragment size
 
+        Returns:
+            mean_rt_size (float)
+        """
         return np.nanmean(
             self.get_rt_reaction_fragment_sizes()
         )
 
 
-    """Obtain a fragment belonging to this molecule.
-    Parameters
-    -------
-    index : int
-        index of the fragment [0 ,1 , 2 ..]
 
-    Returns
-    -------
-    fragment : singlecellmultiomics.fragment.Fragment
-    """
     def __getitem__(self, index):
+        """Obtain a fragment belonging to this molecule.
+
+        Args:
+            index (int):
+                index of the fragment [0 ,1 , 2 ..]
+
+        Returns:
+            fragment (singlecellmultiomics.fragment.Fragment)
+        """
         return self.fragments[key]
 
-    '''
-    Obtain observed bases at reference aligned locations
-    Parameters
-    -------
-    return_refbases : bool
-        return both observed bases and reference bases
 
-    Returns
-    -------
-    genome_location (tuple) -> base (string) -> obs (int)
-    genome_location (tuple) -> base (string) if return_refbases is True
-    '''
 
     def get_base_observation_dict(self, return_refbases=False):
+        '''
+        Obtain observed bases at reference aligned locations
+
+        Args:
+            return_refbases ( bool ):
+                return both observed bases and reference bases
+
+        Returns:
+            { genome_location (tuple) : base (string) : obs (int) }
+            and
+            { genome_location (tuple) : base (string) if return_refbases is True }
+        '''
         base_obs = collections.defaultdict(collections.Counter)
         if return_refbases:
             ref_bases = {}
@@ -233,18 +267,17 @@ class Molecule():
         return base_obs
 
 
-    """Get dictionary containing consensus calls in respect to reference
-    Parameters
-    -------
-    base_obs : collections.defaultdict(collections.Counter)
-        genome_location (tuple) -> base (string) -> obs (int)
 
-    Returns
-    -------
-    dict
-    location -> base
-    """
     def get_consensus(self, base_obs=None):
+        """Get dictionary containing consensus calls in respect to reference
+
+        Args:
+            base_obs (collections.defaultdict(collections.Counter)) :
+                { genome_location (tuple) : base (string) : obs (int) }
+
+        Returns:
+            consensus (dict)  :  {location : base}
+        """
         consensus = {} # postion -> base , key is not set when not decided
         if base_obs is None:
             base_obs = self.get_base_observation_dict()
@@ -256,6 +289,14 @@ class Molecule():
         return consensus
 
     def check_variants(self, variants, exclude_other_calls=True ): #when enabled other calls (non ref non alt will be set None)
+        """Verify variants in molecule
+
+        Args:
+            variants (pysam.VariantFile) : Variant file handle to extract variants from
+
+        Returns:
+            dict (collections.defaultdict( collections.Counter )) : { (chrom,pos) : ( call (str) ): observations  (int) }
+        """
         variant_dict = {}
         for variant in variants.fetch( self.chromosome, self.spanStart, self.spanEnd ):
             variant_dict[ (variant.chrom, variant.pos-1)] = (variant.ref, variant.alts)
@@ -297,53 +338,51 @@ class Molecule():
 
         return variant_calls
 
-    """Iterate over all associated reads
-    Returns
-    -------
-    generator (pysam.AlignedSegment)
-    """
+
     def iter_reads(self):
+        """Iterate over all associated reads
+        Returns:
+            generator (pysam.AlignedSegment)
+        """
+
         for fragment in self.fragments:
             for read in fragment:
                 if read is not None:
                     yield read
 
-
-    """Iterate over all associated fragments
-    Returns
-    -------
-    generator (Fragment)
-    """
     def __iter__(self):
+        """Iterate over all associated fragments
+
+        Yields:
+            singlecellmultiomics.fragment.Fragment
+        """
         for fragment in self.fragments:
             yield fragment
 
-    """Get the total amount of methylated bases
-    Parameters
-    -------
-    context : int
-        3 or 4 base context
 
-    Returns
-    -------
-    collections.Counter
-    sum of methylated bases in contexts
-
-    """
     def get_methylated_count(self, context=3):
+        """Get the total amount of methylated bases
+        Args:
+            context (int) : 3 or 4 base context
+
+        Returns:
+            r (collections.Counter) : sum of methylated bases in contexts
+        """
+
         r = collections.Counter()
 
-    """Get dictionary of TAPS methylated bases
-    Parameters
-    -------
-    None
 
-    Returns
-    -------
-    dict( tuple(chrom,pos): bool converted )
-
-    """
     def get_TAPS_methylation_calls(self, capture_context=None, reference=None):
+        """Get dictionary of TAPS methylated bases
+        Args:
+            capture_context (bool)
+
+            reference (pysam.FastaFile)
+
+        Returns:
+            methylation_status (dict): { tuple(chrom,pos):  converted (bool) }
+
+        """
 
         if self.is_multimapped():
             return None
@@ -415,7 +454,29 @@ class Molecule():
                     i+=1
         return methylated_positions,methylated_state
 
-def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000, fragment_class_args={}, molecule_class_args={}, **pysamArgs):
+
+def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000, molecule_class_args={}, fragment_class_args={}, **pysamArgs):
+    """Iterate over molecules in pysam.AlignmentFile
+
+    Args:
+        alignments (pysam.AlignmentFile): Alignments to extract molecules form
+
+        moleculeClass (pysam.FastaFile): Class to use for molecules.
+
+        fragmentClass (pysam.FastaFile): Class to use for fragments.
+
+        check_eject_every (int): Check for yielding every N reads.
+
+        molecule_class_args (dict): arguments to pass to moleculeClass.
+
+        fragment_class_args (dict): arguments to pass to fragmentClass.
+
+        **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
+
+    Yields:
+        methylation_status (dict): { tuple(chrom,pos):  converted (bool) }
+    """
+
     molecules = []
 
     added_fragments = 0
