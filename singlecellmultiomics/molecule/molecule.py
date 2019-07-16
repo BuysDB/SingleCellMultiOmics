@@ -21,6 +21,7 @@ class Molecule():
         self.spanEnd = None
         self.chromosome = None
         self.cache_size = cache_size
+        self.strand = None
 
         if fragments is not None:
             if type(fragments) is list:
@@ -32,6 +33,18 @@ class Molecule():
 
     def __len__(self):
         return len(self.fragments)
+
+    """Obtain mapping strand of molecule
+    Returns
+    -------
+        strand : True,False,None
+            True when strand is REVERSE
+            False when strand is FORWARD
+            None when strand is not determined
+    """
+
+    def get_strand(self):
+        return self.strand
 
     def __repr__(self):
         frag_repr = '\n\t'.join([str(fragment) for fragment in self.fragments])
@@ -62,6 +75,8 @@ class Molecule():
         self.spanStart = add_span[1] if self.spanStart is None else min(add_span[1], self.spanStart)
         self.spanEnd = add_span[2] if self.spanEnd is None else max(add_span[2], self.spanEnd)
         self.chromosome = add_span[0]
+        if fragment.strand is not None:
+            self.strand = fragment.strand
 
     def add_fragment(self, fragment):
         if len(self.fragments)==0:
