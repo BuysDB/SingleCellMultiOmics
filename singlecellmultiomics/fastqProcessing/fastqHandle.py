@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import gzip
-
+from singlecellmultiomics.pyutils.handlelimiter import HandleLimiter
 
 class FastqHandle:
 	def __init__(self, path, pairedEnd=False, single_cell=False, maxHandles=500 ):
@@ -14,7 +14,7 @@ class FastqHandle:
 			else:
 				self.handles = [ gzip.open(path+'reads.fastq.gz', 'wt') ]
 		else:
-			from handlelimiter.handlelimiter import HandleLimiter
+
 			self.handles = HandleLimiter(compressionLevel=1, maxHandles=maxHandles)
 
 	def write(self, records ):
