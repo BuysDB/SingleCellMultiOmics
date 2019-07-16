@@ -5,10 +5,8 @@ Single cell multi omics is a set of tools to deal with multiple measurements fro
 
 # Installation
 ```
-git clone https://github.com/BuysDB/HandleLimiter
-git clone https://github.com/BuysDB/pysamiterators
 git clone https://github.com/BuysDB/SingleCellMultiOmics
-pip install -e ./HandleLimiter  -e ./pysamiterators -e ./SingleCellMultiOmics
+pip install ./SingleCellMultiOmics
 ```
 
 # Usage
