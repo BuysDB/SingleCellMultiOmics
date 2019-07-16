@@ -357,7 +357,7 @@ class DemultiplexingStrategy(object):
         self.longName = 'placeHolder'
         self.autoDetectable = False
         self.description = 'inherit this class to build your own demultipexing strategy'
-
+        
         self.indexSummary = ''
         self.barcodeSummary = ''
 
