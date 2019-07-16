@@ -4,19 +4,27 @@ import unittest
 import singlecellmultiomics.molecule
 import singlecellmultiomics.fragment
 import pysam
+import pysamiterators.iterators
 """
 These tests check if the Molecule module is working correctly
 """
 
 class TestMolecule(unittest.TestCase):
 
+    def test_a_pysam_iterators(self):
+        """Test if the pysamiterators package yields the proper amount or mate pairs"""
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            for i,(R1,R2) in enumerate(pysamiterators.iterators.MatePairIterator(f)):
+                pass
+            self.assertEqual(i,224)
+
     def test_consensus(self):
+        """Test if a right consensus sequence can be produced from a noisy molecule"""
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
             moleculeClass=singlecellmultiomics.molecule.Molecule,
             fragmentClass=singlecellmultiomics.fragment.Fragment)
-
             for molecule in iter(it):
                 #print(molecule.get_sample())
                 if  molecule.get_sample()=='APKS3-P19-1-1_91':
