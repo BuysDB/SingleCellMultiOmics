@@ -15,6 +15,7 @@ else:
         long_description = f.read()
 
 setup(
+
     name='singlecellmultiomics',
     version=version['__version__'],
     description='Tools to deal with one or more measurements from single cells',
@@ -65,7 +66,10 @@ setup(
 
 
         # Library processing:
-        'singlecellmultiomics/libraryProcessing/libraryStatistics.py'
+        'singlecellmultiomics/libraryProcessing/libraryStatistics.py',
+
+        # Utility: (SGE wrapper)
+        'singlecellmultiomics/utils/submission.py'
 
         ],
   install_requires=[
