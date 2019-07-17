@@ -9,6 +9,7 @@ import os
 import collections
 import itertools
 
+
 #http://codereview.stackexchange.com/questions/88912/create-a-list-of-all-strings-within-hamming-distance-of-a-reference-string-with
 def hamming_circle(s, n, alphabet):
     for positions in itertools.combinations(range(len(s)), n):
@@ -26,13 +27,16 @@ class BarcodeParser():
 
     def __init__(self, barcodeDirectory='barcodes', hammingDistanceExpansion=0,spaceFill=False ):
 
+
         barcodeDirectory= os.path.join( os.path.dirname(os.path.realpath(__file__)), barcodeDirectory)
+        barcode_files = list(glob.glob(f'{barcodeDirectory}/*'))
+
         self.spaceFill = spaceFill
         self.hammingDistanceExpansion = hammingDistanceExpansion
         self.barcodes = collections.defaultdict(dict) # alias -> barcode -> index
         self.extendedBarcodes = collections.defaultdict(dict) # alias -> barcode -> (index, hammingDistance)
 
-        for barcodeFile in glob.glob(f'{barcodeDirectory}/*'):
+        for barcodeFile in barcode_files:
             barcodeFileAlias  = os.path.splitext(os.path.basename(barcodeFile))[0]
             logging.info(f"Parsing {barcodeFile}, alias {barcodeFileAlias}")
 

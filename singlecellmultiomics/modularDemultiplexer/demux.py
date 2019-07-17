@@ -17,6 +17,7 @@ import glob
 from colorama import init
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import NonMultiplexable
 import logging
+import pkg_resources
 
 if __name__=='__main__':
 
@@ -24,9 +25,7 @@ if __name__=='__main__':
 	demuxer_location = os.path.dirname(os.path.realpath(__file__))
 
 	init()
-	import logging
-	logging.getLogger().setLevel(logging.WARNING)
-	#logging.getLogger().setLevel(logging.INFO)
+
 
 	argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""%sMulti-library Single cell-demultiplexing%s, written by Buys de Barbanson, Hubrecht institute 2016-2018
 										%sExample usage:%s
@@ -64,13 +63,13 @@ if __name__=='__main__':
 	bcArgs.add_argument('-hd', help="Hamming distance barcode expansion; accept cells with barcodes N distances away from the provided barcodes. Collisions are dealt with automatically. ", type=int, default=0)
 	bcArgs.add_argument('--lbi', help="List barcodes being used for cell demultiplexing", action='store_true')
 
-	bcArgs.add_argument('-barcodeDir', default=os.path.join(demuxer_location,'barcodes'), help="Directory from which to obtain the barcodes")
+	bcArgs.add_argument('-barcodeDir', default=pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/'), help="Directory from which to obtain the barcodes, when nothing is supplied the package resources are used")
 
 
 
 	indexArgs = argparser.add_argument_group('Sequencing indices', '')
 	indexArgs.add_argument('--li', help="List sequencing indices.", action='store_true')
-	indexArgs.add_argument('-indexDir', default=os.path.join(demuxer_location,'indices'), help="Directory from which to obtain the sequencing indices")
+	indexArgs.add_argument('-indexDir', default=pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/'), help="Directory from which to obtain the sequencing indices,  when nothing is supplied the package resources are used")
 	indexArgs.add_argument('-si', help="Select only these sequencing indices -si CGATGT,TTAGGC")
 	indexArgs.add_argument('-hdi', help="Hamming distance INDEX sequence expansion, the hamming distance used for resolving the sequencing INDEX. For cell barcode hamming distance see -hd", type=int, default=1)
 
@@ -94,6 +93,7 @@ if __name__=='__main__':
 	args = argparser.parse_args()
 	verbosity = 1
 
+
 	ignoreMethods = args.ignoreMethods.split(',')
 
 	if len(set(args.fastqfiles))!=len(args.fastqfiles):
@@ -110,11 +110,10 @@ if __name__=='__main__':
 					fqFiles.append( line.strip() )
 			args.fastqfiles = fqFiles
 
+
+
 	# Load barcodes
 	barcodeParser = barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hd, barcodeDirectory=args.barcodeDir)
-
-
-
 
 	## Setup the index parser
 	indexFileAlias=None # let the multiplex methods decide which index file to use
@@ -200,25 +199,11 @@ if __name__=='__main__':
 			handle = FastqHandle(f'{args.o}/{library}/demultiplexed' , True, single_cell=args.scsepf, maxHandles=args.fh)
 
 			rejectHandle = FastqHandle(f'{args.o}/{library}/rejects' , True)
+			"""Set up statistic file"""
 
-			"""Set up logging"""
-			# set up logging to file - see previous section for more details
-			logging.basicConfig(level=logging.DEBUG,
-			                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-			                    datefmt='%m-%d %H:%M',
-			                    filename=f'{args.o}/{library}/demultiplexing.log',
-			                    filemode='w')
-			# define a Handler which writes INFO messages or higher to the sys.stderr
-			console = logging.StreamHandler()
-			console.setLevel(logging.INFO)
-			# set a format which is simpler for console use
-			formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-			# tell the handler to use this format
-			console.setFormatter(formatter)
-			# add the handler to the root logger
-			logging.getLogger('').addHandler(console)
-			logging.info(f'Demultiplexing operation started, writing to {args.o}/{library}')
-
+			log_location = os.path.abspath(f'{args.o}/{library}/demultiplexing.log');
+			log_handle = open(log_location,'w')
+			log_handle.write(f'Demultiplexing operation started, writing to {args.o}/{library}\n')
 
 			processedReadPairsForThisLib = 0
 			for lane, readPairs in libraries[library].items():
@@ -228,7 +213,7 @@ if __name__=='__main__':
 					pass
 				for readPairIdx,_ in enumerate(readPairs[readPair]):
 					files = [ readPairs[readPair][readPairIdx] for readPair in readPairs ]
-					processedReadPairs,strategyYields = dmx.demultiplex( files , strategies=selectedStrategies, targetFile=handle, rejectHandle=rejectHandle, log_handle=logging,
+					processedReadPairs,strategyYields = dmx.demultiplex( files , strategies=selectedStrategies, targetFile=handle, rejectHandle=rejectHandle, log_handle=log_handle,
 					library=library, maxReadPairs=None if args.n is None else (args.n-processedReadPairsForThisLib))
 					processedReadPairsForThisLib += processedReadPairs
 					if args.n and processedReadPairsForThisLib>=args.n:

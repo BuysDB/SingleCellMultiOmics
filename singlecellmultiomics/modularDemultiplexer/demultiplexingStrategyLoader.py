@@ -15,7 +15,6 @@ import singlecellmultiomics.fastqProcessing.fastqIterator as fastqIterator
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import NonMultiplexable,IlluminaBaseDemultiplexer
 import logging
 
-
 class DemultiplexingStrategyLoader:
     def __init__(self, barcodeParser, moduleSearchDir= 'demultiplexModules', indexParser=None, ignoreMethods=None,indexFileAlias=None):
         package = f'singlecellmultiomics.modularDemultiplexer.{moduleSearchDir}'
@@ -147,8 +146,7 @@ class DemultiplexingStrategyLoader:
         processedReadPairs=0
         baseDemux = IlluminaBaseDemultiplexer(indexFileParser=self.indexParser, barcodeParser=self.barcodeParser,probe=probe)
 
-        if log_handle is not None:
-            logger = log_handle.getLogger('strategyLoader.demultiplex')
+
 
         for processedReadPairs, reads in enumerate(fastqIterator.FastqIterator(*fastqfiles)):
             for strategy in useStrategies:
@@ -175,17 +173,18 @@ class DemultiplexingStrategyLoader:
                         print(str(read))
                     print(Style.RESET_ALL)
                     if log_handle is not None:
-                        logger.warning(f"Error occured using {strategy.longName}")
+                        log_handle.write(f"Error occured using {strategy.longName}\n")
                 #print(recodedRecord)
                 strategyYields[strategy.shortName]+=1
             if ( maxReadPairs is not None and (1+processedReadPairs)>=maxReadPairs):
                 break
         # write yields to log file if applicable:
         if log_handle is not None:
-            logger.info(f'processed {processedReadPairs} read pairs')
-            logger.info(f'Reads obtained per protocol')
+            log_handle.write(f'processed {processedReadPairs} read pairs\n')
+            log_handle.write(f'Reads obtained per protocol\n')
+            log_handle.write(f'Strategy\tReads\n')
             for strategy, used_reads in strategyYields.items():
-                logger.info(f'{strategy}\t{used_reads}')
+                log_handle.write(f'{strategy}\t{used_reads}\n')
         return processedReadPairs+1,strategyYields
 
 
