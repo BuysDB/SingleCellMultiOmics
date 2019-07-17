@@ -1,0 +1,4 @@
+include README.rst
+include data/*
+include singlecellmultiomics/modularDemultiplexer/barcodes/*
+include singlecellmultiomics/modularDemultiplexer/indices/*
