@@ -13,6 +13,7 @@ import traceback
 import singlecellmultiomics.modularDemultiplexer.demultiplexModules as dm
 import singlecellmultiomics.fastqProcessing.fastqIterator as fastqIterator
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import NonMultiplexable,IlluminaBaseDemultiplexer
+import logging
 
 
 class DemultiplexingStrategyLoader:
@@ -139,12 +140,15 @@ class DemultiplexingStrategyLoader:
             raise ValueError('No strategies selected')
         return self.selectedStrategies
 
-    def demultiplex(self, fastqfiles, maxReadPairs=None, strategies=None, library=None, targetFile=None, rejectHandle=None,probe=None):
+    def demultiplex(self, fastqfiles, maxReadPairs=None, strategies=None, library=None, targetFile=None, rejectHandle=None, log_handle=None, probe=None):
 
         useStrategies = strategies if strategies is not None else self.getAutodetectStrategies()
         strategyYields = collections.Counter()
         processedReadPairs=0
         baseDemux = IlluminaBaseDemultiplexer(indexFileParser=self.indexParser, barcodeParser=self.barcodeParser,probe=probe)
+
+        if log_handle is not None:
+            logger = log_handle.getLogger('strategyLoader.demultiplex')
 
         for processedReadPairs, reads in enumerate(fastqIterator.FastqIterator(*fastqfiles)):
             for strategy in useStrategies:
@@ -170,10 +174,18 @@ class DemultiplexingStrategyLoader:
                     for read in reads:
                         print(str(read))
                     print(Style.RESET_ALL)
+                    if log_handle is not None:
+                        logger.warning(f"Error occured using {strategy.longName}")
                 #print(recodedRecord)
                 strategyYields[strategy.shortName]+=1
             if ( maxReadPairs is not None and (1+processedReadPairs)>=maxReadPairs):
                 break
+        # write yields to log file if applicable:
+        if log_handle is not None:
+            logger.info(f'processed {processedReadPairs} read pairs')
+            logger.info(f'Reads obtained per protocol')
+            for strategy, used_reads in strategyYields.items():
+                logger.info(f'{strategy}\t{used_reads}')
         return processedReadPairs+1,strategyYields
 
 

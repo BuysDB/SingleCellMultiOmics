@@ -16,6 +16,7 @@ from singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader impo
 import glob
 from colorama import init
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import NonMultiplexable
+import logging
 
 if __name__=='__main__':
 
@@ -200,8 +201,26 @@ if __name__=='__main__':
 
 			rejectHandle = FastqHandle(f'{args.o}/{library}/rejects' , True)
 
-			processedReadPairsForThisLib = 0
+			"""Set up logging"""
+			# set up logging to file - see previous section for more details
+			logging.basicConfig(level=logging.DEBUG,
+			                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+			                    datefmt='%m-%d %H:%M',
+			                    filename=f'{args.o}/{library}/demultiplexing.log',
+			                    filemode='w')
+			# define a Handler which writes INFO messages or higher to the sys.stderr
+			console = logging.StreamHandler()
+			console.setLevel(logging.INFO)
+			# set a format which is simpler for console use
+			formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+			# tell the handler to use this format
+			console.setFormatter(formatter)
+			# add the handler to the root logger
+			logging.getLogger('').addHandler(console)
+			logging.info(f'Demultiplexing operation started, writing to {args.o}/{library}')
 
+
+			processedReadPairsForThisLib = 0
 			for lane, readPairs in libraries[library].items():
 				if args.n and processedReadPairsForThisLib>=args.n:
 					break
@@ -209,7 +228,7 @@ if __name__=='__main__':
 					pass
 				for readPairIdx,_ in enumerate(readPairs[readPair]):
 					files = [ readPairs[readPair][readPairIdx] for readPair in readPairs ]
-					processedReadPairs,strategyYields = dmx.demultiplex( files , strategies=selectedStrategies, targetFile=handle, rejectHandle=rejectHandle,
+					processedReadPairs,strategyYields = dmx.demultiplex( files , strategies=selectedStrategies, targetFile=handle, rejectHandle=rejectHandle, log_handle=logging,
 					library=library, maxReadPairs=None if args.n is None else (args.n-processedReadPairsForThisLib))
 					processedReadPairsForThisLib += processedReadPairs
 					if args.n and processedReadPairsForThisLib>=args.n:
