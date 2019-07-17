@@ -1,7 +1,7 @@
 [![Build Status](https://travis-ci.com/BuysDB/SingleCellMultiOmics.svg?branch=master)](https://travis-ci.com/BuysDB/SingleCellMultiOmics)
 
 ## Single cell multi omics
-Single cell multi omics is a set of tools to deal with multiple measurements from the same cell.
+Single cell multi omics is a set of tools to deal with multiple measurements from the same cell. This package has been developed by the [van Oudenaarden group](https://www.hubrecht.eu/research-groups/van-oudenaarden-group/).
 
 # Installation
 ```
