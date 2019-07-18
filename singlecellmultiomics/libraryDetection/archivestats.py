@@ -62,38 +62,53 @@ for sdir in sequencing_dirs:
                         dpos=None
                         for lane, reads in  associated_fastqs_lane.items():
                             parts = os.path.dirname( reads['R1'][0] ).split('/')
-                            try:
-                                i = parts.index('Data')
-                            except Exception as e:
-                                i=-2
 
-                            try:
-                                dpos = parts.index('BaseCalls')
-                            except Exception as e:
-                                dpos = -1
-                                pass
+                            if 'Data' in parts:
+                                try:
+                                    i = parts.index('Data')
+                                except Exception as e:
+                                    i=-2
+
+                                try:
+                                    dpos = parts.index('BaseCalls')
+                                except Exception as e:
+                                    dpos = -1
+                                    pass
 
 
-                            try:
-                                run_id = parts[i-2]
-                            except Exception as e:
-                                pass
+                                try:
+                                    run_id = parts[i-2]
+                                except Exception as e:
+                                    pass
 
-                            try:
-                                seqid = parts[i-1]
-                            except Exception as e:
-                                pass
+                                try:
+                                    seqid = parts[i-1]
+                                except Exception as e:
+                                    pass
 
-                            try:
-                                index = parts[dpos+2]
-                            except Exception as e:
-                                pass
+                                try:
+                                    index = parts[dpos+2]
+                                except Exception as e:
+                                    pass
 
-                            try:
-                                avo_id = parts[dpos+1]
-                            except Exception as e:
-                                pass
-                            break
+                                try:
+                                    avo_id = parts[dpos+1]
+                                except Exception as e:
+                                    pass
+
+                                else:
+                                    try:
+                                        avo_id = parts[-2]
+                                    except Exception as e:
+                                        pass
+
+                                    try:
+                                        index = parts[-1]
+                                    except Exception as e:
+                                        pass
+
+                                break
+
                         processedReadPairs, strategyYieldsForAllLibraries = dmx.detectLibYields(
                             {library:associated_fastqs_lane},
                             testReads=args.dsize,
