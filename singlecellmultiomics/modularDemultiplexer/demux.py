@@ -110,8 +110,6 @@ if __name__=='__main__':
 					fqFiles.append( line.strip() )
 			args.fastqfiles = fqFiles
 
-
-
 	# Load barcodes
 	barcodeParser = barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hd, barcodeDirectory=args.barcodeDir)
 
@@ -161,7 +159,7 @@ if __name__=='__main__':
 
 		print(f"\n{Style.BRIGHT}Demultiplexing method Autodetect results{Style.RESET_ALL}")
 		# Run autodetect
-		processedReadPairs, strategyYieldsForAllLibraries = dmx.detectLibYields(libraries, testReads=args.dsize, maxAutoDetectMethods=args.maxAutoDetectMethods, minAutoDetectPct=args.minAutoDetectPct)
+		processedReadPairs, strategyYieldsForAllLibraries = dmx.detectLibYields(libraries, testReads=args.dsize, maxAutoDetectMethods=args.maxAutoDetectMethods, minAutoDetectPct=args.minAutoDetectPct, verbose=True)
 
 	print(f"\n{Style.BRIGHT}Demultiplexing:{Style.RESET_ALL}")
 	for library in libraries:

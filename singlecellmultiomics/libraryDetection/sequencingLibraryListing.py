@@ -16,8 +16,8 @@ def formatColor(string):
         .replace("[NORMAL]", Style.NORMAL)
     )
 class SequencingLibraryLister():
-    def __init__(self):
-        pass
+    def __init__(self, verbose=True):
+        self.verbose = verbose
 
 
     # Function which replaces the substring(s) in library within args.replace
@@ -34,12 +34,14 @@ class SequencingLibraryLister():
 
         if args.replace:
             try:
-                print("Library name replacement:" )
-                for k in args.replace:
-                    origin, replace = k.split(',')
-                    print( formatColor("  -> [DIM]looking for[RESET] '%s' [DIM]replace with:[RESET]'%s'" % (origin, replace)))
+                if verbose:
+                    print("Library name replacement:" )
+                    for k in args.replace:
+                        origin, replace = k.split(',')
+                        print( formatColor("  -> [DIM]looking for[RESET] '%s' [DIM]replace with:[RESET]'%s'" % (origin, replace)))
             except Exception as e:
-                print(e)
+                if verbose:
+                    print(e)
         self.libraries = {}
         mergeReport = False
 
@@ -106,8 +108,8 @@ class SequencingLibraryLister():
                     newLibraryName = "".join(library.split(args.merge[0])[:nThSplit])
                     if not mergeReport:
                         #print("Library merger: %sSplitting on '%s%s%s%s', until part %s%s%s, %s %s->%s %s" % (Style.DIM, Style.RESET_ALL, delim, Style.DIM, Style.RESET_ALL,  nThSplit, Style.DIM, Style.RESET_ALL, library, Style.DIM, Style.RESET_ALL, newLibraryName))
-
-                        print( formatColor("Library merger: [DIM]Splitting on '[RESET]%s[DIM]', until part [RESET]%s[DIM], [RESET]%s[DIM] -> [RESET]%s") % (delim, nThSplit, library, newLibraryName))
+                        if self.verbose:
+                            print( formatColor("Library merger: [DIM]Splitting on '[RESET]%s[DIM]', until part [RESET]%s[DIM], [RESET]%s[DIM] -> [RESET]%s") % (delim, nThSplit, library, newLibraryName))
 
                         mergeReport=True
                     library = newLibraryName
@@ -127,38 +129,45 @@ class SequencingLibraryLister():
         inconsistent = False
         ignoreFiles = []
         for idx,lib in enumerate(sorted(self.libraries)):
-            print(('%s%s%s %s' % ('\n' if idx>0 else '', lib, Style.DIM, Style.RESET_ALL)))
+            if self.verbose:
+                print(('%s%s%s %s' % ('\n' if idx>0 else '', lib, Style.DIM, Style.RESET_ALL)))
 
             inconsistentLane = False
             for lane in sorted(self.libraries[lib]):
-                print(("   %s%s%s" % (Style.DIM,lane,Style.RESET_ALL)))
+                if self.verbose:
+                    print(("   %s%s%s" % (Style.DIM,lane,Style.RESET_ALL)))
                 if len(self.libraries[lib][lane])!=2:
                     if not args.se:
                         inconsistent = True
                         inconsistentLane = True
                         if args.ignore:
                             ignoreFiles.append( (lib, lane) )
-                            print(('%s    %s IGNORED FILE.. BOTH MATES NOT AVAILABLE or no mates? %s' % (Fore.RED, lib, Style.RESET_ALL)))
+                            if self.verbose:
+                                print(('%s    %s IGNORED FILE.. BOTH MATES NOT AVAILABLE or no mates? %s' % (Fore.RED, lib, Style.RESET_ALL)))
                         else:
-                            print(('%s    %s BOTH MATES NOT AVAILABLE%s' % (Fore.RED, lib, Style.RESET_ALL)))
+                            if self.verbose:
+                                print(('%s    %s BOTH MATES NOT AVAILABLE%s' % (Fore.RED, lib, Style.RESET_ALL)))
 
                 prevSize = None
                 for R1R2 in sorted(self.libraries[lib][lane]):
                     if prevSize!=None and prevSize!=len(self.libraries[lib][lane][R1R2]):
                         #Missing a mate file
                         inconsistent=True
-                        print(("%s    %s %s%s" % (Fore.RED, R1R2, ', '.join(self.libraries[lib][lane][R1R2] ), Style.RESET_ALL)))
+                        if self.verbose:
+                            print(("%s    %s %s%s" % (Fore.RED, R1R2, ', '.join(self.libraries[lib][lane][R1R2] ), Style.RESET_ALL)))
                         if args.ignore:
                             ignoreFiles.append( (lib, lane) )
                     else:
                         prevSize = len(self.libraries[lib][lane][R1R2])
                         #Correct library
-                        print(("%s    %s %s%s" % (Fore.RED if inconsistentLane else Fore.GREEN, R1R2, ', '.join(self.libraries[lib][lane][R1R2] ), Style.RESET_ALL)))
+                        if self.verbose:
+                            print(("%s    %s %s%s" % (Fore.RED if inconsistentLane else Fore.GREEN, R1R2, ', '.join(self.libraries[lib][lane][R1R2] ), Style.RESET_ALL)))
 
 
         if inconsistent:
             if args.ignore:
-                print("Mate information missing for some files. --ignore was supplied, ignoring these files:")
+                if self.verbose:
+                    print("Mate information missing for some files. --ignore was supplied, ignoring these files:")
                 for ignore in ignoreFiles:
                     print("%s %s" % (ignore[0], ignore[1]))
                     del self.libraries[ignore[0]][ignore[1]]
@@ -173,6 +182,7 @@ class SequencingLibraryLister():
                     except:
                         pass
             else:
-                print(('%sExitting, mate-information missing%s. Supply --se to allow single end reads or --ignore to ignore these files.' % (Fore.RED, Style.RESET_ALL)))
+                if self.verbose:
+                    print(('%sExitting, mate-information missing%s. Supply --se to allow single end reads or --ignore to ignore these files.' % (Fore.RED, Style.RESET_ALL)))
                 exit()
         return self.libraries

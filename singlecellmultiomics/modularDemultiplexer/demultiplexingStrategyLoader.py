@@ -22,7 +22,8 @@ class DemultiplexingStrategyLoader:
         self.barcodeParser = barcodeParser
         self.indexParser = indexParser
         moduleSearchPath = moduleSearchPath
-        print(f'{Style.DIM}Current script location: {__file__}')
+
+        #print(f'{Style.DIM}Current script location: {__file__}')
         #print(f'Searchdir: {moduleSearchDir}')
         #print(f'Looking for modules in {moduleSearchPath}{Style.RESET_ALL}')
         self.demultiplexingStrategies = []
@@ -131,6 +132,8 @@ class DemultiplexingStrategyLoader:
                 except Exception as e:
                     pass
 
+
+
     def getAutodetectStrategies(self):
         return [strategy for strategy in self.demultiplexingStrategies if  strategy.autoDetectable ]
 
@@ -189,7 +192,7 @@ class DemultiplexingStrategyLoader:
 
 
 
-    def detectLibYields(self, libraries, strategies=None, testReads=100000,maxAutoDetectMethods=1,minAutoDetectPct=5):
+    def detectLibYields(self, libraries, strategies=None, testReads=100000,maxAutoDetectMethods=1,minAutoDetectPct=5, verbose=False):
         libYields = dict()
 
         for lib, lanes in libraries.items():
@@ -203,8 +206,9 @@ class DemultiplexingStrategyLoader:
                     else:
                         raise ValueError('Error: %s' % readPairs.keys())
 
-                print(f'Report for {lib}:')
-                self.strategyYieldsToFormattedReport( processedReadPairs, strategyYields,maxAutoDetectMethods=maxAutoDetectMethods,minAutoDetectPct=minAutoDetectPct)
+                if verbose:
+                    print(f'Report for {lib}:')
+                    self.strategyYieldsToFormattedReport( processedReadPairs, strategyYields,maxAutoDetectMethods=maxAutoDetectMethods,minAutoDetectPct=minAutoDetectPct)
                 libYields[lib]= {'processedReadPairs':processedReadPairs, 'strategyYields':strategyYields }
                 break
         return processedReadPairs, libYields

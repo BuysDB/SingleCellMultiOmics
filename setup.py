@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from setuptools import setup
 import os
 import sys
@@ -67,7 +70,7 @@ setup(
 
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py',
-
+        'singlecellmultiomics/libraryDetection/archivestats.py',
         # Utility: (SGE wrapper)
         'singlecellmultiomics/utils/submission.py'
 
