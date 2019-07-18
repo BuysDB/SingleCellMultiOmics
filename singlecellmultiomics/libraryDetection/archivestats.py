@@ -58,10 +58,22 @@ for sdir in sequencing_dirs:
                         seqid = '?'
                         index='?'
                         avo_id ='?'
+                        i=None
+                        dpos=None
                         for lane, reads in  associated_fastqs_lane.items():
                             parts = os.path.dirname( reads['R1'][0] ).split('/')
-                            i = parts.index('Data')
-                            dpos = parts.index('BaseCalls')
+                            try:
+                                i = parts.index('Data')
+                            except Exception as e:
+                                i=-2
+
+                            try:
+                                dpos = parts.index('BaseCalls')
+                            except Exception as e:
+                                dpos = -1
+                                pass
+
+
                             try:
                                 run_id = parts[i-2]
                             except Exception as e:
@@ -81,7 +93,7 @@ for sdir in sequencing_dirs:
                                 avo_id = parts[dpos+1]
                             except Exception as e:
                                 pass
-
+                            break
                         processedReadPairs, strategyYieldsForAllLibraries = dmx.detectLibYields(
                             {library:associated_fastqs_lane},
                             testReads=args.dsize,
