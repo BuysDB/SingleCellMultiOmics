@@ -7,7 +7,7 @@ import pkg_resources
 import singlecellmultiomics.barcodeFileParser.barcodeFileParser as barcodeFileParser
 from singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader import DemultiplexingStrategyLoader
 import singlecellmultiomics.libraryDetection.sequencingLibraryListing as sequencingLibraryListing
-
+import glob
 import fnmatch
 import os
 from types import SimpleNamespace
@@ -29,8 +29,8 @@ argparser.add_argument('-locations', default='.')
 
 arguments = argparser.parse_args()
 sequencing_dirs = arguments.locations.split(',')
-dmxes = [x.shortName  for x in dmx.demultiplexingStrategies]
-print('\t'.join(['RUN','LIBRARY']+dmxes))
+dmxes = sorted([x.shortName  for x in dmx.demultiplexingStrategies])
+print('\t'.join(['RUN','SEQ','AVO','INDEX','LIBRARY']+dmxes))
 
 
 matches = []
@@ -54,17 +54,39 @@ for sdir in sequencing_dirs:
                                                                                           args=args)
                     for library, associated_fastqs_lane in libraries.items():
                         # Obtain run id
-                        run_id = None
+                        run_id = '?'
+                        seqid = '?'
+                        index='?'
+                        avo_id ='?'
                         for lane, reads in  associated_fastqs_lane.items():
-                            run_id = os.path.dirname( reads['R1'][0] ).split('/')[-6]
-                            avo_id = os.path.dirname( reads['R1'][0] ).split('/')[-1]
+                            parts = os.path.dirname( reads['R1'][0] ).split('/')
+                            i = parts.index('Data')
+                            dpos = parts.index('BaseCalls')
+                            try:
+                                run_id = parts[i-2]
+                            except Exception as e:
+                                pass
 
+                            try:
+                                seqid = parts[i-1]
+                            except Exception as e:
+                                pass
+
+                            try:
+                                index = parts[dpos+2]
+                            except Exception as e:
+                                pass
+
+                            try:
+                                avo_id = parts[dpos+1]
+                            except Exception as e:
+                                pass
 
                         processedReadPairs, strategyYieldsForAllLibraries = dmx.detectLibYields(
                             {library:associated_fastqs_lane},
                             testReads=args.dsize,
                             maxAutoDetectMethods=args.maxAutoDetectMethods,
                             minAutoDetectPct=args.minAutoDetectPct)
-                        print('\t'.join( [run_id,avo_id,library] + [ str(strategyYieldsForAllLibraries[library]['strategyYields'].get(x,0)/10) for x in dmxes]))
+                        print('\t'.join( [run_id,seqid,avo_id,index,library] + [ str(strategyYieldsForAllLibraries[library]['strategyYields'].get(x,0)/10) for x in dmxes]))
             except Exception as e:
                 print(e)
