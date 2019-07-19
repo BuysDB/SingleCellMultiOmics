@@ -165,12 +165,12 @@ class TaggedRecord():
             self.qualities = rawRecord.qual
             self.plus = rawRecord.plus
 
-    def addTagByTag( self,tagName,  value, isPhred=None, decodePhred=False):
+    def addTagByTag( self,tagName,  value, isPhred=None, decodePhred=False, cast_type=str):
 
         if isPhred is None:
             isPhred = self.tagDefinitions[tagName].isPhred
-        if type(value)!=str:
-            value = str(value)
+        if type(value)!=cast_type:
+            value = cast_type(value)
         if isPhred:
 
             if decodePhred:
