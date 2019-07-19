@@ -3,7 +3,7 @@
 import re
 import singlecellmultiomics.fastqProcessing.fastqIterator as fastqIterator
 import string
-
+from singlecellmultiomics.utils.sequtils import hamming_distance
 
 complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
 
@@ -179,8 +179,10 @@ class TaggedRecord():
             else:
                 self.tags[tagName] = phredToFastqHeaderSafeQualities( value, method=3 )
         else:
-            self.tags[tagName] = fqSafe(value)
-
+            if cast_type is str:
+                self.tags[tagName] = fqSafe(value)
+            else:
+                self.tags[tagName] = value
     def __repr__(self):
         return self.asFastq()
 
@@ -277,6 +279,16 @@ class TaggedRecord():
             if len(moleculeQuality)!=len(moleculeIdentifier):
                 raise ValueError('Could not reconstruct molecule identifier')
 
+
+            correctedIndex =None if not self.has_tag('aA') else self.tags['aA']
+            indexSequence =None if not self.has_tag('aa') else self.tags['aa']
+
+            if correctedIndex is not None and indexSequence is not None:
+                hd = hamming_distance(indexSequence,correctedIndex)
+                if hd is None:
+                    raise ValueError("Could not resolve hamming distance between {correctedIndex} and {indexSequence}")
+                self.addTagByTag('ah', hd, isPhred=False, cast_type=int )
+
             self.addTagByTag('MI',moleculeIdentifier, isPhred=False)
             self.addTagByTag('QM',moleculeQuality, isPhred=False)
 
@@ -357,7 +369,7 @@ class DemultiplexingStrategy(object):
         self.longName = 'placeHolder'
         self.autoDetectable = False
         self.description = 'inherit this class to build your own demultipexing strategy'
-        
+
         self.indexSummary = ''
         self.barcodeSummary = ''
 
