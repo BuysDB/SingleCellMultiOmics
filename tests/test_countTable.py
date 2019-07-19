@@ -150,7 +150,7 @@ class TestCountTable(unittest.TestCase):
                  noNames=False) , return_df=True)
 
         self.assertEqual( df.sum(1).sum(), 765 )
-        self.assertEqual( df['A3-P15-1-1_25'].sum().sum(), 12.0 )
+        self.assertEqual( df.loc[:,'A3-P15-1-1_25'].sum(skipna=True).sum(skipna=True), 12.0 )
 
 if __name__ == '__main__':
     unittest.main()
