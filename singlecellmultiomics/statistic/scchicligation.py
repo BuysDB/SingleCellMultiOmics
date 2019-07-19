@@ -18,9 +18,9 @@ class ScCHICLigation():
     def processRead(self,read):
         if read.has_tag('RZ') and not read.is_duplicate and read.is_read1:
             sample = read.get_tag('SM')
-            first = read.get_tag('RZ')[0]
-            if first=='A':
-                self.per_cell_ta_obs[sample][ 'A_start' ] += 1
+            #first = read.get_tag('RZ')[0]
+            if read.get_tag('RZ')=='TA':
+                self.per_cell_ta_obs[sample][ 'TA_start' ] += 1
             self.per_cell_ta_obs[sample][ 'total' ] += 1
 
     def __repr__(self):
@@ -36,7 +36,7 @@ class ScCHICLigation():
         y = []
         for cell, cell_data in self.per_cell_ta_obs.items():
             x.append(cell_data['total'] )
-            y.append( cell_data['A_start'] /  cell_data['total'] )
+            y.append( cell_data['TA_start'] /  cell_data['total'] )
 
 
         ax.scatter(x,y)
@@ -44,7 +44,7 @@ class ScCHICLigation():
         if title is not None:
             ax.set_title(title)
 
-        ax.set_ylabel("Fraction unique cuts starting with A")
+        ax.set_ylabel("Fraction unique cuts starting with TA")
         ax.set_xlabel("# Molecules")
         ax.set_xlim(1,None)
         ax.set_ylim(-0.5,1.05)
