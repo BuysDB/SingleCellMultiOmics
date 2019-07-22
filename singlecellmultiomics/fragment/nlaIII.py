@@ -41,24 +41,24 @@ class NLAIIIFragment(Fragment):
 
         if R1.seq[:4]=='CATG' and not R1.is_reverse:
             rpos = ( R1.reference_name, R1.reference_start)
-            self.set_site(  site_strand=0, site_chrom=rpos[0], site_pos=rpos[1] )
+            self.set_site(  site_strand=1, site_chrom=rpos[0], site_pos=rpos[1] )
             self.set_recognized_sequence( 'CATG')
             return(rpos)
         elif R1.seq[-4:]=='CATG' and R1.is_reverse:
             rpos = ( R1.reference_name, R1.reference_end-4)
-            self.set_site(  site_strand=1, site_chrom=rpos[0], site_pos=rpos[1] )
+            self.set_site(  site_strand=0, site_chrom=rpos[0], site_pos=rpos[1] )
             self.set_recognized_sequence( 'CATG')
             return(rpos)
 
         # Sometimes the cycle is off
         elif R1.seq[:3]=='ATG' and not R1.is_reverse:
             rpos = ( R1.reference_name, R1.reference_start-1)
-            self.set_site(  site_strand=0, site_chrom=rpos[0], site_pos=rpos[1] )
+            self.set_site(  site_strand=1, site_chrom=rpos[0], site_pos=rpos[1] )
             self.set_recognized_sequence( 'ATG')
             return(rpos)
         elif R1.seq[-3:]=='CAT' and R1.is_reverse: # First base was trimmed or lost
             rpos = ( R1.reference_name, R1.reference_end-3)
-            self.set_site(   site_strand=1, site_chrom=rpos[0], site_pos=rpos[1] )
+            self.set_site(   site_strand=0, site_chrom=rpos[0], site_pos=rpos[1] )
             self.set_recognized_sequence( 'CAT')
             return(rpos)
 
