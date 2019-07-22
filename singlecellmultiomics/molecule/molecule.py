@@ -1,5 +1,6 @@
 from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
+import singlecellmultiomics.universalBamTagger
 from singlecellmultiomics.fragment import Fragment
 import collections
 import itertools
@@ -511,11 +512,16 @@ def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment
         methylation_status (dict): { tuple(chrom,pos):  converted (bool) }
     """
 
+
+    qf = singlecellmultiomics.universalBamTagger.QueryNameFlagger()
+
     molecules = []
 
     added_fragments = 0
     for R1,R2 in pysamiterators.iterators.MatePairIterator(alignments,performProperPairCheck=False,**pysamArgs):
-
+        # Make sure the sample/umi etc tags are placed:
+        qf.digest([R1,R2])
+        
         fragment = fragmentClass([R1,R2], **fragment_class_args)
         if not fragment.is_valid() :
             continue

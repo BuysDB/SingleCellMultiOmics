@@ -359,6 +359,8 @@ class QueryNameFlagger(DigestFlagger):
         for read in reads:
             if read is None:
                 continue
+            if read.has_tag('SM'): # It is already tagged
+                return
             if read.query_name.startswith('UMI'): # Old format
                 import tagBamFile # this is not included anymore
                 tagBamFile.recodeRead(read)
