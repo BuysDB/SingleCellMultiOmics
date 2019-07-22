@@ -212,6 +212,56 @@ class Molecule():
         )
 
 
+    def set_methylation_call_tags(self,
+                              call_dict, bismark_call_tag='XM',
+                              total_methylated_tag='MC',
+                              total_unmethylated_tag='uC',
+                             ):
+        """Set methylation call tags given a methylation dictionary
+
+        This method sets multiple tags in every read associated to the molecule.
+        The tags being set are the bismark_call_tag, every aligned base is annotated
+        with a zZxXhH or ".", and a tag for both the total methylated C's and unmethylated C's
+
+        Args:
+            call_dict (dict) : Dictionary containing bismark calls (chrom,pos) : letter
+
+            bismark_call_tag (str) : tag to write bismark call string
+
+            total_methylated_tag (str) : tag to write total methylated bases
+
+            total_unmethylated_tag (str) : tag to write total unmethylated bases
+
+        Returns:
+            can_be_yielded (bool)
+        """
+
+        # Contruct XM strings
+        for fragment in self:
+            for read in fragment:
+
+                read.set_tag(
+                    # Write the methylation tag to the read
+                    bismark_call_tag,
+                    ''.join([
+                        call_dict.get(
+                            (read.reference_name,rpos),'.' )  # Obtain all aligned positions from the call dict
+                        for qpos, rpos in read.get_aligned_pairs(matches_only=True) # iterate all positions in the alignment
+                        if qpos is not None and rpos is not None]) # make sure to ignore non matching positions ? is this neccesary?
+                )
+
+                # Set total methylated bases
+                read.set_tag(
+                    total_methylated_tag,
+                    sum( x.isupper() for x in read.get_tag('XM') )
+                )
+
+                # Set total unmethylated bases
+                read.set_tag(
+                    total_unmethylated_tag,
+                    sum( x.islower() for x in read.get_tag('XM') )
+                )
+
 
     def __getitem__(self, index):
         """Obtain a fragment belonging to this molecule.
@@ -281,7 +331,7 @@ class Molecule():
         """
         consensus = {} # postion -> base , key is not set when not decided
         if base_obs is None:
-            base_obs = self.get_base_observation_dict()
+            base_obs, ref_bases = self.get_base_observation_dict(return_refbases=True)
 
         for location, obs in base_obs.items():
             votes = obs.most_common()
@@ -373,52 +423,17 @@ class Molecule():
         r = collections.Counter()
 
 
-    def get_TAPS_methylation_calls(self, capture_context=None, reference=None):
-        """Get dictionary of TAPS methylated bases
-        Args:
-            capture_context (bool)
+    def get_html(self,reference=None):
+        span_len = self.spanEnd-self.spanStart
+        if span_len > 1000:
+            raise ValueError('The molecule is too long to display')
 
-            reference (pysam.FastaFile)
+        visualized = ['.']  * span_len
+        for location,base in self.get_consensus().items():
+            visualized[location-self.spanStart] = base
+        return visualized
 
-        Returns:
-            methylation_status (dict): { tuple(chrom,pos):  converted (bool) }
 
-        """
-
-        if self.is_multimapped():
-            return None
-
-        strand =  self.get_strand() #molecule.fragments[0][0].get_tag('RS')=='-'
-        if strand is None:
-            return None
-
-        try:
-            base_obs, ref_bases = self.get_base_observation_dict(return_refbases=True)
-        except ValueError:
-            # We cannot determine a reliable consensus sequence
-            return None
-
-        consensus = self.get_consensus(base_obs=base_obs)
-        methylation_status = {} # location-> call
-        for location, ref_base in ref_bases.items():
-            if not location in consensus:
-                continue
-            query_base = consensus[location]
-            k = (*location, strand)
-            if ref_base=='C' and strand: # fwd
-                if query_base=='T':
-                    methylation_status[k] = True #  modified
-                elif query_base=='C':
-                    methylation_status[k] = False # not modified
-
-            elif ref_base=='G' and not strand: # rev
-
-                if query_base=='A':
-                    methylation_status[k] = True #  modified
-                elif query_base=='G':
-                    methylation_status[k] = False # not modified
-
-        return methylation_status
 
 
     def get_methylation_dict(self):
