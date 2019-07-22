@@ -223,7 +223,7 @@ class Molecule():
         Returns:
             fragment (singlecellmultiomics.fragment.Fragment)
         """
-        return self.fragments[key]
+        return self.fragments[index]
 
 
 
