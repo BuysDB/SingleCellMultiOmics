@@ -12,6 +12,9 @@ import argparse
 username = os.getenv('USER')
 defaultEmail = os.getenv('EMAIL')
 
+import distutils.spawn
+qsub_available = (distutils.spawn.find_executable("qsub") is not None)
+
 PY36ENV = os.getenv('PY36ENV')
 if PY36ENV is None:
 	PY36ENV = 'source /hpc/hub_oudenaarden/bdebarbanson/virtualEnvironments/py36/bin/activate'
@@ -98,10 +101,6 @@ if args.email is not None:
 
 if not args.nenv:
 	jobData.append(  '#$ -V'  )
-	sys.path.append(os.path.abspath('../'))
-	#sys.path.append(os.path.abspath('/media/sf_internalTools/'))
-	sys.path.append(os.path.abspath('/hpc/hub_oudenaarden/bdebarbanson/internalTools/'))
-
 
 if args.t>1:
 	jobData.append( '#$ -pe threaded %s' % args.t )
@@ -127,7 +126,8 @@ qs = 'qsub %s %s' % (( ( '-hold_jid %s' % args.hold) if (args.hold is not None a
 if not args.silent:
 	print(qs)
 if args.y:
-	if args.e == 'qsub':
+
+	if args.e == 'qsub' and qsub_available:
 		os.system(qs)
 	else:
 		cmd = 'sh %s > %s 2> %s' % (jobfile, stdout, stderr)
