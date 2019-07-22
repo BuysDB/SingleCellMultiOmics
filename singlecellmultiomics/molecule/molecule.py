@@ -239,7 +239,8 @@ class Molecule():
         # Contruct XM strings
         for fragment in self:
             for read in fragment:
-
+                if read is None:
+                    continue
                 read.set_tag(
                     # Write the methylation tag to the read
                     bismark_call_tag,
@@ -293,14 +294,20 @@ class Molecule():
         base_obs = collections.defaultdict(collections.Counter)
         if return_refbases:
             ref_bases = {}
+        used = 0 #  some alignments yielded valid calls
+        ignored = 0
         for fragment in self:
             R1 = fragment.get_R1()
             R2 = fragment.get_R2()
-            start, end = pysamiterators.iterators.getPairGenomicLocations(
+            try:
+                start, end = pysamiterators.iterators.getPairGenomicLocations(
                 R1=R1,
                 R2=R2,
                 allow_unsafe=(R1 is None))
-
+            except ValueError as e:
+                ignored+=1
+                continue
+            used+=1
             for read in [R1,R2]:
                 if read is None:
                     continue
@@ -313,8 +320,12 @@ class Molecule():
                     base_obs[(read.reference_name,ref_pos)][query_base]+=1
                     if return_refbases:
                         ref_bases[(read.reference_name,ref_pos)]=ref_base.upper()
+
+        if used==0 and ignored>0:
+            raise ValueError('Could not extract any safe data from molecule')
         if return_refbases:
             return base_obs, ref_bases
+
         return base_obs
 
 
@@ -331,12 +342,19 @@ class Molecule():
         """
         consensus = {} # postion -> base , key is not set when not decided
         if base_obs is None:
-            base_obs, ref_bases = self.get_base_observation_dict(return_refbases=True)
+            try:
+                base_obs, ref_bases = self.get_base_observation_dict(return_refbases=True)
+            except ValueError as e:
+                # We cannot determine safe regions
+                raise
+
+
 
         for location, obs in base_obs.items():
             votes = obs.most_common()
             if len(votes)==1 or votes[1][1]<votes[0][1]:
                 consensus[location] = votes[0][0]
+
         return consensus
 
     def check_variants(self, variants, exclude_other_calls=True ): #when enabled other calls (non ref non alt will be set None)
