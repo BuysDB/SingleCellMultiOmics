@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from setuptools import setup
@@ -54,9 +54,12 @@ setup(
 
 
     scripts=[
+        # Demultiplexing
         'singlecellmultiomics/modularDemultiplexer/demux.py',
 
+        # Tagging
         'singlecellmultiomics/universalBamTagger/universalBamTagger.py',
+        'singlecellmultiomics/universalBamTagger/tapsTagger.py',
 
         # Bam processing:
         'singlecellmultiomics/bamProcessing/bamTabulator.py',
@@ -67,10 +70,10 @@ setup(
         'singlecellmultiomics/bamProcessing/bamFeatureDensityVisualisation.py',
         'singlecellmultiomics/bamProcessing/bamDuprate.py',
 
-
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py',
         'singlecellmultiomics/libraryDetection/archivestats.py',
+
         # Utility: (SGE wrapper)
         'singlecellmultiomics/utils/submission.py'
 
