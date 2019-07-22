@@ -178,6 +178,9 @@ class Molecule():
             return True
         return position < (self.spanStart-self.cache_size*0.5) or position > (self.spanEnd+self.cache_size*0.5)
 
+    def get_rt_reactions(self):
+        return molecule_to_random_primer_dict(self)
+
     def get_rt_reaction_fragment_sizes(self):
 
         """Obtain all RT reaction fragment sizes
