@@ -85,11 +85,11 @@ class Fragment():
         self.meta[key] = value
 
     def get_R1(self):
-        if len(reads)==0:
+        if len(self.reads)==0:
             raise IndexError('The fragment has no associated reads')
         return self.reads[0]
     def get_R2(self):
-        if len(reads)<2:
+        if len(self.reads)<2:
             raise IndexError('The fragment has no associated R2')
         return self.reads[1]
 
