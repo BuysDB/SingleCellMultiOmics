@@ -44,12 +44,12 @@ class Fragment():
 
     def identify_strand(self):
         # If R2 is rev complement:
-        if self.get_R1()!=None:
+        if self.get_R1() is not None:
             # verify if the read has been mapped:
             if self.get_R1().is_unmapped:
                 return None
             return self.get_R1().is_reverse
-        elif self.get_R2()!=None:
+        elif self.get_R2() is not None:
             # verify if the read has been mapped:
             if self.get_R2().is_unmapped:
                 return None
@@ -85,8 +85,12 @@ class Fragment():
         self.meta[key] = value
 
     def get_R1(self):
+        if len(reads)==0:
+            raise IndexError('The fragment has no associated reads')
         return self.reads[0]
     def get_R2(self):
+        if len(reads)<2:
+            raise IndexError('The fragment has no associated R2')
         return self.reads[1]
 
     def get_span(self):
