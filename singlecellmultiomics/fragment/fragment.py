@@ -1,7 +1,7 @@
 from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
-
+from singlecellmultiomics.utils import style_str
 complement = str.maketrans('ATCGN', 'TAGCN')
 
 class Fragment():
@@ -14,14 +14,17 @@ class Fragment():
         self.reads = reads
         self.strand = None
         self.meta = {} # dictionary of meta data
-
+        self.is_mapped = None
         ### Check for multimapping
         self.is_multimapped = True
         # Force R1=read1 R2=read2:
         for i, read in enumerate(self.reads):
+
             if read is None:
                 continue
 
+            if not read.is_unmapped:
+                self.is_mapped = True
             if read.mapping_quality!=0:
                 self.is_multimapped = False
 
@@ -42,19 +45,26 @@ class Fragment():
     def identify_strand(self):
         # If R2 is rev complement:
         if self.get_R1()!=None:
+            # verify if the read has been mapped:
+            if self.get_R1().is_unmapped:
+                return None
             return self.get_R1().is_reverse
         elif self.get_R2()!=None:
+            # verify if the read has been mapped:
+            if self.get_R2().is_unmapped:
+                return None
             return not self.get_R2().is_reverse
         return None
 
-    """Obtain hash describing the random primer
-    Returns None,None when the random primer cannot be described
-    Returns
-    -------
-    reference_start : int or None
-    sequence : str or None
-    """
+
     def get_random_primer_hash(self):
+        """Obtain hash describing the random primer
+        Returns None,None when the random primer cannot be described
+        Returns
+        -------
+        reference_start : int or None
+        sequence : str or None
+        """
         R2 = self.get_R2()
         if R2 is None or R2.query_sequence is None:
             return None,None
