@@ -170,6 +170,47 @@ class Fragment():
         strand:{self.get_strand_repr()}
         """
 
+    def get_html(self, chromosome=None, span_start=None, span_end=None):
+        """
+        Get HTML representation of the fragment
+
+        Args:
+            chromosome( str ):
+                chromosome to view
+
+            span_start( int ):
+                first base to show
+
+            span_end( int ):
+                last base to show
+
+        Returns:
+            html(string) : html representation of the fragment
+
+        """
+
+        if chromosome is None and span_start is None and span_end is None:
+            chromosome, span_start, span_end = self.get_span()
+
+        span_len = span_end - span_start
+        visualized_frag = ['.']  * span_len
+        for read in self:
+            if read is None:
+                continue
+            for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(read,with_seq=True):
+                if ref_pos is None:
+                    continue
+                ref_base = ref_base.upper()
+                query_base = read.seq[query_pos]
+                if ref_pos is not None:
+                    if query_base!=ref_base:
+                         v = style_str(query_base,color='red',weight=500)
+                    else:
+                        v= query_base
+
+                    visualized_frag[ref_pos-span_start] = v
+        return ''.join(visualized_frag)
+
     def set_rejection_reason(self, reason):
         self.set_meta('RR',reason)
 
