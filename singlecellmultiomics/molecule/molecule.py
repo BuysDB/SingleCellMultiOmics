@@ -84,6 +84,7 @@ class Molecule():
 
     def get_strand(self):
         """Obtain mapping strand of molecule
+
         Returns:
             strand : True,False,None
                 True when strand is REVERSE
@@ -99,6 +100,12 @@ class Molecule():
         """ + frag_repr
 
     def get_umi(self):
+        """Obtain UMI
+
+        Returns:
+            umi (str):
+                Returns the most common umi associated to the molecule
+        """
         umi_abundance = collections.Counter()
         for fragment in self.fragments:
             umi_abundance[fragment.get_umi()]+=1
@@ -134,6 +141,11 @@ class Molecule():
         return None
 
     def is_multimapped(self):
+        """Check if the molecule is multimapping
+
+        Returns:
+            is_multimapped (bool) : True when multimapping
+        """
         for fragment in self.fragments:
             if not fragment.is_multimapped:
                 return False
@@ -150,6 +162,13 @@ class Molecule():
             self.strand = fragment.strand
 
     def add_fragment(self, fragment):
+        """Associate a fragment with this Molecule
+
+        Args:
+            fragment (singlecellmultiomics.fragment.Fragment) : Fragment to associate
+        Returns:
+            has_been_added (bool) : Returns False when the fragments which have already been associated to the molecule refuse the fragment
+        """
         if len(self.fragments)==0:
             self._add_fragment(fragment)
             return True
@@ -162,7 +181,6 @@ class Molecule():
         return False
 
     def can_be_yielded(self, chromosome, position):
-
         """Check if the molecule is far enough away from the supplied location to be ejected from a buffer.
 
         Args:
@@ -443,6 +461,12 @@ class Molecule():
 
 
     def get_html(self,reference=None):
+        """Get html representation of the molecule
+
+        Returns:
+            html_rep(str) : Html representation of the molecule
+        """
+
         span_len = self.spanEnd-self.spanStart
         if span_len > 1000:
             raise ValueError('The molecule is too long to display')
@@ -456,6 +480,19 @@ class Molecule():
 
 
     def get_methylation_dict(self):
+        """Obtain methylation dictionary
+
+        Returns:
+            methylated_positions (collections.Counter):
+                (read.reference_name, rpos) : times seen methylated
+
+            methylated_state (dict):
+                {(read.reference_name, rpos) : 1/0/-1 }
+                1 for methylated
+                0 for unmethylated
+                -1 for unknown
+
+        """
         methylated_positions =  collections.Counter () #chrom-pos->count
         methylated_state = dict()#chrom-pos->1, 0, -1
         for fragment in self:
@@ -521,7 +558,7 @@ def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment
     for R1,R2 in pysamiterators.iterators.MatePairIterator(alignments,performProperPairCheck=False,**pysamArgs):
         # Make sure the sample/umi etc tags are placed:
         qf.digest([R1,R2])
-        
+
         fragment = fragmentClass([R1,R2], **fragment_class_args)
         if not fragment.is_valid() :
             continue
