@@ -98,11 +98,16 @@ class Fragment():
     def has_valid_span(self):
         return not any([x is None for x in self.get_span()])
 
-    def set_sample(self):
-        for read in self.reads:
-            if read is not None and read.has_tag('SM'):
-                self.sample = read.get_tag('SM')
-        return None
+    def set_sample(self, sample=None):
+        """Force sample name or obtain sample name from associated reads"""
+        if sample is not None:
+            self.sample = sample
+        else:
+            for read in self.reads:
+                if read is not None and read.has_tag('SM'):
+                    self.sample = read.get_tag('SM')
+                    break
+
 
     def get_sample(self):
         return self.sample
@@ -148,6 +153,15 @@ class Fragment():
             return hamming_distance(self.get_umi(),other.get_umi())<=self.umi_hamming_distance
 
     def __getitem__(self, index):
+        """
+        Get a read from the fragment
+
+        Args:
+            index( int ):
+                0 : Read 1
+                1: Read 2
+                ..
+        """
         return self.reads[index]
 
     def is_valid(self):
