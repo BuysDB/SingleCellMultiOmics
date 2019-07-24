@@ -158,7 +158,7 @@ class TaggedRecord():
             except NonMultiplexable:
                 raise
         if library is not None:
-            self.addTagByTag( 'LY',library)
+            self.addTagByTag( 'LY',library, isPhred=False)
 
         if type(rawRecord) is fastqIterator.FastqRecord:
             self.sequence = rawRecord.sequence
@@ -172,7 +172,6 @@ class TaggedRecord():
         if type(value)!=cast_type:
             value = cast_type(value)
         if isPhred:
-
             if decodePhred:
                 # Convert encoded phred scores back to original ascii
                 self.tags[tagName] = fastqHeaderSafeQualitiesToPhred( value, method=3 )
@@ -225,27 +224,26 @@ class TaggedRecord():
             instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber = illuminaHeaderSplitRegex.split(fastqRecord.header.strip().replace('::',''))
             indexSequence="N"
             #NS500413:32:H14TKBGXX:2:11101:16448:1664 1:N:0::
-        self.addTagByTag( 'Is',instrument)
-        self.addTagByTag('RN',runNumber)
-        self.addTagByTag('Fc',flowCellId)
-        self.addTagByTag('La',lane)
-        self.addTagByTag('Ti',tile)
-        self.addTagByTag('CX',clusterXpos)
-        self.addTagByTag('CY',clusterYpos)
-        self.addTagByTag('RP',readPairNumber)
-        self.addTagByTag('Fi',isFiltered)
-        self.addTagByTag('CN',controlNumber)
+        self.addTagByTag( 'Is',instrument, isPhred=False)
+        self.addTagByTag('RN',runNumber, isPhred=False)
+        self.addTagByTag('Fc',flowCellId, isPhred=False)
+        self.addTagByTag('La',lane, isPhred=False)
+        self.addTagByTag('Ti',tile, isPhred=False)
+        self.addTagByTag('CX',clusterXpos, isPhred=False)
+        self.addTagByTag('CY',clusterYpos, isPhred=False)
+        self.addTagByTag('RP',readPairNumber, isPhred=False)
+        self.addTagByTag('Fi',isFiltered, isPhred=False)
+        self.addTagByTag('CN',controlNumber, isPhred=False)
 
 
         if indexFileParser is not None and indexFileAlias is not None:
             indexIdentifier, correctedIndex, hammingDistance = indexFileParser.getIndexCorrectedBarcodeAndHammingDistance(alias=indexFileAlias, barcode=indexSequence)
 
-
-            self.addTagByTag('aa',indexSequence)
+            self.addTagByTag('aa',indexSequence, isPhred=False)
             if correctedIndex is not None:
                 #
-                self.addTagByTag('aA',correctedIndex)
-                self.addTagByTag('aI',indexIdentifier)
+                self.addTagByTag('aA',correctedIndex, isPhred=False)
+                self.addTagByTag('aI',indexIdentifier, isPhred=False)
             else:
                 raise NonMultiplexable('Could not obtain index for %s  %s %s' % ( indexSequence, correctedIndex, indexIdentifier))
                 #self.addTagByTag('aA',"None")
@@ -253,7 +251,7 @@ class TaggedRecord():
                 #self.addTagByTag('ah',hammingDistance)
 
         else:
-            self.addTagByTag('aA',indexSequence)
+            self.addTagByTag('aA',indexSequence, isPhred=False)
 
     def tagPysamRead(self, read):
 
@@ -301,9 +299,9 @@ class TaggedRecord():
         # If the BI tag is present it means we know the index of the cell
         # if no BI tag is present, assume the sample is bulk
         if 'BI' in self.tags:
-            self.addTagByTag('SM', f'{self.tags["LY"]}_{self.tags["BI"]}')
+            self.addTagByTag('SM', f'{self.tags["LY"]}_{self.tags["BI"]}',isPhred=False)
         else:
-            self.addTagByTag('SM', f'{self.tags["LY"]}_BULK')
+            self.addTagByTag('SM', f'{self.tags["LY"]}_BULK',isPhred=False)
 
         # Now we defined the desired values of the tags. Write them to the record:
         for tag,value in self.tags.items():
@@ -493,7 +491,7 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
                 raise ValueError()
 
 
-            tr.addTagByTag('MX', self.shortName)
+            tr.addTagByTag('MX', self.shortName, isPhred=False)
 
         for rid,(record, taggedRecord) in enumerate( zip(records, taggedRecords)):
             taggedRecord.sequence = record.sequence[self.sequenceCapture[rid]]
