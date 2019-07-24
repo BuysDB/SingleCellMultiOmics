@@ -47,13 +47,15 @@ class Molecule():
 
         cache_size (int): radius of molecule assignment cache
 
+        reference (pysam.FastaFile) : reference file, used to obtain base contexts and correct aligned_pairs iteration when the MD tag is not correct
+
         strand (bool): mapping strand.
             True when strand is REVERSE
             False when strand is FORWARD
             None when strand is not determined
     """
 
-    def __init__(self, fragments=None, cache_size=10_000):
+    def __init__(self, fragments=None, cache_size=10_000,reference=None):
         """Initialise Molecule
 
         Parameters
@@ -64,6 +66,7 @@ class Molecule():
         cache_size (int): radius of molecule assignment cache
         """
 
+        self.reference = reference
         self.fragments  = []
         self.spanStart = None
         self.spanEnd = None
@@ -330,7 +333,7 @@ class Molecule():
             for read in [R1,R2]:
                 if read is None:
                     continue
-                for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(read,with_seq=True):
+                for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(read,with_seq=True,reference=self.reference):
                     if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
                         continue
                     query_base = read.seq[query_pos]
