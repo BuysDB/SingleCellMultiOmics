@@ -549,7 +549,7 @@ def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment
         **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
 
     Yields:
-        methylation_status (dict): { tuple(chrom,pos):  converted (bool) }
+        molecule (Molecule): Molecule
     """
 
 
