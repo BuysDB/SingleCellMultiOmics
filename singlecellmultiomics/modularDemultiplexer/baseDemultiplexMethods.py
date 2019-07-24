@@ -165,7 +165,7 @@ class TaggedRecord():
             self.qualities = rawRecord.qual
             self.plus = rawRecord.plus
 
-    def addTagByTag( self,tagName,  value, isPhred=None, decodePhred=False, cast_type=str):
+    def addTagByTag( self,tagName,  value, isPhred=None, decodePhred=False, cast_type=str, make_safe=True):
 
         if isPhred is None:
             isPhred = self.tagDefinitions[tagName].isPhred
@@ -179,7 +179,10 @@ class TaggedRecord():
                 self.tags[tagName] = phredToFastqHeaderSafeQualities( value, method=3 )
         else:
             if cast_type is str:
-                self.tags[tagName] = fqSafe(value)
+                if make_safe:
+                    self.tags[tagName] = fqSafe(value)
+                else:
+                    self.tags[tagName] = value
             else:
                 self.tags[tagName] = value
     def __repr__(self):
@@ -216,6 +219,7 @@ class TaggedRecord():
         return '{Is}:{RN}:{Fc}:{La}:{Ti}:{CX}:{CY}'.format( **self.tags )
 
 
+
     def fromRawFastq(self, fastqRecord, indexFileParser=None, indexFileAlias=None):
         global illuminaHeaderSplitRegex
         try:
@@ -224,6 +228,7 @@ class TaggedRecord():
             instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber = illuminaHeaderSplitRegex.split(fastqRecord.header.strip().replace('::',''))
             indexSequence="N"
             #NS500413:32:H14TKBGXX:2:11101:16448:1664 1:N:0::
+        """ This is the nice and safe way:
         self.addTagByTag( 'Is',instrument, isPhred=False)
         self.addTagByTag('RN',runNumber, isPhred=False)
         self.addTagByTag('Fc',flowCellId, isPhred=False)
@@ -234,6 +239,19 @@ class TaggedRecord():
         self.addTagByTag('RP',readPairNumber, isPhred=False)
         self.addTagByTag('Fi',isFiltered, isPhred=False)
         self.addTagByTag('CN',controlNumber, isPhred=False)
+        """
+        self.tags.update({
+                    'Is':instrument,
+                    'RN':runNumber,
+                    'Fc':flowCellId,
+                    'La':lane,
+                    'Ti':tile,
+                    'CX':clusterXpos,
+                    'CY':clusterYpos,
+                    'RP':readPairNumber,
+                    'Fi':isFiltered,
+                    'CN':controlNumber
+        })
 
 
         if indexFileParser is not None and indexFileAlias is not None:
@@ -242,8 +260,9 @@ class TaggedRecord():
             self.addTagByTag('aa',indexSequence, isPhred=False)
             if correctedIndex is not None:
                 #
-                self.addTagByTag('aA',correctedIndex, isPhred=False)
-                self.addTagByTag('aI',indexIdentifier, isPhred=False)
+                #self.addTagByTag('aA',correctedIndex, isPhred=False)
+                #self.addTagByTag('aI',indexIdentifier, isPhred=False)
+                self.tags.update({'aA':correctedIndex,'aI':indexIdentifier})
             else:
                 raise NonMultiplexable('Could not obtain index for %s  %s %s' % ( indexSequence, correctedIndex, indexIdentifier))
                 #self.addTagByTag('aA',"None")
@@ -251,7 +270,8 @@ class TaggedRecord():
                 #self.addTagByTag('ah',hammingDistance)
 
         else:
-            self.addTagByTag('aA',indexSequence, isPhred=False)
+            #self.addTagByTag('aA',indexSequence, isPhred=False)
+            self.tags['aA']=indexSequence
 
     def tagPysamRead(self, read):
 
@@ -475,23 +495,30 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
                 #tr.addTagByTag('QM', barcodeQual, isPhred=True)
                 pass
             else:
-                tr.addTagByTag('RX', umi, isPhred=False)
+                tr.addTagByTag('RX', umi, isPhred=False,make_safe=False)
                 tr.addTagByTag('RQ', umiQual, isPhred=True)
                 #tr.addTagByTag('MI', barcode+umi, isPhred=False)
                 #tr.addTagByTag('QM', barcodeQual+umiQual, isPhred=True)
 
+            """ These can be updated at once
             tr.addTagByTag('BI', barcodeIdentifier, isPhred=False)
             tr.addTagByTag('bc', rawBarcode, isPhred=False)
+            tr.addTagByTag('MX', self.shortName, isPhred=False)
+            tr.addTagByTag('BC', barcode, isPhred=False )
+            """
+            tr.tags.update({
+                        'BI':barcodeIdentifier,
+                        'bc':rawBarcode,
+                        'MX':self.shortName,
+                        'BC':barcode
+            })
             #tr.addTagByTag('hd', hammingDistance, isPhred=False)
 
-            tr.addTagByTag('BC', barcode, isPhred=False )
+
             tr.addTagByTag('QT', barcodeQual, isPhred=True)
 
             if len(barcode)!=len(barcodeQual):
                 raise ValueError()
-
-
-            tr.addTagByTag('MX', self.shortName, isPhred=False)
 
         for rid,(record, taggedRecord) in enumerate( zip(records, taggedRecords)):
             taggedRecord.sequence = record.sequence[self.sequenceCapture[rid]]

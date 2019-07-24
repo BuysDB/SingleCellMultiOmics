@@ -30,10 +30,10 @@ class SCCHIC_384w_c8_u3(UmiBarcodeDemuxMethod):
 
 		taggedRecords = UmiBarcodeDemuxMethod.demultiplex(self,records, **kwargs)
 
-		taggedRecords[0].addTagByTag('lh', ligation_sequence, isPhred=False)
-		taggedRecords[0].addTagByTag('lq', ligation_qualities, isPhred=True)
-		taggedRecords[1].addTagByTag('lh', ligation_sequence, isPhred=False)
-		taggedRecords[1].addTagByTag('lq', ligation_qualities, isPhred=True)
+		taggedRecords[0].addTagByTag('lh', ligation_sequence, isPhred=False,make_safe=False)
+		taggedRecords[0].addTagByTag('lq', ligation_qualities, isPhred=True,make_safe=False)
+		taggedRecords[1].addTagByTag('lh', ligation_sequence, isPhred=False,make_safe=False)
+		taggedRecords[1].addTagByTag('lq', ligation_qualities, isPhred=True,make_safe=False)
 		#taggedRecords[0].sequence = taggedRecords[0].sequence[1:]
 		#taggedRecords[0].qualities = taggedRecords[0].qualities[1:]
 		return taggedRecords

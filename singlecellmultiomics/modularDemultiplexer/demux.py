@@ -211,7 +211,11 @@ if __name__=='__main__':
 					pass
 				for readPairIdx,_ in enumerate(readPairs[readPair]):
 					files = [ readPairs[readPair][readPairIdx] for readPair in readPairs ]
-					processedReadPairs,strategyYields = dmx.demultiplex( files , strategies=selectedStrategies, targetFile=handle, rejectHandle=rejectHandle, log_handle=log_handle,
+					processedReadPairs,strategyYields = dmx.demultiplex( files ,
+						strategies=selectedStrategies,
+						targetFile=handle,
+						rejectHandle=rejectHandle,
+						log_handle=log_handle,
 					library=library, maxReadPairs=None if args.n is None else (args.n-processedReadPairsForThisLib))
 					processedReadPairsForThisLib += processedReadPairs
 					if args.n and processedReadPairsForThisLib>=args.n:
