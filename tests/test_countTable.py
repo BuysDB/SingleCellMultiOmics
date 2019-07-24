@@ -27,6 +27,7 @@ class TestCountTable(unittest.TestCase):
                 dedup=False,
                 divideMultimapping=False,
                 doNotDivideFragments=True,
+                contig=None,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -54,6 +55,7 @@ class TestCountTable(unittest.TestCase):
                 dedup=True,
                 divideMultimapping=False,
                 doNotDivideFragments=True,
+                contig=None,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -80,6 +82,7 @@ class TestCountTable(unittest.TestCase):
                 filterXA=False,
                 dedup=False,
                 divideMultimapping=False,
+                contig=None,
                 keepOverBounds=False,
                 doNotDivideFragments=True,
 
@@ -116,6 +119,7 @@ class TestCountTable(unittest.TestCase):
                 dedup=True,
                 divideMultimapping=False,
                 doNotDivideFragments=True,
+                contig=None,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -143,6 +147,7 @@ class TestCountTable(unittest.TestCase):
                 filterXA=False,
                 dedup=False,
                 divideMultimapping=False,
+                contig=None,
                 keepOverBounds=False,
                 doNotDivideFragments=True,
                 splitFeatures=False,

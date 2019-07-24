@@ -388,6 +388,11 @@ def create_count_table(args, return_df=False):
                 args.ref_lengths = ref_lengths
             if args.bedfile is None:
                 # for adding counts associated with a tag OR with binning
+                if args.contig is not None:
+                    pysam_iterator = f.fetch(args.contig)
+                else:
+                    pysam_iterator = f
+
                 for i,read in enumerate(f):
                     if i%1_000_000==0:
                         print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
@@ -403,6 +408,8 @@ def create_count_table(args, return_df=False):
                     for row in bfile:
                         parts = row.strip().split()
                         chromo, start, end, bname = parts[0], int(parts[1]), int(parts[2]), parts[3]
+                        if args.contig is not None and chromo!=args.contig:
+                            continue
                         for i, read in enumerate(f.fetch(chromo, start, end)):
                             if i%1_000_000==0:
                                 print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
@@ -460,6 +467,7 @@ if __name__=='__main__':
 
     argparser.add_argument('--splitFeatures', action='store_true', help='Split features by , . For example if a read has a feature Foo,Bar increase counts for both Foo and Bar')
     argparser.add_argument('-featureDelimiter',type=str,default=',')
+    argparser.add_argument('-contig',type=str,help='Run only on this chromosome')
 
     multimapping_args = argparser.add_argument_group('Multimapping', '')
     multimapping_args.add_argument('--divideMultimapping', action='store_true', help='Divide multimapping reads over all targets. Requires the XA or NH tag to be set.')
