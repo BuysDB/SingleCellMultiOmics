@@ -374,7 +374,6 @@ class Molecule():
                 R2=R2,
                 allow_unsafe=(R1 is None))
             except ValueError as e:
-                ignored+=1
                 continue
 
             qualities = []
