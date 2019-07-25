@@ -352,6 +352,42 @@ class Molecule():
         return self.fragments[index]
 
 
+    def get_mean_base_quality(self, chromosome, position, base):
+        """Get the mean phred score at the supplied coordinate and base-call
+
+        Args:
+            chromosome (str)
+            position (int)
+            base (str)
+
+        Returns:
+            mean_phred_score (float)
+        """
+        for fragment in self:
+            if fragment.span[0]!=chromosome:
+                continue
+            R1 = fragment.get_R1()
+            R2 = fragment.get_R2()
+            try:
+                start, end = pysamiterators.iterators.getPairGenomicLocations(
+                R1=R1,
+                R2=R2,
+                allow_unsafe=(R1 is None))
+            except ValueError as e:
+                ignored+=1
+                continue
+
+            qualities = []
+            for read in (R1,R2):
+                for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(
+                    read,with_seq=False):
+                    if query_pos is None or ref_pos != position or read.seq[query_pos]!=base:
+                        continue
+
+                    qualities.append( ord( read.qual[query_pos] ) )
+        if len(qualities)==0:
+            raise IndexError("There are no observations if the supplied base/location combination")
+        return np.mean(qualities)
 
     def get_base_observation_dict(self, return_refbases=False):
         '''
@@ -376,6 +412,7 @@ class Molecule():
                     return self.saved_base_obs
 
         base_obs = collections.defaultdict(collections.Counter)
+
         if return_refbases:
             ref_bases = {}
         used = 0 #  some alignments yielded valid calls
@@ -395,13 +432,16 @@ class Molecule():
             for read in [R1,R2]:
                 if read is None:
                     continue
-                for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(read,with_seq=True,reference=self.reference):
+                for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(
+                    read,with_seq=True,reference=self.reference):
+
                     if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
                         continue
                     query_base = read.seq[query_pos]
                     if query_base=='N':
                         continue
                     base_obs[(read.reference_name,ref_pos)][query_base]+=1
+
                     if return_refbases:
                         ref_bases[(read.reference_name,ref_pos)]=ref_base.upper()
 
@@ -570,8 +610,6 @@ class Molecule():
         for location,base in self.get_consensus().items():
             visualized[location-self.spanStart] = base
         return visualized
-
-
 
 
     def get_methylation_dict(self):
