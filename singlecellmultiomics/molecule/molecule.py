@@ -73,7 +73,9 @@ class Molecule():
         self.chromosome = None
         self.cache_size = cache_size
         self.strand = None
-
+        self.umi = None
+        self.umi_hamming_distance = None
+        self.fragment_match = None # when set, when comparing to a fragment the fragment to be added has to match this hash
         if fragments is not None:
             if type(fragments) is list:
                 for frag in fragments:
@@ -102,17 +104,21 @@ class Molecule():
         with {len(self.fragments)} assinged fragments
         """ + frag_repr
 
-    def get_umi(self):
-        """Obtain UMI
-
-        Returns:
-            umi (str):
+    def update_umi(self):
+        """Set UMI
+        Sets:
+            self.umi (str):
                 Returns the most common umi associated to the molecule
         """
+
         umi_abundance = collections.Counter()
         for fragment in self.fragments:
             umi_abundance[fragment.get_umi()]+=1
-        return umi_abundance.most_common(1)[0][0]
+            self.umi_hamming_distance = fragment.umi_hamming_distance
+        self.umi = umi_abundance.most_common(1)[0][0]
+
+    def get_umi(self):
+        return self.umi
 
     def get_sample(self):
         """Obtain sample
@@ -155,14 +161,17 @@ class Molecule():
         return True
 
     def _add_fragment(self, fragment):
+        self.match_hash = fragment.match_hash
         self.fragments.append(fragment)
         # Update span:
         add_span = fragment.get_span()
         self.spanStart = add_span[1] if self.spanStart is None else min(add_span[1], self.spanStart)
         self.spanEnd = add_span[2] if self.spanEnd is None else max(add_span[2], self.spanEnd)
         self.chromosome = add_span[0]
+        self.span = (self.chromosome, self.spanStart, self.spanEnd)
         if fragment.strand is not None:
             self.strand = fragment.strand
+        self.update_umi()
 
     def add_fragment(self, fragment):
         """Associate a fragment with this Molecule
@@ -174,13 +183,17 @@ class Molecule():
         """
         if len(self.fragments)==0:
             self._add_fragment(fragment)
+            self.sample=fragment.sample
             return True
 
-        for f in self.fragments:
-            if f == fragment:
-                # it matches this molecule:
-                self._add_fragment(fragment)
-                return True
+        #for f in self.fragments:
+        #    if f == fragment:
+        #        # it matches this molecule:
+        #        self._add_fragment(fragment)
+        #        return True
+        if self==fragment:
+            self._add_fragment(fragment)
+            return True
         return False
 
     def can_be_yielded(self, chromosome, position):
@@ -534,7 +547,7 @@ class Molecule():
 
 class MoleculeIterator():
 
-    def __init__(self, alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000, molecule_class_args={}, fragment_class_args={}, perform_qflag=True, **pysamArgs):
+    def __init__(self, alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000, molecule_class_args={}, fragment_class_args={}, perform_qflag=True, pooling_method=1, **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
         Args:
@@ -553,6 +566,7 @@ class MoleculeIterator():
             perform_qflag (bool):  Make sure the sample/umi etc tags are copied
                 from the read name into bam tags
 
+            pooling_method(int) : 0: no  pooling, 1: only compare molecules with the same sample id.
             **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
 
         Yields:
@@ -566,19 +580,42 @@ class MoleculeIterator():
         self.fragment_class_args = fragment_class_args
         self.perform_qflag = perform_qflag
         self.pysamArgs = pysamArgs
+        self.matePairIterator=None
+        self.pooling_method=pooling_method
+        self.clear_cache()
+
+    def clear_cache(self):
         self.waiting_fragments = 0
         self.yielded_fragments = 0
         self.yielded_molecules = 0
-        self.matePairIterator=None
+        if self.pooling_method==0:
+            self.molecules=[]
+        elif self.pooling_method==1:
+            self.molecules_per_cell =collections.defaultdict(list)
+        else:
+            raise NotImplementedError()
 
     def __repr__(self):
-        return f"""Molecule Iterator, generates fragments from {self.fragmentClass} into molecules based on {self.moleculeClass}. Yielded {self.yielded_fragments} fragments, {self.waiting_fragments} fragments are waiting to be ejected. Mate pair iterator: {self.matePairIterator}"""
+        return f"""Molecule Iterator, generates fragments from {self.fragmentClass} into molecules based on {self.moleculeClass}.
+        Yielded {self.yielded_fragments} fragments, {self.waiting_fragments} fragments are waiting to be ejected.
+        {self.get_molecule_cache_size()} molecules cached.
+        Mate pair iterator: {str(self.matePairIterator)}"""
+
+
+    def get_molecule_cache_size(self):
+        if self.pooling_method==0:
+            return len(self.molecules)
+        elif self.pooling_method==1:
+            return sum( len(cell_molecules) for cell, cell_molecules in self.molecules_per_cell.items() )
+
+        else:
+            raise NotImplementedError()
+
     def __iter__(self):
         if self.perform_qflag:
             qf = singlecellmultiomics.universalBamTagger.QueryNameFlagger()
 
-        molecules = []
-        self.molecules = molecules
+        self.clear_cache()
 
         self.waiting_fragments = 0
         self.matePairIterator = pysamiterators.iterators.MatePairIterator(self.alignments,performProperPairCheck=False,**self.pysamArgs)
@@ -592,26 +629,55 @@ class MoleculeIterator():
                 continue
 
             added = False
-            for molecule in molecules:
-                if molecule.add_fragment(fragment):
-                    added = True
-                    break
+            if self.pooling_method==0:
+                for molecule in molecules:
+                    if molecule.add_fragment(fragment):
+                        added = True
+                        break
+            elif self.pooling_method==1:
+                for molecule in self.molecules_per_cell[fragment.sample]:
+                    if molecule.add_fragment(fragment):
+                        added = True
+                        break
+
             if not added:
-                molecules.append(self.moleculeClass(fragment, **self.molecule_class_args ))
+                if self.pooling_method==0:
+                    molecules.append(self.moleculeClass(fragment, **self.molecule_class_args ))
+                else:
+                    self.molecules_per_cell[fragment.sample].append(
+                        self.moleculeClass(fragment, **self.molecule_class_args )
+                    )
 
             self.waiting_fragments+=1
 
             if self.waiting_fragments>self.check_eject_every:
                 current_chrom, _, current_position = fragment.get_span()
                 to_pop = []
-                for i,m in enumerate(molecules):
-                    if m.can_be_yielded(current_chrom,current_position):
-                        to_pop.append(i)
-                        self.waiting_fragments-=len(m)
-                        self.yielded_fragments+=len(m)
+                if self.pooling_method==0:
+                    for i,m in enumerate(molecules):
+                        if m.can_be_yielded(current_chrom,current_position):
+                            to_pop.append(i)
+                            self.waiting_fragments-=len(m)
+                            self.yielded_fragments+=len(m)
 
-                for i,j in enumerate(to_pop):
-                    yield molecules.pop(i-j)
+                    for i,j in enumerate(to_pop):
+                        yield molecules.pop(i-j)
+                else:
+                    for cell, cell_molecules in self.molecules_per_cell.items():
+                        for i,m in enumerate(cell_molecules):
+                            if m.can_be_yielded(current_chrom,current_position):
+                                to_pop.append((cell,i))
+                                self.waiting_fragments-=len(m)
+                                self.yielded_fragments+=len(m)
+                    for i,(cell, index) in enumerate(to_pop):
+                        yield molecules[cell][index]
+                        del molecules[cell][index]
 
         # Yield remains
-        yield from iter(molecules)
+        if self.pooling_method==0:
+            yield from iter(molecules)
+        else:
+            for cell, cell_molecules in self.molecules_per_cell.items():
+                for i,m in enumerate(cell_molecules):
+                    yield m
+        self.clear_cache()

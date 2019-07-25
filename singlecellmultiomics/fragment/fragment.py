@@ -19,11 +19,12 @@ class Fragment():
         ### Check for multimapping
         self.is_multimapped = True
         self.mapping_quality = 0
+        self.match_hash=None
 
-        # Span:
-        self.span_start = None
-        self.span_end = None
-        self.span_chromosome = None
+        # Span:\
+        self.span=[None,None,None]
+
+        self.umi=None
 
         # Force R1=read1 R2=read2:
         for i, read in enumerate(self.reads):
@@ -50,6 +51,7 @@ class Fragment():
         self.set_sample()
         self.set_strand(self.identify_strand())
         self.update_span()
+        self.update_umi()
 
     def identify_strand(self):
         # If R2 is rev complement:
@@ -116,12 +118,10 @@ class Fragment():
             if read.reference_end is not None and( surfaceEnd is None or read.reference_end>surfaceEnd):
                 surfaceEnd=read.reference_end
 
-        self.span_end = surfaceEnd
-        self.span_start = surfaceStart
-        self.span_chromosome = contig
+        self.span = (contig,surfaceStart, surfaceEnd)
 
     def get_span(self):
-        return self.span_chromosome,self.span_start,self.span_end
+        return self.span
 
     def has_valid_span(self):
         return not any([x is None for x in self.get_span()])
@@ -147,40 +147,38 @@ class Fragment():
     def get_strand(self):
         return self.strand
 
-    def get_umi(self):
+    def update_umi(self):
         for read in self.reads:
             if read is not None and read.has_tag('RX'):
-                return read.get_tag('RX')
-        return None
+                self.umi=read.get_tag('RX')
+
+    def get_umi(self):
+        return self.umi
 
     def __iter__(self):
         return iter(self.reads)
 
-    def __eq__(self, other):
-        # Make sure fragments map to the same strand, cheap comparisons
-        if self.get_sample()!=other.get_sample():
-            return False
-
-        if self.get_strand()!=other.get_strand():
-            return False
-
-        spanSelf =  self.get_span()
-        spanOther =  other.get_span()
-        if any([x is None for x in spanSelf]):
-            print(spanSelf)
-        if any([x is None for x in spanOther]):
-            print(spanOther)
-
-        if min(  abs( spanSelf[1] - spanOther[1] ),  abs( spanSelf[2] - spanOther[2] ) ) >self.assignment_radius:
-            return False
-
-        # Make sure UMI's are similar enough, more expensive hamming distance calculation
-        if self.get_umi()==other.get_umi():
+    def umi_eq(self, other):
+        if self.umi==other.umi:
             return True
         if self.umi_hamming_distance==0:
             return False
         else:
-            return hamming_distance(self.get_umi(),other.get_umi())<=self.umi_hamming_distance
+            return hamming_distance(self.umi,other.umi)<=self.umi_hamming_distance
+
+    def __eq__(self, other): # other can also be a Molecule!
+        # Make sure fragments map to the same strand, cheap comparisons
+        if self.sample!=other.sample:
+            return False
+
+        if self.strand!=other.strand:
+            return False
+
+        if min(  abs( self.span[1] - other.span[1] ),  abs( self.span[2] - other.span[2] ) ) >self.assignment_radius:
+            return False
+
+        # Make sure UMI's are similar enough, more expensive hamming distance calculation
+        return self.umi_eq(other)
 
     def __getitem__(self, index):
         """

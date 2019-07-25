@@ -8,7 +8,11 @@ class NLAIIIFragment(Fragment):
         self.site_location = None
         self.cut_site_strand = None
         self.identify_site()
-
+        if self.is_valid():
+            self.match_hash = (self.strand, self.cut_site_strand,
+             self.site_location[0],self.site_location[1])
+        else:
+            self.match_hash = None
     def set_site(self, site_chrom, site_pos, site_strand=None ):
 
         self.set_strand(site_strand)
@@ -84,17 +88,8 @@ class NLAIIIFragment(Fragment):
 
     def __eq__(self, other):
         # Make sure fragments map to the same strand, cheap comparisons
-        if self.get_sample()!=other.get_sample():
-            return False
-
-        if self.get_strand()!=other.get_strand():
-            return False
-
-        if self.get_site_location()!=other.get_site_location():
+        if self.match_hash!=other.match_hash:
             return False
 
         # Make sure UMI's are similar enough, more expensive hamming distance calculation
-        if self.umi_hamming_distance==0:
-            return self.get_umi()==other.get_umi()
-        else:
-            return hamming_distance(self.get_umi(),other.get_umi())<=self.umi_hamming_distance
+        return self.umi_eq(other)
