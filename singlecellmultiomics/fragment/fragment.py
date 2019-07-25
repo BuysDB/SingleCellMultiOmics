@@ -5,7 +5,8 @@ from singlecellmultiomics.utils import style_str
 complement = str.maketrans('ATCGN', 'TAGCN')
 
 class Fragment():
-    def __init__(self, reads, assignment_radius=3, umi_hamming_distance=1,R1_primer_length=0,R2_primer_length=6,tag_definitions=None ):
+    def __init__(self, reads, assignment_radius=3, umi_hamming_distance=1,R1_primer_length=0,R2_primer_length=6,
+    tag_definitions=None ):
         if tag_definitions is None:
             tag_definitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
         self.tag_definitions = tag_definitions
@@ -17,6 +18,13 @@ class Fragment():
         self.is_mapped = None
         ### Check for multimapping
         self.is_multimapped = True
+        self.mapping_quality = 0
+
+        # Span:
+        self.span_start = None
+        self.span_end = None
+        self.span_chromosome = None
+
         # Force R1=read1 R2=read2:
         for i, read in enumerate(self.reads):
 
@@ -27,7 +35,7 @@ class Fragment():
                 self.is_mapped = True
             if read.mapping_quality!=0:
                 self.is_multimapped = False
-
+            self.mapping_quality = max(self.mapping_quality, read.mapping_quality)
             if i==0:
                 if read.is_read2:
                     raise ValueError('Supply first R1 then R2')
@@ -41,6 +49,7 @@ class Fragment():
         self.R2_primer_length = R2_primer_length
         self.set_sample()
         self.set_strand(self.identify_strand())
+        self.update_span()
 
     def identify_strand(self):
         # If R2 is rev complement:
@@ -93,7 +102,7 @@ class Fragment():
             raise IndexError('The fragment has no associated R2')
         return self.reads[1]
 
-    def get_span(self):
+    def update_span(self):
         surfaceStart = None
         surfaceEnd = None
         contig = None
@@ -107,7 +116,12 @@ class Fragment():
             if read.reference_end is not None and( surfaceEnd is None or read.reference_end>surfaceEnd):
                 surfaceEnd=read.reference_end
 
-        return contig,surfaceStart,surfaceEnd
+        self.span_end = surfaceEnd
+        self.span_start = surfaceStart
+        self.span_chromosome = contig
+
+    def get_span(self):
+        return self.span_chromosome,self.span_start,self.span_end
 
     def has_valid_span(self):
         return not any([x is None for x in self.get_span()])
@@ -161,8 +175,10 @@ class Fragment():
             return False
 
         # Make sure UMI's are similar enough, more expensive hamming distance calculation
+        if self.get_umi()==other.get_umi():
+            return True
         if self.umi_hamming_distance==0:
-            return self.get_umi()==other.get_umi()
+            return False
         else:
             return hamming_distance(self.get_umi(),other.get_umi())<=self.umi_hamming_distance
 
