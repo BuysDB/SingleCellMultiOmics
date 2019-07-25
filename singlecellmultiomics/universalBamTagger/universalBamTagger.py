@@ -134,30 +134,31 @@ def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2): #1
     #for k,p in rp.items():
     #    yield p
 
-"""
-Iterate over molecules in a bam file
 
-Parameters
-----------
-alignmentfile : pysam.AlignmentFile
-    file to read the molecules from
-
-look_around_radius : int
-    buffer to accumulate molecules in. All fragments belonging to one molecule should fit this radius
-
-umi_hamming_distance : int
-    Edit distance on UMI, 0: only exact match, 1: single base distance
-
-sample_select : iterable
-    Iterable of samples to only select molecules from
-
-Yields
-----------
-list of molecules : list [ pysam.AlignedSegment ]
-[ (R1,R2), (R1,R2) ... ]
-
-"""
 class MoleculeIterator():
+    """
+    Iterate over molecules in a bam file 
+
+    Parameters
+    ----------
+    alignmentfile : pysam.AlignmentFile
+        file to read the molecules from
+
+    look_around_radius : int
+        buffer to accumulate molecules in. All fragments belonging to one molecule should fit this radius
+
+    umi_hamming_distance : int
+        Edit distance on UMI, 0: only exact match, 1: single base distance
+
+    sample_select : iterable
+        Iterable of samples to only select molecules from
+
+    Yields
+    ----------
+    list of molecules : list [ pysam.AlignedSegment ]
+    [ (R1,R2), (R1,R2) ... ]
+
+    """
 
     def __init__(self,
         alignmentfile,
