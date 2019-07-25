@@ -81,7 +81,7 @@ if __name__=='__main__':
 	techArgs = argparser.add_argument_group('Technical', '')
 	#techArgs.add_argument('-t', help="Amount of demultiplexing threads used" , type=int, default=8)
 	techArgs.add_argument('-fh', help="When demultiplexing to mutliple cell files in multiple threads, the amount of opened files can exceed the limit imposed by your operating system. The amount of open handles per thread is kept below this parameter to prevent this from happening.", default=500, type=int)
-	techArgs.add_argument('-dsize', help="Amount of reads used to determine barcode type" , type=int, default=10000)
+	techArgs.add_argument('-dsize', help="Amount of reads used to determine barcode type" , type=int, default=2000)
 
 	argparser.add_argument('-use',default=None, help='use these demultplexing strategies, comma separate to select multiple. For example for cellseq 2 data with 6 basepair umi: -use CS2C8U6 , for combined mspji and Celseq2: MSPJIC8U3,CS2C8U6 if nothing is specified, the best scoring method is selected' )
 
