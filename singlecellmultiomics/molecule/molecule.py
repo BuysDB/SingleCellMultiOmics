@@ -76,6 +76,7 @@ class Molecule():
         self.umi = None
         self.umi_hamming_distance = None
         self.fragment_match = None # when set, when comparing to a fragment the fragment to be added has to match this hash
+        self.umi_counter = collections.Counter() # Observations of umis
         if fragments is not None:
             if type(fragments) is list:
                 for frag in fragments:
@@ -110,12 +111,7 @@ class Molecule():
             self.umi (str):
                 Returns the most common umi associated to the molecule
         """
-
-        umi_abundance = collections.Counter()
-        for fragment in self.fragments:
-            umi_abundance[fragment.get_umi()]+=1
-            self.umi_hamming_distance = fragment.umi_hamming_distance
-        self.umi = umi_abundance.most_common(1)[0][0]
+        self.umi = self.umi_counter.most_common(1)[0][0]
 
     def get_umi(self):
         return self.umi
@@ -171,6 +167,8 @@ class Molecule():
         self.span = (self.chromosome, self.spanStart, self.spanEnd)
         if fragment.strand is not None:
             self.strand = fragment.strand
+        self.umi_counter[fragment.umi]+=1
+        self.umi_hamming_distance = fragment.umi_hamming_distance
         self.update_umi()
 
     def add_fragment(self, fragment):
