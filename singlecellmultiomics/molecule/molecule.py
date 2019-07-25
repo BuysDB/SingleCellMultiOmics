@@ -88,12 +88,31 @@ class Molecule():
     def __len__(self):
         return len(self.fragments)
 
-    """Obtain fraction of fragments that are associated
-    to the molecule with a exact matching UMI vs total amount of associated fragments
-    Returns:
-        exact_matching_fraction (float)
-    """
+
+
+    def get_consensus_base_frequencies(self):
+        """Obtain the frequency of bases in the molecule consensus sequence
+
+        Returns:
+            base_frequencies (collections.Counter) : Counter containing base frequecies, for example: { 'A':10,'T':3, C:4 }
+        """
+        return collections.Counter( m.get_consensus().values() )
+
+    def get_consensus_gc_ratio(self):
+        """Obtain the GC ratio of the molecule consensus sequence
+
+        Returns:
+            gc_ratio(float) : GC ratio
+        """
+        bf = self.get_consensus_base_frequencies()
+        return (bf['G']+bf['C'])/sum(bf.values())
+
     def get_umi_error_rate(self):
+        """Obtain fraction of fragments that are associated
+        to the molecule with a exact matching UMI vs total amount of associated fragments
+        Returns:
+            exact_matching_fraction (float)
+        """
         mc = 0
         other = 0
         for i,(umi,obs) in enumerate( m.umi_counter.most_common() ):
