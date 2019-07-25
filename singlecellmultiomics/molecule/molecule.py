@@ -88,8 +88,6 @@ class Molecule():
     def __len__(self):
         return len(self.fragments)
 
-
-
     def get_consensus_base_frequencies(self):
         """Obtain the frequency of bases in the molecule consensus sequence
 
@@ -180,6 +178,14 @@ class Molecule():
                 return tuple( (*site, fragment.get_strand()))
         return None
 
+    def get_mean_mapping_qual(self):
+        """Get mean mapping quality of the molecule
+
+        Returns:
+            mean_mapping_qual (float)
+        """
+        return np.mean( [fragment.mapping_quality for fragment in self] )
+
     def is_multimapped(self):
         """Check if the molecule is multimapping
 
@@ -204,6 +210,7 @@ class Molecule():
             self.strand = fragment.strand
         self.umi_counter[fragment.umi]+=1
         self.umi_hamming_distance = fragment.umi_hamming_distance
+        self.saved_base_obs = None
         self.update_umi()
 
     def add_fragment(self, fragment):
@@ -359,6 +366,15 @@ class Molecule():
             and
             { genome_location (tuple) : base (string) if return_refbases is True }
         '''
+
+        # Check if cached is available
+        if self.saved_base_obs is not None:
+            if not return_refbases:
+                return self.saved_base_obs[0]
+            else:
+                if self.saved_base_obs[1] is not None:
+                    return self.saved_base_obs
+
         base_obs = collections.defaultdict(collections.Counter)
         if return_refbases:
             ref_bases = {}
@@ -391,6 +407,9 @@ class Molecule():
 
         if used==0 and ignored>0:
             raise ValueError('Could not extract any safe data from molecule')
+
+        self.saved_base_obs = (base_obs, ref_bases)
+
         if return_refbases:
             return base_obs, ref_bases
 
