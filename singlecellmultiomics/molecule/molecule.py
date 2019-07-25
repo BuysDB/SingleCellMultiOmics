@@ -590,12 +590,14 @@ class MoleculeIterator():
         self.pysamArgs = pysamArgs
         self.matePairIterator=None
         self.pooling_method=pooling_method
-        self.clear_cache()
+        self._clear_cache()
 
-    def clear_cache(self):
+    def _clear_cache(self):
+        """Clear cache containing non yielded molecules"""
         self.waiting_fragments = 0
         self.yielded_fragments = 0
         self.yielded_molecules = 0
+        self.check_ejection_iter = 0
         if self.pooling_method==0:
             self.molecules=[]
         elif self.pooling_method==1:
@@ -623,7 +625,7 @@ class MoleculeIterator():
         if self.perform_qflag:
             qf = singlecellmultiomics.universalBamTagger.QueryNameFlagger()
 
-        self.clear_cache()
+        self._clear_cache()
 
         self.waiting_fragments = 0
         self.matePairIterator = pysamiterators.iterators.MatePairIterator(self.alignments,performProperPairCheck=False,**self.pysamArgs)
@@ -657,10 +659,11 @@ class MoleculeIterator():
                     )
 
             self.waiting_fragments+=1
-
-            if self.waiting_fragments>self.check_eject_every:
+            self.check_ejection_iter += 1
+            if self.check_ejection_iter>self.check_eject_every:
                 current_chrom, _, current_position = fragment.get_span()
                 to_pop = []
+                self.check_ejection_iter=0
                 if self.pooling_method==0:
                     for i,m in enumerate(molecules):
                         if m.can_be_yielded(current_chrom,current_position):
@@ -688,4 +691,4 @@ class MoleculeIterator():
             for cell, cell_molecules in self.molecules_per_cell.items():
                 for i,m in enumerate(cell_molecules):
                     yield m
-        self.clear_cache()
+        self._clear_cache()
