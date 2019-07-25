@@ -32,6 +32,36 @@ class TestMolecule(unittest.TestCase):
 
             self.assertEqual(''.join( list(molecule.get_consensus().values()) ), 'AGTTAGATATGGACTCTTCTTCAGACACTTTGTTTAAATTTTAAATTTTTTTCTGATTGCATATTACTAAAAATGTGTTATGAATATTTTCCATATCATTAAACATTCTTCTCAAGCATAACTTTAAATAACTATAGAAAATTTACGCTACTTTTGTTTTTGTTTTTTTTTTTTTTTTTTTACTATTATTAATAACAC')
 
+    def test_get_match_mismatch_frequency(self):
+        """Test if the matches and mismatches of reads in a molecule are counted properly"""
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            it = singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.Molecule,
+            fragmentClass=singlecellmultiomics.fragment.Fragment)
+            for molecule in iter(it):
+                #print(molecule.get_sample())
+                if  molecule.get_sample()=='APKS3-P19-1-1_91':
+                    break
+        print(molecule.get_match_mismatch_frequency())
+        self.assertEqual( (583, 13), molecule.get_match_mismatch_frequency() )
+
+    def test_get_consensus_gc_ratio(self):
+        """Test if the gc ratio of a molecule is properly determined"""
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            it = singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.Molecule,
+            fragmentClass=singlecellmultiomics.fragment.Fragment)
+            for molecule in iter(it):
+                #print(molecule.get_sample())
+                if  molecule.get_sample()=='APKS3-P19-1-1_91':
+                    break
+
+        self.assertAlmostEqual(0.2070707, molecule.get_consensus_gc_ratio() )
+
+
+
     def test_molecule_pooling(self):
         for sample in ['AP1-P22-1-1_318','APKS2-P8-2-2_52']:
             for hd in [0,1]:
