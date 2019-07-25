@@ -109,32 +109,32 @@ class Base_RestrictionBisulfiteDemuxMethod(UmiBarcodeDemuxMethod):
 				#tr.addTagByTag('QM', barcodeQual, isPhred=True)
 				pass
 			else:
-				tr.addTagByTag('RX', umi, isPhred=False)
+				tr.addTagByTag('RX', umi, isPhred=False,make_safe=False)
 				tr.addTagByTag('RQ', umiQual, isPhred=True)
 				#tr.addTagByTag('MI', barcode+umi, isPhred=False)
 				#tr.addTagByTag('QM', barcodeQual+umiQual, isPhred=True)
 
-			tr.addTagByTag('BI', barcodeIdentifier, isPhred=False)
-			tr.addTagByTag('bc', rawBarcode, isPhred=False)
+			tr.addTagByTag('BI', barcodeIdentifier, isPhred=False,make_safe=False)
+			tr.addTagByTag('bc', rawBarcode, isPhred=False,make_safe=False)
 			#tr.addTagByTag('hd', hammingDistance, isPhred=False)
 
-			tr.addTagByTag('BC', barcode, isPhred=False )
+			tr.addTagByTag('BC', barcode, isPhred=False,make_safe=False )
 			tr.addTagByTag('QT', barcodeQual, isPhred=True)
 
 			if len(barcode)!=len(barcodeQual):
 				raise ValueError()
 
 			 # Enzyme sequence
-			tr.addTagByTag('ES', enz, isPhred=False ) # Enzyme sequence
+			tr.addTagByTag('ES', enz, isPhred=False,make_safe=False ) # Enzyme sequence
 			 # Enzyme quality
 			tr.addTagByTag('eq', enzQual, isPhred=True)
 
 			# ISPCR sequence
-			tr.addTagByTag('IS', ispcr, isPhred=False )
+			tr.addTagByTag('IS', ispcr, isPhred=False,make_safe=False )
 			# ISPCR quality
 			#tr.addTagByTag('is', ispcrQual, isPhred=True)
 
-			tr.addTagByTag('MX', self.shortName)
+			tr.addTagByTag('MX', self.shortName,make_safe=False,isPhred=False)
 
 		for rid,(record, taggedRecord) in enumerate( zip(records, taggedRecords)):
 			taggedRecord.sequence = record.sequence[self.sequenceCapture[rid]]
