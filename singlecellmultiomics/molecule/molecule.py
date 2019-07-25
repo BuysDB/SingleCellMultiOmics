@@ -88,6 +88,22 @@ class Molecule():
     def __len__(self):
         return len(self.fragments)
 
+    """Obtain fraction of fragments that are associated
+    to the molecule with a exact matching UMI vs total amount of associated fragments
+    Returns:
+        exact_matching_fraction (float)
+    """
+    def get_umi_error_rate(self):
+        mc = 0
+        other = 0
+        for i,(umi,obs) in enumerate( m.umi_counter.most_common() ):
+            if i==0:
+                mc = obs
+            else:
+                other += obs
+
+        return mc/(other+mc)
+
     def get_strand(self):
         """Obtain mapping strand of molecule
 
