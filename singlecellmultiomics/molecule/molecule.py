@@ -530,61 +530,79 @@ class Molecule():
         return methylated_positions,methylated_state
 
 
-def MoleculeIterator( alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000, molecule_class_args={}, fragment_class_args={}, **pysamArgs):
-    """Iterate over molecules in pysam.AlignmentFile
-
-    Args:
-        alignments (pysam.AlignmentFile): Alignments to extract molecules form
-
-        moleculeClass (pysam.FastaFile): Class to use for molecules.
-
-        fragmentClass (pysam.FastaFile): Class to use for fragments.
-
-        check_eject_every (int): Check for yielding every N reads.
-
-        molecule_class_args (dict): arguments to pass to moleculeClass.
-
-        fragment_class_args (dict): arguments to pass to fragmentClass.
-
-        **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
-
-    Yields:
-        molecule (Molecule): Molecule
-    """
 
 
-    qf = singlecellmultiomics.universalBamTagger.QueryNameFlagger()
+class MoleculeIterator():
 
-    molecules = []
+    def __init__(self, alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000, molecule_class_args={}, fragment_class_args={}, perform_qflag=True, **pysamArgs):
+        """Iterate over molecules in pysam.AlignmentFile
 
-    added_fragments = 0
-    for R1,R2 in pysamiterators.iterators.MatePairIterator(alignments,performProperPairCheck=False,**pysamArgs):
-        # Make sure the sample/umi etc tags are placed:
-        qf.digest([R1,R2])
+        Args:
+            alignments (pysam.AlignmentFile): Alignments to extract molecules form
 
-        fragment = fragmentClass([R1,R2], **fragment_class_args)
-        if not fragment.is_valid() :
-            continue
+            moleculeClass (pysam.FastaFile): Class to use for molecules.
 
-        added = False
-        for molecule in molecules:
-            if molecule.add_fragment(fragment):
-                added = True
-                break
-        if not added:
-            molecules.append(moleculeClass(fragment, **molecule_class_args ))
+            fragmentClass (pysam.FastaFile): Class to use for fragments.
 
-        added_fragments+=1
+            check_eject_every (int): Check for yielding every N reads.
 
-        if added_fragments>check_eject_every:
-            current_chrom, _, current_position = fragment.get_span()
-            to_pop = []
-            for i,m in enumerate(molecules):
-                if m.can_be_yielded(current_chrom,current_position):
-                    to_pop.append(i)
+            molecule_class_args (dict): arguments to pass to moleculeClass.
 
-            for i,j in enumerate(to_pop):
-                yield molecules.pop(i-j)
+            fragment_class_args (dict): arguments to pass to fragmentClass.
 
-    # Yield remains
-    yield from iter(molecules)
+            perform_qflag (bool):  Make sure the sample/umi etc tags are copied
+                from the read name into bam tags
+
+            **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
+
+        Yields:
+            molecule (Molecule): Molecule
+        """
+        self.alignments = alignments
+        self.moleculeClass = moleculeClass
+        self.fragmentClass = fragmentClass
+        self.check_eject_every = check_eject_every
+        self.molecule_class_args = molecule_class_args
+        self.fragment_class_args = fragment_class_args
+        self.perform_qflag = perform_qflag
+        self.pysamArgs = pysamArgs
+
+
+    def __iter__(self):
+        if self.perform_qflag:
+            qf = singlecellmultiomics.universalBamTagger.QueryNameFlagger()
+
+        molecules = []
+
+        added_fragments = 0
+        for R1,R2 in pysamiterators.iterators.MatePairIterator(self.alignments,performProperPairCheck=False,**self.pysamArgs):
+            # Make sure the sample/umi etc tags are placed:
+            if self.perform_qflag:
+                qf.digest([R1,R2])
+
+            fragment = self.fragmentClass([R1,R2], **self.fragment_class_args)
+            if not fragment.is_valid() :
+                continue
+
+            added = False
+            for molecule in molecules:
+                if molecule.add_fragment(fragment):
+                    added = True
+                    break
+            if not added:
+                molecules.append(self.moleculeClass(fragment, **self.molecule_class_args ))
+
+            added_fragments+=1
+
+            if added_fragments>self.check_eject_every:
+                current_chrom, _, current_position = fragment.get_span()
+                to_pop = []
+                for i,m in enumerate(molecules):
+                    if m.can_be_yielded(current_chrom,current_position):
+                        to_pop.append(i)
+
+                for i,j in enumerate(to_pop):
+                    yield molecules.pop(i-j)
+
+        # Yield remains
+        yield from iter(molecules)
