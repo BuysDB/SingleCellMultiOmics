@@ -547,7 +547,15 @@ class Molecule():
 
 class MoleculeIterator():
 
-    def __init__(self, alignments, moleculeClass=Molecule, fragmentClass=Fragment, check_eject_every=1000, molecule_class_args={}, fragment_class_args={}, perform_qflag=True, pooling_method=1, **pysamArgs):
+    def __init__(self, alignments, moleculeClass=Molecule,
+        fragmentClass=Fragment,
+        check_eject_every=10_000, #bigger sizes are very speed benificial
+        # because the relative amount of molecules which can be ejected will be much higher
+        molecule_class_args={},
+        fragment_class_args={},
+        perform_qflag=True,
+        pooling_method=1,
+        **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
         Args:
