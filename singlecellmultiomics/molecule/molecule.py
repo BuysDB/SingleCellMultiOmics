@@ -566,16 +566,23 @@ class MoleculeIterator():
         self.fragment_class_args = fragment_class_args
         self.perform_qflag = perform_qflag
         self.pysamArgs = pysamArgs
+        self.waiting_fragments = 0
+        self.yielded_fragments = 0
+        self.yielded_molecules = 0
+        self.matePairIterator=None
 
-
+    def __repr__(self):
+        return f"""Molecule Iterator, generates fragments from {self.fragmentClass} into molecules based on {self.moleculeClass}. Yielded {self.yielded_fragments} fragments, {self.waiting_fragments} fragments are waiting to be ejected. Mate pair iterator: {self.matePairIterator}"""
     def __iter__(self):
         if self.perform_qflag:
             qf = singlecellmultiomics.universalBamTagger.QueryNameFlagger()
 
         molecules = []
+        self.molecules = molecules
 
-        added_fragments = 0
-        for R1,R2 in pysamiterators.iterators.MatePairIterator(self.alignments,performProperPairCheck=False,**self.pysamArgs):
+        self.waiting_fragments = 0
+        self.matePairIterator = pysamiterators.iterators.MatePairIterator(self.alignments,performProperPairCheck=False,**self.pysamArgs)
+        for R1,R2 in self.matePairIterator:
             # Make sure the sample/umi etc tags are placed:
             if self.perform_qflag:
                 qf.digest([R1,R2])
@@ -592,14 +599,16 @@ class MoleculeIterator():
             if not added:
                 molecules.append(self.moleculeClass(fragment, **self.molecule_class_args ))
 
-            added_fragments+=1
+            self.waiting_fragments+=1
 
-            if added_fragments>self.check_eject_every:
+            if self.waiting_fragments>self.check_eject_every:
                 current_chrom, _, current_position = fragment.get_span()
                 to_pop = []
                 for i,m in enumerate(molecules):
                     if m.can_be_yielded(current_chrom,current_position):
                         to_pop.append(i)
+                        self.waiting_fragments-=len(m)
+                        self.yielded_fragments+=len(m)
 
                 for i,j in enumerate(to_pop):
                     yield molecules.pop(i-j)
