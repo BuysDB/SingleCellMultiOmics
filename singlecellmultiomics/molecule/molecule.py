@@ -96,7 +96,7 @@ class Molecule():
         Returns:
             base_frequencies (collections.Counter) : Counter containing base frequecies, for example: { 'A':10,'T':3, C:4 }
         """
-        return collections.Counter( m.get_consensus().values() )
+        return collections.Counter( self.get_consensus().values() )
 
     def get_consensus_gc_ratio(self):
         """Obtain the GC ratio of the molecule consensus sequence
@@ -396,7 +396,34 @@ class Molecule():
 
         return base_obs
 
+    def get_match_mismatch_frequency(self, ignore_locations=None):
+        """Get amount of base-calls matching and mismatching the reference sequence,
+           mismatches in every read are counted
 
+        Args:
+            ignore_locations (iterable(tuple([chrom(str),pos(int)])) ) :
+                Locations not to take into account for the match and mismatch frequency
+
+        Returns:
+            matches(int), mismatches(int)
+        """
+        matches = 0
+        mismatches = 0
+
+        base_obs, ref_bases = self.get_base_observation_dict(return_refbases=True)
+        for location, obs in base_obs.items():
+            if ignore_locations is not None and location in ignore_locations:
+                continue
+
+            if location in ref_bases:
+                ref = ref_bases[location]
+                if ref not in 'ACTG': # don't count weird bases in the reference @warn
+                    continue
+                matches += obs[ref]
+                mismatches += sum((base_obs for base,base_obs in obs.most_common() if base != ref))
+
+
+        return matches, mismatches
 
     def get_consensus(self, base_obs=None):
         """Get dictionary containing consensus calls in respect to reference
