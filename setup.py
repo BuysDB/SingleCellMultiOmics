@@ -74,8 +74,13 @@ setup(
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py',
         'singlecellmultiomics/libraryDetection/archivestats.py',
 
+        # Feature conversion:
+        'singlecellmultiomics/features/exonGTFtoIntronGTF.py',
+
+
         # Utility: (SGE wrapper)
         'singlecellmultiomics/utils/submission.py'
+
 
         ],
   install_requires=[
