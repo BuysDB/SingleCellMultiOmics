@@ -95,13 +95,13 @@ def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_s
 if __name__=='__main__':
     matplotlib.rcParams['figure.dpi'] = 160
     matplotlib.use('Agg')
-    
+
     argparser = argparse.ArgumentParser(
      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
      description='Visualise feature density of a bam file. (Coverage around stop codons, start codons, genes etc)')
     argparser.add_argument('-o',  type=str, help="output plot folder path, every library will be visualised separately", default='./plots/')
     argparser.add_argument('-d',  type=str, help="output data folder path, the data used for plotting will be exported to this folder", default='./tables/')
-    argparser.add_argument('-features',  type=str, default='stop_codon,start_codon', help="features to plot, separate by comma without space")
+    argparser.add_argument('-features',  type=str, default='stop_codon,start_codon,exon,transcript', help="features to plot, separate by comma without space")
     argparser.add_argument('alignmentfiles',  type=str, nargs='*')
     argparser.add_argument('-gtf',  type=str, required=True, help="GTF file containing the features to plot")
     argparser.add_argument('-head',  type=int, default=100_000_000, help="Use this amount of reads per bam file (or less if the bam file has less reads)")
@@ -120,14 +120,21 @@ if __name__=='__main__':
     # Load the GTF files with the desired annotations
     annotations = {}
     for feature in features:
+
         annotations[feature] = singlecellmultiomics.features.FeatureContainer()
         annotations[feature].loadGTF( args.gtf, select_feature_type=[feature] )
+        if len(annotations[feature])==0:
+            print(f"""Feature {feature} is not present in the suplied GTF file!
+            Make sure to select feature types which are present in the GTF file!""")
 
 
     histograms = collections.defaultdict(
                     lambda:collections.defaultdict(collections.Counter)) # feature->library->hist
     # Create histogram per feature / library
     for feature in features:
+        if len(annotations[feature])==0:
+            print(f"Skipping {feature} as it is not present in the GTF file")
+            continue
         for bam_path in args.alignmentfiles:
             print(f"Now reading {bam_path} for annotation type {feature}")
             bam_to_histogram(
