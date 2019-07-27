@@ -64,7 +64,10 @@ def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_s
             if read.mapping_quality<min_mq:
                 continue
 
-            library = read.get_tag('LY')
+            if read.has_tag('LY'):
+                library = read.get_tag('LY')
+            else:
+                library='No_library_defined'
             chromosome = read.reference_name
             if quick or site_mode:
                 if site_mode:
