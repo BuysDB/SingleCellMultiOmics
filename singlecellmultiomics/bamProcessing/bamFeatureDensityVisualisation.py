@@ -8,10 +8,9 @@ import argparse
 import gzip
 import pickle
 import matplotlib
-import matplotlib.lines as mlines
 
 import numpy as np
-import matplotlib.pyplot as plt
+
 import pandas as pd
 import singlecellmultiomics.features
 
@@ -96,8 +95,10 @@ def bam_to_histogram(bam_path, add_to, feature_container, site_mode=False, bin_s
     print(f'{bam_path} read {i} reads')
 
 if __name__=='__main__':
-    matplotlib.rcParams['figure.dpi'] = 160
+
     matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    matplotlib.rcParams['figure.dpi'] = 160
 
     argparser = argparse.ArgumentParser(
      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
