@@ -62,7 +62,7 @@ if __name__ == "__main__" :
 
     ### RNA options
     tagAlgs.add_argument('--rna', action='store_true', help='Assign RNA molecules, requires a intronic and exonic GTF file')
-    argparser.add_argument('-introns', type=str, help='Intronic GTF file')
+    argparser.add_argument('-introns', type=str, help='Intronic GTF file, use exonGTFtoIntronGTF.py to generate such a GTF file')
     argparser.add_argument('-exons', type=str, help='Exonic GTF file.')
     """
     How much bases of the fragment fall inside the intron(s)
@@ -137,7 +137,7 @@ def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2): #1
 
 class MoleculeIterator():
     """
-    Iterate over molecules in a bam file 
+    Iterate over molecules in a bam file
 
     Parameters
     ----------
