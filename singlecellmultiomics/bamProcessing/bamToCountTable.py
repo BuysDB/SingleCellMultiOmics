@@ -361,6 +361,7 @@ def create_count_table(args, return_df=False):
 
 
     joinFeatures = False
+    featureTags=[]
     if args.featureTags is not None:
         featureTags= args.featureTags.split(',')
 
@@ -371,6 +372,9 @@ def create_count_table(args, return_df=False):
     if args.bin is not None and not args.binTag in featureTags:
         print("The bin tag was not supplied as feature, automatically appending the bin feature.")
         featureTags.append(args.binTag)
+
+    if len(featureTags)==0:
+        raise ValueError("No features supplied! Please supply -featureTags -joinedFeatureTags and or -binTag")
 
 
 
