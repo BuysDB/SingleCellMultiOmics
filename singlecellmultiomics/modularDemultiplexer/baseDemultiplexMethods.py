@@ -113,7 +113,13 @@ tags = [
     SamTag('MC', 'methylatedBaseCountForFragment'),
 
     SamTag('rS', 'randomPrimerStart'),
-    SamTag('rP', 'randomPrimerSequence')
+    SamTag('rP', 'randomPrimerSequence'),
+
+
+    SamTag('AI', 'AssignedIntrons'),
+    SamTag('AE', 'AssingedExons'),
+    SamTag('iH', 'IntronHits amount of bases aligned to intron'),
+    SamTag('eH', 'ExonHits amount of bases aligned to exon')
 
 ]
 
