@@ -50,7 +50,7 @@ if __name__ == "__main__" :
 
 
     tagAlgs = argparser.add_argument_group('Tagging algorithms', '')
-    tagAlgs.add_argument('--ftag', action='store_true', help='Add query name tags added by demultiplexer')
+    tagAlgs.add_argument('--ftag', action='store_true', help='!DEPRECATED, this flag is now always used!')
     tagAlgs.add_argument('--atag', action='store_true', help='Add only allele tags')
     tagAlgs.add_argument('--mspji', action='store_true', help='Look for mspji digest')
     tagAlgs.add_argument('--nla', action='store_true', help='Look for nlaIII digest')
@@ -409,9 +409,10 @@ if __name__ == "__main__":
     pairedEnd = False
     flaggers = []
     qFlagger=None
-    if args.ftag:
-        qFlagger = QueryNameFlagger(**flaggerArguments)
-        flaggers.append( qFlagger )
+    #if args.ftag:
+    # Now we ALWAYS put reads through qflagger
+    qFlagger = QueryNameFlagger(**flaggerArguments)
+    flaggers.append( qFlagger )
     if args.nla:
         flaggers.append( NlaIIIFlagger(**flaggerArguments) )
         pairedEnd=True
