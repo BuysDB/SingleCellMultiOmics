@@ -1,0 +1,6 @@
+pysam
+numpy
+pandas
+colorama
+pysamiterators
+matplotlib
