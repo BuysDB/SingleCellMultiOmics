@@ -29,7 +29,7 @@ class FeatureContainer:
         #prog = re.compile(pattern)
 
         print("Loading %s" % path)
-        with open(path) as f:
+        with (gzip.open(path,'rt') if path.endswith('.gz') else open(path,'r')) as f:
             for line_id,line in enumerate(f):
                 if head is not None and line_id>head:
                     break
