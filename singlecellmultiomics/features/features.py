@@ -20,7 +20,9 @@ class FeatureContainer:
     def __len__(self):
         return sum(len(f) for f in self.features.values())
 
-    def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'], ignChr=False, select_feature_type=None, exon_select=None, head=None):
+    def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'],
+        ignChr=False, select_feature_type=None, exon_select=None,
+        head=None, store_all=False):
         """Load annotations from a GTF file.
         ignChr: ignore the chr part of the Annotation chromosome
         """
@@ -92,8 +94,12 @@ class FeatureContainer:
                         featureName =','.join( [keyValues.get(i,'none') for i in identifierFields if i in keyValues] )
 
 
+                    if store_all:
+                        self.addFeature( self.remapKeys.get(chromosome, chromosome), int(parts[3]),
+                        int(parts[4]), strand=parts[6], name=featureName, data=tuple(keyValues.items()))
 
-                    self.addFeature( self.remapKeys.get(chromosome, chromosome), int(parts[3]),
+                    else:
+                        self.addFeature( self.remapKeys.get(chromosome, chromosome), int(parts[3]),
                         int(parts[4]), strand=parts[6], name=featureName, data=','.join(   ( ':'.join(('type',parts[2])), ':'.join(('gene_id',keyValues['gene_id'])))   ) )
 
 
