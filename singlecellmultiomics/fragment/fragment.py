@@ -5,8 +5,11 @@ from singlecellmultiomics.utils import style_str
 complement = str.maketrans('ATCGN', 'TAGCN')
 
 class Fragment():
-    def __init__(self, reads, assignment_radius=3, umi_hamming_distance=1,R1_primer_length=0,R2_primer_length=6,
-    tag_definitions=None ):
+    def __init__(self, reads, assignment_radius=3, umi_hamming_distance=1,
+                R1_primer_length=0,
+                R2_primer_length=6,
+                tag_definitions=None ):
+
         if tag_definitions is None:
             tag_definitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
         self.tag_definitions = tag_definitions
@@ -212,7 +215,7 @@ class Fragment():
         strand:{self.get_strand_repr()}
         """
 
-    def get_html(self, chromosome=None, span_start=None, span_end=None):
+    def get_html(self, chromosome=None, span_start=None, span_end=None, show_read1=None, show_read2=None):
         """
         Get HTML representation of the fragment
 
@@ -226,6 +229,12 @@ class Fragment():
             span_end( int ):
                 last base to show
 
+            show_read1(bool):
+                show read1
+
+            show_read2(bool):
+                show read2
+
         Returns:
             html(string) : html representation of the fragment
 
@@ -236,14 +245,27 @@ class Fragment():
 
         span_len = span_end - span_start
         visualized_frag = ['.']  * span_len
-        for read in self:
+
+        if show_read1 is None and show_read2 is None:
+            reads = self
+        else:
+            reads = []
+            if show_read1:
+                reads.append(self.get_R1())
+            if show_read2:
+                reads.append(self.get_R2())
+
+        for read in reads:
             if read is None:
                 continue
             for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(read,with_seq=True):
                 if ref_pos is None:
                     continue
                 ref_base = ref_base.upper()
-                query_base = read.seq[query_pos]
+                if query_pos is None:
+                    query_base='-'
+                else:
+                    query_base = read.seq[query_pos]
                 if ref_pos is not None:
                     if query_base!=ref_base:
                          v = style_str(query_base,color='red',weight=500)
