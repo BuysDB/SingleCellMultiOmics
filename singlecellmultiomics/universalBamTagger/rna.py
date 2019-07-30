@@ -16,7 +16,7 @@ class RNA_Flagger():
         self.assinged_introns_tag = 'AI'
         self.is_spliced_tag = 'SP' #unused
 
-        self.overlap_tag = 'XM'
+        self.overlap_tag = 'FO'
 
     def digest(self, reads):
 
@@ -51,11 +51,11 @@ class RNA_Flagger():
                 if overlaps_with_exon and not overlaps_with_intron:
                     exon_count+=1
                     if self.overlap_tag is not None:
-                        states[q_pos] = 'Z'
+                        states[q_pos] = 'E'
                 elif not overlaps_with_exon and overlaps_with_intron:
                     intron_count+=1
                     if self.overlap_tag is not None:
-                        states[q_pos] = 'X'
+                        states[q_pos] = 'I'
 
             if self.overlap_tag is not None:
                 read.set_tag(self.overlap_tag, ''.join(states))
