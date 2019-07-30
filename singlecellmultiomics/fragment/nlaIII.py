@@ -10,7 +10,7 @@ class NLAIIIFragment(Fragment):
         self.identify_site()
         if self.is_valid():
             self.match_hash = (self.strand, self.cut_site_strand,
-             self.site_location[0],self.site_location[1])
+             self.site_location[0],self.site_location[1], self.sample)
         else:
             self.match_hash = None
     def set_site(self, site_chrom, site_pos, site_strand=None ):
