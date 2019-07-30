@@ -5,6 +5,7 @@ from singlecellmultiomics.fragment import Fragment
 import collections
 import itertools
 import numpy as np
+from singlecellmultiomics.utils import style_str
 
 def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2, max_N_distance=0): #1: read1 2: read2
     rp = collections.defaultdict(list)
@@ -597,7 +598,7 @@ class Molecule():
         r = collections.Counter()
 
 
-    def get_html(self,reference=None):
+    def get_html(self,reference=None,consensus=None, reference_bases=None):
         """Get html representation of the molecule
 
         Returns:
@@ -608,10 +609,22 @@ class Molecule():
         if span_len > 1000:
             raise ValueError('The molecule is too long to display')
 
+        if consensus is None:
+            consensus = self.get_consensus()
         visualized = ['.']  * span_len
-        for location,base in self.get_consensus().items():
-            visualized[location-self.spanStart] = base
-        return visualized
+        reference_vis = ['?']  * span_len
+        for location,query_base in consensus.items():
+
+            if reference_bases is None or reference_bases.get(location,'?')==query_base:
+                visualized[location[1]-self.spanStart] = query_base
+                if reference_bases is not None:
+                    reference_vis[location[1]-self.spanStart] = query_base # or reference_bases.get(location,'?')
+            else:
+                visualized[location[1]-self.spanStart] = style_str(query_base,color='red',weight=800)
+                if reference_bases is not None:
+                    reference_vis[location[1]-self.spanStart] = style_str(reference_bases.get(location,'?'),color='black',weight=800)
+
+        return ''.join(visualized) + '<br/><b>Reference:</b><br />' + ''.join(reference_vis)
 
 
     def get_methylation_dict(self):
@@ -786,7 +799,7 @@ class MoleculeIterator():
                 current_chrom, _, current_position = fragment.get_span()
                 if current_chrom is None:
                     continue
-                    
+
                 self.check_ejection_iter=0
                 if self.pooling_method==0:
                     to_pop = []
