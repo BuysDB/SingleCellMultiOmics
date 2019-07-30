@@ -3,7 +3,6 @@
 import pysam
 import singlecellmultiomics.molecule
 import singlecellmultiomics.fragment
-import singlecellmultiomics.molecule
 import gzip
 import collections
 import matplotlib.pyplot as plt
@@ -47,9 +46,7 @@ if __name__=='__main__':
         exit()
 
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
-
     taps = singlecellmultiomics.molecule.TAPS(reference=reference)
-
     temp_out = f'{args.o}.temp.out.bam'
 
     with pysam.AlignmentFile(temp_out , "wb",header=g.header) as output:
@@ -62,14 +59,57 @@ if __name__=='__main__':
             if args.head and i>args.head:
                 break
             # Obtain taps methylation calls:
-            try:
-                call_dict = taps.molecule_to_context_call_dict(molecule)
-            except ValueError as e:
-                # Safe calls cannot be made! (R2 didn't map properly for any of the fragments)
-                continue
-            # Write bismark tags:
-            molecule.set_methylation_call_tags(call_dict)
 
+            if molecule.is_multimapped():
+                continue
+
+            # Find all aligned positions and corresponding reference bases:
+            aligned_reference_positions = {} #(chrom,pos)->base
+            for read in molecule.iter_reads():
+                for read_pos, ref_pos, ref_base in read.get_aligned_pairs(with_seq=True, matches_only=True):
+                    aligned_reference_positions[(read.reference_name,ref_pos)] = ref_base.upper()
+
+            # Obtain consensus:
+            try:
+                consensus = molecule.get_consensus()
+            except ValueError:
+                continue # we cannot obtain a consensus
+
+
+            # if insecure about the consensus emit the reference, if no CG AT conversion skip
+            for location, reference_base in aligned_reference_positions.items():
+                if not location in consensus or reference_base not in 'CG' or consensus[location] not in 'AT':
+                    consensus[location] = reference_base.upper()
+
+            # find all locations where a C/G was converted into A/T, now strand specific
+            converted_bases = 0
+            conversions = {}
+            for location, reference_base in aligned_reference_positions.items():
+                if (not molecule.strand and reference_base=='C' and consensus[location] in 'CT') or \
+                    molecule.strand and reference_base=='G' and consensus[location] in 'AG':
+                    conversions[location] = {'ref':reference_base, 'obs':consensus[location]}
+                    if consensus[location] in 'TA':
+                        converted_bases+=1
+
+            # obtain the context of the conversions:
+            conversion_contexts  ={
+                location : taps.position_to_context(
+                    *location,
+                    observed_base = observations['obs'],
+                    strand = molecule.strand)[1]
+                for location, observations in conversions.items()}
+
+            # Write bismark tags:
+            molecule.set_methylation_call_tags(conversion_contexts)
+
+            for read in molecule.iter_reads():
+                if molecule.strand == 0: # forward
+                    read.set_tag('XR','GA')
+                    read.set_tag('XG','GA')
+                else:
+                    read.set_tag('XR','GA')
+                    read.set_tag('XG','CT')
+            
             # Write all reads to the new bam file:
             for read in molecule.iter_reads():
                 if read is not None:
