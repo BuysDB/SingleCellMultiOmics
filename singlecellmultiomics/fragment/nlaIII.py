@@ -77,6 +77,32 @@ class NLAIIIFragment(Fragment):
             return None
 
 
+    def get_undigested_site_count(self, reference_handle):
+        """
+        Obtain the amount of undigested sites in the span of the fragment
+
+        Parameters
+        ----------
+        reference : pysam.FastaFile or similiar
+
+        Returns
+        -------
+        undigested_site_count : int
+            amount of undigested cut sites in the mapping span of the fragment
+
+        Raises:
+        -------
+        ValueError : when the span of the molecule is not properly defined
+        """
+        if any(e is None for e in self.span):
+            raise ValueError('Span of the fragment is not well defined')
+
+        total = reference_handle.fetch(*self.span).count('CATG')
+        # ignore 1 CATG if it was Detected:
+        if self.meta.get('RZ')=='CATG':
+            total-=1
+        return total
+
     def is_valid(self):
         return self.site_location is not None
 
