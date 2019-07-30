@@ -61,28 +61,39 @@ class TestMolecule(unittest.TestCase):
         self.assertAlmostEqual(0.2070707, molecule.get_consensus_gc_ratio() )
 
 
-
-    def test_molecule_pooling(self):
+    def _pool_test(self, pooling_method=0,hd=0):
         for sample in ['AP1-P22-1-1_318','APKS2-P8-2-2_52']:
-            for hd in [0,1]:
 
-                f= pysam.AlignmentFile('./data/mini_nla_test.bam')
-                it = singlecellmultiomics.molecule.MoleculeIterator(
-                    alignments=f,
-                    moleculeClass=singlecellmultiomics.molecule.Molecule,
-                    fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
-                    fragment_class_args={'umi_hamming_distance':hd}
+            f= pysam.AlignmentFile('./data/mini_nla_test.bam')
+            it = singlecellmultiomics.molecule.MoleculeIterator(
+                alignments=f,
+                moleculeClass=singlecellmultiomics.molecule.Molecule,
+                fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                fragment_class_args={'umi_hamming_distance':hd},
+                pooling_method=pooling_method
+            )
 
-                )
-                molecule_count = 0
-                for molecule in iter(it):
-                    if molecule.get_sample()==sample:
-                        molecule_count+=1
-                if hd==0:
-                    # it has one fragment with a sequencing error in the UMI
-                    self.assertEqual(molecule_count,2)
-                else:
-                    self.assertEqual(molecule_count,1)
+            molecule_count = 0
+            for molecule in iter(it):
+                if molecule.get_sample()==sample:
+                    molecule_count+=1
+            if hd==0:
+                # it has one fragment with a sequencing error in the UMI
+                self.assertEqual(molecule_count,2)
+            else:
+                self.assertEqual(molecule_count,1)
+
+    def test_molecule_pooling_vanilla_exact_umi(self):
+        self._pool_test(0,0)
+
+    def test_molecule_pooling_nlaIIIoptim_exact_umi(self):
+        self._pool_test(1,0)
+
+    def test_molecule_pooling_vanilla_umi_mismatch(self):
+        self._pool_test(0,1)
+
+    def test_molecule_pooling_nlaIIIoptim_umi_mismatch(self):
+        self._pool_test(1,1)
 
     def test_rt_reaction_counting(self):
         # This is a dictionary containing molecules and the amount of rt reactions for location chr1:164834865
