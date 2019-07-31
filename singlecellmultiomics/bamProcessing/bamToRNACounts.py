@@ -230,7 +230,16 @@ if __name__=='__main__':
     scipy.sparse.save_npz(f'{args.o}/sparse_exon_matrix.npz',sparse_exon_matrix)
     scipy.sparse.save_npz(f'{args.o}/sparse_junction_matrix.npz',sparse_junction_matrix)
 
-    # Write scanpy file
+
+    # Write scanpy file vanilla
+    adata = sc.AnnData(
+        complete_matrix
+    )
+    adata.var_names = gene_order
+    adata.obs_names = sample_order
+    adata.write(f'{args.o}/scanpy_vanilla.h5ad')
+
+    # Write scanpy file, with introns
     adata = sc.AnnData(
         complete_matrix,
         layers={
@@ -241,4 +250,7 @@ if __name__=='__main__':
     )
     adata.var_names = gene_order
     adata.obs_names = sample_order
-    adata.write(f'{args.o}/scanpy.h5ad')
+    adata.write(f'{args.o}/scanpy_complete.h5ad')
+
+    # Write as plaintext:
+    adata.to_df().to_csv(f'{args.o}/counts.csv' )
