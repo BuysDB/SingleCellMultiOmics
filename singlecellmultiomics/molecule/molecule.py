@@ -395,7 +395,7 @@ class Molecule():
     def get_allele(self, allele_resolver):
         alleles = set()
         try:
-            for (chrom,pos),base in self.get_consensus(base_obs = molecule.get_base_observation_dict_NOREF()).items():
+            for (chrom,pos),base in self.get_consensus(base_obs = self.get_base_observation_dict_NOREF()).items():
                 c = allele_resolver.getAllelesAt(chrom,pos,base)
                 if c is not None and len(c)==1:
                     alleles.update(c)

@@ -58,11 +58,12 @@ if __name__=='__main__':
     argparser.add_argument('-method',  type=str, help="Data type: either vasa or nla" )
     argparser.add_argument('-head',  type=int, help="Process this amount of molecules and export tables" )
     argparser.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
+    argparser.add_argument('--loadAllelesToMem',  action='store_true',help='Load allele data completely into memory')
 
     args = argparser.parse_args()
 
     if args.alleles is not None:
-        allele_resolver = alleleTools.AlleleResolver(args.alleles)
+        allele_resolver = alleleTools.AlleleResolver(args.alleles, lazyLoad=(not args.loadAllelesToMem))
     else:
         allele_resolver = None
 
