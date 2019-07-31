@@ -392,6 +392,66 @@ class Molecule():
             raise IndexError("There are no observations if the supplied base/location combination")
         return np.mean(qualities)
 
+    def get_allele(self, allele_resolver):
+        alleles = set()
+        try:
+            for (chrom,pos),base in self.get_consensus(base_obs = molecule.get_base_observation_dict_NOREF()).items():
+                c = allele_resolver.getAllelesAt(chrom,pos,base)
+                if c is not None and len(c)==1:
+                    alleles.update(c)
+        except Exception as e:
+            raise
+        return alleles
+
+    def get_base_observation_dict_NOREF(self):
+        '''
+        identical to get_base_observation_dict but does not obtain reference bases,
+        has to be used when no MD tag is present
+        Args:
+            return_refbases ( bool ):
+                return both observed bases and reference bases
+
+        Returns:
+            { genome_location (tuple) : base (string) : obs (int) }
+            and
+            { genome_location (tuple) : base (string) if return_refbases is True }
+        '''
+
+        base_obs = collections.defaultdict(collections.Counter)
+
+
+        used = 0 #  some alignments yielded valid calls
+        ignored = 0
+        for fragment in self:
+            R1 = fragment.get_R1()
+            R2 = fragment.get_R2()
+            try:
+                start, end = pysamiterators.iterators.getPairGenomicLocations(
+                R1=R1,
+                R2=R2,
+                allow_unsafe=(R1 is None))
+            except ValueError as e:
+                ignored+=1
+                continue
+            used+=1
+            for read in [R1,R2]:
+                if read is None:
+                    continue
+                for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(
+                    read,with_seq=False):
+
+                    if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
+                        continue
+                    query_base = read.seq[query_pos]
+                    if query_base=='N':
+                        continue
+                    base_obs[(read.reference_name,ref_pos)][query_base]+=1
+
+        if used==0 and ignored>0:
+            raise ValueError('Could not extract any safe data from molecule')
+
+        return base_obs
+
     def get_base_observation_dict(self, return_refbases=False):
         '''
         Obtain observed bases at reference aligned locations
@@ -504,8 +564,6 @@ class Molecule():
             except ValueError as e:
                 # We cannot determine safe regions
                 raise
-
-
 
         for location, obs in base_obs.items():
             votes = obs.most_common()
