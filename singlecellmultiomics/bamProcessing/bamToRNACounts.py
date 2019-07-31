@@ -19,6 +19,7 @@ import pandas as pd
 import scipy.sparse
 import gzip
 from singlecellmultiomics.molecule import MoleculeIterator
+from singlecellmultiomics.alleleTools import alleleTools
 
 import scanpy as sc
 
@@ -56,8 +57,14 @@ if __name__=='__main__':
     argparser.add_argument('-contigmapping',  type=str, help="Use this when the GTF chromosome names do not match the ones in you bam file" )
     argparser.add_argument('-method',  type=str, help="Data type: either vasa or nla" )
     argparser.add_argument('-head',  type=int, help="Process this amount of molecules and export tables" )
+    argparser.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
 
     args = argparser.parse_args()
+
+    if args.alleles is not None:
+        allele_resolver = alleleTools.AlleleResolver(args.alleles)
+    else:
+        allele_resolver = None
 
     contig_mapping=None
 
@@ -144,14 +151,25 @@ if __name__=='__main__':
             for i,molecule in enumerate(molecule_iterator):
                 molecule.annotate()
                 hits = molecule.hits.keys()
-
+                allele= None
+                if allele_resolver is not None:
+                    allele = molecule.get_allele(allele_resolver)
+                    if len(allele)==1:
+                        allele = list(allele)[0]
+                    else:
+                        allele = 'noAllele'
                 f_hits = collections.defaultdict(collections.Counter)
                 for hit in hits:
                     if hit.startswith('type:exon'):
+
                         gene = hit.split(',')[-1].replace('gene_id:','')
+                        if allele is not None:
+                            gene = f'{allele}_{gene}'
                         f_hits[gene]['exon']+=1
                     elif hit.startswith('type:intron'):
                         gene = hit.split(',')[-1].replace('gene_id:','')
+                        if allele is not None:
+                            gene = f'{allele}_{gene}'
                         f_hits[gene]['intron']+=1
 
                 for gene, intron_exon_hits in f_hits.items():
