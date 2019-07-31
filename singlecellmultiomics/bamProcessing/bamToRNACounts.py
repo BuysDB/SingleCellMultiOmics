@@ -56,7 +56,8 @@ if __name__=='__main__':
     argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
     argparser.add_argument('-contigmapping',  type=str, help="Use this when the GTF chromosome names do not match the ones in you bam file" )
     argparser.add_argument('-method',  type=str, help="Data type: either vasa or nla" )
-    argparser.add_argument('-head',  type=int, help="Process this amount of molecules and export tables" )
+    argparser.add_argument('-head',  type=int, help="Process this amount of molecules and export tables, also set -hf to be really fast" )
+    argparser.add_argument('-hf',  type=int, help="headfeatures Process this amount features and then continue, for a quick test set this to 1000 or so." )
     argparser.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
     argparser.add_argument('--loadAllelesToMem',  action='store_true',help='Load allele data completely into memory')
 
@@ -110,8 +111,8 @@ if __name__=='__main__':
     features = singlecellmultiomics.features.FeatureContainer()
     if contig_mapping is not None:
         features.remapKeys = contig_mapping
-    features.loadGTF(args.gtfexon,select_feature_type=['exon'])
-    features.loadGTF(args.gtfintron,select_feature_type=['intron'])
+    features.loadGTF(args.gtfexon,select_feature_type=['exon'],head=args.hf)
+    features.loadGTF(args.gtfintron,select_feature_type=['intron'],head=args.hf)
 
     # What is used for assignment of molecules?
     if args.method=='nla':
@@ -252,5 +253,8 @@ if __name__=='__main__':
     adata.obs_names = sample_order
     adata.write(f'{args.o}/scanpy_complete.h5ad')
 
+    pd.DataFrame(sparse_intron_matrix.todense(), columns=gene_order, index=sample_order).to_csv(f'{args.o}/introns.csv.gz' )
+    pd.DataFrame(sparse_exon_matrix.todense(), columns=gene_order, index=sample_order).to_csv(f'{args.o}/exons.csv.gz' )
+    pd.DataFrame(sparse_junction_matrix.todense(), columns=gene_order, index=sample_order).to_csv(f'{args.o}/junctions.csv.gz' )
     # Write as plaintext:
     adata.to_df().to_csv(f'{args.o}/counts.csv' )
