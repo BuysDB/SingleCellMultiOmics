@@ -134,6 +134,28 @@ class TestMolecule(unittest.TestCase):
 
         #def test_rt_reaction_sizes(self):
 
+    def test_feature_molecule(self):
+        import singlecellmultiomics.features
+        features = singlecellmultiomics.features.FeatureContainer()
+        features.addFeature(chromosome='chr1',start=164835366, end=164835535, data=('test4'),name='test4')
+        features.sort()
+
+        f= pysam.AlignmentFile('./data/mini_nla_test.bam')
+        it = singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.AnnotatedNLAIIIMolecule,
+            molecule_class_args={'features':features},
+            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+            fragment_class_args={'umi_hamming_distance':1}
+        )
+
+        hit_count = 0
+        for molecule in it:
+            molecule.annotate()
+            if len(molecule.hits):
+                hit_count+=1
+        self.assertEqual(hit_count,2)
+
 
 
 if __name__ == '__main__':
