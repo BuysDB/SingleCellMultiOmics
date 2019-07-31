@@ -20,6 +20,8 @@ import scipy.sparse
 import gzip
 from singlecellmultiomics.molecule import MoleculeIterator
 
+import scanpy as sc
+
 def get_gene_id_to_gene_name_conversion_table(annotation_path_exons):
     conversion_table = {}
     with (gzip.open(annotation_path_exons,'rt') if annotation_path_exons.endswith('.gz') else open(annotation_path_exons,'r')) as t:
@@ -48,7 +50,7 @@ if __name__=='__main__':
      description='Create count tables from BAM file.')
     argparser.add_argument('-o',  type=str, help="output data folder", default='./rna_counts/')
     argparser.add_argument('alignmentfiles',  type=str, nargs='*')
-    argparser.add_argument('-gtfexon',  type=str, required=True, help="exon GTF file containing the features to plot"
+    argparser.add_argument('-gtfexon',  type=str, required=True, help="exon GTF file containing the features to plot")
     argparser.add_argument('-gtfintron',  type=str, required=True, help="intron GTF file containing the features to plot")
     argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
     argparser.add_argument('-contigmapping',  type=str, help="Use this when the GTF chromosome names do not match the ones in you bam file" )
@@ -182,6 +184,7 @@ if __name__=='__main__':
     sparse_exon_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
     #sparse_exon_matrix.setdefault(0)
     sparse_junction_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
+
     for sample_idx,sample in enumerate(sample_order):
         if sample in exon_counts_per_cell:
             for gene, counts in exon_counts_per_cell[sample].items():
@@ -200,7 +203,23 @@ if __name__=='__main__':
     # Write matrices to disk
     sparse_intron_matrix = sparse_intron_matrix.tocsc()
     sparse_exon_matrix = sparse_exon_matrix.tocsc()
+    sparse_junction_matrix = sparse_junction_matrix.tocsc()
     complete_matrix = sparse_intron_matrix + sparse_exon_matrix
+
     scipy.sparse.save_npz(f'{args.o}/sparse_complete_matrix.npz', complete_matrix)
     scipy.sparse.save_npz(f'{args.o}/sparse_intron_matrix.npz',sparse_intron_matrix)
     scipy.sparse.save_npz(f'{args.o}/sparse_exon_matrix.npz',sparse_exon_matrix)
+    scipy.sparse.save_npz(f'{args.o}/sparse_junction_matrix.npz',sparse_junction_matrix)
+
+    # Write scanpy file
+    adata = sc.AnnData(
+        complete_matrix,
+        layers={
+        'spliced':  sparse_intron_matrix,
+        'unspliced': sparse_exon_matrix,
+        'junction' : sparse_junction_matrix
+       }
+    )
+    adata.var_names = gene_order
+    adata.obs_names = sample_order
+    adata.write(f'{args.o}/scanpy.h5ad')
