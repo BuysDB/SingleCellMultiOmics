@@ -4,6 +4,7 @@ import sys
 import glob
 import argparse
 import itertools
+import gzip
 
 def decodeKvPairs(kv):
     keyValues = {}
@@ -21,7 +22,7 @@ import collections
 def exonGTF_to_intronGTF(exon_path):
     geneToExonRanges = collections.defaultdict(list) #(gene,chrom,strand)-> [range(start,end), range(start,end)]
     prevChrom = None
-    with open(exon_path) as f:
+    with gzip.open(exon_path,'rt') if exon_path.endswith('.gz') else open(exon_path) as f:
         for line in f:
             if line.startswith('#'):
                 yield line
@@ -93,7 +94,7 @@ if __name__=='__main__':
     args = argparser.parse_args()
 
 
-    with open(args.o, 'w') as o:
+    with gzip.open(args.o, 'wt') if args.o.endswith('.gz') else open(args.o, 'w') as o:
         for intron in exonGTF_to_intronGTF(args.gffin):
             if intron is not None:
                 o.write(intron)
