@@ -33,7 +33,7 @@ def exonGTF_to_intronGTF(exon_path):
                 continue
 
             geneToExonRanges[(
-                decodeKvPairs(kv)['transcript_id'],chromosome,strand,source
+                decodeKvPairs(kv)['gene_id'],chromosome,strand,source
                 )
                 ].append( range(int(feature_start),int(feature_end)+1))
 
