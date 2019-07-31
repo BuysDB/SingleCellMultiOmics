@@ -55,7 +55,7 @@ if __name__=='__main__':
     argparser.add_argument('-gtfintron',  type=str, required=True, help="intron GTF file containing the features to plot")
     argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
     argparser.add_argument('-contigmapping',  type=str, help="Use this when the GTF chromosome names do not match the ones in you bam file" )
-    argparser.add_argument('-method',  type=str, help="Data type: either vasa or nla" )
+    argparser.add_argument('-method',  type=str, help="Data type: either vasa or nla", required=True )
     argparser.add_argument('-head',  type=int, help="Process this amount of molecules and export tables, also set -hf to be really fast" )
     argparser.add_argument('-hf',  type=int, help="headfeatures Process this amount features and then continue, for a quick test set this to 1000 or so." )
     argparser.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
@@ -107,7 +107,7 @@ if __name__=='__main__':
 
     # Load features
     contig_mapping=None
-    conversion_table = get_gene_id_to_gene_name_conversion_table(args.gtfexon)
+    #conversion_table = get_gene_id_to_gene_name_conversion_table(args.gtfexon)
     features = singlecellmultiomics.features.FeatureContainer()
     if contig_mapping is not None:
         features.remapKeys = contig_mapping
@@ -123,6 +123,8 @@ if __name__=='__main__':
         moleculeClass = singlecellmultiomics.molecule.VASA
         fragmentClass = singlecellmultiomics.fragment.SingleEndTranscript
         pooling_method = 1
+    else:
+        raise ValueError("Supply a valid method")
 
     #COUNT:
     exon_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
@@ -132,6 +134,7 @@ if __name__=='__main__':
     gene_set = set()
     sample_set = set()
     for alignmentfile_path in args.alignmentfiles:
+        annotated_molecules = 0
         with pysam.AlignmentFile(alignmentfile_path) as alignments:
             molecule_iterator = MoleculeIterator(
                 alignments=alignments,
@@ -174,6 +177,7 @@ if __name__=='__main__':
                             gene = f'{allele}_{gene}'
                         f_hits[gene]['intron']+=1
 
+                annotated = False
                 for gene, intron_exon_hits in f_hits.items():
 
                     spliced=True
@@ -189,8 +193,11 @@ if __name__=='__main__':
 
                     gene_set.add(gene)
                     sample_set.add(molecule.sample)
+                    annotated = True
+                annotated_molecules += int(annotated)
 
-                if args.head and args.head>=i:
+                if args.head and i>args.head:
+                    print(f"-head was supplied, {i} molecules discovered, stopping")
                     break
     # Now we finished counting
 
