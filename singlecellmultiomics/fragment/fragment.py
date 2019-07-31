@@ -283,5 +283,5 @@ class Fragment():
 
 
 class SingleEndTranscript(Fragment):
-    def __init__(self,reads, R2_primer_length=6):
-        Fragment.__init__(self, reads, assignment_radius=1_000, umi_hamming_distance=1,R2_primer_length=R2_primer_length )
+    def __init__(self,reads, **kwargs):
+        Fragment.__init__(self, reads, **kwargs)
