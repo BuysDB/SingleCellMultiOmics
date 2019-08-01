@@ -233,9 +233,10 @@ if __name__=='__main__':
     workers = multiprocessing.Pool(8)
 
     jobs = []
-    contigs_todo = set()
+    contigs_todo = []
     with pysam.AlignmentFile(args.alignmentfiles[0]) as g:
-        for chrom in g.references:
+        # sort by size and do big ones first.. this will be faster
+        for _,chrom in sorted(list(zip(g.lengths,g.references)), reverse=True):
 
             if chrom.startswith('ERCC') or chrom.startswith('chrUn') or chrom.endswith('_random') or chrom.startswith('GL')  or chrom.startswith('JH'):
                 continue
@@ -243,7 +244,7 @@ if __name__=='__main__':
                 print("Ignoring mitochondria")
                 continue
             jobs.append( (args, chrom) )
-            contigs_todo.add(chrom)
+            contigs_todo.append(chrom)
 
 
     exon_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
@@ -276,73 +277,75 @@ if __name__=='__main__':
         read_molecules+=result_read_molecules
         annotated_molecules+=result_annotated_molecules
         # Now we finished counting
-        contigs_todo.remove(result_contig)
+        contigs_todo = [x for x in contigs_todo if x!=result_contig]
         print(f'Finished {result_contig}, so far found {read_molecules} molecules, annotated {annotated_molecules}')
-        print(f"Remaining contigs:{','.join(sorted(list(contigs_todo)))}")
+        print(f"Remaining contigs:{','.join(contigs_todo)}")
 
-    print('Finished counting, writing matrices')
+        print('writing current matrices')
 
-    # freeze order of samples and genes:
-    sample_order = sorted(list(sample_set))
-    gene_order = sorted(list(gene_set))
+        # freeze order of samples and genes:
+        sample_order = sorted(list(sample_set))
+        gene_order = sorted(list(gene_set))
 
-    # Construct the sparse matrices:
-    sparse_intron_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
-    #sparse_intron_matrix.setdefault(0)
-    sparse_exon_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
-    #sparse_exon_matrix.setdefault(0)
-    sparse_junction_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
+        # Construct the sparse matrices:
+        sparse_intron_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
+        #sparse_intron_matrix.setdefault(0)
+        sparse_exon_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
+        #sparse_exon_matrix.setdefault(0)
+        sparse_junction_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
 
-    for sample_idx,sample in enumerate(sample_order):
-        if sample in exon_counts_per_cell:
-            for gene, counts in exon_counts_per_cell[sample].items():
-                gene_idx = gene_order.index(gene)
-                sparse_exon_matrix[sample_idx, gene_idx] = counts
-        if sample in intron_counts_per_cell:
-            for gene, counts in intron_counts_per_cell[sample].items():
-                gene_idx = gene_order.index(gene)
-                sparse_intron_matrix[sample_idx, gene_idx] = counts
-        if sample in junction_counts_per_cell:
-            for gene, counts in junction_counts_per_cell[sample].items():
-                gene_idx = gene_order.index(gene)
-                sparse_junction_matrix[sample_idx, gene_idx] = counts
-
-
-    # Write matrices to disk
-    sparse_intron_matrix = sparse_intron_matrix.tocsc()
-    sparse_exon_matrix = sparse_exon_matrix.tocsc()
-    sparse_junction_matrix = sparse_junction_matrix.tocsc()
-    complete_matrix = sparse_intron_matrix + sparse_exon_matrix
-
-    scipy.sparse.save_npz(f'{args.o}/sparse_complete_matrix.npz', complete_matrix)
-    scipy.sparse.save_npz(f'{args.o}/sparse_intron_matrix.npz',sparse_intron_matrix)
-    scipy.sparse.save_npz(f'{args.o}/sparse_exon_matrix.npz',sparse_exon_matrix)
-    scipy.sparse.save_npz(f'{args.o}/sparse_junction_matrix.npz',sparse_junction_matrix)
+        for sample_idx,sample in enumerate(sample_order):
+            if sample in exon_counts_per_cell:
+                for gene, counts in exon_counts_per_cell[sample].items():
+                    gene_idx = gene_order.index(gene)
+                    sparse_exon_matrix[sample_idx, gene_idx] = counts
+            if sample in intron_counts_per_cell:
+                for gene, counts in intron_counts_per_cell[sample].items():
+                    gene_idx = gene_order.index(gene)
+                    sparse_intron_matrix[sample_idx, gene_idx] = counts
+            if sample in junction_counts_per_cell:
+                for gene, counts in junction_counts_per_cell[sample].items():
+                    gene_idx = gene_order.index(gene)
+                    sparse_junction_matrix[sample_idx, gene_idx] = counts
 
 
-    # Write scanpy file vanilla
-    adata = sc.AnnData(
-        complete_matrix
-    )
-    adata.var_names = gene_order
-    adata.obs_names = sample_order
-    adata.write(f'{args.o}/scanpy_vanilla.h5ad')
+        # Write matrices to disk
+        sparse_intron_matrix = sparse_intron_matrix.tocsc()
+        sparse_exon_matrix = sparse_exon_matrix.tocsc()
+        sparse_junction_matrix = sparse_junction_matrix.tocsc()
+        complete_matrix = sparse_intron_matrix + sparse_exon_matrix
 
-    # Write scanpy file, with introns
-    adata = sc.AnnData(
-        complete_matrix,
-        layers={
-        'spliced':  sparse_intron_matrix,
-        'unspliced': sparse_exon_matrix
-        #'junction' : sparse_junction_matrix
-       }
-    )
-    adata.var_names = gene_order
-    adata.obs_names = sample_order
-    adata.write(f'{args.o}/scanpy_complete.h5ad')
+        scipy.sparse.save_npz(f'{args.o}/sparse_complete_matrix.npz', complete_matrix)
+        scipy.sparse.save_npz(f'{args.o}/sparse_intron_matrix.npz',sparse_intron_matrix)
+        scipy.sparse.save_npz(f'{args.o}/sparse_exon_matrix.npz',sparse_exon_matrix)
+        scipy.sparse.save_npz(f'{args.o}/sparse_junction_matrix.npz',sparse_junction_matrix)
 
+
+        # Write scanpy file vanilla
+        adata = sc.AnnData(
+            complete_matrix
+        )
+        adata.var_names = gene_order
+        adata.obs_names = sample_order
+        adata.write(f'{args.o}/scanpy_vanilla.h5ad')
+
+        # Write scanpy file, with introns
+        adata = sc.AnnData(
+            complete_matrix,
+            layers={
+            'spliced':  sparse_intron_matrix,
+            'unspliced': sparse_exon_matrix
+            #'junction' : sparse_junction_matrix
+           }
+        )
+        adata.var_names = gene_order
+        adata.obs_names = sample_order
+        adata.write(f'{args.o}/scanpy_complete.h5ad')
+
+    print("Writing final tables to dense csv files")
     pd.DataFrame(sparse_intron_matrix.todense(), columns=gene_order, index=sample_order).to_csv(f'{args.o}/introns.csv.gz' )
     pd.DataFrame(sparse_exon_matrix.todense(), columns=gene_order, index=sample_order).to_csv(f'{args.o}/exons.csv.gz' )
     pd.DataFrame(sparse_junction_matrix.todense(), columns=gene_order, index=sample_order).to_csv(f'{args.o}/junctions.csv.gz' )
+
     # Write as plaintext:
     adata.to_df().to_csv(f'{args.o}/counts.csv' )
