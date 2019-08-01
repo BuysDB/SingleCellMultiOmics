@@ -80,10 +80,6 @@ def count_transcripts(cargs):
             '25':'CM002909.2',
         }
 
-
-    if not os.path.exists(args.o):
-        os.makedirs(args.o)
-
     # Load features
     contig_mapping=None
     #conversion_table = get_gene_id_to_gene_name_conversion_table(args.gtfexon)
@@ -228,6 +224,8 @@ if __name__=='__main__':
 
     #argparser.add_argument('-tagged_bam_out',  type=str, help="Output bam file" )
 
+    if not os.path.exists(args.o):
+        os.makedirs(args.o)
 
     args = argparser.parse_args()
     workers = multiprocessing.Pool(8)
