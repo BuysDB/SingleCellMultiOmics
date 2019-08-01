@@ -320,27 +320,30 @@ if __name__=='__main__':
         scipy.sparse.save_npz(f'{args.o}/sparse_exon_matrix.npz',sparse_exon_matrix)
         scipy.sparse.save_npz(f'{args.o}/sparse_junction_matrix.npz',sparse_junction_matrix)
 
+        try:
+            # Write scanpy file vanilla
+            adata = sc.AnnData(
+                complete_matrix
+            )
+            adata.var_names = gene_order
+            adata.obs_names = sample_order
+            adata.write(f'{args.o}/scanpy_vanilla.h5ad')
 
-        # Write scanpy file vanilla
-        adata = sc.AnnData(
-            complete_matrix
-        )
-        adata.var_names = gene_order
-        adata.obs_names = sample_order
-        adata.write(f'{args.o}/scanpy_vanilla.h5ad')
-
-        # Write scanpy file, with introns
-        adata = sc.AnnData(
-            complete_matrix,
-            layers={
-            'spliced':  sparse_intron_matrix,
-            'unspliced': sparse_exon_matrix
-            #'junction' : sparse_junction_matrix
-           }
-        )
-        adata.var_names = gene_order
-        adata.obs_names = sample_order
-        adata.write(f'{args.o}/scanpy_complete.h5ad')
+            # Write scanpy file, with introns
+            adata = sc.AnnData(
+                complete_matrix,
+                layers={
+                'spliced':  sparse_intron_matrix,
+                'unspliced': sparse_exon_matrix
+                #'junction' : sparse_junction_matrix
+               }
+            )
+            adata.var_names = gene_order
+            adata.obs_names = sample_order
+            adata.write(f'{args.o}/scanpy_complete.h5ad')
+        except Exception as e:
+            print("Could not (yet?) write the scanpy files, error below")
+            print(e)
 
     print("Writing final tables to dense csv files")
     pd.DataFrame(sparse_intron_matrix.todense(), columns=gene_order, index=sample_order).to_csv(f'{args.o}/introns.csv.gz' )
