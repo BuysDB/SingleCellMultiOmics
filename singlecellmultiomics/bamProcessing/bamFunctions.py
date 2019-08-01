@@ -5,7 +5,7 @@ def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=F
             if  x.get('ID')!='bwa':
                 continue
             for argument in x.get('CL').split():
-                if (argument.endswith('.fa') or argument.endswith('.fasta') or argument.endswith('.fasta.gz') or argument.endswith('.fa.gz')) and (ignore_missing or os.path.exist(argument)):
+                if (argument.endswith('.fa') or argument.endswith('.fasta') or argument.endswith('.fasta.gz') or argument.endswith('.fa.gz')) and (ignore_missing or os.path.exists(argument)):
                     return argument
     except Exception as e:
         pass
