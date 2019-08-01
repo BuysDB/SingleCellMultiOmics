@@ -16,6 +16,7 @@ if __name__=='__main__':
     argparser.add_argument('-ref',  type=str, help='path to reference fasta file, auto detected from bamfile')
     argparser.add_argument('-head',  type=int)
     argparser.add_argument('-contig',  type=str,help='contig to run on, all when not specified')
+    argparser.add_argument('-moleculeNameSep',  type=str,help='Separator to use in molecule name', default=':')
     args = argparser.parse_args()
     alignments = pysam.AlignmentFile(args.alignmentfile)
 
@@ -43,4 +44,4 @@ if __name__=='__main__':
         for (chromosome, location),call in molecule.methylation_call_dict.items():
             if call=='.': # Only print calls concerning C's
                 continue
-            print(f'{molecule.sample}-{molecule.umi}_{molecule.get_strand_repr()}\t{chromosome}\t{location}\t{call}')
+            print(f'{molecule.sample}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location}\t{call}')
