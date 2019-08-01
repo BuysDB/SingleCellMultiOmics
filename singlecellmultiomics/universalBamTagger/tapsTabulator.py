@@ -28,20 +28,23 @@ if __name__=='__main__':
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
     taps = singlecellmultiomics.molecule.TAPS(reference=reference)
 
-    for i,molecule in  enumerate( singlecellmultiomics.molecule.MoleculeIterator(
-        alignments=alignments,
-        moleculeClass=singlecellmultiomics.molecule.TAPSMolecule,
-        fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
-        fragment_class_args={'umi_hamming_distance':1},
-        molecule_class_args={'reference':reference,'taps':taps},
-        contig=args.contig)):
-        if args.head and i>=args.head:
-            break
-        # If calls cannot be obtained skip the molecule
-        if molecule.methylation_call_dict is None:
-            continue
-
-        for (chromosome, location),call in molecule.methylation_call_dict.items():
-            if call=='.': # Only print calls concerning C's
+    try:
+        for i,molecule in  enumerate( singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=alignments,
+            moleculeClass=singlecellmultiomics.molecule.TAPSMolecule,
+            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+            fragment_class_args={'umi_hamming_distance':1},
+            molecule_class_args={'reference':reference,'taps':taps},
+            contig=args.contig)):
+            if args.head and i>=args.head:
+                break
+            # If calls cannot be obtained skip the molecule
+            if molecule.methylation_call_dict is None:
                 continue
-            print(f'{molecule.sample}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location}\t{call}')
+
+            for (chromosome, location),call in molecule.methylation_call_dict.items():
+                if call=='.': # Only print calls concerning C's
+                    continue
+                print(f'{molecule.sample}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location}\t{call}')
+    except (KeyboardInterrupt,BrokenPipeError) as e:
+        pass
