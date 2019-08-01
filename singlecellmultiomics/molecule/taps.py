@@ -1,4 +1,5 @@
 import itertools
+from singlecellmultiomics.molecule import Molecule
 complement = str.maketrans('ATGC', 'TACG')
 
 class TAPS():
@@ -35,8 +36,6 @@ class TAPS():
         for x in list( itertools.product('ACT',repeat=2) ):
             self.context_mapping[True][ ''.join( ['C']+list(x)) ] =  'H'
             self.context_mapping[False][ ''.join( ['C']+list(x)) ] =  'h'
-
-
 
     def position_to_context(self,chromosome, position, observed_base='N', strand=0):
         """Extract bismark call letter from a chromosomal location given the observed base
@@ -97,3 +96,56 @@ class TAPS():
             if letter is not None:
                 call_dict[(chrom,pos)] = letter
         return call_dict
+
+class TAPSMolecule(Molecule):
+    def __init__(self, fragments=None, taps=None, **kwargs):
+        Molecule.__init__(self, fragments=fragments, **kwargs)
+        if taps is None:
+            raise ValueError("""Supply initialised TAPS class
+                taps = singlecellmultiomics.molecule.TAPS( reference )
+            """)
+        self.taps = taps #initialised TAPS class
+        self.methylation_call_dict = None
+        try:
+            self.obtain_methylation_calls()
+        except ValueError:
+            pass
+
+    def obtain_methylation_calls(self):
+        # Find all aligned positions and corresponding reference bases:
+        aligned_reference_positions = {} #(chrom,pos)->base
+        for read in self.iter_reads():
+            for read_pos, ref_pos, ref_base in read.get_aligned_pairs(with_seq=True, matches_only=True):
+                aligned_reference_positions[(read.reference_name,ref_pos)] = ref_base.upper()
+
+        # Obtain consensus:
+        try:
+            consensus = self.get_consensus()
+        except ValueError:
+            raise ValueError('Cannot obtain a safe consensus for this molecule')
+
+        # if insecure about the consensus emit the reference, if no CG AT conversion skip
+        for location, reference_base in aligned_reference_positions.items():
+            if not location in consensus or reference_base not in 'CG' or consensus[location] not in 'AT':
+                consensus[location] = reference_base.upper()
+
+        # find all locations where a C/G was converted into A/T, now strand specific
+        converted_bases = 0
+        conversions = {}
+        for location, reference_base in aligned_reference_positions.items():
+            if (not self.strand and reference_base=='C' and consensus[location] in 'CT') or \
+                self.strand and reference_base=='G' and consensus[location] in 'AG':
+                conversions[location] = {'ref':reference_base, 'obs':consensus[location]}
+                if consensus[location] in 'TA':
+                    converted_bases+=1
+
+        # obtain the context of the conversions:
+        conversion_contexts  ={
+            location : self.taps.position_to_context(
+                *location,
+                observed_base = observations['obs'],
+                strand = self.strand)[1]
+            for location, observations in conversions.items()}
+
+        # Write bismark tags:
+        self.set_methylation_call_tags(conversion_contexts)
