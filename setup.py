@@ -60,6 +60,7 @@ setup(
         # Tagging
         'singlecellmultiomics/universalBamTagger/universalBamTagger.py',
         'singlecellmultiomics/universalBamTagger/tapsTagger.py',
+        'singlecellmultiomics/universalBamTagger/tapsTabulator.py',
 
         # Bam processing:
         'singlecellmultiomics/bamProcessing/bamTabulator.py',
