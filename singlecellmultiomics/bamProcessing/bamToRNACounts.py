@@ -228,7 +228,7 @@ if __name__=='__main__':
         os.makedirs(args.o)
 
     args = argparser.parse_args()
-    workers = multiprocessing.Pool(8)
+    workers = multiprocessing.Pool(args.t)
 
     jobs = []
     contigs_todo = []
