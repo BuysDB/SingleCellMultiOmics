@@ -224,11 +224,13 @@ if __name__=='__main__':
 
     #argparser.add_argument('-tagged_bam_out',  type=str, help="Output bam file" )
 
-    if not os.path.exists(args.o):
-        os.makedirs(args.o)
 
     args = argparser.parse_args()
     workers = multiprocessing.Pool(args.t)
+
+
+    if not os.path.exists(args.o):
+        os.makedirs(args.o)
 
     jobs = []
     contigs_todo = []
