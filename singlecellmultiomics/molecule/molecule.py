@@ -85,6 +85,15 @@ class Molecule():
             else:
                 self.add_fragment(fragments)
 
+    def get_strand_repr(self):
+        s = self.get_strand()
+        if s is None:
+            return '?'
+        if s:
+            return '-'
+        else:
+            return '+'
+
 
     def __len__(self):
         return len(self.fragments)
@@ -314,7 +323,7 @@ class Molecule():
         Returns:
             can_be_yielded (bool)
         """
-
+        self.methylation_call_dict = call_dict
         # Contruct XM strings
         for fragment in self:
             for read in fragment:
