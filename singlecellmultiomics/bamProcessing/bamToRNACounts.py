@@ -20,6 +20,7 @@ import scipy.sparse
 import gzip
 from singlecellmultiomics.molecule import MoleculeIterator
 from singlecellmultiomics.alleleTools import alleleTools
+import multiprocessing
 
 import scanpy as sc
 
@@ -39,32 +40,8 @@ def get_gene_id_to_gene_name_conversion_table(annotation_path_exons):
                 conversion_table[keyValues['gene_id']] = keyValues['gene_name']
     return conversion_table
 
-
-if __name__=='__main__':
-
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    matplotlib.rcParams['figure.dpi'] = 160
-
-    argparser = argparse.ArgumentParser(
-     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-     description='Create count tables from BAM file.')
-    argparser.add_argument('-o',  type=str, help="output data folder", default='./rna_counts/')
-    argparser.add_argument('alignmentfiles',  type=str, nargs='+')
-    argparser.add_argument('-gtfexon',  type=str, required=True, help="exon GTF file containing the features to plot")
-    argparser.add_argument('-gtfintron',  type=str, required=True, help="intron GTF file containing the features to plot")
-    argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
-    argparser.add_argument('-contigmapping',  type=str, help="Use this when the GTF chromosome names do not match the ones in you bam file" )
-    argparser.add_argument('-method',  type=str, help="Data type: vasa,nla,cs", required=True )
-    argparser.add_argument('-head',  type=int, help="Process this amount of molecules and export tables, also set -hf to be really fast" )
-    argparser.add_argument('-hf',  type=int, help="headfeatures Process this amount features and then continue, for a quick test set this to 1000 or so." )
-    argparser.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
-    argparser.add_argument('--loadAllelesToMem',  action='store_true',help='Load allele data completely into memory')
-    argparser.add_argument('-tagged_bam_out',  type=str, help="Output bam file" )
-
-
-    args = argparser.parse_args()
-
+def count_transcripts(cargs):
+    args,contig = cargs
     if args.alleles is not None:
         allele_resolver = alleleTools.AlleleResolver(args.alleles, lazyLoad=(not args.loadAllelesToMem))
     else:
@@ -113,8 +90,8 @@ if __name__=='__main__':
     features = singlecellmultiomics.features.FeatureContainer()
     if contig_mapping is not None:
         features.remapKeys = contig_mapping
-    features.loadGTF(args.gtfexon,select_feature_type=['exon'],head=args.hf)
-    features.loadGTF(args.gtfintron,select_feature_type=['intron'],head=args.hf)
+    features.loadGTF(args.gtfexon,select_feature_type=['exon'],head=args.hf,contig=contig)
+    features.loadGTF(args.gtfintron,select_feature_type=['intron'],head=args.hf,contig=contig)
 
     # What is used for assignment of molecules?
     if args.method=='nla':
@@ -158,7 +135,9 @@ if __name__=='__main__':
                     'R1_primer_length':4,
                     'R2_primer_length':6},
                 perform_qflag=True, # when the reads have not been tagged yet, this flag is very much required
-                pooling_method=pooling_method
+                pooling_method=pooling_method,
+                contig=contig
+
 
             )
             for i,molecule in enumerate(molecule_iterator):
@@ -212,8 +191,97 @@ if __name__=='__main__':
                     break
         read_molecules+=i
 
-    # Now we finished counting
-    print(f'Found {read_molecules} molecules, annotated {annotated_molecules}')
+    return (
+        gene_set,
+        sample_set,
+        junction_counts_per_cell,
+        exon_counts_per_cell,
+        intron_counts_per_cell,
+        annotated_molecules,
+        read_molecules,
+        contig
+
+        )
+
+if __name__=='__main__':
+
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    matplotlib.rcParams['figure.dpi'] = 160
+
+    argparser = argparse.ArgumentParser(
+     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+     description='Create count tables from BAM file.')
+    argparser.add_argument('-o',  type=str, help="output data folder", default='./rna_counts/')
+    argparser.add_argument('alignmentfiles',  type=str, nargs='+')
+    argparser.add_argument('-gtfexon',  type=str, required=True, help="exon GTF file containing the features to plot")
+    argparser.add_argument('-gtfintron',  type=str, required=True, help="intron GTF file containing the features to plot")
+    argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
+    argparser.add_argument('-contigmapping',  type=str, help="Use this when the GTF chromosome names do not match the ones in you bam file" )
+    argparser.add_argument('-method',  type=str, help="Data type: vasa,nla,cs", required=True )
+    argparser.add_argument('-head',  type=int, help="Process this amount of molecules and export tables, also set -hf to be really fast" )
+    argparser.add_argument('-hf',  type=int, help="headfeatures Process this amount features and then continue, for a quick test set this to 1000 or so." )
+    argparser.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
+    argparser.add_argument('--loadAllelesToMem',  action='store_true',help='Load allele data completely into memory')
+    argparser.add_argument('--ignoreMT',  action='store_true',help='Ignore mitochondria')
+    argparser.add_argument('-t',  type=int, default=8, help="Amount of chromosomes processed in parallel" )
+
+    #argparser.add_argument('-tagged_bam_out',  type=str, help="Output bam file" )
+
+
+    args = argparser.parse_args()
+    workers = multiprocessing.Pool(8)
+
+    jobs = []
+    contigs_todo = set()
+    with pysam.AlignmentFile(args.alignmentfiles[0]) as g:
+        for chrom in g.references:
+
+            if chrom.startswith('ERCC') or chrom.startswith('chrUn') or chrom.endswith('_random') or chrom.startswith('GL')  or chrom.startswith('JH'):
+                continue
+            if args.ignoreMT and chrom in ('mt','çhrMT','MT'):
+                print("Ignoring mitochondria")
+                continue
+            jobs.append( (args, chrom) )
+            contigs_todo.add(chrom)
+
+
+    exon_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
+    intron_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
+    junction_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
+    gene_set = set()
+    sample_set = set()
+    read_molecules = 0
+    annotated_molecules = 0
+    for  (
+        result_gene_set,
+        result_sample_set,
+        result_junction_counts_per_cell,
+        result_exon_counts_per_cell,
+        result_intron_counts_per_cell,
+        result_annotated_molecules,
+        result_read_molecules,
+        result_contig
+        ) in workers.imap_unordered( count_transcripts, jobs ):
+        # Update all:
+        gene_set.update(result_gene_set)
+        sample_set.update(result_sample_set)
+
+        for cell, counts in result_junction_counts_per_cell.items():
+            junction_counts_per_cell[cell].update(counts)
+        for cell, counts in result_exon_counts_per_cell.items():
+            exon_counts_per_cell[cell].update(counts)
+        for cell, counts in result_intron_counts_per_cell.items():
+            intron_counts_per_cell[cell].update(counts)
+        read_molecules+=result_read_molecules
+        annotated_molecules+=result_annotated_molecules
+        # Now we finished counting
+        contigs_todo.remove(result_contig)
+        print(f'Finished {result_contig}, so far found {read_molecules} molecules, annotated {annotated_molecules}')
+        print(f"Remaining contigs:{','.join(sorted(list(contigs_todo)))}")
+
+    print('Finished counting, writing matrices')
+
     # freeze order of samples and genes:
     sample_order = sorted(list(sample_set))
     gene_order = sorted(list(gene_set))
