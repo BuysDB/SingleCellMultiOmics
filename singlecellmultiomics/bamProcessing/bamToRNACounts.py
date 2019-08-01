@@ -50,16 +50,18 @@ if __name__=='__main__':
      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
      description='Create count tables from BAM file.')
     argparser.add_argument('-o',  type=str, help="output data folder", default='./rna_counts/')
-    argparser.add_argument('alignmentfiles',  type=str, nargs='*')
+    argparser.add_argument('alignmentfiles',  type=str, nargs='+')
     argparser.add_argument('-gtfexon',  type=str, required=True, help="exon GTF file containing the features to plot")
     argparser.add_argument('-gtfintron',  type=str, required=True, help="intron GTF file containing the features to plot")
     argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
     argparser.add_argument('-contigmapping',  type=str, help="Use this when the GTF chromosome names do not match the ones in you bam file" )
-    argparser.add_argument('-method',  type=str, help="Data type: either vasa or nla", required=True )
+    argparser.add_argument('-method',  type=str, help="Data type: vasa,nla,cs", required=True )
     argparser.add_argument('-head',  type=int, help="Process this amount of molecules and export tables, also set -hf to be really fast" )
     argparser.add_argument('-hf',  type=int, help="headfeatures Process this amount features and then continue, for a quick test set this to 1000 or so." )
     argparser.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
     argparser.add_argument('--loadAllelesToMem',  action='store_true',help='Load allele data completely into memory')
+    argparser.add_argument('-tagged_bam_out',  type=str, help="Output bam file" )
+
 
     args = argparser.parse_args()
 
@@ -118,11 +120,13 @@ if __name__=='__main__':
     if args.method=='nla':
         moleculeClass = singlecellmultiomics.molecule.AnnotatedNLAIIIMolecule
         fragmentClass = singlecellmultiomics.fragment.NLAIIIFragment
-        pooling_method = 1
-    elif args.method=='vasa':
+        pooling_method = 1 # all data from the same cell can be dealt with separately
+        stranded = None # data is not stranded
+    elif args.method=='vasa' or args.method=='cs':
         moleculeClass = singlecellmultiomics.molecule.VASA
         fragmentClass = singlecellmultiomics.fragment.SingleEndTranscript
         pooling_method = 1
+        stranded=1 # data is stranded
     else:
         raise ValueError("Supply a valid method")
 
@@ -133,15 +137,19 @@ if __name__=='__main__':
 
     gene_set = set()
     sample_set = set()
+    annotated_molecules = 0
+    read_molecules=0
     for alignmentfile_path in args.alignmentfiles:
-        annotated_molecules = 0
+
+        i=0
         with pysam.AlignmentFile(alignmentfile_path) as alignments:
             molecule_iterator = MoleculeIterator(
                 alignments=alignments,
                 check_eject_every=5000,
                 moleculeClass= moleculeClass,
                 molecule_class_args={
-                    'features':features
+                    'features':features,
+                    'stranded':stranded
                 },
 
                 fragmentClass=fragmentClass,
@@ -183,9 +191,10 @@ if __name__=='__main__':
                     spliced=True
                     if 'intron' in intron_exon_hits:
                         spliced=False
-                        if 'exon' in intron_exon_hits:
-                            junction_counts_per_cell[molecule.sample][gene]+=1
 
+                    # If two exons are detected from the same gene we detected a junction:
+                    if intron_exon_hits['exon']>=2:
+                        junction_counts_per_cell[molecule.sample][gene]+=1
                     if not spliced:
                         exon_counts_per_cell[molecule.sample][gene] += 1
                     else:
@@ -194,13 +203,17 @@ if __name__=='__main__':
                     gene_set.add(gene)
                     sample_set.add(molecule.sample)
                     annotated = True
-                annotated_molecules += int(annotated)
+                    # Only annotate one gene per molecule...
+                    break
 
+                annotated_molecules += int(annotated)
                 if args.head and i>args.head:
                     print(f"-head was supplied, {i} molecules discovered, stopping")
                     break
-    # Now we finished counting
+        read_molecules+=i
 
+    # Now we finished counting
+    print(f'Found {read_molecules} molecules, annotated {annotated_molecules}')
     # freeze order of samples and genes:
     sample_order = sorted(list(sample_set))
     gene_order = sorted(list(gene_set))
@@ -252,8 +265,8 @@ if __name__=='__main__':
         complete_matrix,
         layers={
         'spliced':  sparse_intron_matrix,
-        'unspliced': sparse_exon_matrix,
-        'junction' : sparse_junction_matrix
+        'unspliced': sparse_exon_matrix
+        #'junction' : sparse_junction_matrix
        }
     )
     adata.var_names = gene_order
