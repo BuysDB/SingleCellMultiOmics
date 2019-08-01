@@ -22,21 +22,26 @@ class FeatureContainer:
 
     def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'],
         ignChr=False, select_feature_type=None, exon_select=None,
-        head=None, store_all=False):
+        head=None, store_all=False, contig=None):
         """Load annotations from a GTF file.
         ignChr: ignore the chr part of the Annotation chromosome
         """
         self.loadedGtfFeatures = thirdOnly
         #pattern = '^(.*) "(.*).*"'
         #prog = re.compile(pattern)
-
-        print("Loading %s" % path)
+        if self.verbose:
+            print("Loading %s" % path)
+        added = 0
         with (gzip.open(path,'rt') if path.endswith('.gz') else open(path,'r')) as f:
             for line_id,line in enumerate(f):
-                if head is not None and line_id>head:
+                if head is not None and added>head:
                     break
                 if line[0]!='#':
                     parts = line.rstrip().split(None,8)
+
+                    chrom = parts[0]
+                    if contig is not None and chrom!=contig:
+                        continue
 
                     if thirdOnly is not None:
                         if parts[2] not in thirdOnly:
@@ -76,7 +81,7 @@ class FeatureContainer:
 
 
                     #self.addFeature( self.remapKeys.get(parts[0], parts[0]), int(parts[3]), int(parts[4]), parts[9].replace('"','').replace(';',''))
-                    chrom = parts[0]
+
                     chrom = self.remapKeys.get(chrom, chrom)
                     chromosome = chrom if ignChr==False else  chrom.replace('chr','')
 
@@ -101,13 +106,16 @@ class FeatureContainer:
                     else:
                         self.addFeature( self.remapKeys.get(chromosome, chromosome), int(parts[3]),
                         int(parts[4]), strand=parts[6], name=featureName, data=','.join(   ( ':'.join(('type',parts[2])), ':'.join(('gene_id',keyValues['gene_id'])))   ) )
+                    added+=1
 
-
-            print("Loaded %s features, now sorting" % sum([ len(self.features[c]) for c in self.features]))
+            if self.verbose:
+                print("Loaded %s features, now sorting" % sum([ len(self.features[c]) for c in self.features]))
             self.sort()
-            print("done sorting")
-        print("The following chromosomes are available:")
-        print(', '.join( sorted(list(self.startCoordinates.keys()))))
+            if self.verbose:
+                print("done sorting")
+        if self.verbose:
+            print("The following chromosomes are available:")
+            print(', '.join( sorted(list(self.startCoordinates.keys()))))
 
     def annotateUTRs(self,utrs=['three_prime_utr','five_prime_utr']):
         """flag the exons that contain a utr"""
