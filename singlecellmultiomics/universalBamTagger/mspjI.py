@@ -1,6 +1,8 @@
 from singlecellmultiomics.universalBamTagger.digest import DigestFlagger
 from singlecellmultiomics.tagtools import tagtools
 
+complement = str.maketrans('ATGC', 'TACG')
+
 class MSPJIFlagger(DigestFlagger ):
 
     def __init__(self, **kwargs):
