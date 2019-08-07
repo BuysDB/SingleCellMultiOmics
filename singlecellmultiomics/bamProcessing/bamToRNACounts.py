@@ -22,6 +22,11 @@ from singlecellmultiomics.molecule import MoleculeIterator
 from singlecellmultiomics.alleleTools import alleleTools
 import multiprocessing
 
+
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+matplotlib.rcParams['figure.dpi'] = 160
+
 import scanpy as sc
 
 def get_gene_id_to_gene_name_conversion_table(annotation_path_exons):
@@ -137,7 +142,7 @@ def count_transcripts(cargs):
 
             )
             for i,molecule in enumerate(molecule_iterator):
-                molecule.annotate()
+                molecule.annotate(args.annotmethod)
                 hits = molecule.hits.keys()
                 allele= None
                 if allele_resolver is not None:
@@ -149,7 +154,6 @@ def count_transcripts(cargs):
                 f_hits = collections.defaultdict(collections.Counter)
                 for hit in hits:
                     if hit.startswith('type:exon'):
-
                         gene = hit.split(',')[-1].replace('gene_id:','')
                         if allele is not None:
                             gene = f'{allele}_{gene}_{molecule.chromosome}'
@@ -201,9 +205,6 @@ def count_transcripts(cargs):
 
 if __name__=='__main__':
 
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    matplotlib.rcParams['figure.dpi'] = 160
 
     argparser = argparse.ArgumentParser(
      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -221,6 +222,11 @@ if __name__=='__main__':
     argparser.add_argument('--loadAllelesToMem',  action='store_true',help='Load allele data completely into memory')
     argparser.add_argument('--ignoreMT',  action='store_true',help='Ignore mitochondria')
     argparser.add_argument('-t',  type=int, default=8, help="Amount of chromosomes processed in parallel" )
+
+    argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
+
+
+
 
     #argparser.add_argument('-tagged_bam_out',  type=str, help="Output bam file" )
 
