@@ -42,17 +42,20 @@ class FeatureAnnotatedMolecule(Molecule):
         if method==0:
 
             # Obtain all blocks:
-            for start,end in find_ranges(
-                sorted(list(set(
-                    (ref_pos
-                    for read in self.iter_reads()
-                    for q_pos, ref_pos in read.get_aligned_pairs(matches_only=True, with_seq=False) ))))
-                ):
-                for hit in self.features.findFeaturesBetween(chromosome =self.chromosome, sampleStart=start, sampleEnd=end, strand=strand):
-                    hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
-                    self.hits[hit_ids].add((self.chromosome,(hit_start,hit_end)))
+            try:
+                for start,end in find_ranges(
+                    sorted(list(set(
+                        (ref_pos
+                        for read in self.iter_reads()
+                        for q_pos, ref_pos in read.get_aligned_pairs(matches_only=True, with_seq=False) ))))
+                    ):
+                    for hit in self.features.findFeaturesBetween(chromosome =self.chromosome, sampleStart=start, sampleEnd=end, strand=strand):
+                        hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
+                        self.hits[hit_ids].add((self.chromosome,(hit_start,hit_end)))
 
-
+            except TypeError:
+                # This happens when no reads map
+                pass
         else:
 
             for read in self.iter_reads():
