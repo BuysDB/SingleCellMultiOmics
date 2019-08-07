@@ -42,14 +42,19 @@ if __name__=='__main__':
             moleculeClass=singlecellmultiomics.molecule.TAPSNlaIIIMolecule,
             fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
             fragment_class_args={'umi_hamming_distance':1},
-            molecule_class_args={'reference':reference,'taps':taps},
+            molecule_class_args={
+                'reference':reference,
+                'site_has_to_be_mapped':True,
+                'taps':taps
+            },
             contig=args.contig)):
 
             if args.head and i>=args.head:
                 break
-            if molecule.is_multimapped() or molecule.get_mean_mapping_qual()<args.minmq:
-                continue
                 
+            if not molecule.is_valid() or molecule.is_multimapped() or molecule.get_mean_mapping_qual()<args.minmq:
+                continue
+
             # If calls cannot be obtained skip the molecule
             if molecule.methylation_call_dict is None:
                 continue
