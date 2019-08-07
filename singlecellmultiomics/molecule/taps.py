@@ -124,15 +124,13 @@ class TAPSMolecule(Molecule):
         except ValueError:
             raise ValueError('Cannot obtain a safe consensus for this molecule')
 
-        # if insecure about the consensus emit the reference, if no CG AT conversion skip
-        for location, reference_base in aligned_reference_positions.items():
-            if not location in consensus or reference_base not in 'CG' or consensus[location] not in 'AT':
-                consensus[location] = reference_base.upper()
 
         # find all locations where a C/G was converted into A/T, now strand specific
         converted_bases = 0
         conversions = {}
         for location, reference_base in aligned_reference_positions.items():
+            if not location in consensus:
+                continue
             if (not self.strand and reference_base=='C' and consensus[location] in 'CT') or \
                 self.strand and reference_base=='G' and consensus[location] in 'AG':
                 conversions[location] = {'ref':reference_base, 'obs':consensus[location]}
