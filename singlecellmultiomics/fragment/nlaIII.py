@@ -1,8 +1,19 @@
 from singlecellmultiomics.fragment import Fragment
 from singlecellmultiomics.utils.sequtils import hamming_distance
 class NLAIIIFragment(Fragment):
-    def __init__(self,reads, R1_primer_length=4,R2_primer_length=6,assignment_radius=1_000, umi_hamming_distance=1  ):
-        Fragment.__init__(self, reads, assignment_radius=assignment_radius,R1_primer_length=R1_primer_length,R2_primer_length=R2_primer_length, umi_hamming_distance=umi_hamming_distance )
+    def __init__(self,
+        reads,
+        R1_primer_length=4,
+        R2_primer_length=6,
+        assignment_radius=1_000,
+        umi_hamming_distance=1
+        ):
+        Fragment.__init__(self,
+            reads,
+            assignment_radius=assignment_radius,
+            R1_primer_length=R1_primer_length,
+            R2_primer_length=R2_primer_length,
+            umi_hamming_distance=umi_hamming_distance )
         # set NLAIII cut site given reads
         self.strand = None
         self.site_location = None
