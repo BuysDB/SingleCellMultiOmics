@@ -1,5 +1,6 @@
 import itertools
 from singlecellmultiomics.molecule import Molecule
+from singlecellmultiomics.molecule.nlaIII import NlaIIIMolecule
 complement = str.maketrans('ATGC', 'TACG')
 
 class TAPS():
@@ -97,6 +98,7 @@ class TAPS():
                 call_dict[(chrom,pos)] = letter
         return call_dict
 
+
 class TAPSMolecule(Molecule):
     def __init__(self, fragments=None, taps=None, **kwargs):
         Molecule.__init__(self, fragments=fragments, **kwargs)
@@ -147,3 +149,9 @@ class TAPSMolecule(Molecule):
 
         # Write bismark tags:
         self.set_methylation_call_tags(conversion_contexts)
+
+class TAPSNlaIIIMolecule(TAPSMolecule, NlaIIIMolecule):
+    """Molecule class for combined TAPS and NLAIII """
+    def __init__(self, fragments=None, taps=None, **kwargs):
+        NlaIIIMolecule.__init__(self, fragments, **kwargs)
+        TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
