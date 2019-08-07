@@ -299,6 +299,14 @@ class Molecule():
             self.get_rt_reaction_fragment_sizes()
         )
 
+    def write_pysam(self, target_file):
+        """Write all associated reads to the target file
+
+        Args:
+            target_file (pysam.AlignmentFile) : Target file
+        """
+        for read in self.iter_reads():
+            target_file.write(read)
 
     def set_methylation_call_tags(self,
                               call_dict, bismark_call_tag='XM',
