@@ -6,6 +6,19 @@ import pysamiterators
 import pysam
 import argparse
 import singlecellmultiomics.bamProcessing.bamFunctions as bf
+import os
+
+def finish_bam(output,args,temp_out):
+    output.close()
+    # Sort and index
+    # Perform a reheading, sort and index
+    cmd = f"""samtools sort {temp_out} > {args.bamout}; samtools index {args.bamout};
+    rm {temp_out};
+    """
+    os.system(cmd)
+
+
+
 
 if __name__=='__main__':
     argparser = argparse.ArgumentParser(
@@ -20,8 +33,16 @@ if __name__=='__main__':
     argparser.add_argument('-moleculeNameSep',  type=str,help='Separator to use in molecule name', default=':')
     argparser.add_argument('-samples',  type=str,help='Samples to select, separate with comma. For example CellA,CellC,CellZ', default=None)
     argparser.add_argument('-context',  type=str,help='Contexts to select, separate with comma. For example Z,H,X', default=None)
+    argparser.add_argument('-bamout',  type=str, help="optional (tagged) output BAM path")
     args = argparser.parse_args()
     alignments = pysam.AlignmentFile(args.alignmentfile)
+
+    if args.bamout is not None:
+        temp_out = f'{args.bamout}.unsorted.bam'
+        output = pysam.AlignmentFile(temp_out , "wb",header=alignments.header)
+    else:
+        output = None
+
 
     samples = None if args.samples is None else set(args.samples.split(','))
     contexts = None if args.context is None else set(
@@ -51,7 +72,7 @@ if __name__=='__main__':
 
             if args.head and i>=args.head:
                 break
-                
+
             if not molecule.is_valid() or molecule.is_multimapped() or molecule.get_mean_mapping_qual()<args.minmq:
                 continue
 
@@ -72,5 +93,9 @@ if __name__=='__main__':
                     continue
 
                 print(f'{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location}\t{call}')
+
+            molecule.write_pysam(output)
     except (KeyboardInterrupt,BrokenPipeError) as e:
         pass
+if output is not None:
+    finish_bam(output,args,temp_out)
