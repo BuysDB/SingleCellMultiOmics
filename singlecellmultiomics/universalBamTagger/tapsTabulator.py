@@ -15,6 +15,7 @@ if __name__=='__main__':
     argparser.add_argument('alignmentfile',  type=str)
     argparser.add_argument('-ref',  type=str, help='path to reference fasta file, auto detected from bamfile')
     argparser.add_argument('-head',  type=int)
+    argparser.add_argument('-minmq',  type=int, default=50)
     argparser.add_argument('-contig',  type=str,help='contig to run on, all when not specified')
     argparser.add_argument('-moleculeNameSep',  type=str,help='Separator to use in molecule name', default=':')
     argparser.add_argument('-samples',  type=str,help='Samples to select, separate with comma. For example CellA,CellC,CellZ', default=None)
@@ -38,13 +39,17 @@ if __name__=='__main__':
     try:
         for i,molecule in  enumerate( singlecellmultiomics.molecule.MoleculeIterator(
             alignments=alignments,
-            moleculeClass=singlecellmultiomics.molecule.TAPSMolecule,
+            moleculeClass=singlecellmultiomics.molecule.TAPSNlaIIIMolecule,
             fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
             fragment_class_args={'umi_hamming_distance':1},
             molecule_class_args={'reference':reference,'taps':taps},
             contig=args.contig)):
+
             if args.head and i>=args.head:
                 break
+            if molecule.is_multimapped() or molecule.get_mean_mapping_qual()<args.minmq:
+                continue
+                
             # If calls cannot be obtained skip the molecule
             if molecule.methylation_call_dict is None:
                 continue
