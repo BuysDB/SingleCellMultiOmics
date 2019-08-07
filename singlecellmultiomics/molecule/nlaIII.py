@@ -10,8 +10,29 @@ class NlaIIIMolecule(Molecule):
         **kwargs: extra args
 
     """
-    def __init__(self,fragment, **kwargs):
+    def __init__(self,fragment,
+                site_has_to_be_mapped=False, # molecule is invalid when NLA site does not map  (requires reference)
+                **kwargs):
+        self.site_has_to_be_mapped = site_has_to_be_mapped
         Molecule.__init__(self,fragment,**kwargs)
+
+    def is_valid(self,reference=None):
+
+        if reference is None:
+            if self.reference is None:
+                raise ValueError('Please supply a reference (PySAM.FastaFile)')
+        reference = self.reference
+
+        try:
+            chrom,start,strand = self.get_cut_site()
+        except Exception as e:
+            return False
+
+        if self.site_has_to_be_mapped:
+            if reference.fetch(chrom,start,start+4).upper()!='CATG':
+                return False
+
+        return True
 
     def get_fragment_span_sequence(self,reference=None):
             """Obtain the sequence between the start and end of the molecule
@@ -44,6 +65,10 @@ class NlaIIIMolecule(Molecule):
         -------
         ValueError : when the span of the molecule is not properly defined
         """
+        if reference is None:
+            if self.reference is None:
+                raise ValueError('Please supply a reference (PySAM.FastaFile)')
+        reference = self.reference
 
         seq = self.get_fragment_span_sequence(reference)
         total = seq.count('CATG')
