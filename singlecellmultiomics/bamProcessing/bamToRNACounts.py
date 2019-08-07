@@ -152,12 +152,12 @@ def count_transcripts(cargs):
 
                         gene = hit.split(',')[-1].replace('gene_id:','')
                         if allele is not None:
-                            gene = f'{allele}_{gene}'
+                            gene = f'{allele}_{gene}_{molecule.chromosome}'
                         f_hits[gene]['exon']+=1
                     elif hit.startswith('type:intron'):
                         gene = hit.split(',')[-1].replace('gene_id:','')
                         if allele is not None:
-                            gene = f'{allele}_{gene}'
+                            gene = f'{allele}_{gene}_{molecule.chromosome}'
                         f_hits[gene]['intron']+=1
 
                 annotated = False
