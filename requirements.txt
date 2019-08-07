@@ -4,3 +4,4 @@ pandas
 colorama
 pysamiterators
 matplotlib
+more-itertools
