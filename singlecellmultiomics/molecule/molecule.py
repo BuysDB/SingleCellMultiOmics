@@ -56,7 +56,7 @@ class Molecule():
             None when strand is not determined
     """
 
-    def __init__(self, fragments=None, cache_size=10_000,reference=None):
+    def __init__(self, fragments=None, cache_size=10_000,reference=None,**kwargs):
         """Initialise Molecule
 
         Parameters
