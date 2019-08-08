@@ -100,7 +100,7 @@ class TAPS():
 
 
 class TAPSMolecule(Molecule):
-    def __init__(self, fragments=None, taps=None, **kwargs):
+    def __init__(self, fragments=None, taps=None,  **kwargs):
         Molecule.__init__(self, fragments=fragments, **kwargs)
         if taps is None:
             raise ValueError("""Supply initialised TAPS class
@@ -112,6 +112,30 @@ class TAPSMolecule(Molecule):
             self.obtain_methylation_calls()
         except ValueError:
             pass
+
+    def is_valid(self,set_rejection_reasons=False):
+        if not super().is_valid(set_rejection_reasons=set_rejection_reasons):
+            return False
+
+        try:
+            consensus = self.get_consensus()
+        except ValueError:
+            if set_rejection_reasons:
+                self.set_rejection_reason('no_consensus')
+            return False
+        except TypeError:
+            if set_rejection_reasons:
+                self.set_rejection_reason('getPairGenomicLocations_failed')
+            return False
+
+        if self.methylation_call_dict is None:
+            if set_rejection_reasons:
+                self.set_rejection_reason('methylation_calls_failed')
+            return False
+
+        return True
+
+
 
     def obtain_methylation_calls(self):
         # Find all aligned positions and corresponding reference bases:
@@ -150,8 +174,12 @@ class TAPSMolecule(Molecule):
         # Write bismark tags:
         self.set_methylation_call_tags(conversion_contexts)
 
-class TAPSNlaIIIMolecule(TAPSMolecule, NlaIIIMolecule):
+class TAPSNlaIIIMolecule(NlaIIIMolecule,TAPSMolecule):
     """Molecule class for combined TAPS and NLAIII """
     def __init__(self, fragments=None, taps=None, **kwargs):
         NlaIIIMolecule.__init__(self, fragments, **kwargs)
         TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
+
+    def is_valid(self,set_rejection_reasons=False):
+        return NlaIIIMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons) and \
+               TAPSMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons)
