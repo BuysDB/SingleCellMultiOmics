@@ -16,7 +16,7 @@ class NlaIIIMolecule(Molecule):
         self.site_has_to_be_mapped = site_has_to_be_mapped
         Molecule.__init__(self,fragment,**kwargs)
 
-    def is_valid(self,reference=None):
+    def is_valid(self,set_rejection_reasons=False, reference=None):
 
         if reference is None:
             if self.reference is None:
@@ -26,10 +26,14 @@ class NlaIIIMolecule(Molecule):
         try:
             chrom,start,strand = self.get_cut_site()
         except Exception as e:
+            if set_rejection_reasons:
+                self.set_rejection_reason('NO_CUT')
             return False
 
         if self.site_has_to_be_mapped:
             if reference.fetch(chrom,start,start+4).upper()!='CATG':
+                if set_rejection_reasons:
+                    self.set_rejection_reason('no_CATG_in_ref')
                 return False
 
         return True
