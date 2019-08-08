@@ -67,22 +67,25 @@ if __name__=='__main__':
             molecule_class_args={
                 'reference':reference,
                 'site_has_to_be_mapped':True,
-                'taps':taps
+                'taps':taps,
+                'min_max_mapping_quality':args.minmq
             },
             contig=args.contig)):
 
             if args.head and i>=args.head:
                 break
 
-            if not molecule.is_valid() or molecule.is_multimapped() or molecule.get_mean_mapping_qual()<args.minmq:
-                continue
 
-            # If calls cannot be obtained skip the molecule
-            if molecule.methylation_call_dict is None:
+            if not molecule.is_valid(set_rejection_reasons=True):
+                if output is not None:
+                    molecule.write_pysam(output)
                 continue
 
             # Skip sample if not selected
             if samples is not None and molecule.sample not in samples:
+                molecule.set_rejection_reason('sample_not_selected')
+                if output is not None:
+                    molecule.write_pysam(output)
                 continue
 
             for (chromosome, location),call in molecule.methylation_call_dict.items():
