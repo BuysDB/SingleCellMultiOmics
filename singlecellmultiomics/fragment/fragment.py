@@ -49,8 +49,7 @@ class Fragment():
                 read.is_read1 = False
                 read.is_read2 = True
 
-        self.set_meta('MQ',self.mapping_quality)
-        self.set_meta('MM',self.is_multimapped)
+
 
         self.R1_primer_length = R1_primer_length
         self.R2_primer_length = R2_primer_length
@@ -58,6 +57,27 @@ class Fragment():
         self.set_strand(self.identify_strand())
         self.update_span()
         self.update_umi()
+
+    def write_tags(self):
+        self.set_meta('MQ',self.mapping_quality)
+        self.set_meta('MM',self.is_multimapped)
+        if self.has_valid_span():
+            # Write fragment size:
+            self.set_meta('fS',abs(self.span[2]-self.span[1]))
+            self.set_meta('fe',self.span[1])
+            self.set_meta('fs',self.span[2]-self.span[1])
+
+    def write_pysam(self, pysam_handle):
+        """Write all associated reads to the target file
+
+        Args:
+            target_file (pysam.AlignmentFile) : Target file
+        """
+        self.write_tags()
+        for read in self:
+            if read is not None:
+                pysam_handle.write(read)
+
 
     def identify_strand(self):
         # If R2 is rev complement:
