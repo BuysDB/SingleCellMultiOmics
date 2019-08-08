@@ -180,6 +180,10 @@ class TAPSNlaIIIMolecule(NlaIIIMolecule,TAPSMolecule):
         NlaIIIMolecule.__init__(self, fragments, **kwargs)
         TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
 
+    def write_tags(self):
+        NlaIIIMolecule.write_tags(self)
+        TAPSMolecule.write_tags(self)
+
     def is_valid(self,set_rejection_reasons=False):
         return NlaIIIMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons) and \
                TAPSMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons)
