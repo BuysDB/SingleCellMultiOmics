@@ -63,6 +63,8 @@ tags = [
     SamTag('EX', 'exons'),
     SamTag('IN', 'introns'),
     SamTag('GN', 'genes'),
+    SamTag('JN', 'junctions'),
+    SamTag('IT', 'is_transcriptome'),
     SamTag('nM', 'editDistanceToReference'),
     SamTag('NM', 'editDistanceToReference'),
     SamTag('AS', 'alignmentScore'),
