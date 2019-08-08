@@ -61,6 +61,7 @@ if __name__=='__main__':
         for i,molecule in  enumerate( singlecellmultiomics.molecule.MoleculeIterator(
             alignments=alignments,
             moleculeClass=singlecellmultiomics.molecule.TAPSNlaIIIMolecule,
+            yield_invalid = (output is not None),
             fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
             fragment_class_args={'umi_hamming_distance':1},
             molecule_class_args={
