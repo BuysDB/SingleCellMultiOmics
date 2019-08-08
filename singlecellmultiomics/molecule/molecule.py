@@ -93,6 +93,16 @@ class Molecule():
             else:
                 self.add_fragment(fragments)
 
+    def has_valid_span(self):
+        """Check if the span of the molecule is determined
+
+        Returns:
+            has_valid_span (bool)
+        """
+        if self.spanStart is not None and self.spanEnd is not None:
+            return True
+        return False
+
     def get_strand_repr(self):
         s = self.get_strand()
         if s is None:
