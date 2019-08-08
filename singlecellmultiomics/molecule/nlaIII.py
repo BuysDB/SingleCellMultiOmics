@@ -20,7 +20,7 @@ class NlaIIIMolecule(Molecule):
         Molecule.write_tags(self)
         if self.get_cut_site() is not None:
             self.set_meta('Us', self.get_undigested_site_count() )
-        
+
     def is_valid(self,set_rejection_reasons=False, reference=None):
 
         if reference is None:
@@ -97,6 +97,10 @@ class AnnotatedNLAIIIMolecule(FeatureAnnotatedMolecule,NlaIIIMolecule):
         **kwargs: extra args
 
     """
+    def write_tags(self):
+        NlaIIIMolecule.write_tags(self)
+        FeatureAnnotatedMolecule.write_tags(self)
+
     def __init__(self,fragment, features, **kwargs):
         FeatureAnnotatedMolecule.__init__(self,fragment,features,**kwargs)
         NlaIIIMolecule.__init__(self,fragment,**kwargs)
