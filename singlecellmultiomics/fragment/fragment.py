@@ -37,7 +37,7 @@ class Fragment():
 
             if not read.is_unmapped:
                 self.is_mapped = True
-            if read.mapping_quality!=0:
+            if read.mapping_quality>0:
                 self.is_multimapped = False
             self.mapping_quality = max(self.mapping_quality, read.mapping_quality)
             if i==0:
@@ -48,6 +48,9 @@ class Fragment():
             elif i==1:
                 read.is_read1 = False
                 read.is_read2 = True
+
+        self.set_meta('MQ',self.mapping_quality)
+        self.set_meta('MM',self.is_multimapped)
 
         self.R1_primer_length = R1_primer_length
         self.R2_primer_length = R2_primer_length
@@ -97,6 +100,9 @@ class Fragment():
 
     def set_meta(self, key, value):
         self.meta[key] = value
+        for read in self:
+            if read is not None:
+                read.set_tag(key,value)
 
     def get_R1(self):
         if len(self.reads)==0:
