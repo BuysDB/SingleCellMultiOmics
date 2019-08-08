@@ -19,6 +19,7 @@ def finish_bam(output,args,temp_out):
 
 
 
+#sy zcat chr18 | sort -S 4G -k 3,3 -n -T ./TMP | gzip > chr18_sorted.gzip" -m 5
 
 if __name__=='__main__':
     argparser = argparse.ArgumentParser(
@@ -96,7 +97,7 @@ if __name__=='__main__':
                 if contexts is not None and call not in contexts:
                     continue
 
-                print(f'{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location}\t{call}')
+                print(f'{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call}')
 
             molecule.write_pysam(output)
     except (KeyboardInterrupt,BrokenPipeError) as e:
