@@ -204,6 +204,18 @@ class Molecule():
         return max( [fragment.mapping_quality for fragment in self] )
 
 
+
+    def contains_valid_fragment(self):
+        """Check if an associated fragment exists which returns True for is_valid()
+
+        Returns:
+            contains_valid_fragment (bool) : True when any associated fragment is_valid()
+        """
+        return any(
+            (hasattr(fragment,'is_valid') and fragment.is_valid()
+            for fragment in self.fragments ) )
+
+
     def is_multimapped(self):
         """Check if the molecule is multimapping
 
@@ -830,7 +842,6 @@ class MoleculeIterator():
         Yielded {self.yielded_fragments} fragments, {self.waiting_fragments} fragments are waiting to be ejected.
         {self.get_molecule_cache_size()} molecules cached.
         Mate pair iterator: {str(self.matePairIterator)}"""
-
 
     def get_molecule_cache_size(self):
         if self.pooling_method==0:
