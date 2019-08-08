@@ -196,6 +196,14 @@ class Molecule():
         """
         return np.mean( [fragment.mapping_quality for fragment in self] )
 
+    def get_max_mapping_qual(self):
+        """Get max mapping quality of the molecule
+        Returns:
+            max_mapping_qual (float)
+        """
+        return max( [fragment.mapping_quality for fragment in self] )
+
+
     def is_multimapped(self):
         """Check if the molecule is multimapping
 
@@ -762,6 +770,7 @@ class MoleculeIterator():
         fragment_class_args={},
         perform_qflag=True,
         pooling_method=1,
+        yield_invalid=False,
         **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
@@ -782,6 +791,9 @@ class MoleculeIterator():
                 from the read name into bam tags
 
             pooling_method(int) : 0: no  pooling, 1: only compare molecules with the same sample id.
+
+            yield_invalid (bool) : When true all fragments which are invalid will be yielded as a molecule
+
             **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
 
         Yields:
@@ -797,6 +809,7 @@ class MoleculeIterator():
         self.pysamArgs = pysamArgs
         self.matePairIterator=None
         self.pooling_method=pooling_method
+        self.yield_invalid = yield_invalid
         self._clear_cache()
 
     def _clear_cache(self):
@@ -845,7 +858,10 @@ class MoleculeIterator():
                 qf.digest([R1,R2])
 
             fragment = self.fragmentClass([R1,R2], **self.fragment_class_args)
+
             if not fragment.is_valid() :
+                if self.yield_invalid:
+                    yield self.moleculeClass(fragment, **self.molecule_class_args )
                 continue
 
             added = False
