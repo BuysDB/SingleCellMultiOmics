@@ -16,6 +16,11 @@ class NlaIIIMolecule(Molecule):
         self.site_has_to_be_mapped = site_has_to_be_mapped
         Molecule.__init__(self,fragment,**kwargs)
 
+    def write_tags(self):
+        Molecule.write_tags(self)
+        if self.get_cut_site() is not None:
+            self.set_meta('Us', self.get_undigested_site_count() )
+        
     def is_valid(self,set_rejection_reasons=False, reference=None):
 
         if reference is None:
@@ -27,7 +32,7 @@ class NlaIIIMolecule(Molecule):
             chrom,start,strand = self.get_cut_site()
         except Exception as e:
             if set_rejection_reasons:
-                self.set_rejection_reason('NO_CUT')
+                self.set_rejection_reason('no_cut_site_found')
             return False
 
         if self.site_has_to_be_mapped:
