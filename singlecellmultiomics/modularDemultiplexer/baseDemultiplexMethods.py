@@ -79,7 +79,7 @@ tags = [
     SamTag('fS', 'fragmentSizeTag'),
     SamTag('fe', 'fragmentEndTag'),
     SamTag('fs', 'fragmentStartTag'),
-
+    SamTag('Us', 'undigestedSiteCount'),
     SamTag('lh', 'ligationOverhangSequence'),
     SamTag('lq', 'ligationOverhangQuality',isPhred = True),
 
