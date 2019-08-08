@@ -24,6 +24,7 @@ class NLAIIIFragment(Fragment):
              self.site_location[0],self.site_location[1], self.sample)
         else:
             self.match_hash = None
+
     def set_site(self, site_chrom, site_pos, site_strand=None ):
         self.set_meta('DS',site_pos)
         self.set_strand(site_strand)
