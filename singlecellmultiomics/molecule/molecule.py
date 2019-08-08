@@ -56,13 +56,20 @@ class Molecule():
             None when strand is not determined
     """
 
-    def __init__(self, fragments=None, cache_size=10_000,reference=None,**kwargs):
+    def __init__(self,
+        fragments=None,
+        cache_size=10_000,
+        reference=None,
+        min_max_mapping_quality=None,# When all fragments have a mappin quality below this value the is_valid method will return False
+        **kwargs):
         """Initialise Molecule
 
         Parameters
         ----------
         fragments :  list(singlecellmultiomics.fragment.Fragment)
             Fragment to assign to Molecule. More fragments can be added later
+
+        min_max_mapping_quality :  When all fragments have a mappin quality below this value the is_valid method will return False
 
         cache_size (int): radius of molecule assignment cache
         """
@@ -77,6 +84,7 @@ class Molecule():
         self.umi = None
         self.umi_hamming_distance = None
         self.fragment_match = None # when set, when comparing to a fragment the fragment to be added has to match this hash
+        self.min_max_mapping_quality = min_max_mapping_quality
         self.umi_counter = collections.Counter() # Observations of umis
         if fragments is not None:
             if type(fragments) is list:
@@ -225,7 +233,6 @@ class Molecule():
             max_mapping_qual (float)
         """
         return max( [fragment.mapping_quality for fragment in self] )
-
 
 
     def contains_valid_fragment(self):
