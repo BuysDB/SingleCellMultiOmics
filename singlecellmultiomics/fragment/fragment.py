@@ -239,7 +239,7 @@ class Fragment():
         umi:{self.get_umi()}
         span:{('%s %s-%s' % self.get_span())}
         strand:{self.get_strand_repr()}
-        """ + '\n'.join([f'{key}:{str(value)}'for key,value in self.meta.items()])
+        """ + '\n\t'.join([f'{key}:{str(value)}'for key,value in self.meta.items()])
 
     def get_html(self, chromosome=None, span_start=None, span_end=None, show_read1=None, show_read2=None):
         """
