@@ -29,8 +29,70 @@ class FeatureAnnotatedMolecule(Molecule):
         self.features = features
         self.hits = collections.defaultdict(set) #feature -> hit_bases
         self.stranded = stranded
+        self.is_annotated = False
 
-    def annotate(self, method=1):
+        self.junctions = set()
+        self.genes = set()
+        self.introns = set()
+        self.exons = set()
+
+    def set_intron_exon_features(self):
+        if not self.is_annotated:
+            self.annotate()
+
+        # Collect all hits:
+        hits = self.hits.keys()
+        f_hits = collections.defaultdict(collections.Counter)
+        for hit in hits:
+            if hit.startswith('type:exon'):
+                gene = hit.split(',')[-1].replace('gene_id:','')
+                self.genes.add(gene)
+                self.exons.add(gene)
+                #if allele is not None:
+                #    gene = f'{allele}_{gene}_{self.chromosome}'
+                f_hits[gene]['exon']+=1
+            elif hit.startswith('type:intron'):
+                gene = hit.split(',')[-1].replace('gene_id:','')
+                self.genes.add(gene)
+                self.introns.add(gene)
+                #if allele is not None:
+                #       gene = f'{allele}_{gene}_{self.chromosome}'
+                f_hits[gene]['intron']+=1
+
+        # Find junctions and add all annotations to annotation sets
+        for gene, intron_exon_hits in f_hits.items():
+
+            spliced=True
+            if 'intron' in intron_exon_hits:
+                spliced=False
+
+            # If two exons are detected from the same gene we detected a junction:
+            if intron_exon_hits['exon']>=2:
+                self.junctions.add(gene)
+
+
+    def write_tags(self):
+        Molecule.write_tags(self)
+
+        if len(self.exons)>0:
+            self.set_meta('EX',  ','.join(sorted([ str(x) for x in self.exons] )))
+        if len(self.introns)>0:
+            self.set_meta('IN',  ','.join(sorted([ str(x) for x in self.introns] )))
+        if len(self.genes)>0:
+            self.set_meta('GN',  ','.join(sorted([ str(x) for x in self.genes] )))
+        if  len(self.junctions)>0:
+            self.set_meta('JN',  ','.join(sorted([ str(x) for x in self.junctions] )))
+            # Is transcriptome
+            self.set_meta('IT',1)
+        elif len(self.genes)>0:
+            # Maps to gene but not junction
+            self.set_meta('IT',0.5)
+        else:
+            # Doesn't map to gene
+            self.set_meta('IT',0)
+
+
+    def annotate(self, method=0):
         """
             Args:
                 method (int) : 0, obtain blocks and then obtain features. 1, try to obtain features for every aligned base
@@ -38,7 +100,7 @@ class FeatureAnnotatedMolecule(Molecule):
         """
         # When self.stranded is None, set to None strand. If self.stranded is True reverse the strand, otherwise copy the strand
         strand = None if self.stranded is None else '+-'[( not self.strand if self.stranded else self.strand )]
-
+        self.is_annotated = True
         if method==0:
 
             # Obtain all blocks:
