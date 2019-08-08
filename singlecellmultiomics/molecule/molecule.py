@@ -94,6 +94,9 @@ class Molecule():
         else:
             return '+'
 
+    def set_rejection_reason(self,reason):
+        for fragment in self:
+            fragment.set_rejection_reason(reason)
 
     def __len__(self):
         return len(self.fragments)
