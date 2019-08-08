@@ -1,6 +1,8 @@
 import itertools
 from singlecellmultiomics.molecule import Molecule
 from singlecellmultiomics.molecule.nlaIII import NlaIIIMolecule
+from singlecellmultiomics.molecule.nlaIII import AnnotatedNLAIIIMolecule
+
 complement = str.maketrans('ATGC', 'TACG')
 
 class TAPS():
@@ -186,4 +188,20 @@ class TAPSNlaIIIMolecule(NlaIIIMolecule,TAPSMolecule):
 
     def is_valid(self,set_rejection_reasons=False):
         return NlaIIIMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons) and \
+               TAPSMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons)
+
+
+class AnnotatedTAPSNlaIIIMolecule(AnnotatedNLAIIIMolecule,TAPSMolecule):
+    """Molecule class for combined TAPS, NLAIII and transcriptome """
+    def __init__(self, fragments=None, features=None, taps=None, **kwargs):
+        assert features is not None, "Supply features!"
+        AnnotatedNLAIIIMolecule.__init__(self, fragments, features=features, **kwargs)
+        TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
+
+    def write_tags(self):
+        AnnotatedNLAIIIMolecule.write_tags(self)
+        TAPSMolecule.write_tags(self)
+
+    def is_valid(self,set_rejection_reasons=False):
+        return AnnotatedNLAIIIMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons) and \
                TAPSMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons)
