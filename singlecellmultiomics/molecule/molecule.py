@@ -112,6 +112,11 @@ class Molecule():
         else:
             return '+'
 
+    def write_tags(self):
+        self.is_valid(set_rejection_reasons=True)
+        if  self.umi is not None:
+            self.set_meta('mI', self.umi)
+
     def set_rejection_reason(self,reason):
         for fragment in self:
             fragment.set_rejection_reason(reason)
@@ -365,8 +370,8 @@ class Molecule():
         Args:
             target_file (pysam.AlignmentFile) : Target file
         """
-        for read in self.iter_reads():
-            target_file.write(read)
+        for fragment in self:
+            fragment.write_pysam(target_file)
 
     def set_methylation_call_tags(self,
                               call_dict, bismark_call_tag='XM',
@@ -419,6 +424,17 @@ class Molecule():
                     sum( x.islower() for x in read.get_tag('XM') )
                 )
 
+    def set_meta(self,tag,value):
+        """Set meta information to all fragments
+
+        Args:
+            tag (str):
+                2 letter tag
+            value: value to set
+
+        """
+        for f in self:
+            f.set_meta(tag,value)
 
     def __getitem__(self, index):
         """Obtain a fragment belonging to this molecule.
