@@ -98,6 +98,26 @@ class Molecule():
         for fragment in self:
             fragment.set_rejection_reason(reason)
 
+    def is_valid(self, set_rejection_reasons=False):
+
+        if self.is_multimapped():
+            if set_rejection_reasons:
+                self.set_rejection_reason('multimapping')
+            return False
+
+        if self.min_max_mapping_quality is not None and \
+            self.get_max_mapping_qual()<self.min_max_mapping_quality:
+            if set_rejection_reasons:
+                self.set_rejection_reason('MQ')
+            return False
+
+        if not self.contains_valid_fragment():
+            if set_rejection_reasons:
+                self.set_rejection_reason('invalid_fragments')
+            return False
+
+        return True
+
     def __len__(self):
         return len(self.fragments)
 
