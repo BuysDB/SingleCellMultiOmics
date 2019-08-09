@@ -60,16 +60,6 @@ universalBamTagger.py --nla --ftag  -o tagged.bam input.bam
  ```
  [Complete NlaIII data processing instructions from FastQ to count table here](https://github.com/BuysDB/SingleCellMultiOmics/wiki/NLA-III-data-processing)
 
-### Molecule iteration in Python
-Assigned molecules can be iterated over to use in your Python code.
-Every molecule is a list of fragments which are assigned to the molecule.
-
-```
-with pysam.AlignmentFile('example.bam') as f:
-    for molecule in MoleculeIterator(f):
-        print(molecule)
-```
-[More detailed examples here](https://github.com/BuysDB/SingleCellMultiOmics/wiki/Molecule-iteration).
 
 ### Plate visualisation
 
