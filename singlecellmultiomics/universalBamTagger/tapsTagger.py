@@ -46,6 +46,7 @@ if __name__=='__main__':
     argparser.add_argument('-min_mq',  default=20, type=int, help='Min mapping qual')
     argparser.add_argument('-uhd',  default=1, type=int, help='Umi hamming distance')
     argparser.add_argument('-head',  type=int)
+    argparser.add_argument('-stranded',  action='store_true')
     argparser.add_argument('-contig',  type=str,help='contig to run on')
 
     argparser.add_argument('-samples',  type=str,help='Samples to select, separate with comma. For example CellA,CellC,CellZ', default=None)
@@ -138,8 +139,12 @@ if __name__=='__main__':
                     unmethylated_hits += 1
                 if args.table is not None:
                     for binIdx in singlecellmultiomics.utils.coordinate_to_bins(location, args.bin_size, args.sliding_increment):
-                        binned_data[(chromosome, molecule.get_strand_repr(), binIdx)][molecule.get_sample()][call.isupper()]+=1
-                        cell_count[molecule.get_sample()]+=1
+                        if args.stranded:
+                            binned_data[(chromosome, molecule.get_strand_repr(), binIdx)][molecule.get_sample()][call.isupper()]+=1
+                            cell_count[molecule.get_sample()]+=1
+                        else:
+                            binned_data[(chromosome, binIdx)][molecule.get_sample()][call.isupper()]+=1
+                            cell_count[molecule.get_sample()]+=1
 
             molecule.set_meta('ME',methylated_hits)
             molecule.set_meta('um',unmethylated_hits)
@@ -155,11 +160,11 @@ if __name__=='__main__':
         df = pd.DataFrame(binned_data)
         del binned_data
         if args.contig:
-            df.to_pickle(f'{args.table}_{args.contig}.pickle.gz')
-            df.to_csv(f'{args.table}_{args.contig}.csv')
+            df.to_pickle(f'{args.table}_ratio_{args.contig}.pickle.gz')
+            df.to_csv(f'{args.table}_ratio_{args.contig}.csv')
         else:
-            df.to_pickle(f'{args.table}.pickle.gz')
-            df.to_csv(f'{args.table}.csv')
+            df.to_pickle(f'{args.table}_ratio.pickle.gz')
+            df.to_csv(f'{args.table}_ratio.csv')
 
     # Sort and index
     # Perform a reheading, sort and index
