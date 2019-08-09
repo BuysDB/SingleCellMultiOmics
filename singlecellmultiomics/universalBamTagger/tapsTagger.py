@@ -79,7 +79,7 @@ if __name__=='__main__':
             hold_merge.append(job)
 
         hold =  ','.join(hold_merge)
-        os.system( f'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.bam"' )
+        os.system( f'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"' )
         exit()
 
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
@@ -108,7 +108,8 @@ if __name__=='__main__':
                         #radius in order to capture spliced transcripts
                         'taps':taps,
                         'min_max_mapping_quality':args.min_mq
-                    }
+                    },
+                    contig=contig
             )):
             if i>args.head:
                 break
