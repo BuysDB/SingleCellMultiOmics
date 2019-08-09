@@ -45,6 +45,8 @@ if __name__=='__main__':
     argparser.add_argument('-ref',  type=str, required=False, help='path to reference fasta file ')
     argparser.add_argument('-min_mq',  default=20, type=int, help='Min mapping qual')
     argparser.add_argument('-uhd',  default=1, type=int, help='Umi hamming distance')
+    argparser.add_argument('-mem',  default=40, type=int, help='Memory used per job')
+    argparser.add_argument('-time',  default=52, type=int, help='Time requested per job')
     argparser.add_argument('-head',  type=int)
     argparser.add_argument('-stranded',  action='store_true')
     argparser.add_argument('-contig',  type=str,help='contig to run on')
@@ -75,11 +77,11 @@ if __name__=='__main__':
             temp_bam_path = f'{temp_prefix}_{chrom}.bam'
             arguments = " ".join([x for x in sys.argv if not x==args.o in x and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
             job = f'TAPS_{str(uuid.uuid4())}'
-            os.system( f'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job} " {arguments};"' )
+            os.system( f'submission.py' + f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"' )
             hold_merge.append(job)
 
         hold =  ','.join(hold_merge)
-        os.system( f'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"' )
+        os.system( f'submission.py' + f' -y --py36 -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"' )
         exit()
 
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
