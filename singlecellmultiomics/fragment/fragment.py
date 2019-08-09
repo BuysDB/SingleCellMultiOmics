@@ -133,6 +133,17 @@ class Fragment():
             raise IndexError('The fragment has no associated R2')
         return self.reads[1]
 
+    def has_R1(self):
+        if len(self.reads)==0:
+            return False
+        return self.reads[0] is not None
+        
+    def has_R2(self):
+        if len(self.reads)<2:
+            return False
+        return self.reads[1] is not None
+
+
     def update_span(self):
         surfaceStart = None
         surfaceEnd = None
@@ -239,6 +250,8 @@ class Fragment():
         umi:{self.get_umi()}
         span:{('%s %s-%s' % self.get_span())}
         strand:{self.get_strand_repr()}
+        has R1: {"yes" if self.has_R1() else "no"}
+        has R2: {"yes" if self.has_R2() else "no"}
         """ + '\n\t'.join([f'{key}:{str(value)}'for key,value in self.meta.items()])
 
     def get_html(self, chromosome=None, span_start=None, span_end=None, show_read1=None, show_read2=None):
