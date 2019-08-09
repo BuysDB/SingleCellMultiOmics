@@ -19,9 +19,14 @@ def decodeKvPairs(kv):
 import collections
 
 
-def exonGTF_to_intronGTF(exon_path):
+def exonGTF_to_intronGTF(exon_path, id):
     geneToExonRanges = collections.defaultdict(list) #(gene,chrom,strand)-> [range(start,end), range(start,end)]
     prevChrom = None
+    capture = list( set(['transcript_id','transcript_name','gene_name'])-set([id]) )
+    print(capture)
+
+    id_to_features = {}
+
     with gzip.open(exon_path,'rt') if exon_path.endswith('.gz') else open(exon_path) as f:
         for line in f:
             if line.startswith('#'):
@@ -32,13 +37,17 @@ def exonGTF_to_intronGTF(exon_path):
             if feature_type!='exon':
                 continue
 
+            meta = decodeKvPairs(kv)
+            id_to_features[meta[id]] = {
+                c:meta.get(c) for c in capture
+            }
             geneToExonRanges[(
-                decodeKvPairs(kv)['gene_id'],chromosome,strand,source
+                meta[id],chromosome,strand,source
                 )
                 ].append( range(int(feature_start),int(feature_end)+1))
 
             if prevChrom is not None and prevChrom!=chromosome:
-                for intr in generate_introns(geneToExonRanges):
+                for intr in generate_introns(geneToExonRanges,id,id_to_features):
                     yield intr
                 geneToExonRanges = collections.defaultdict(list)
 
@@ -46,21 +55,27 @@ def exonGTF_to_intronGTF(exon_path):
             prevChrom = chromosome
 
     if prevChrom is not None:
-        for intr in generate_introns(geneToExonRanges):
+        for intr in generate_introns(geneToExonRanges,id,id_to_features):
             yield intr
         geneToExonRanges = collections.defaultdict(list)
 
-def generate_introns(geneToExonRanges):
+def generate_introns(geneToExonRanges,id,id_to_features):
     for g in geneToExonRanges:
         if len(geneToExonRanges[g])==0:
             continue
         geneStart = min([min(r) for r in geneToExonRanges[g]])
         geneEnd = max([max(r) for r in geneToExonRanges[g]])
-        gene_id, chromosome, strand,source = g
+        gene_identifier_or_other, chromosome, strand,source = g
 
         introns = []
         in_intron = None
         current_intron_start = None
+        rest_data = id_to_features.get(gene_identifier_or_other,{})
+
+        if len(rest_data)>0:
+            rest = '; '.join( [f'{key}:{value}' for key, value in rest_data.items()] )
+        else:
+            rest=''
 
         for i in sorted(
 
@@ -79,7 +94,7 @@ def generate_introns(geneToExonRanges):
                         i-1,
                         '.',
                         strand,
-                        '.', f'gene_id "{gene_id}";']])+'\n'
+                        '.', f'{id} "{gene_identifier_or_other}";{rest}']])+'\n'
 
                 in_intron = False
             else:
@@ -90,11 +105,12 @@ def generate_introns(geneToExonRanges):
 if __name__=='__main__':
     argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Convert exonic GTF file to intronic GTF file")
     argparser.add_argument('gffin')
+    argparser.add_argument('-id', help='identifier', default='gene_id')
     argparser.add_argument('-o', help="Output GTF file", type=str, required=True)
     args = argparser.parse_args()
 
 
     with gzip.open(args.o, 'wt') if args.o.endswith('.gz') else open(args.o, 'w') as o:
-        for intron in exonGTF_to_intronGTF(args.gffin):
+        for intron in exonGTF_to_intronGTF(args.gffin, args.id):
             if intron is not None:
                 o.write(intron)
