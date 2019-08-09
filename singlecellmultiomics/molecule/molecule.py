@@ -6,6 +6,7 @@ import collections
 import itertools
 import numpy as np
 from singlecellmultiomics.utils import style_str
+from more_itertools import consecutive_groups
 
 def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2, max_N_distance=0): #1: read1 2: read2
     rp = collections.defaultdict(list)
@@ -34,6 +35,17 @@ def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2, max
                         rp[other_start, other_seq].append(fragment)
     return rp
 
+
+# https://stackoverflow.com/questions/2154249/identify-groups-of-continuous-numbers-in-a-list
+def find_ranges(iterable):
+    """Yield range of consecutive numbers."""
+    for group in consecutive_groups(iterable):
+        group = list(group)
+        if len(group) == 1:
+            yield group[0]
+        else:
+            yield group[0], group[-1]
+            
 class Molecule():
     """Molecule class, contains one or more associated fragments
 
@@ -140,6 +152,20 @@ class Molecule():
             return False
 
         return True
+
+
+    def get_aligned_blocks(self):
+        """ get all consecutive blocks of aligned reference positions
+
+        Returns:
+            sorted list of aligned blocks (list) : [ (start, end), (start, end) ]
+        """
+        return find_ranges(
+            sorted(list(set(
+                (ref_pos
+                for read in self.iter_reads()
+                for q_pos, ref_pos in read.get_aligned_pairs(matches_only=True, with_seq=False) ))))
+            )
 
     def __len__(self):
         return len(self.fragments)
