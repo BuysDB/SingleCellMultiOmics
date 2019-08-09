@@ -86,12 +86,14 @@ if __name__=='__main__':
     taps = singlecellmultiomics.molecule.TAPS(reference=reference)
     temp_out = f'{args.o}.temp.out.bam'
 
+    # Obtain contig sizes:
+    ref_lengths = {r:alignments.get_reference_length(r) for r in alignments.references}
+
     # Methylation dictionary: site->cell->value
     binned_data = collections.defaultdict(lambda: collections.defaultdict(Fraction))
     cell_count=collections.Counter()
 
     with pysam.AlignmentFile(temp_out , "wb",header=alignments.header) as output:
-
         for i,molecule in  enumerate(
             singlecellmultiomics.molecule.MoleculeIterator(
                     alignments=alignments,
@@ -141,6 +143,10 @@ if __name__=='__main__':
                     unmethylated_hits += 1
                 if args.table is not None:
                     for binIdx in singlecellmultiomics.utils.coordinate_to_bins(location, args.bin_size, args.sliding_increment):
+                        bin_start, bin_end = binIdx
+                        if bin_start<0 or bin_end>ref_lengths[molecule.chromosome]:
+                            continue
+
                         if args.stranded:
                             binned_data[(chromosome, molecule.get_strand_repr(), binIdx)][molecule.get_sample()][call.isupper()]+=1
                             cell_count[molecule.get_sample()]+=1
