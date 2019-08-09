@@ -70,7 +70,7 @@ if __name__=='__main__':
         temp_prefix = os.path.abspath( os.path.dirname(args.o) )+ '/' + str(uuid.uuid4())
         hold_merge=[]
         for chrom in alignments.references:
-            if chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom:
+            if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom:
                 continue
             temp_bam_path = f'{temp_prefix}_{chrom}.bam'
             arguments = " ".join([x for x in sys.argv if not x==args.o in x and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
@@ -79,7 +79,7 @@ if __name__=='__main__':
             hold_merge.append(job)
 
         hold =  ','.join(hold_merge)
-        print( f'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.bam"' )
+        os.system( f'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.bam"' )
         exit()
 
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
