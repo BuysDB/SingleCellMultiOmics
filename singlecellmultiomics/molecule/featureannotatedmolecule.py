@@ -26,6 +26,15 @@ class FeatureAnnotatedMolecule(Molecule):
         self.genes = set()
         self.introns = set()
         self.exons = set()
+        self.is_spliced=None
+
+    def set_spliced(self, is_spliced):
+        """ Set wether the transcript is spliced, False has priority over True """
+        if self.is_spliced == True and not is_spliced:
+            # has already been set
+            self.is_spliced = False
+        else:
+            self.is_spliced = is_spliced
 
     def set_intron_exon_features(self):
         if not self.is_annotated:
@@ -36,6 +45,7 @@ class FeatureAnnotatedMolecule(Molecule):
 
         # (gene, transcript) -> set( exon_id  .. )
         exon_hits = collections.defaultdict(set)
+        intron_hits = collections.defaultdict(set)
 
         for hit, locations in self.hits.items():
             if type(hit) is not tuple:
@@ -43,23 +53,31 @@ class FeatureAnnotatedMolecule(Molecule):
             meta = dict(list(hit))
             if not 'gene_id' in meta:
                 continue
-            if 'exon_id' in meta:
+            if meta.get('type')=='exon':
                 if not 'transcript_id' in meta:
                     continue
                 self.genes.add(meta['gene_id'])
                 self.exons.add(meta['exon_id'])
                 exon_hits[(meta['gene_id'],meta['transcript_id'])].add(meta['exon_id'])
-            else: # intron hit:
+            elif meta.get('type')=='intron':
                 self.genes.add(meta['gene_id'])
                 self.introns.add(meta['gene_id'])
+                exon_hits[(meta['gene_id'],meta['transcript_id'])].add(meta['exon_id'])
 
         # Find junctions and add all annotations to annotation sets
         debug = []
+
         for (gene, transcript), exons_overlapping in exon_hits.items():
             # If two exons are detected from the same gene we detected a junction:
             if len(exons_overlapping)>1:
                 self.junctions.add(gene)
-                spliced=True
+
+                # We found two exons and an intron:
+                if gene in self.introns:
+                    self.set_spliced(False)
+                else:
+                    self.set_spliced(True)
+
             debug.append( f'{gene}_{transcript}:' + ','.join(list(exons_overlapping)) )
 
         # Write exon dictionary:
@@ -84,7 +102,10 @@ class FeatureAnnotatedMolecule(Molecule):
         else:
             # Doesn't map to gene
             self.set_meta('IT',0)
-
+        if self.is_spliced is True:
+            self.set_meta('SP',True)
+        elif self.is_spliced is False:
+            self.set_meta('SP',False)
 
     def annotate(self, method=0):
         """
