@@ -22,7 +22,11 @@ import collections
 def exonGTF_to_intronGTF(exon_path, id):
     geneToExonRanges = collections.defaultdict(list) #(gene,chrom,strand)-> [range(start,end), range(start,end)]
     prevChrom = None
-    capture = list( set(['transcript_id','transcript_name','gene_name'])-set([id]) )
+    capture = list( set(['gene_id',
+       'gene_version', 'transcript_version','gene_name',
+       'gene_source', 'gene_biotype', 'transcript_name', 'transcript_source',
+       'transcript_biotype',
+       'transcript_support_level'])-set([id]) )
     print(capture)
 
     id_to_features = {}
