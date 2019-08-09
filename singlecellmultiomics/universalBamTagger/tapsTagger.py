@@ -153,6 +153,19 @@ if __name__=='__main__':
             molecule.write_pysam(output)
 
     if args.table is not None:
+        # Write raw counts:
+        df = pd.DataFrame(
+            {loc:{sample: binned_data[loc][sample][0] for sample in binned_data[loc] } for loc in binned_data})
+        df.to_pickle(f'{args.table}_unmethylated_{args.contig}.pickle.gz')
+        df.to_csv(f'{args.table}_unmethylated_{args.contig}.csv')
+        del df
+
+        df = pd.DataFrame(
+            {loc:{sample: binned_data[loc][sample][1] for sample in binned_data[loc] } for loc in binned_data})
+        df.to_pickle(f'{args.table}_methylated_{args.contig}.pickle.gz')
+        df.to_csv(f'{args.table}_methylated_{args.contig}.csv')
+        del df
+
         #cast all fractions to float
         for loc in binned_data:
             for sample in binned_data[loc]:
