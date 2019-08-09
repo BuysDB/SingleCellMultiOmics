@@ -26,6 +26,7 @@ class FeatureAnnotatedMolecule(Molecule):
         self.genes = set()
         self.introns = set()
         self.exons = set()
+        self.exon_hit_gene_names = set() # readable names
         self.is_spliced=None
 
     def set_spliced(self, is_spliced):
@@ -59,6 +60,8 @@ class FeatureAnnotatedMolecule(Molecule):
                 self.genes.add(meta['gene_id'])
                 self.exons.add(meta['exon_id'])
                 exon_hits[(meta['gene_id'],meta['transcript_id'])].add(meta['exon_id'])
+                if 'gene_name' in meta:
+                    self.exon_hit_gene_names.add(meta['gene_name'])
             elif meta.get('type')=='intron':
                 self.genes.add(meta['gene_id'])
                 self.introns.add(meta['gene_id'])
@@ -127,6 +130,8 @@ class FeatureAnnotatedMolecule(Molecule):
             self.set_meta('SP',True)
         elif self.is_spliced is False:
             self.set_meta('SP',False)
+        if len(self.exon_hit_gene_names):
+            self.set_meta('gn',';'.join(list(self.exon_hit_gene_names)))
 
     def annotate(self, method=0):
         """
