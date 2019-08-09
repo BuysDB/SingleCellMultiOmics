@@ -100,6 +100,7 @@ class FeatureContainer:
 
 
                     if store_all:
+                        keyValues['type'] = parts[2]
                         self.addFeature( self.remapKeys.get(chromosome, chromosome), int(parts[3]),
                         int(parts[4]), strand=parts[6], name=featureName, data=tuple(keyValues.items()))
 
