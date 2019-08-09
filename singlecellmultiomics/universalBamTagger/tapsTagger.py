@@ -113,7 +113,7 @@ if __name__=='__main__':
                     },
                     contig=args.contig
             )):
-            if i>args.head:
+            if args.head is not None and i>args.head:
                 break
 
             if samples is not None and molecule.sample not in samples:
