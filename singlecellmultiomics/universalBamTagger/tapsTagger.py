@@ -111,7 +111,7 @@ if __name__=='__main__':
                         'taps':taps,
                         'min_max_mapping_quality':args.min_mq
                     },
-                    contig=contig
+                    contig=args.contig
             )):
             if i>args.head:
                 break
