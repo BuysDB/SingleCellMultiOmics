@@ -108,6 +108,12 @@ if __name__=='__main__':
                     }
             )):
 
+            if samples is not None and molecule.sample not in samples:
+                molecule.set_rejection_reason('sample_not_selected')
+                if output is not None:
+                    molecule.write_pysam(output)
+                continue
+
             if not molecule.is_valid():
                 molecule.set_meta('RF','rejected_molecule')
                 molecule.write_tags()
@@ -115,17 +121,28 @@ if __name__=='__main__':
                 continue
 
 
-            if args.table is not None:
-                for (chromosome, location),call in molecule.methylation_call_dict.items():
-                    if call=='.': # Only use calls concerning C's
-                        continue
-                    # Skip non-selected contexts
-                    if contexts is not None and call not in contexts:
-                        continue
+            got_context_hit = False
+            methylated_hits = 0
+            unmethylated_hits = 0
+            for (chromosome, location),call in molecule.methylation_call_dict.items():
+                if call=='.': # Only use calls concerning C's
+                    continue
+                # Skip non-selected contexts
+                if contexts is not None and call not in contexts:
+                    continue
+                got_context_hit+=1
+
+                if call.isupper():
+                    methylated_hits += 1
+                else:
+                    unmethylated_hits += 1
+                if args.table is not None:
                     for binIdx in singlecellmultiomics.utils.coordinate_to_bins(location, args.bin_size, args.sliding_increment):
                         binned_data[(chromosome, molecule.get_strand_repr(), binIdx)][molecule.get_sample()][call.isupper()]+=1
                         cell_count[molecule.get_sample()]+=1
 
+            molecule.set_meta('ME',methylated_hits)
+            molecule.set_meta('um',unmethylated_hits)
             molecule.write_tags()
             molecule.set_meta('RF','accepted_molecule')
             molecule.write_pysam(output)
