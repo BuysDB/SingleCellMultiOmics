@@ -27,6 +27,8 @@ class NLAIIIFragment(Fragment):
 
     def set_site(self, site_chrom, site_pos, site_strand=None ):
         self.set_meta('DS',site_pos)
+        if site_strand is not None:
+            self.set_meta('RS',site_strand)
         self.set_strand(site_strand)
         self.site_location = (site_chrom, site_pos)
         self.cut_site_strand = site_strand
@@ -34,7 +36,6 @@ class NLAIIIFragment(Fragment):
     def identify_site(self):
 
         R1,R2 = self.reads
-
         """ Valid configs:
         CATG######## R1 ########## ^ ########## R2 ##########
         ############ R2 ########## ^ ########### R1 #####CATG  reverse case
