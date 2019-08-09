@@ -121,7 +121,8 @@ tags = [
     SamTag('AI', 'AssignedIntrons'),
     SamTag('AE', 'AssingedExons'),
     SamTag('iH', 'IntronHits amount of bases aligned to intron'),
-    SamTag('eH', 'ExonHits amount of bases aligned to exon')
+    SamTag('eH', 'ExonHits amount of bases aligned to exon'),
+    SamTag('SP', 'IsSpliced')
 
 ]
 
