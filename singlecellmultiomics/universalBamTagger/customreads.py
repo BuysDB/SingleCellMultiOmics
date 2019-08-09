@@ -8,8 +8,10 @@ class VaninsbergheQueryNameFlagger(DigestFlagger):
 
     def digest(self, reads):
         for read in reads:
+            if read is None:
+                continue
             origin, mi_tag, cell_barcode, umi, cell_index = read.query_name.rsplit(':',4)
             read.set_tag('MI', mi_tag)
-            read.set_tag('RX', mi_tag)
+            read.set_tag('RX', umi)
             read.set_tag('BI', int(cell_index))
             read.set_tag('SM', cell_barcode)

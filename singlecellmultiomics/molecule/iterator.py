@@ -16,6 +16,7 @@ class MoleculeIterator():
         perform_qflag=True,
         pooling_method=1,
         yield_invalid=False,
+        queryNameFlagger=None,
         **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
@@ -39,11 +40,17 @@ class MoleculeIterator():
 
             yield_invalid (bool) : When true all fragments which are invalid will be yielded as a molecule
 
+            queryNameFlagger(class) : class which contains the method digest(self, reads) which accepts pysam.AlignedSegments and adds at least the SM and RX tags
+
             **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
 
         Yields:
             molecule (Molecule): Molecule
         """
+        if queryNameFlagger is None:
+            queryNameFlagger = singlecellmultiomics.universalBamTagger.QueryNameFlagger()
+        self.queryNameFlagger = queryNameFlagger
+
         self.alignments = alignments
         self.moleculeClass = moleculeClass
         self.fragmentClass = fragmentClass
@@ -87,7 +94,7 @@ class MoleculeIterator():
 
     def __iter__(self):
         if self.perform_qflag:
-            qf = singlecellmultiomics.universalBamTagger.QueryNameFlagger()
+            qf = self.queryNameFlagger
 
         self._clear_cache()
 
