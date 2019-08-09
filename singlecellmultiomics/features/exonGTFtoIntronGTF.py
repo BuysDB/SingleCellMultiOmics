@@ -43,7 +43,7 @@ def exonGTF_to_intronGTF(exon_path, id):
 
             meta = decodeKvPairs(kv)
             id_to_features[meta[id]] = {
-                c:meta.get(c) for c in capture
+                c:meta.get(c) for c in capture if c in meta
             }
             geneToExonRanges[(
                 meta[id],chromosome,strand,source
