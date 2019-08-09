@@ -75,7 +75,7 @@ if __name__=='__main__':
             temp_bam_path = f'{temp_prefix}_{chrom}.bam'
             arguments = " ".join([x for x in sys.argv if not x==args.o in x and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
             job = f'TAPS_{str(uuid.uuid4())}'
-            print( f'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job} " {arguments};"' )
+            os.system( f'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job} " {arguments};"' )
             hold_merge.append(job)
 
         hold =  ','.join(hold_merge)
