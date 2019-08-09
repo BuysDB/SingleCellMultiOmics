@@ -1,16 +1,7 @@
 from singlecellmultiomics.molecule.molecule import Molecule
 import collections
-from more_itertools import consecutive_groups
 
-# https://stackoverflow.com/questions/2154249/identify-groups-of-continuous-numbers-in-a-list
-def find_ranges(iterable):
-    """Yield range of consecutive numbers."""
-    for group in consecutive_groups(iterable):
-        group = list(group)
-        if len(group) == 1:
-            yield group[0]
-        else:
-            yield group[0], group[-1]
+
 
 class FeatureAnnotatedMolecule(Molecule):
     """Molecule which is annotated with features (genes/exons/introns, .. )
@@ -42,34 +33,37 @@ class FeatureAnnotatedMolecule(Molecule):
 
         # Collect all hits:
         hits = self.hits.keys()
-        f_hits = collections.defaultdict(collections.Counter)
-        for hit in hits:
-            if hit.startswith('type:exon'):
-                gene = hit.split(',')[-1].replace('gene_id:','')
-                self.genes.add(gene)
-                self.exons.add(gene)
-                #if allele is not None:
-                #    gene = f'{allele}_{gene}_{self.chromosome}'
-                f_hits[gene]['exon']+=1
-            elif hit.startswith('type:intron'):
-                gene = hit.split(',')[-1].replace('gene_id:','')
-                self.genes.add(gene)
-                self.introns.add(gene)
-                #if allele is not None:
-                #       gene = f'{allele}_{gene}_{self.chromosome}'
-                f_hits[gene]['intron']+=1
+
+        # (gene, transcript) -> set( exon_id  .. )
+        exon_hits = collections.defaultdict(set)
+
+        for hit, locations in self.hits.items():
+            if type(hit) is not tuple:
+                continue
+            meta = dict(list(hit))
+            if not 'gene_id' in meta:
+                continue
+            if 'exon_id' in meta:
+                if not 'transcript_id' in meta:
+                    continue
+                self.genes.add(meta['gene_id'])
+                self.exons.add(meta['exon_id'])
+                exon_hits[(meta['gene_id'],meta['transcript_id'])].add(meta['exon_id'])
+            else: # intron hit:
+                self.genes.add(meta['gene_id'])
+                self.introns.add(meta['gene_id'])
 
         # Find junctions and add all annotations to annotation sets
-        for gene, intron_exon_hits in f_hits.items():
-
-            spliced=True
-            if 'intron' in intron_exon_hits:
-                spliced=False
-
+        debug = []
+        for (gene, transcript), exons_overlapping in exon_hits.items():
             # If two exons are detected from the same gene we detected a junction:
-            if intron_exon_hits['exon']>=2:
+            if len(exons_overlapping)>1:
                 self.junctions.add(gene)
+                spliced=True
+            debug.append( f'{gene}_{transcript}:' + ','.join(list(exons_overlapping)) )
 
+        # Write exon dictionary:
+        self.set_meta('DB', ';'.join(debug) )
 
     def write_tags(self):
         Molecule.write_tags(self)
@@ -105,12 +99,7 @@ class FeatureAnnotatedMolecule(Molecule):
 
             # Obtain all blocks:
             try:
-                for start,end in find_ranges(
-                    sorted(list(set(
-                        (ref_pos
-                        for read in self.iter_reads()
-                        for q_pos, ref_pos in read.get_aligned_pairs(matches_only=True, with_seq=False) ))))
-                    ):
+                for start,end in self.get_aligned_blocks():
                     for hit in self.features.findFeaturesBetween(chromosome =self.chromosome, sampleStart=start, sampleEnd=end, strand=strand):
                         hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
                         self.hits[hit_ids].add((self.chromosome,(hit_start,hit_end)))
