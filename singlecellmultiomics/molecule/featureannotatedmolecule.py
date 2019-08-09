@@ -1,6 +1,6 @@
 from singlecellmultiomics.molecule.molecule import Molecule
 import collections
-
+import pandas as pd
 
 
 class FeatureAnnotatedMolecule(Molecule):
@@ -82,6 +82,27 @@ class FeatureAnnotatedMolecule(Molecule):
 
         # Write exon dictionary:
         self.set_meta('DB', ';'.join(debug) )
+
+    def get_hit_df(self):
+        """Obtain dataframe with hits
+        Returns:
+            pd.DataFrame
+        """
+        if not self.is_annotated:
+            self.set_intron_exon_features()
+
+        d = {}
+        tabulated_hits = []
+        for hit, locations in self.hits.items():
+            if type(hit) is not tuple:
+                continue
+            meta = dict(list(hit))
+            for location in locations:
+                location_dict = {'chromosome':location[0], 'start':location[1][0], 'end':location[1][1]}
+                location_dict.update(meta)
+                tabulated_hits.append(location_dict)
+
+        return pd.DataFrame(tabulated_hits)
 
     def write_tags(self):
         Molecule.write_tags(self)
