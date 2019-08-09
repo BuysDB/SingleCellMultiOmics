@@ -108,6 +108,8 @@ if __name__=='__main__':
                         'min_max_mapping_quality':args.min_mq
                     }
             )):
+            if i>args.head:
+                break
 
             if samples is not None and molecule.sample not in samples:
                 molecule.set_rejection_reason('sample_not_selected')
