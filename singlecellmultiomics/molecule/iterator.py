@@ -3,6 +3,7 @@ from singlecellmultiomics.fragment import Fragment
 import singlecellmultiomics.universalBamTagger
 import pysamiterators.iterators
 import collections
+import pysam
 
 class MoleculeIterator():
 
@@ -19,7 +20,7 @@ class MoleculeIterator():
         """Iterate over molecules in pysam.AlignmentFile
 
         Args:
-            alignments (pysam.AlignmentFile): Alignments to extract molecules form
+            alignments (pysam.AlignmentFile) or iterable yielding tuples: Alignments to extract molecules from
 
             moleculeClass (pysam.FastaFile): Class to use for molecules.
 
@@ -91,10 +92,17 @@ class MoleculeIterator():
         self._clear_cache()
 
         self.waiting_fragments = 0
-        self.matePairIterator = pysamiterators.iterators.MatePairIterator(
-            self.alignments,
-            performProperPairCheck=False,
-            **self.pysamArgs)
+
+        # prepare the source iterator which generates the read pairs:
+        if type(self.alignments)==pysam.libcalignmentfile.AlignmentFile:
+            self.matePairIterator = pysamiterators.iterators.MatePairIterator(
+                self.alignments,
+                performProperPairCheck=False,
+                **self.pysamArgs)
+        else:
+            # If an iterable is provided use this as read source:
+            self.matePairIterator = self.alignments
+
         for R1,R2 in self.matePairIterator:
             # Make sure the sample/umi etc tags are placed:
             if self.perform_qflag:
