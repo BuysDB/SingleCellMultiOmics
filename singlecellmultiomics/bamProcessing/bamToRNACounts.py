@@ -29,7 +29,18 @@ matplotlib.rcParams['figure.dpi'] = 160
 
 import scanpy as sc
 
-def get_gene_id_to_gene_name_conversion_table(annotation_path_exons):
+def get_gene_id_to_gene_name_conversion_table(annotation_path_exons,
+                                            featureTypes=['gene_name']):
+    """Create a dictionary converting a gene id to other gene features,
+        such as gene_name/gene_biotype etc.
+
+    Arguments:
+        annotation_path_exons(str) : path to GTF file (can be gzipped)
+        featureTypes(list) : list of features to convert to, for example ['gene_name','gene_biotype']
+
+    Returns:
+        conversion_dict(dict) : { gene_id : 'firstFeature_secondFeature'}
+        """
     conversion_table = {}
     with (gzip.open(annotation_path_exons,'rt') if annotation_path_exons.endswith('.gz') else open(annotation_path_exons,'r')) as t:
         for i,line in enumerate(t):
@@ -41,8 +52,13 @@ def get_gene_id_to_gene_name_conversion_table(annotation_path_exons):
                     key = kv[0]
                     value = kv[1].replace('"', '')
                     keyValues[key] =  value
-            if 'gene_id' in keyValues and 'gene_name' in keyValues:
-                conversion_table[keyValues['gene_id']] = keyValues['gene_name']
+            # determine the conversion name:
+            if 'gene_id' in keyValues and any(
+                [feat in keyValues for feat in featureTypes]):
+                conversion_table[keyValues['gene_id']] = '_'.join([
+                    keyValues.get(feature,'None')
+                    for feature in featureTypes])
+
     return conversion_table
 
 def count_transcripts(cargs):
