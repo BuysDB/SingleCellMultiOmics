@@ -118,7 +118,7 @@ def read_should_be_counted(read, args):
             return False
 
     # Read is a duplicate
-    if read.is_unmapped or read.is_duplicate: #(args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
+    if read.is_unmapped or (args.dedup and (read.has_tag("RR") or read.is_duplicate)): #(args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
         return False
 
     return True
