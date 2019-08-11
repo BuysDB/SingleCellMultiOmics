@@ -61,6 +61,29 @@ class TestMolecule(unittest.TestCase):
         self.assertAlmostEqual(0.2070707, molecule.get_consensus_gc_ratio() )
 
 
+    def test_deduplication(self):
+        f= pysam.AlignmentFile('./data/mini_nla_test.bam')
+        total_frag_count = 0
+        for molecule in singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
+            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+            fragment_class_args={'umi_hamming_distance':0},
+            pooling_method=0,
+            yield_invalid=True
+        ):
+            if 'APKS2-P14-1-1' in molecule.sample:
+                for fragment in molecule:
+
+                    is_dup = False
+                    for read in fragment.reads:
+                        if read is not None and read.is_duplicate:
+                            is_dup = True
+                    if not is_dup:
+                        print(fragment)
+                        total_frag_count+=1
+        self.assertEqual(total_frag_count,13)
+
     def _pool_test(self, pooling_method=0,hd=0):
         for sample in ['AP1-P22-1-1_318','APKS2-P8-2-2_52']:
 
@@ -133,6 +156,8 @@ class TestMolecule(unittest.TestCase):
 
 
         #def test_rt_reaction_sizes(self):
+
+
 
     def test_feature_molecule(self):
         import singlecellmultiomics.features

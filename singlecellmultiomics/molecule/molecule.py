@@ -45,7 +45,7 @@ def find_ranges(iterable):
             yield group[0]
         else:
             yield group[0], group[-1]
-            
+
 class Molecule():
     """Molecule class, contains one or more associated fragments
 
@@ -300,7 +300,12 @@ class Molecule():
 
     def _add_fragment(self, fragment):
         self.match_hash = fragment.match_hash
+
+        # if we already had a fragment, this fragment is a duplicate:
+        if len(self.fragments)>1:
+            fragment.set_duplicate(True)
         self.fragments.append(fragment)
+
         # Update span:
         add_span = fragment.get_span()
         self.spanStart = add_span[1] if self.spanStart is None else min(add_span[1], self.spanStart)

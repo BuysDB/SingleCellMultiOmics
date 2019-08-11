@@ -58,6 +58,15 @@ class Fragment():
         self.update_span()
         self.update_umi()
 
+    def set_duplicate(self, is_duplicate):
+        """Define this fragment as duplicate, sets the corresponding bam bit flag
+        Args:
+            value(bool) : is_duplicate
+        """
+        for read in self.reads:
+            if read is not None:
+                read.is_duplicate = is_duplicate
+
     def write_tags(self):
         self.set_meta('MQ',self.mapping_quality)
         self.set_meta('MM',self.is_multimapped)
@@ -137,7 +146,7 @@ class Fragment():
         if len(self.reads)==0:
             return False
         return self.reads[0] is not None
-        
+
     def has_R2(self):
         if len(self.reads)<2:
             return False
