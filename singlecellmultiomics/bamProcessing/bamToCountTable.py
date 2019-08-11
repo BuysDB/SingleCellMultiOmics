@@ -118,7 +118,7 @@ def read_should_be_counted(read, args):
             return False
 
     # Read is a duplicate
-    if read.is_unmapped or (args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
+    if read.is_unmapped or read.is_duplicate: #(args.dedup and ( not read.has_tag('RC') or (read.has_tag('RC') and read.get_tag('RC')!=1))):
         return False
 
     return True
@@ -410,6 +410,7 @@ def create_count_table(args, return_df=False):
                 with open(args.bedfile, "r") as bfile:
                     #breader = csv.reader(bfile, delimiter = "\t")
                     for row in bfile:
+
                         parts = row.strip().split()
                         chromo, start, end, bname = parts[0], int(parts[1]), int(parts[2]), parts[3]
                         if args.contig is not None and chromo!=args.contig:
