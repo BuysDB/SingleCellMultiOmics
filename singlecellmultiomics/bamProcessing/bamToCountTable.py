@@ -229,7 +229,20 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
             raise NotImplementedError('Try using -joinedFeatureTags')
 
         for feature, value in feature_dict.items():
-            if args.splitFeatures:
+            if args.byValue is not None and feature==args.byValue:
+
+                try:
+                    add = float(feature_dict.get(args.byValue,0))
+                except ValueError:
+                    add = 0
+
+                count_increment.append({
+                    'key':tuple(joined_feature) ,
+                    'features':feature_dict,
+                    'samples':[sample],
+                    'increment':add})
+
+            elif args.splitFeatures:
                 for f in value.split(args.featureDelimiter):
                     count_increment.append({
                         'key':(f) ,
