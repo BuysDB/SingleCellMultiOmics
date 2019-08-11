@@ -291,7 +291,10 @@ def assignReads(read, countTable, args, joinFeatures, featureTags, sampleTags, m
     elif args.bedfile is not None:
 
         for dtable in count_increment:
-            key = dtable['key']
+            if args.byValue:
+                key = [args.byValue]
+            else:
+                key = dtable['key']
             countToAdd = dtable['increment']
             samples = dtable['samples']
 
