@@ -408,6 +408,12 @@ class Molecule():
                               call_dict, bismark_call_tag='XM',
                               total_methylated_tag='MC',
                               total_unmethylated_tag='uC',
+                              total_methylated_CPG_tag='sZ',
+                              total_unmethylated_CPG_tag='sz',
+                              total_methylated_CHH_tag='sH',
+                              total_unmethylated_CHH_tag='sh',
+                              total_methylated_CHG_tag='sX',
+                              total_unmethylated_CHG_tag='sx',
                              ):
         """Set methylation call tags given a methylation dictionary
 
@@ -428,6 +434,7 @@ class Molecule():
             can_be_yielded (bool)
         """
         self.methylation_call_dict = call_dict
+        molecule_XM = collections.Counter( list(self.methylation_call_dict.values() ))
         # Contruct XM strings
         for fragment in self:
             for read in fragment:
@@ -444,16 +451,55 @@ class Molecule():
                 )
 
                 # Set total methylated bases
+
                 read.set_tag(
                     total_methylated_tag,
-                    sum( x.isupper() for x in read.get_tag('XM') )
-                )
+                    molecule_XM['Z']+molecule_XM['X']+molecule_XM['H'] )
+
 
                 # Set total unmethylated bases
                 read.set_tag(
                     total_unmethylated_tag,
-                    sum( x.islower() for x in read.get_tag('XM') )
-                )
+                    molecule_XM['z']+molecule_XM['x']+molecule_XM['h'] )
+
+
+                # Set total CPG methylated and unmethylated:
+                read.set_tag(
+                    total_methylated_CPG_tag,
+                    molecule_XM['Z'])
+
+
+                read.set_tag(
+                    total_unmethylated_CPG_tag,
+                    molecule_XM['z'])
+
+
+                # Set total CHG methylated and unmethylated:
+                read.set_tag(
+                    total_methylated_CHG_tag,
+                    molecule_XM['X'])
+
+
+                read.set_tag(
+                    total_unmethylated_CHG_tag,
+                    molecule_XM['x'])
+
+
+                # Set total CHH methylated and unmethylated:
+                read.set_tag(
+                    total_methylated_CHH_tag,
+                    molecule_XM['H'])
+
+
+                read.set_tag(
+                    total_unmethylated_CHH_tag,
+                    molecule_XM['h'])
+
+
+
+
+
+
 
     def set_meta(self,tag,value):
         """Set meta information to all fragments
