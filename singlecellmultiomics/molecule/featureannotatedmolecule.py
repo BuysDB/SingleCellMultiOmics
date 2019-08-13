@@ -59,6 +59,8 @@ class FeatureAnnotatedMolecule(Molecule):
                     continue
                 self.genes.add(meta['gene_id'])
                 self.exons.add(meta['exon_id'])
+                if not 'transcript_id' in meta:
+                    raise ValueError("Please use an Intron GTF file generated using -id 'transcript_id'")
                 exon_hits[(meta['gene_id'],meta['transcript_id'])].add(meta['exon_id'])
                 if 'gene_name' in meta:
                     self.exon_hit_gene_names.add(meta['gene_name'])

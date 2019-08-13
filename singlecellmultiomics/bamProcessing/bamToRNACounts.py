@@ -107,8 +107,9 @@ def count_transcripts(cargs):
     features = singlecellmultiomics.features.FeatureContainer()
     if contig_mapping is not None:
         features.remapKeys = contig_mapping
-    features.loadGTF(args.gtfexon,select_feature_type=['exon'],head=args.hf,contig=contig)
-    features.loadGTF(args.gtfintron,select_feature_type=['intron'],head=args.hf,contig=contig)
+    features.loadGTF(args.gtfexon,select_feature_type=['exon'],identifierFields=('exon_id','transcript_id'),store_all=True,head=args.hf,contig=contig)
+    features.loadGTF(args.gtfintron,select_feature_type=['intron'],identifierFields=['transcript_id'],
+                               store_all=True,head=args.hf,contig=contig)
 
     # What is used for assignment of molecules?
     if args.method=='nla':
@@ -136,7 +137,11 @@ def count_transcripts(cargs):
     if args.producebam:
         bam_path_produced = f'{args.o}/output_bam_{contig}.unsorted.bam'
         with pysam.AlignmentFile(args.alignmentfiles[0]) as alignments:
-            output_bam = pysam.AlignmentFile(temp_out , "wb",header=alignments.header)
+            output_bam = pysam.AlignmentFile(bam_path_produced , "wb",header=alignments.header)
+
+    ref = None
+    if args.ref is not None:
+        ref = pysamiterators.iterators.CachedFasta(pysam.FastaFile(args.ref))
 
     for alignmentfile_path in args.alignmentfiles:
 
@@ -149,7 +154,8 @@ def count_transcripts(cargs):
                 molecule_class_args={
                     'features':features,
                     'stranded':stranded,
-                    'min_max_mapping_quality':args.minmq
+                    'min_max_mapping_quality':args.minmq,
+                    'reference':ref
                 },
 
                 fragmentClass=fragmentClass,
@@ -165,8 +171,14 @@ def count_transcripts(cargs):
             )
             for i,molecule in enumerate(molecule_iterator):
                 if not molecule.is_valid():
+                    if args.producebam:
+                        molecule.write_tags()
+                        molecule.write_pysam(output_bam)
                     continue
                 molecule.annotate(args.annotmethod)
+                if args.producebam:
+                    molecule.write_tags()
+                    molecule.write_pysam(output_bam)
                 hits = molecule.hits.keys()
                 allele= None
                 if allele_resolver is not None:
@@ -179,26 +191,43 @@ def count_transcripts(cargs):
 
                 molecule.set_intron_exon_features()
 
-                # Obtain introns/exons/splice junction information:
-                for intron in molecule.introns:
-                    if allele is not None:
-                        intron_counts_per_cell[molecule.sample][f'{allele}_{intron}'] += 1
-                    else:
-                        intron_counts_per_cell[molecule.sample][intron] += 1
-                for exon in molecule.exons:
-                    if allele is not None:
-                        intron_counts_per_cell[molecule.sample][f'{allele}_{exon}'] += 1
-                    else:
-                        exon_counts_per_cell[molecule.sample][exon] += 1
-                for junction in molecule.junctions:
-                    if allele is not None:
-                        intron_counts_per_cell[molecule.sample][f'{allele}_{junction}'] += 1
-                    else:
-                        junction_counts_per_cell[molecule.sample][junction]+=1
+                # Obtain total count introns/exons reduce it so the sum of the count will be 1:
+                total_count_for_molecule = len(molecule.genes )#len(molecule.introns.union( molecule.exons).difference(molecule.junctions))+len(molecule.junctions)
+                if total_count_for_molecule>0:
+                    count_to_add = 1/total_count_for_molecule
 
-                annotated_molecules += 1
+                    for gene in molecule.genes:
+                        if allele is not None:
+                            gene = f'{allele}_{gene}'
+                        exon_counts_per_cell[molecule.sample][gene] += count_to_add
+                        gene_set.add(gene)
+                        sample_set.add(molecule.get_sample())
 
+                    # Obtain introns/exons/splice junction information:
+                    """
 
+                    for intron in molecule.introns.difference(molecule.junctions):
+                        gene = intron
+                        if allele is not None:
+                            gene = f'{allele}_{intron}'
+                        intron_counts_per_cell[molecule.sample][gene] += count_to_add
+                        gene_set.add(gene)
+
+                    for exon in molecule.exons.difference(molecule.junctions):
+                        gene = exon
+                        if allele is not None:
+                            gene = f'{allele}_{exon}'
+                        exon_counts_per_cell[molecule.sample][gene] += count_to_add
+                        gene_set.add(gene)
+
+                    for junction in molecule.junctions:
+                        gene = junction
+                        if allele is not None:
+                            gene = f'{allele}_{junction}'
+                        junction_counts_per_cell[molecule.sample][gene] += count_to_add
+                        gene_set.add(gene)
+                    """
+                    annotated_molecules += 1
                 if args.head and i>args.head:
                     print(f"-head was supplied, {i} molecules discovered, stopping")
                     break
@@ -206,6 +235,11 @@ def count_transcripts(cargs):
 
     if args.producebam:
         output_bam.close()
+        final_bam_path = bam_path_produced.replace('.unsorted','')
+        cmd = f"""samtools sort {bam_path_produced} > {final_bam_path}; samtools index {final_bam_path};
+        rm {bam_path_produced};
+        """
+        os.system(cmd)
 
 
     return (
@@ -236,6 +270,7 @@ if __name__=='__main__':
     argparser.add_argument('-method',  type=str, help="Data type: vasa,nla,cs", required=True )
     argparser.add_argument('-head',  type=int, help="Process this amount of molecules and export tables, also set -hf to be really fast" )
     argparser.add_argument('-hf',  type=int, help="headfeatures Process this amount features and then continue, for a quick test set this to 1000 or so." )
+    argparser.add_argument('-ref',  type=str, help="Reference file (FASTA)" )
     argparser.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
     argparser.add_argument('--loadAllelesToMem',  action='store_true',help='Load allele data completely into memory')
     argparser.add_argument('--producebam',  action='store_true',help='Produce bam file with counts tagged')
@@ -264,6 +299,8 @@ if __name__=='__main__':
         for _,chrom in sorted(list(zip(g.lengths,g.references)), reverse=True):
 
             if chrom.startswith('ERCC') or chrom.startswith('chrUn') or chrom.endswith('_random') or chrom.startswith('GL')  or chrom.startswith('JH'):
+                continue
+            if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom:
                 continue
             if args.ignoreMT and chrom in ('mt','çhrMT','MT'):
                 print("Ignoring mitochondria")
@@ -303,7 +340,7 @@ if __name__=='__main__':
         annotated_molecules+=result_annotated_molecules
         # Now we finished counting
         contigs_todo = [x for x in contigs_todo if x!=result_contig]
-        print(f'Finished {result_contig}, so far found {read_molecules} molecules, annotated {annotated_molecules}')
+        print(f'Finished {result_contig}, so far found {read_molecules} molecules, annotated {annotated_molecules}, {len(sample_set)} samples')
         print(f"Remaining contigs:{','.join(contigs_todo)}")
 
         print('writing current matrices')
@@ -348,7 +385,7 @@ if __name__=='__main__':
         try:
             # Write scanpy file vanilla
             adata = sc.AnnData(
-                complete_matrix
+                complete_matrix.todense()
             )
             adata.var_names = gene_order
             adata.obs_names = sample_order
@@ -359,7 +396,7 @@ if __name__=='__main__':
                 complete_matrix,
                 layers={
                 'spliced':  sparse_intron_matrix,
-                'unspliced': sparse_exon_matrix
+                'unspliced': sparse_junction_matrix
                 #'junction' : sparse_junction_matrix
                }
             )
