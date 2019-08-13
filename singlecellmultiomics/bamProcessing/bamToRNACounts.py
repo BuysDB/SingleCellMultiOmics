@@ -133,6 +133,11 @@ def count_transcripts(cargs):
     sample_set = set()
     annotated_molecules = 0
     read_molecules=0
+    if args.producebam:
+        bam_path_produced = f'{args.o}/output_bam_{contig}.unsorted.bam'
+        with pysam.AlignmentFile(alignmentfile_path) as alignments:
+            output_bam = pysam.AlignmentFile(temp_out , "wb",header=alignments.header)
+
     for alignmentfile_path in args.alignmentfiles:
 
         i=0
@@ -159,6 +164,8 @@ def count_transcripts(cargs):
 
             )
             for i,molecule in enumerate(molecule_iterator):
+                if not molecule.is_valid():
+                    continue
                 molecule.annotate(args.annotmethod)
                 hits = molecule.hits.keys()
                 allele= None
@@ -189,11 +196,17 @@ def count_transcripts(cargs):
                     else:
                         junction_counts_per_cell[molecule.sample][junction]+=1
 
-                annotated_molecules += int(annotated)
+                annotated_molecules += 1
+
+
                 if args.head and i>args.head:
                     print(f"-head was supplied, {i} molecules discovered, stopping")
                     break
         read_molecules+=i
+
+    if args.producebam:
+        output_bam.close()
+
 
     return (
         gene_set,
