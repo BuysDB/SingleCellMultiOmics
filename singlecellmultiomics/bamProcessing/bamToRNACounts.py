@@ -135,7 +135,7 @@ def count_transcripts(cargs):
     read_molecules=0
     if args.producebam:
         bam_path_produced = f'{args.o}/output_bam_{contig}.unsorted.bam'
-        with pysam.AlignmentFile(alignmentfile_path) as alignments:
+        with pysam.AlignmentFile(args.alignmentfiles[0]) as alignments:
             output_bam = pysam.AlignmentFile(temp_out , "wb",header=alignments.header)
 
     for alignmentfile_path in args.alignmentfiles:
