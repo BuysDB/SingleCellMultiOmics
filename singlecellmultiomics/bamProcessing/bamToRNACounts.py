@@ -143,7 +143,8 @@ def count_transcripts(cargs):
                 moleculeClass= moleculeClass,
                 molecule_class_args={
                     'features':features,
-                    'stranded':stranded
+                    'stranded':stranded,
+                    'min_max_mapping_quality':args.minmq
                 },
 
                 fragmentClass=fragmentClass,
@@ -167,39 +168,26 @@ def count_transcripts(cargs):
                         allele = list(allele)[0]
                     else:
                         allele = 'noAllele'
-                f_hits = collections.defaultdict(collections.Counter)
-                for hit in hits:
-                    if hit.startswith('type:exon'):
-                        gene = hit.split(',')[-1].replace('gene_id:','')
-                        if allele is not None:
-                            gene = f'{allele}_{gene}_{molecule.chromosome}'
-                        f_hits[gene]['exon']+=1
-                    elif hit.startswith('type:intron'):
-                        gene = hit.split(',')[-1].replace('gene_id:','')
-                        if allele is not None:
-                            gene = f'{allele}_{gene}_{molecule.chromosome}'
-                        f_hits[gene]['intron']+=1
 
-                annotated = False
-                for gene, intron_exon_hits in f_hits.items():
 
-                    spliced=True
-                    if 'intron' in intron_exon_hits:
-                        spliced=False
+                molecule.set_intron_exon_features()
 
-                    # If two exons are detected from the same gene we detected a junction:
-                    if intron_exon_hits['exon']>=2:
-                        junction_counts_per_cell[molecule.sample][gene]+=1
-                    if not spliced:
-                        exon_counts_per_cell[molecule.sample][gene] += 1
+                # Obtain introns/exons/splice junction information:
+                for intron in molecule.introns:
+                    if allele is not None:
+                        intron_counts_per_cell[molecule.sample][f'{allele}_{intron}'] += 1
                     else:
-                        intron_counts_per_cell[molecule.sample][gene] += 1
-
-                    gene_set.add(gene)
-                    sample_set.add(molecule.sample)
-                    annotated = True
-                    # Only annotate one gene per molecule...
-                    break
+                        intron_counts_per_cell[molecule.sample][intron] += 1
+                for exon in molecule.exons:
+                    if allele is not None:
+                        intron_counts_per_cell[molecule.sample][f'{allele}_{exon}'] += 1
+                    else:
+                        exon_counts_per_cell[molecule.sample][exon] += 1
+                for junction in molecule.junctions:
+                    if allele is not None:
+                        intron_counts_per_cell[molecule.sample][f'{allele}_{junction}'] += 1
+                    else:
+                        junction_counts_per_cell[molecule.sample][junction]+=1
 
                 annotated_molecules += int(annotated)
                 if args.head and i>args.head:
@@ -231,11 +219,13 @@ if __name__=='__main__':
     argparser.add_argument('-gtfintron',  type=str, required=True, help="intron GTF file containing the features to plot")
     argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
     argparser.add_argument('-contigmapping',  type=str, help="Use this when the GTF chromosome names do not match the ones in you bam file" )
+    argparser.add_argument('-minmq',  type=int, help="Minimum molcule mapping quality", default=20 )
     argparser.add_argument('-method',  type=str, help="Data type: vasa,nla,cs", required=True )
     argparser.add_argument('-head',  type=int, help="Process this amount of molecules and export tables, also set -hf to be really fast" )
     argparser.add_argument('-hf',  type=int, help="headfeatures Process this amount features and then continue, for a quick test set this to 1000 or so." )
     argparser.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
     argparser.add_argument('--loadAllelesToMem',  action='store_true',help='Load allele data completely into memory')
+    argparser.add_argument('--producebam',  action='store_true',help='Produce bam file with counts tagged')
     argparser.add_argument('--ignoreMT',  action='store_true',help='Ignore mitochondria')
     argparser.add_argument('-t',  type=int, default=8, help="Amount of chromosomes processed in parallel" )
 
