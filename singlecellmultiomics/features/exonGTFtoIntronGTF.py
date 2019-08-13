@@ -109,7 +109,7 @@ def generate_introns(geneToExonRanges,id,id_to_features):
 if __name__=='__main__':
     argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="Convert exonic GTF file to intronic GTF file")
     argparser.add_argument('gffin')
-    argparser.add_argument('-id', help='identifier', default='gene_id')
+    argparser.add_argument('-id', help='identifier', default='transcript_id')
     argparser.add_argument('-o', help="Output GTF file", type=str, required=True)
     args = argparser.parse_args()
 
