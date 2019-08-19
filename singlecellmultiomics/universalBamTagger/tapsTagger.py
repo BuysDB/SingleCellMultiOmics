@@ -13,6 +13,9 @@ import sys
 import os
 import uuid
 import singlecellmultiomics.bamProcessing.bamFunctions as bf
+import singlecellmultiomics.features
+import colorama
+
 
 class Fraction:
     def __init__(self):
@@ -51,6 +54,14 @@ if __name__=='__main__':
     argparser.add_argument('-stranded',  action='store_true')
     argparser.add_argument('-contig',  type=str,help='contig to run on')
 
+
+    # Transcriptome splitting mode
+    tr = argparser.add_argument_group('transcriptome specific settings')
+    tr.add_argument('--transcriptome',  action='store_true', help='Label transcripts, requires exons and introns')
+    tr.add_argument('-exons', type=str, help='Exon GTF file')
+    tr.add_argument('-introns', type=str, help='Intron GTF file, use exonGTF_to_intronGTF.py to create this file')
+    tr.add_argument('-recovery_umi_pool_radius', type=int, help='BP radius. When assigning transcripts without NLA site found, use this radius for molecule pooling', default=4)
+
     argparser.add_argument('-samples',  type=str,help='Samples to select, separate with comma. For example CellA,CellC,CellZ', default=None)
     argparser.add_argument('-context',  type=str,help='Contexts to select, separate with comma. For example Z,H,X', default=None)
     args = argparser.parse_args()
@@ -67,7 +78,13 @@ if __name__=='__main__':
         if args.ref is None:
             raise ValueError("Supply reference, -ref")
 
+    if args.transcriptome:
+        print(colorama.Style.BRIGHT +'Running in transcriptome recovery mode'+ colorama.Style.RESET_ALL)
+        if args.exons is None or args.introns is None:
+            raise ValueError("Please supply both intron and exon GTF files")
+
     if args.contig is None:
+        print(colorama.Style.BRIGHT +'Submitting jobs for all chromosomes'+ colorama.Style.RESET_ALL)
         # Create jobs for all chromosomes:
         temp_prefix = os.path.abspath( os.path.dirname(args.o) )+ '/' + str(uuid.uuid4())
         hold_merge=[]
@@ -77,11 +94,11 @@ if __name__=='__main__':
             temp_bam_path = f'{temp_prefix}_{chrom}.bam'
             arguments = " ".join([x for x in sys.argv if not x==args.o in x and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
             job = f'TAPS_{str(uuid.uuid4())}'
-            os.system( f'submission.py' + f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"' )
+            os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"' )
             hold_merge.append(job)
 
         hold =  ','.join(hold_merge)
-        os.system( f'submission.py' + f' -y --py36 -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"' )
+        os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"' )
         exit()
 
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
@@ -95,26 +112,70 @@ if __name__=='__main__':
     binned_data = collections.defaultdict(lambda: collections.defaultdict(Fraction))
     cell_count=collections.Counter()
 
+    # Define molecule class arguments
+    molecule_class_args={
+        'reference':reference,
+        'site_has_to_be_mapped':True,
+        'taps':taps,
+        'min_max_mapping_quality':args.min_mq
+    }
+
+    # transcriptome mode specific arguments: ####
+    if args.transcriptome:
+
+        transcriptome_features = singlecellmultiomics.features.FeatureContainer()
+        print("Loading exons", end='\r')
+        transcriptome_features.loadGTF(args.exons,
+                                        select_feature_type=['exon'],
+                                       identifierFields=('exon_id','gene_id'),
+                                       store_all=True, contig=args.contig ,head=None)
+
+        print("Loading introns",end='\r')
+        transcriptome_features.loadGTF(args.introns,
+                                       select_feature_type=['intron'],
+                                       identifierFields=['transcript_id'],
+                                       store_all=True, contig=args.contig,head=None)
+        print("All features loaded")
+
+        rejected_reads = [] # Store all rejected, potential transcript reads
+
+        # Add more molecule class arguments
+        molecule_class_args.update({
+            'features':transcriptome_features
+        })
+
+        moleculeClass = singlecellmultiomics.molecule.AnnotatedTAPSNlaIIIMolecule
+        fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+    else:
+        moleculeClass = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
+        fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+
+
+    ###############################################
+    statistics = collections.defaultdict(collections.Counter)
+    mcs = collections.Counter() # methylation calls seen
+    print(colorama.Style.BRIGHT + "Running TAPS tagging" + colorama.Style.RESET_ALL)
     with pysam.AlignmentFile(temp_out , "wb",header=alignments.header) as output:
         for i,molecule in  enumerate(
             singlecellmultiomics.molecule.MoleculeIterator(
                     alignments=alignments,
-                    moleculeClass=singlecellmultiomics.molecule.TAPSNlaIIIMolecule,
-                    fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                    moleculeClass=moleculeClass,
+                    fragmentClass=fragmentClass,
                     fragment_class_args={'umi_hamming_distance':args.uhd},
                     yield_invalid=True,
-                    molecule_class_args={
-                       # 'features':transcriptome_features,
-                        'reference':reference,
-                        'site_has_to_be_mapped':True,
-                        #radius in order to capture spliced transcripts
-                        'taps':taps,
-                        'min_max_mapping_quality':args.min_mq
-                    },
+                    molecule_class_args=molecule_class_args,
                     contig=args.contig
             )):
+            statistics['Input']['molecules'] += 1
+            statistics['Input']['fragments'] += len(molecule)
             if args.head is not None and i>args.head:
+                print(colorama.Style.BRIGHT + colorama.Fore.RED + f"Head was supplied, stopped at {i} molecules" + colorama.Style.RESET_ALL)
                 break
+
+            # Set (chromosome) unique identifier
+            molecule.set_meta('mi',f'NLA_{i}')
+            if args.transcriptome:
+                molecule.set_intron_exon_features()
 
             if samples is not None and molecule.sample not in samples:
                 molecule.set_rejection_reason('sample_not_selected')
@@ -122,11 +183,38 @@ if __name__=='__main__':
                     molecule.write_pysam(output)
                 continue
 
-            if not molecule.is_valid():
-                molecule.set_meta('RF','rejected_molecule')
-                molecule.write_tags()
-                molecule.write_pysam(output)
-                continue
+            if args.transcriptome:
+                if not molecule.is_valid():
+                    if molecule.is_multimapped() or  molecule.get_max_mapping_qual()<args.min_mq:
+                        molecule.set_meta('RF','rejected_molecule_mq')
+                        molecule.write_tags()
+                        molecule.write_pysam(output)
+                        statistics['Filtering']['low mapping quality'] += 1
+                        statistics['Filtering']['rejected'] += 1
+                        continue
+
+                    rejected_reads.append(molecule[0].reads)
+                    continue
+                statistics['Filtering']['valid NLAIII molecule'] += 1
+                if len(molecule.junctions):
+                    molecule.set_meta('RF','transcript_junction')
+                    molecule.set_meta('dt','RNA')
+                    statistics['Data type detection']['RNA because junction found'] += 1
+                else:
+                    if len(molecule.genes)==0:
+                        molecule.set_meta('dt','DNA')
+                        statistics['Data type detection']['DNA not mapping to gene'] += 1
+                    else:
+                        molecule.set_meta('dt','RNA or DNA')
+            else:
+                if not molecule.is_valid():
+                    statistics['Filtering']['not valid NLAIII'] += 1
+                    molecule.set_meta('RF','rejected_molecule')
+                    molecule.write_tags()
+                    molecule.write_pysam(output)
+                    continue
+                statistics['Filtering']['valid NLAIII molecule'] += 1
+                molecule.set_meta('RF','accepted_molecule')
 
 
             got_context_hit = False
@@ -140,6 +228,7 @@ if __name__=='__main__':
                     continue
                 got_context_hit+=1
 
+                mcs[call] += 1
                 if call.isupper():
                     methylated_hits += 1
                 else:
@@ -159,11 +248,94 @@ if __name__=='__main__':
 
             molecule.set_meta('ME',methylated_hits)
             molecule.set_meta('um',unmethylated_hits)
+            statistics['Methylation']['methylated Cs'] += methylated_hits
+            statistics['Methylation']['unmethylated Cs'] += unmethylated_hits
             molecule.write_tags()
-            molecule.set_meta('RF','accepted_molecule')
             molecule.write_pysam(output)
 
+    if args.transcriptome:
+        print(colorama.Style.BRIGHT + f"Running transcriptome recovery on {len(rejected_reads)} reads")
+        for i,molecule in  enumerate(
+            singlecellmultiomics.molecule.MoleculeIterator(
+                # plug in the possible_transcripts as read source
+                alignments=rejected_reads,
+                # Drop the TAPS and NLAIII checks
+                moleculeClass=singlecellmultiomics.molecule.FeatureAnnotatedMolecule,
+                # Plain fragment, no NLAIII
+                fragmentClass=singlecellmultiomics.fragment.Fragment,
+                fragment_class_args={
+                    'umi_hamming_distance':args.uhd,
+                    # this is the amount of bases R1 can shift to be assigned to the same molecule
+                    'assignment_radius' : args.recovery_umi_pool_radius
+                },
+
+                yield_invalid=True,
+                molecule_class_args={
+                    'features':transcriptome_features,
+                    'reference':reference,
+                    'min_max_mapping_quality':20
+                }
+        )):
+            if not molecule.is_valid():
+                statistics['Filtering']['rejected at transcriptome recovery step'] += 1
+                statistics['Filtering']['rejected'] += 1
+                molecule.set_meta('RF','rejected_recovery_invalid')
+                molecule.write_tags()
+                molecule.write_pysam(output)
+                continue
+
+            molecule.set_meta('mi',f'TRAN_{i}')
+
+            # Add gene annotations:
+            molecule.annotate(0)
+            molecule.set_intron_exon_features()
+            if len(molecule.genes)==0:
+                molecule.set_meta('RF','rejected_recovery_no_gene')
+                statistics['Filtering']['rejected_recovery_no_gene'] += 1
+                molecule.write_tags()
+                molecule.write_pysam(output)
+                continue
+            if len(molecule.junctions):
+                molecule.set_meta('RF','recovered_transcript_junction')
+                statistics['Filtering']['recovered_transcript_junction'] += 1
+                statistics['Data type detection']['RNA because junction found and no NLAIII site mapped'] += 1
+            else:
+                molecule.set_meta('RF','recovered_transcript_gene')
+                statistics['Data type detection']['RNA because gene found and no NLAIII site mapped'] += 1
+                statistics['Filtering']['recovered_transcript_gene'] += 1
+            molecule.set_meta('dt','RNA')
+            statistics['Data type detection']['RNA'] += 1
+            molecule.write_tags()
+            molecule.write_pysam(output)
+
+
+    # Show statistics:
+    print('\n' + colorama.Style.BRIGHT +'Statistics'+ colorama.Style.RESET_ALL)
+    for statistic_class in ['Input','Filtering','Data type detection','Methylation']:
+        print(f'{colorama.Style.BRIGHT} {statistic_class} {colorama.Style.RESET_ALL}')
+        for statistic,value in statistics[statistic_class].most_common():
+            print(f'  {statistic}\t{value}')
+
+    print(f'{colorama.Style.BRIGHT} Methylation calls {colorama.Style.RESET_ALL}')
+    for call, description in zip('zZxXhH',
+        [ 'unmethylated C in CpG context (CG)',
+           'methylated C in CpG context (CG)',
+           'unmethylated C in CHG context ( C[ACT]G )',
+            'methylated C in CHG context   ( C[ACT]G )',
+            'unmethylated C in CHH context ( C[ACT][ACT] )',
+            'methylated C in CHH context ( C[ACT][ACT] )'
+            ]):
+
+        if call.isupper():
+            print(f'  {colorama.Style.BRIGHT}{call}{colorama.Style.RESET_ALL}\t{mcs[call]}',end='\t')
+        else:
+            print(f'  {call}\t{mcs[call]}',end='\t')
+        print(f'{colorama.Style.DIM}{description}{colorama.Style.RESET_ALL}')
+
+    print('\n')
+
     if args.table is not None:
+        print(colorama.Style.BRIGHT +'Writing raw unmethylated counts'+ colorama.Style.RESET_ALL)
         # Write raw counts:
         df = pd.DataFrame(
             {loc:{sample: binned_data[loc][sample][0] for sample in binned_data[loc] } for loc in binned_data})
@@ -171,12 +343,14 @@ if __name__=='__main__':
         df.to_csv(f'{args.table}_unmethylated_{args.contig}.csv')
         del df
 
+        print(colorama.Style.BRIGHT +'Writing raw methylated counts'+ colorama.Style.RESET_ALL)
         df = pd.DataFrame(
             {loc:{sample: binned_data[loc][sample][1] for sample in binned_data[loc] } for loc in binned_data})
         df.to_pickle(f'{args.table}_methylated_{args.contig}.pickle.gz')
         df.to_csv(f'{args.table}_methylated_{args.contig}.csv')
         del df
 
+        print(colorama.Style.BRIGHT +'Writing ratio tables'+ colorama.Style.RESET_ALL)
         #cast all fractions to float
         for loc in binned_data:
             for sample in binned_data[loc]:
@@ -190,9 +364,11 @@ if __name__=='__main__':
             df.to_pickle(f'{args.table}_ratio.pickle.gz')
             df.to_csv(f'{args.table}_ratio.csv')
 
+    print(colorama.Style.BRIGHT +'Sorting and indexing final file'+ colorama.Style.RESET_ALL)
     # Sort and index
     # Perform a reheading, sort and index
     cmd = f"""samtools sort {temp_out} > {args.o}; samtools index {args.o};
     rm {temp_out};
     """
     os.system(cmd)
+    print("All done.")
