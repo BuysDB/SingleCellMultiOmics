@@ -166,11 +166,12 @@ if __name__=='__main__':
                     molecule_class_args=molecule_class_args,
                     contig=args.contig
             )):
-            statistics['Input']['molecules'] += 1
-            statistics['Input']['fragments'] += len(molecule)
+
             if args.head is not None and i>args.head:
                 print(colorama.Style.BRIGHT + colorama.Fore.RED + f"Head was supplied, stopped at {i} molecules" + colorama.Style.RESET_ALL)
                 break
+            statistics['Input']['molecules'] += 1
+            statistics['Input']['fragments'] += len(molecule)
 
             # Set (chromosome) unique identifier
             molecule.set_meta('mi',f'NLA_{i}')
