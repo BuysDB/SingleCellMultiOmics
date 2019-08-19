@@ -39,7 +39,7 @@ if __name__=='__main__':
 
     argparser.add_argument('alignmentfile',  type=str)
     argparser.add_argument('-o',  type=str, help="output BAM path", required=True)
-    argparser.add_argument('-table',  type=str, help="output table alias", required=False)
+    argparser.add_argument('-table',  type=str, help="output table alias", default=None, required=False)
 
     argparser.add_argument('-bin_size',  type=int, default=250_000)
     argparser.add_argument('-sliding_increment',  type=int, default=50_000)
@@ -53,6 +53,8 @@ if __name__=='__main__':
     argparser.add_argument('-head',  type=int)
     argparser.add_argument('-stranded',  action='store_true')
     argparser.add_argument('-contig',  type=str,help='contig to run on')
+    argparser.add_argument('-cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
+    argparser.add_argument('-sort_index', action='store_true', help='sort and index the output bam')
 
 
     # Transcriptome splitting mode
@@ -82,24 +84,24 @@ if __name__=='__main__':
         print(colorama.Style.BRIGHT +'Running in transcriptome recovery mode'+ colorama.Style.RESET_ALL)
         if args.exons is None or args.introns is None:
             raise ValueError("Please supply both intron and exon GTF files")
+            
+    if args.cluster:
+        if args.contig is None:
+            # Create jobs for all chromosomes:
+            temp_prefix = os.path.abspath( os.path.dirname(args.o) )+ '/' + str(uuid.uuid4())
+            hold_merge=[]
+            for chrom in alignments.references:
+                if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom:
+                    continue
+                temp_bam_path = f'{temp_prefix}_{chrom}.bam'
+                arguments = " ".join([x for x in sys.argv if not x==args.o in x and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
+                job = f'TAPS_{str(uuid.uuid4())}'
+                os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"' )
+                hold_merge.append(job)
 
-    if args.contig is None:
-        print(colorama.Style.BRIGHT +'Submitting jobs for all chromosomes'+ colorama.Style.RESET_ALL)
-        # Create jobs for all chromosomes:
-        temp_prefix = os.path.abspath( os.path.dirname(args.o) )+ '/' + str(uuid.uuid4())
-        hold_merge=[]
-        for chrom in alignments.references:
-            if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom:
-                continue
-            temp_bam_path = f'{temp_prefix}_{chrom}.bam'
-            arguments = " ".join([x for x in sys.argv if not x==args.o in x and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
-            job = f'TAPS_{str(uuid.uuid4())}'
-            os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"' )
-            hold_merge.append(job)
-
-        hold =  ','.join(hold_merge)
-        os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"' )
-        exit()
+            hold =  ','.join(hold_merge)
+            os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"' )
+            exit()
 
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
     taps = singlecellmultiomics.molecule.TAPS(reference=reference)
@@ -368,8 +370,11 @@ if __name__=='__main__':
     print(colorama.Style.BRIGHT +'Sorting and indexing final file'+ colorama.Style.RESET_ALL)
     # Sort and index
     # Perform a reheading, sort and index
-    cmd = f"""samtools sort {temp_out} > {args.o}; samtools index {args.o};
-    rm {temp_out};
-    """
+    if args.sort_index:
+        cmd = f"""samtools sort {temp_out} > {args.o}; samtools index {args.o};
+        rm {temp_out};
+        """
+    else:
+        cmd = f"mv {temp_out} {args.o}"
     os.system(cmd)
     print("All done.")
