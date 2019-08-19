@@ -51,10 +51,10 @@ if __name__=='__main__':
     argparser.add_argument('-mem',  default=40, type=int, help='Memory used per job')
     argparser.add_argument('-time',  default=52, type=int, help='Time requested per job')
     argparser.add_argument('-head',  type=int)
-    argparser.add_argument('-stranded',  action='store_true')
+    argparser.add_argument('--stranded',  action='store_true')
     argparser.add_argument('-contig',  type=str,help='contig to run on')
-    argparser.add_argument('-cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
-    argparser.add_argument('-sort_index', action='store_true', help='sort and index the output bam')
+    argparser.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
+    argparser.add_argument('--no_sort_index', action='store_true', help='do not sort and index the output bam')
 
 
     # Transcriptome splitting mode
@@ -84,7 +84,7 @@ if __name__=='__main__':
         print(colorama.Style.BRIGHT +'Running in transcriptome recovery mode'+ colorama.Style.RESET_ALL)
         if args.exons is None or args.introns is None:
             raise ValueError("Please supply both intron and exon GTF files")
-            
+
     if args.cluster:
         if args.contig is None:
             # Create jobs for all chromosomes:
@@ -370,7 +370,7 @@ if __name__=='__main__':
     print(colorama.Style.BRIGHT +'Sorting and indexing final file'+ colorama.Style.RESET_ALL)
     # Sort and index
     # Perform a reheading, sort and index
-    if args.sort_index:
+    if not args.no_sort_index:
         cmd = f"""samtools sort {temp_out} > {args.o}; samtools index {args.o};
         rm {temp_out};
         """
