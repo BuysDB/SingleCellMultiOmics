@@ -76,6 +76,7 @@ tags = [
     SamTag('RG', 'readGroup'),
     SamTag('XA', 'alternativeAlignmentHits'),
     SamTag('MD', 'alignment'),
+    SamTag('dt', 'assingedDataType'),
 
 
     SamTag('fS', 'fragmentSizeTag'),
