@@ -57,6 +57,9 @@ setup(
         # Demultiplexing
         'singlecellmultiomics/modularDemultiplexer/demux.py',
 
+        # Fasta
+        'singlecellmultiomics/fastaProcessing/fastaMaskVariants.py',
+
         # Tagging
         'singlecellmultiomics/universalBamTagger/universalBamTagger.py',
         'singlecellmultiomics/universalBamTagger/tapsTagger.py',
