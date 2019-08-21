@@ -208,7 +208,13 @@ if __name__=='__main__':
                         molecule.set_meta('dt','DNA')
                         statistics['Data type detection']['DNA not mapping to gene'] += 1
                     else:
-                        molecule.set_meta('dt','RNA or DNA')
+                        # Check if NLA III sites are skipped...
+
+                        skipped = selected_mol.get_undigested_site_count()
+                        if skipped>0:
+                            molecule.set_meta('dt','DNA')
+                        else:
+                            molecule.set_meta('dt','RNA or DNA')
             else:
                 if not molecule.is_valid():
                     statistics['Filtering']['not valid NLAIII'] += 1
@@ -248,7 +254,7 @@ if __name__=='__main__':
                         else:
                             binned_data[(chromosome, binIdx)][molecule.get_sample()][call.isupper()]+=1
                             cell_count[molecule.get_sample()]+=1
-
+            
             molecule.set_meta('ME',methylated_hits)
             molecule.set_meta('um',unmethylated_hits)
             statistics['Methylation']['methylated Cs'] += methylated_hits
