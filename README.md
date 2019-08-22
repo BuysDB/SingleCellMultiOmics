@@ -33,6 +33,7 @@ universalBamTagger.py
 4) Assigns reads to molecules to allow for deduplication, adds duplication BAM flag
 5) Assigns read groups
 
+All SAM tags used and written by this package are listed in [TAGS.MD](https://github.com/BuysDB/SingleCellMultiOmics/blob/master/TAGS.MD)
 
 
 # Examples:
