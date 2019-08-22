@@ -9,7 +9,7 @@ import gzip
 import pandas as pd
 argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""Convert genome FASTA file to convert alternative bases to Ns""")
 argparser.add_argument('fasta', metavar='fastafile', type=str, help='Fasta file to mask')
-argparser.add_argument('vcf', metavar='vcffile', type=str, nargs='+', help='VCF file(s) to extract variants from')
+argparser.add_argument('vcf', metavar='vcffile', type=str, help='VCF file(s) to extract variants from')
 argparser.add_argument('-o', type=str, default='./masked.fasta.gz', help='output file')
 args = argparser.parse_args()
 
@@ -28,32 +28,29 @@ except Exception as e:
 
 outputHandle = gzip.open(args.o,'wt')
 referenceNames = faIn.references
-referenceLengths = faIn.lengths
-wholeGenome = {
-    ref:faIn.fetch(ref) for ref in referenceNames
-}
-masked = 0
+referenceLengths = dict( zip(referenceNames, faIn.lengths))
+
+#wholeGenome = {
+#    ref:faIn.fetch(ref) for ref in referenceNames
+#}
 warnedMissing = set()
-for rec in itertools.chain(*(pysam.VariantFile(vcfPath) for vcfPath in args.vcf)):
+totalMasked=0
+variants = pysam.VariantFile(args.vcf)
+for chrom in referenceNames:
+    chrom_seq = bytearray(faIn.fetch(chrom),'ascii' )
+    for rec in variants.fetch(chrom):
+        if rec.start>=(referenceLengths[rec.chrom]):
+            print(f"WARNING record {rec.chrom} {rec.pos} defines a variant outside the supplied fasta file!")
+            continue
 
-    if not rec.chrom in wholeGenome:
-        if not rec.chrom in warnedMissing:
-            warnedMissing.add(rec.chrom)
-            print(f"WARNING {rec.chrom} is missing in your genome FASTA file. All variants on this chromosome will be skipped!")
-        continue
-    if rec.start>=(len(wholeGenome[rec.chrom])):
-        print(f"WARNING record {rec.chrom} {rec.pos} defines a variant outside the supplied fasta file!")
-        continue
+        if len(rec.alleles[0])==1 and len(rec.alleles[1])==1:
 
-    if wholeGenome[rec.chrom][rec.pos] not in [rec.ref, 'N']:
-        print(f"WARNING record {rec.chrom} {rec.pos} [{rec.ref}] defines a reference base which doesn't match your fasta file!")
-    wholeGenome[rec.chrom][rec.pos] = 'N'
-    masked+=1
-print(f'Finished conversion. \nMasked {masked} locations')
-# WRite to disk
-for referenceName in referenceNames:
-    print(f'Writing {referenceName}')
-    outputHandle.write(f'>{referenceName}\n')
-    outputHandle.write(wholeGenome[referenceName])
-    outputHandle.write('\n')
+            chrom_seq[rec.pos-1] = 78 #ord N
+            totalMasked+=1
+
+    # Write chromsome
+    outputHandle.write(f'>{chrom}\n'.encode('ascii'))
+    outputHandle.write(chromSeq)
+    outputHandle.write('\n'.encode('ascii'))
+
 outputHandle.close()
