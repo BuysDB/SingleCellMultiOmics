@@ -77,7 +77,7 @@ def generate_introns(geneToExonRanges,id,id_to_features):
         rest_data = id_to_features.get(gene_identifier_or_other,{})
 
         if len(rest_data)>0:
-            rest = '; '.join( [f'{key}:{value}' for key, value in rest_data.items()] )
+            rest = '; '.join( [f'{key} {value}' for key, value in rest_data.items()] )
         else:
             rest=''
 
