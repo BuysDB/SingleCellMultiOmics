@@ -26,7 +26,7 @@ try:
 except Exception as e:
     raise
 
-outputHandle = gzip.open(args.o,'wt')
+outputHandle = gzip.open(args.o,'wb')
 referenceNames = faIn.references
 referenceLengths = dict( zip(referenceNames, faIn.lengths))
 
