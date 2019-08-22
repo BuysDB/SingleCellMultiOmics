@@ -50,7 +50,7 @@ for chrom in referenceNames:
 
     # Write chromsome
     outputHandle.write(f'>{chrom}\n'.encode('ascii'))
-    outputHandle.write(chromSeq)
+    outputHandle.write(chrom_seq)
     outputHandle.write('\n'.encode('ascii'))
 
 outputHandle.close()
