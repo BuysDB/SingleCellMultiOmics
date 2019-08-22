@@ -44,6 +44,7 @@ setup(
         'singlecellmultiomics.modularDemultiplexer',
         'singlecellmultiomics.molecule',
         'singlecellmultiomics.pyutils',
+        'singlecellmultiomics.tags',
         'singlecellmultiomics.statistic',
         'singlecellmultiomics.tagtools',
         'singlecellmultiomics.universalBamTagger',
