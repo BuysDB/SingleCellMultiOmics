@@ -203,6 +203,24 @@ class Molecule():
 
         return mc/(other+mc)
 
+
+    def get_barcode_sequences(self):
+        """Obtain (Cell) barcode sequences associated to molecule
+
+        Returns:
+            barcode sequences (set) : barcode sequence(s)
+        """
+        return set(read.get_tag('BC') for read in self.iter_reads())
+
+    def get_raw_barcode_sequences(self):
+        """Obtain (Cell) barcode sequences associated to molecule, not hamming corrected
+
+        Returns:
+            barcode sequences (set) : barcode sequence(s)
+        """
+        return set(read.get_tag('bc') for read in self.iter_reads())
+
+
     def get_strand(self):
         """Obtain mapping strand of molecule
 
