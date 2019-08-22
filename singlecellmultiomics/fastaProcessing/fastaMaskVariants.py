@@ -8,7 +8,7 @@ import gzip
 
 import pandas as pd
 argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""Convert genome FASTA file to convert alternative bases to Ns""")
-argparser.add_argument('fasta', metavar='fastafile', type=str, 'Fasta file to mask')
+argparser.add_argument('fasta', metavar='fastafile', type=str, help='Fasta file to mask')
 argparser.add_argument('vcf', metavar='vcffile', type=str, nargs='+', help='VCF file(s) to extract variants from')
 argparser.add_argument('-o', type=str, default='./masked.fasta.gz', help='output file')
 args = argparser.parse_args()
