@@ -210,7 +210,7 @@ if __name__=='__main__':
                     else:
                         # Check if NLA III sites are skipped...
 
-                        skipped = selected_mol.get_undigested_site_count()
+                        skipped = molecule.get_undigested_site_count()
                         if skipped>0:
                             molecule.set_meta('dt','DNA')
                         else:
@@ -254,7 +254,7 @@ if __name__=='__main__':
                         else:
                             binned_data[(chromosome, binIdx)][molecule.get_sample()][call.isupper()]+=1
                             cell_count[molecule.get_sample()]+=1
-            
+
             molecule.set_meta('ME',methylated_hits)
             molecule.set_meta('um',unmethylated_hits)
             statistics['Methylation']['methylated Cs'] += methylated_hits
