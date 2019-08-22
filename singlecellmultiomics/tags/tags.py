@@ -11,6 +11,9 @@ class SamTag:
         if len(tag)!=2:
             raise ValueError('Invalid tag length')
 
+    def __repr__(self):
+        return f'SAM TAG "{self.tag}", {self.humanName}{", is a phred score" if self.isPhred else ""} will {"not" if self.doNotWrite else ""} be written by default'
+
 tags = [
     SamTag('SM', 'sampleName'),
     SamTag('LY', 'sequencingLibrary'),
