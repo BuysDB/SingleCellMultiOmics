@@ -67,7 +67,7 @@ class FeatureAnnotatedMolecule(Molecule):
             elif meta.get('type')=='intron':
                 self.genes.add(meta['gene_id'])
                 self.introns.add(meta['gene_id'])
-                exon_hits[(meta['gene_id'],meta['transcript_id'])].add(meta['exon_id'])
+                
 
         # Find junctions and add all annotations to annotation sets
         debug = []
