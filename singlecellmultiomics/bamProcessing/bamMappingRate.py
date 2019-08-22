@@ -10,7 +10,7 @@ import argparse
 f'Please source or use an environment with python 3.6 or higher!'
 
 argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""
-Single Cell restriction Enzyme (NLAIII) analysis pipeline. Supports UMIs and allele specificity.
+Obtain mapping rate from libraries
 """)
 argparser.add_argument('libraries', nargs='+')
 args = argparser.parse_args()
