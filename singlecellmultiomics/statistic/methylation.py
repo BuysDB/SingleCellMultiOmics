@@ -46,7 +46,6 @@ class MethylationContextHistogram(StatisticHistogram):
              'CHG':x['x'],
              'CHH':x['h']
            }
-
         })
 
     def plot(self, target_path, title=None):
@@ -74,6 +73,7 @@ class MethylationContextHistogram(StatisticHistogram):
         plt.savefig(target_path.replace('.png',f'.{name}.png'))
 
         ax.set_yscale('log')
+        ax.set_ylim(0,None)
         plt.tight_layout()
         plt.savefig(target_path.replace('.png',f'{name}.log.png'))
         plt.close()
