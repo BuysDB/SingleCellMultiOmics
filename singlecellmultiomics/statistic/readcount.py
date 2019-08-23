@@ -41,16 +41,19 @@ class ReadCount(Statistic):
         df = self.get_df() #,'UnmappedReads']]
 
         print(df)
-        df.plot.bar(figsize=(10,4)).legend(bbox_to_anchor=(1, 0.98))
+        df.plot.bar(figsize=(14,4)).legend(bbox_to_anchor=(1, 0.98))
         if title is not None:
             plt.title(title)
 
         plt.subplots_adjust(right=0.6)
+        plt.tight_layout()
         plt.savefig(target_path)
 
         ax = plt.gca()
         ax.set_ylim(1,None)
+        ax.set_ylabel('Frequency')
         ax.set_yscale('log')
+        plt.tight_layout()
         plt.savefig(target_path.replace('.png','.log.png'))
 
         plt.close()
