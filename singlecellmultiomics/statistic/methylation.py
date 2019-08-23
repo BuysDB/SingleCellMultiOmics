@@ -73,7 +73,7 @@ class MethylationContextHistogram(StatisticHistogram):
         plt.savefig(target_path.replace('.png',f'.{name}.png'))
 
         ax.set_yscale('log')
-        ax.set_ylim(0,None)
+        ax.set_ylim(None,None)
         plt.tight_layout()
         plt.savefig(target_path.replace('.png',f'{name}.log.png'))
         plt.close()
