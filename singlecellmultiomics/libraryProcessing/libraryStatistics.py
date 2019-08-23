@@ -119,8 +119,6 @@ if __name__=='__main__':
         rejectFastqFiles = select_fastq_file(rejectFilesLookup)
 
         print("Selected files:")
-        if demuxFastqFiles is None:
-            print(Fore.RED)
         print(demuxFastqFiles)
         print(rejectFastqFiles)
         print(bamFile)
