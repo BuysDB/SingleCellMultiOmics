@@ -94,19 +94,23 @@ class ReadCount(Statistic):
                         self.totalDedupReads['R2']+=1
 
         else:
-            if read.has_tag('DS'):
-                if read.is_read1:
-                    self.totalAssignedSiteReads['R1']+=1
-                else:
-                    self.totalAssignedSiteReads['R2']+=1
+            if not read.is_unmapped:
+                if read.has_tag('DS'):
+                    if read.is_read1:
+                        self.totalAssignedSiteReads['R1']+=1
+                    elif read.is_read2:
+                        self.totalAssignedSiteReads['R2']+=1
+                    else:
+                        self.totalAssignedSiteReads['R?']+=1
 
-            if not read.is_duplicate:
+                if not read.is_duplicate:
 
-                if read.is_read1:
-                    self.totalDedupReads['R1']+=1
-                else:
-                    self.totalDedupReads['R2']+=1
-
+                    if read.is_read1:
+                        self.totalDedupReads['R1']+=1
+                    elif read.is_read2:
+                        self.totalDedupReads['R2']+=1
+                    else:
+                        self.totalDedupReads['R?']+=1
 
     def setRawReadCount(self, readCount, paired=True):
         self.rawReadCount = readCount *(2 if paired else 1)
