@@ -36,12 +36,12 @@ class MethylationContextHistogram(StatisticHistogram):
              'CpG':x['Z']/(x['z']+x['Z']),
              'CHG':x['X']/(x['x']+x['X']),
              'CHH':x['H']/(x['h']+x['H']) },
-           'absolute_met':{
+           'methylated':{
                'CpG':x['Z'],
              'CHG':x['X'],
              'CHH':x['H']
            },
-         'absolute_unmet':{
+         'unmethylated':{
              'CpG':x['z'],
              'CHG':x['x'],
              'CHH':x['h']
@@ -72,23 +72,22 @@ class MethylationContextHistogram(StatisticHistogram):
         plt.tight_layout()
         plt.savefig(target_path.replace('.png',f'.{name}.png'))
 
-        ax.set_yscale('log')
         ax.set_ylim(None,None)
+        ax.set_yscale('log')
+
         plt.tight_layout()
-        plt.savefig(target_path.replace('.png',f'{name}.log.png'))
+        plt.savefig(target_path.replace('.png',f'.{name}.log.png'))
         plt.close()
         ########
         name ='methylation_absolute'
 
         (df[['methylated','unmethylated']]).plot.bar()
         ax = plt.gca()
-        maxh = 0
         for p in ax.patches:
             ax.annotate(
                 f'{p.get_height()}',
                 (p.get_x()+p.get_width()/2, p.get_height() * 1.005),
                 va='bottom', ha='center')
-            maxh=max(maxh,p.get_height() * 1.005)
 
         ax.set_xlabel('Methylation context')
         ax.set_ylabel('Bases total')
@@ -102,7 +101,7 @@ class MethylationContextHistogram(StatisticHistogram):
 
         ax.set_yscale('log')
         plt.tight_layout()
-        plt.savefig(target_path.replace('.png',f'{name}.log.png'))
+        plt.savefig(target_path.replace('.png',f'.{name}.log.png'))
         plt.close()
 
 
