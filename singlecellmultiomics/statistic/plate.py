@@ -125,7 +125,7 @@ class PlateStatistic(object):
                     return
 
                 self.usableCount[(read.get_tag('LY'), read.get_tag('MX'))][read.get_tag('SM')] += 1
-                if read.get_tag('RC')==1:
+                if not read.is_duplicate:
                     self.moleculeCount[(read.get_tag('LY'), read.get_tag('MX'))][read.get_tag('SM')] += 1
             else:
                 self.skipReasons['No DS'] += 1

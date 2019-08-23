@@ -36,7 +36,7 @@ class ReadCount(Statistic):
 
     def to_csv(self, path):
         self.get_df().to_csv(path)
-    
+
     def plot(self, target_path, title=None):
         df = self.get_df() #,'UnmappedReads']]
 
@@ -100,7 +100,7 @@ class ReadCount(Statistic):
                 else:
                     self.totalAssignedSiteReads['R2']+=1
 
-            if read.has_tag('RC') and read.get_tag('RC')==1:
+            if not read.is_duplicate:
 
                 if read.is_read1:
                     self.totalDedupReads['R1']+=1
