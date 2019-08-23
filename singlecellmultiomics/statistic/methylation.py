@@ -13,64 +13,99 @@ import matplotlib.pyplot as plt
 class MethylationContextHistogram(StatisticHistogram):
     def __init__(self,args):
         StatisticHistogram.__init__(self, args)
-        self.histograms_three = collections.Counter()
-        self.histograms_pent = collections.Counter()
-        self.histograms_three_un = collections.Counter()
-        self.histograms_pent_un = collections.Counter()
+        self.context_obs = collections.Counter() #(bismark_call_tag)=> observations
 
 
     def processRead(self,read):
-        if not read.is_paired or not read.is_read1 or read.is_duplicate:
+        if not read.is_paired or not read.has_tag('XM') or not read.is_read1 or read.is_duplicate or read.has_tag('RR'):
             return
 
-        if read.has_tag('Qm'):
-            for modified_context in read.get_tag('Qm').split(','):
-                self.histograms_pent[modified_context]+=1
-
-        if read.has_tag('Qu'):
-            for modified_context in read.get_tag('Qu').split(','):
-                self.histograms_pent_un[modified_context]+=1
-
-        if read.has_tag('Cu'):
-            for modified_context in read.get_tag('Cu').split(','):
-                self.histograms_three_un[modified_context]+=1
-
-        if read.has_tag('Cm'):
-            for modified_context in read.get_tag('Cm').split(','):
-                self.histograms_three[modified_context]+=1
+        tags = dict( read.tags )
+        for tag in 'zhx':
+            self.context_obs[tag] += tags.get(f's{tag}')
+            self.context_obs[tag.upper()] += tags.get(f's{tag.upper()}')
 
     def __repr__(self):
         return f'Methylation status.'
 
+    def get_df(self):
+        x = self.context_obs
+        return pd.DataFrame(
+        {   'ratio':
+            {
+             'CpG':x['Z']/(x['z']+x['Z']),
+             'CHG':x['X']/(x['x']+x['X']),
+             'CHH':x['H']/(x['h']+x['H']) },
+           'absolute_met':{
+               'CpG':x['Z'],
+             'CHG':x['X'],
+             'CHH':x['H']
+           },
+         'absolute_unmet':{
+             'CpG':x['z'],
+             'CHG':x['x'],
+             'CHH':x['h']
+           }
+
+        })
+
     def plot(self, target_path, title=None):
 
+        df = self.get_df()
+        ####### Methylation ratio plot:
+        name ='methylation_pct'
 
+        (df['ratio']*100).plot.bar()
+        ax = plt.gca()
+        for p in ax.patches:
+            ax.annotate(
+                f'{p.get_height():.1f}%',
+                (p.get_x()+p.get_width()/2, p.get_height() * 1.005),
+                va='bottom', ha='center')
+        ax.set_ylim(0,110)
+        ax.set_xlabel('Methylation context')
+        ax.set_ylabel('% methylated')
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        plt.show()
+        if title is not None:
+            plt.title(title)
+        plt.tight_layout()
+        plt.savefig(target_path.replace('.png',f'.{name}.png'))
 
-        for d, name, ncol in [(self.histograms_three_un,'3bp_context_unmodified',1),
-            (self.histograms_three,'3bp_context_modified',1),
-            (self.histograms_pent_un,'5bp_context_unmodified',3),
-            (self.histograms_pent,'5bp_context_modified',3)]:
-            if len(d)<1:
-                print(f'No methylation data [{name}], not making plot')
-                continue
-            df = pd.DataFrame.from_dict({'obs':d}).T
-            df.plot.bar(figsize=(15,6)).legend(bbox_to_anchor=(1, 0.98), ncol=3)
-            if title is not None:
-                plt.title(title)
+        ax.set_yscale('log')
+        plt.tight_layout()
+        plt.savefig(target_path.replace('.png',f'{name}.log.png'))
+        plt.close()
+        ########
+        name ='methylation_absolute'
 
-            plt.tight_layout()
-            plt.subplots_adjust(right=0.6)
-            plt.savefig(target_path.replace('.png',f'.{name}.png'))
+        (df[['methylated','unmethylated']]).plot.bar()
+        ax = plt.gca()
+        maxh = 0
+        for p in ax.patches:
+            ax.annotate(
+                f'{p.get_height()}',
+                (p.get_x()+p.get_width()/2, p.get_height() * 1.005),
+                va='bottom', ha='center')
+            maxh=max(maxh,p.get_height() * 1.005)
 
-            ax = plt.gca()
-            ax.set_yscale('log')
-            plt.savefig(target_path.replace('.png',f'{name}.log.png'))
-            plt.close()
+        ax.set_xlabel('Methylation context')
+        ax.set_ylabel('Bases total')
+        plt.tight_layout()
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        if title is not None:
+            plt.title(title)
+        plt.tight_layout()
+        plt.savefig(target_path.replace('.png',f'.{name}.png'))
+
+        ax.set_yscale('log')
+        plt.tight_layout()
+        plt.savefig(target_path.replace('.png',f'{name}.log.png'))
+        plt.close()
 
 
     def to_csv(self, path):
 
-        pd.DataFrame({'obs':self.histograms_three_un}).to_csv(path.replace('.csv','unmodified_3_base_context.csv'))
-        pd.DataFrame({'obs':self.histograms_pent_un}).to_csv(path.replace('.csv','unmodified_5_base_context.csv'))
-        pd.DataFrame({'obs':self.histograms_three}).to_csv(path.replace('.csv','modified_3_base_context.csv'))
-        pd.DataFrame({'obs':self.histograms_pent}).to_csv(path.replace('.csv','modified_5_base_context.csv'))
+        self.get_df().to_csv(path)
