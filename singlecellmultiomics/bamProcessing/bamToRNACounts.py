@@ -129,6 +129,7 @@ def count_transcripts(cargs):
     exon_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
     intron_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
     junction_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
+    gene_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
 
     gene_set = set()
     sample_set = set()
@@ -199,21 +200,20 @@ def count_transcripts(cargs):
                     for gene in molecule.genes:
                         if allele is not None:
                             gene = f'{allele}_{gene}'
-                        exon_counts_per_cell[molecule.sample][gene] += count_to_add
+                        gene_counts_per_cell[molecule.sample][gene] += count_to_add
                         gene_set.add(gene)
                         sample_set.add(molecule.get_sample())
 
                     # Obtain introns/exons/splice junction information:
-                    """
 
-                    for intron in molecule.introns.difference(molecule.junctions):
+                    for intron in molecule.introns: #.difference(molecule.junctions):
                         gene = intron
                         if allele is not None:
                             gene = f'{allele}_{intron}'
                         intron_counts_per_cell[molecule.sample][gene] += count_to_add
                         gene_set.add(gene)
 
-                    for exon in molecule.exons.difference(molecule.junctions):
+                    for exon in molecule.exons: #difference(molecule.junctions):
                         gene = exon
                         if allele is not None:
                             gene = f'{allele}_{exon}'
@@ -226,7 +226,7 @@ def count_transcripts(cargs):
                             gene = f'{allele}_{junction}'
                         junction_counts_per_cell[molecule.sample][gene] += count_to_add
                         gene_set.add(gene)
-                    """
+
                     annotated_molecules += 1
                 if args.head and i>args.head:
                     print(f"-head was supplied, {i} molecules discovered, stopping")
@@ -245,6 +245,7 @@ def count_transcripts(cargs):
     return (
         gene_set,
         sample_set,
+        gene_counts_per_cell,
         junction_counts_per_cell,
         exon_counts_per_cell,
         intron_counts_per_cell,
@@ -309,6 +310,7 @@ if __name__=='__main__':
             contigs_todo.append(chrom)
 
 
+    gene_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
     exon_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
     intron_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
     junction_counts_per_cell = collections.defaultdict(collections.Counter) # cell->gene->umiCount
@@ -319,6 +321,7 @@ if __name__=='__main__':
     for  (
         result_gene_set,
         result_sample_set,
+        result_gene_counts_per_cell,
         result_junction_counts_per_cell,
         result_exon_counts_per_cell,
         result_intron_counts_per_cell,
@@ -330,6 +333,8 @@ if __name__=='__main__':
         gene_set.update(result_gene_set)
         sample_set.update(result_sample_set)
 
+        for cell, counts in result_gene_counts_per_cell.items():
+            gene_counts_per_cell[cell].update(counts)
         for cell, counts in result_junction_counts_per_cell.items():
             junction_counts_per_cell[cell].update(counts)
         for cell, counts in result_exon_counts_per_cell.items():
@@ -350,6 +355,8 @@ if __name__=='__main__':
         gene_order = sorted(list(gene_set))
 
         # Construct the sparse matrices:
+        sparse_gene_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
+        # Construct the sparse matrices:
         sparse_intron_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
         #sparse_intron_matrix.setdefault(0)
         sparse_exon_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
@@ -357,6 +364,10 @@ if __name__=='__main__':
         sparse_junction_matrix = scipy.sparse.dok_matrix((len(sample_set),len(gene_set)),dtype=np.int64)
 
         for sample_idx,sample in enumerate(sample_order):
+            if sample in gene_counts_per_cell:
+                for gene, counts in gene_counts_per_cell[sample].items():
+                    gene_idx = gene_order.index(gene)
+                    sparse_gene_matrix[sample_idx, gene_idx] = counts
             if sample in exon_counts_per_cell:
                 for gene, counts in exon_counts_per_cell[sample].items():
                     gene_idx = gene_order.index(gene)
@@ -372,12 +383,12 @@ if __name__=='__main__':
 
 
         # Write matrices to disk
+        sparse_gene_matrix = sparse_gene_matrix.tocsc()
         sparse_intron_matrix = sparse_intron_matrix.tocsc()
         sparse_exon_matrix = sparse_exon_matrix.tocsc()
         sparse_junction_matrix = sparse_junction_matrix.tocsc()
-        complete_matrix = sparse_intron_matrix + sparse_exon_matrix
 
-        scipy.sparse.save_npz(f'{args.o}/sparse_complete_matrix.npz', complete_matrix)
+        scipy.sparse.save_npz(f'{args.o}/sparse_gene_matrix.npz', sparse_gene_matrix)
         scipy.sparse.save_npz(f'{args.o}/sparse_intron_matrix.npz',sparse_intron_matrix)
         scipy.sparse.save_npz(f'{args.o}/sparse_exon_matrix.npz',sparse_exon_matrix)
         scipy.sparse.save_npz(f'{args.o}/sparse_junction_matrix.npz',sparse_junction_matrix)
@@ -385,7 +396,7 @@ if __name__=='__main__':
         try:
             # Write scanpy file vanilla
             adata = sc.AnnData(
-                complete_matrix.todense()
+                sparse_gene_matrix.todense()
             )
             adata.var_names = gene_order
             adata.obs_names = sample_order
@@ -393,11 +404,11 @@ if __name__=='__main__':
 
             # Write scanpy file, with introns
             adata = sc.AnnData(
-                complete_matrix,
+                sparse_gene_matrix,
                 layers={
-                'spliced':  sparse_intron_matrix,
-                'unspliced': sparse_junction_matrix
-                #'junction' : sparse_junction_matrix
+                'spliced':  sparse_junction_matrix,
+                'unspliced': sparse_intron_matrix,
+                'exon' : sparse_exon_matrix
                }
             )
             adata.var_names = gene_order
@@ -408,6 +419,7 @@ if __name__=='__main__':
             print(e)
 
     print("Writing final tables to dense csv files")
+    pd.DataFrame(sparse_gene_matrix.todense(), columns=gene_order, index=sample_order).to_csv(f'{args.o}/genes.csv.gz' )
     pd.DataFrame(sparse_intron_matrix.todense(), columns=gene_order, index=sample_order).to_csv(f'{args.o}/introns.csv.gz' )
     pd.DataFrame(sparse_exon_matrix.todense(), columns=gene_order, index=sample_order).to_csv(f'{args.o}/exons.csv.gz' )
     pd.DataFrame(sparse_junction_matrix.todense(), columns=gene_order, index=sample_order).to_csv(f'{args.o}/junctions.csv.gz' )
