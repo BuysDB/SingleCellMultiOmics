@@ -28,11 +28,11 @@ if __name__=='__main__':
 
     argparser.add_argument('alignmentfile',  type=str)
     argparser.add_argument('-ref',  type=str, help='path to reference fasta file, auto detected from bamfile')
-    argparser.add_argument('-head',  type=int)
+    argparser.add_argument('-head',  type=int,help='Tabulate the first N valid molecules')
     argparser.add_argument('-minmq',  type=int, default=50)
     argparser.add_argument('-contig',  type=str,help='contig to run on, all when not specified')
     argparser.add_argument('-moleculeNameSep',  type=str,help='Separator to use in molecule name', default=':')
-    argparser.add_argument('-samples',  type=str,help='Samples to select, separate with comma. For example CellA,CellC,CellZ', default=None)
+    argparser.add_argument('-samples',  type=str,help='Samples to select, separate with comma. Filters based on the "SM" tag. For example -samples CellA,CellC,CellZ', default=None)
     argparser.add_argument('-context',  type=str,help='Contexts to select, separate with comma. For example Z,H,X', default=None)
     argparser.add_argument('-bamout',  type=str, help="optional (tagged) output BAM path")
     args = argparser.parse_args()
@@ -73,7 +73,7 @@ if __name__=='__main__':
             },
             contig=args.contig)):
 
-            if args.head and i>=args.head:
+            if args.head and (i-1)>=args.head:
                 break
 
 
