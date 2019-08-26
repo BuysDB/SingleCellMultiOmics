@@ -675,6 +675,8 @@ class Molecule():
                 start, end = pysamiterators.iterators.getPairGenomicLocations(
                 R1=R1,
                 R2=R2,
+                R1PrimerLength=fragment.R1_primer_length,
+                R2PrimerLength=fragment.R2_primer_length,
                 allow_unsafe=(R1 is None))
             except ValueError as e:
                 ignored+=1
