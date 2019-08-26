@@ -113,6 +113,7 @@ class Fragment():
             self.set_meta('fS',abs(self.span[2]-self.span[1]))
             self.set_meta('fe',self.span[1])
             self.set_meta('fs',self.span[2]-self.span[1])
+            self.set_meta('fs',self.span[2])
 
     def write_pysam(self, pysam_handle):
         """Write all associated reads to the target file
