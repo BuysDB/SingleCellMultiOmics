@@ -24,7 +24,12 @@ class TestMolecule(unittest.TestCase):
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
             moleculeClass=singlecellmultiomics.molecule.Molecule,
-            fragmentClass=singlecellmultiomics.fragment.Fragment)
+            fragmentClass=singlecellmultiomics.fragment.Fragment,
+            fragment_class_args={
+                'R1_primer_length':4,
+                'R2_primer_length':6,
+            }
+            )
             for molecule in iter(it):
                 #print(molecule.get_sample())
                 if  molecule.get_sample()=='APKS3-P19-1-1_91':
@@ -32,12 +37,46 @@ class TestMolecule(unittest.TestCase):
 
             self.assertEqual(''.join( list(molecule.get_consensus().values()) ), 'AGTTAGATATGGACTCTTCTTCAGACACTTTGTTTAAATTTTAAATTTTTTTCTGATTGCATATTACTAAAAATGTGTTATGAATATTTTCCATATCATTAAACATTCTTCTCAAGCATAACTTTAAATAACTATAGAAAATTTACGCTACTTTTGTTTTTGTTTTTTTTTTTTTTTTTTTACTATTATTAATAACAC')
 
+    def test_fragment_sizes(self):
+
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            for molecule in singlecellmultiomics.molecule.MoleculeIterator(
+                alignments=f,
+                moleculeClass=singlecellmultiomics.molecule.Molecule,
+                fragment_class_args={
+                    'R1_primer_length':4,
+                    'R2_primer_length':6,
+                },
+
+                fragmentClass=singlecellmultiomics.fragment.Fragment):
+
+                # This is a dovetailed molecule, both R1 and R2 overshoot into the adapter
+                if molecule.sample=='APKS2-P18-2-1_66' and molecule.umi=='CGC':
+                    # The non-dovetailed region of this molecule is
+                    # 164834866-164834975
+                    # This means a fragment size of 109,
+                    # the 4 bases of the CATG are not counted.
+                    # the 6 bases of the random primer are also not counted
+                    # Resulting in a fragment size of 109 - 10 = 101
+                    self.assertEqual(
+                        abs(molecule[0].span[1]-molecule[0].span[2])
+                        , 101)
+                    self.assertEqual(
+                        molecule.get_safely_aligned_length()
+                        , 101)
+
+
     def test_get_match_mismatch_frequency(self):
         """Test if the matches and mismatches of reads in a molecule are counted properly"""
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
             moleculeClass=singlecellmultiomics.molecule.Molecule,
+            fragment_class_args={
+                'R1_primer_length':4,
+                'R2_primer_length':6,
+            },
+
             fragmentClass=singlecellmultiomics.fragment.Fragment)
             for molecule in iter(it):
                 #print(molecule.get_sample())
@@ -52,7 +91,12 @@ class TestMolecule(unittest.TestCase):
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
             moleculeClass=singlecellmultiomics.molecule.Molecule,
-            fragmentClass=singlecellmultiomics.fragment.Fragment)
+            fragmentClass=singlecellmultiomics.fragment.Fragment,
+            fragment_class_args={
+                'R1_primer_length':4,
+                'R2_primer_length':6,
+            }
+            )
             for molecule in iter(it):
                 #print(molecule.get_sample())
                 if  molecule.get_sample()=='APKS3-P19-1-1_91':
