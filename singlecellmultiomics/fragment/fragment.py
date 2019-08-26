@@ -93,6 +93,19 @@ class Fragment():
         self.update_span()
         self.update_umi()
 
+    def get_read_group(self):
+        """
+        Obtain read group for this fragment
+        Returns:
+            read_group(str) : Read group containing flow cell lane and unique sample id
+        """
+        rg = None
+        for read in self.reads:
+            if read is not None:
+                rg = f"{read.get_tag('Fc') if read.has_tag('Fc') else 'NONE'}.{read.get_tag('La') if read.has_tag('La') else 'NONE'}.{read.get_tag('SM') if read.has_tag('SM') else 'NONE'}"
+                break
+        return rg
+
     def set_duplicate(self, is_duplicate):
         """Define this fragment as duplicate, sets the corresponding bam bit flag
         Args:
@@ -105,6 +118,7 @@ class Fragment():
     def write_tags(self):
         self.set_meta('MQ',self.mapping_quality)
         self.set_meta('MM',self.is_multimapped)
+        self.set_meta('RG', self.get_read_group())
         if self.has_valid_span():
             # Write fragment size:
             self.set_meta('fS',abs(self.span[2]-self.span[1]))
@@ -211,7 +225,7 @@ class Fragment():
         except Exception as e:
             if self.get_R1()!=None:
                 self.span = (contig, self.get_R1().reference_start,self.get_R1().reference_end)
-            
+
 
 
 
