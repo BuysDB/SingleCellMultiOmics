@@ -229,6 +229,15 @@ class Fragment():
         return self.sample
 
 
+    def __len__(self):
+        """Obtain the amount of associated reads to the fragment
+
+        Returns:
+            assocoiated reads (int)
+        """
+        return(sum(read is not None for read in self.reads))
+
+
     def set_strand(self, strand):
         self.strand = strand
 
