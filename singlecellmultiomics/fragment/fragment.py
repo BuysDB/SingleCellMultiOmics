@@ -5,16 +5,54 @@ from singlecellmultiomics.utils import style_str
 complement = str.maketrans('ATCGN', 'TAGCN')
 
 class Fragment():
+    """
+    Fragment
+
+    This class holds 1 or more reads which are derived from the same cluster
+    """
+
     def __init__(self, reads, assignment_radius=3, umi_hamming_distance=1,
                 R1_primer_length=0,
                 R2_primer_length=6,
-                tag_definitions=None ):
+                tag_definitions=None,
+                mapping_dir = (False,True) # R1 forward, R2 reverse
+                 ):
+        """
+        Initialise Fragment
+
+            Args:
+                reads( list ):
+                    list containing pysam AlignedSegment reads
+
+                assignment_radius( int ):
+                    Assignment radius for molecule resolver
+
+                umi_hamming_distance( int ):
+                    umi_hamming_distance distance threshold for associating multiple fragments to a molecule
+
+                R1_primer_length(int):
+                    length of R1 primer, these bases are not taken into account when calculating a consensus
+
+                R2_primer_length(int):
+                    length of R2 primer, these bases are not taken into account when calculating a consensus
+
+                tag_definitions(list):
+                    sam TagDefinitions
+
+                mapping_dir( tuple ):
+                    expected mapping direction of mates,
+                    True for reverse, False for forward. This parameter is used in dovetail detection
+
+            Returns:
+                html(string) : html representation of the fragment
+        """
 
         if tag_definitions is None:
             tag_definitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
         self.tag_definitions = tag_definitions
         self.assignment_radius = assignment_radius
         self.umi_hamming_distance = umi_hamming_distance
+        self.mapping_dir = mapping_dir
         self.reads = reads
         self.strand = None
         self.meta = {} # dictionary of meta data
