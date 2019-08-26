@@ -46,7 +46,8 @@ class Fragment():
             Returns:
                 html(string) : html representation of the fragment
         """
-
+        self.R1_primer_length = R1_primer_length
+        self.R2_primer_length = R2_primer_length
         if tag_definitions is None:
             tag_definitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
         self.tag_definitions = tag_definitions
@@ -87,10 +88,6 @@ class Fragment():
                 read.is_read1 = False
                 read.is_read2 = True
 
-
-
-        self.R1_primer_length = R1_primer_length
-        self.R2_primer_length = R2_primer_length
         self.set_sample()
         self.set_strand(self.identify_strand())
         self.update_span()
@@ -112,7 +109,6 @@ class Fragment():
             # Write fragment size:
             self.set_meta('fS',abs(self.span[2]-self.span[1]))
             self.set_meta('fe',self.span[1])
-            self.set_meta('fs',self.span[2]-self.span[1])
             self.set_meta('fs',self.span[2])
 
     def write_pysam(self, pysam_handle):
@@ -193,20 +189,31 @@ class Fragment():
 
 
     def update_span(self):
-        surfaceStart = None
-        surfaceEnd = None
+
+
+        if self.mapping_dir!=(False,True):
+            raise NotImplementedError("Sorry only FW RV is implemented")
+
         contig = None
         for read in self.reads:
-            if read is None:
-                continue
-            if contig is None and read.reference_name is not None:
+            if read is not None and not read.is_unmapped:
                 contig = read.reference_name
-            if read.reference_start is not None and (surfaceStart is None or read.reference_start<surfaceStart):
-                surfaceStart=read.reference_start
-            if read.reference_end is not None and( surfaceEnd is None or read.reference_end>surfaceEnd):
-                surfaceEnd=read.reference_end
 
-        self.span = (contig,surfaceStart, surfaceEnd)
+        try:
+            surfaceStart, surfaceEnd = pysamiterators.iterators.getPairGenomicLocations(
+                self.get_R1(),
+                self.get_R2(),
+                R1PrimerLength = self.R1_primer_length,
+                R2PrimerLength = self.R2_primer_length,
+                allow_unsafe=True
+                )
+            self.span = (contig,surfaceStart, surfaceEnd)
+        except Exception as e:
+            if self.get_R1()!=None:
+                self.span = (contig, self.get_R1().reference_start,self.get_R1().reference_end)
+            
+
+
 
     def get_span(self):
         return self.span
