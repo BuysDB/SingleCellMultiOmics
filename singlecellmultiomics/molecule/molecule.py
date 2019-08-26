@@ -337,6 +337,17 @@ class Molecule():
         self.saved_base_obs = None
         self.update_umi()
 
+    def get_safely_aligned_length(self):
+        """Get the amount of safely aligned bases (excludes primers)
+        Returns:
+            aligned_bases (int) : Amount of safely aligned bases
+             or None when this cannot be determined because both mates are not mapped
+        """
+        if self.spanStart is None or self.spanEnd is None:
+            return None
+        return abs( self.spanEnd - self.spanStart )
+
+
     def add_fragment(self, fragment, use_hash=True):
         """Associate a fragment with this Molecule
 
