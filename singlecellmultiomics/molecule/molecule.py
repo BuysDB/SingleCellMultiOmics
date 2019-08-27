@@ -73,6 +73,7 @@ class Molecule():
         cache_size=10_000,
         reference=None,
         min_max_mapping_quality=None,# When all fragments have a mappin quality below this value the is_valid method will return False
+        allele_resolver=None,
         **kwargs):
         """Initialise Molecule
 
@@ -82,6 +83,8 @@ class Molecule():
             Fragment to assign to Molecule. More fragments can be added later
 
         min_max_mapping_quality :  When all fragments have a mappin quality below this value the is_valid method will return False
+
+        allele_resolver :  alleleTools.AlleleResolver or None. Supply an allele resolver in order to assign an allele to the molecule
 
         cache_size (int): radius of molecule assignment cache
         """
@@ -104,6 +107,19 @@ class Molecule():
                     self.add_fragment(frag)
             else:
                 self.add_fragment(fragments)
+
+        # Obtain allele if available
+        self.allele_resolver = allele_resolver
+        self.allele = None
+        if self.allele_resolver is not None:
+            try:
+                hits = self.get_allele(allele_resolver)
+                # Only store when we have a unique single hit:
+                if len(hits)==1:
+                    self.allele = list(hits)[0]
+            except ValueError as e:
+                # This happens when a consensus can not be obtained
+                pass
 
     def has_valid_span(self):
         """Check if the span of the molecule is determined
@@ -128,6 +144,8 @@ class Molecule():
         self.is_valid(set_rejection_reasons=True)
         if  self.umi is not None:
             self.set_meta('mI', self.umi)
+        if self.allele is not None:
+            self.set_meta('DS', str(self.allele))
 
     def set_rejection_reason(self,reason):
         for fragment in self:
@@ -236,6 +254,7 @@ class Molecule():
         frag_repr = '\n\t'.join([str(fragment) for fragment in self.fragments])
         return f"""Molecule
         with {len(self.fragments)} assinged fragments
+        { "Allele :" +  (self.allele if self.allele is not None else "No allele assigned")}
         """ + frag_repr
 
     def update_umi(self):
@@ -702,6 +721,7 @@ class Molecule():
                     if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
                         continue
                     query_base = read.seq[query_pos]
+                    query_qual = read.qual[query_pos]
                     if query_base=='N':
                         continue
                     base_obs[(read.reference_name,ref_pos)][query_base]+=1
