@@ -585,6 +585,7 @@ class Molecule():
         Returns:
             mean_phred_score (float)
         """
+        qualities = []
         for fragment in self:
             if fragment.span[0]!=chromosome:
                 continue
@@ -594,11 +595,12 @@ class Molecule():
                 start, end = pysamiterators.iterators.getPairGenomicLocations(
                 R1=R1,
                 R2=R2,
+                R1PrimerLength=fragment.R1_primer_length,
+                R2PrimerLength=fragment.R2_primer_length,
                 allow_unsafe=(R1 is None))
             except ValueError as e:
                 continue
 
-            qualities = []
             for read in (R1,R2):
                 for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(
                     read,with_seq=False):
@@ -721,7 +723,7 @@ class Molecule():
                     if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
                         continue
                     query_base = read.seq[query_pos]
-                    query_qual = read.qual[query_pos]
+                    #query_qual = read.qual[query_pos]
                     if query_base=='N':
                         continue
                     base_obs[(read.reference_name,ref_pos)][query_base]+=1
@@ -815,6 +817,9 @@ class Molecule():
             start, end = pysamiterators.iterators.getPairGenomicLocations(
                 R1=R1,
                 R2=R2,
+                R1PrimerLength=fragment.R1_primer_length,
+                R2PrimerLength=fragment.R2_primer_length,
+
                 allow_unsafe=(R1 is None))
             if start is None or end is None:
                 continue
