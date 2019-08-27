@@ -18,26 +18,18 @@ if __name__=='__main__':
 
     argparser.add_argument('alignmentfile',  type=str)
     argparser.add_argument('-u',  type=int, default=10_000)
-
     args = argparser.parse_args()
-
 
     molecule_count = 0
     read_count = 0
     f = pysam.AlignmentFile(args.alignmentfile)
 
-    duprateDist = collections.Counter()
-
-
-
-    for i, molecule in enumerate(singlecellmultiomics.molecule.MoleculeIterator(
-        f,
-        fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
-        )):
-
-        molecule_count+=1
-        read_count += len(molecule)
-        duprateDist[len(molecule)]+=1
+    for read in f:
+        read_count+=1
+        if read.is_duplicate:
+            pass
+        else:
+            molecule_count+=1
 
         if i%args.u==0:
             print(f'\r{read_count/molecule_count}             ',end='')
