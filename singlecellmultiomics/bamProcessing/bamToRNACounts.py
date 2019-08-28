@@ -156,7 +156,8 @@ def count_transcripts(cargs):
                     'features':features,
                     'stranded':stranded,
                     'min_max_mapping_quality':args.minmq,
-                    'reference':ref
+                    'reference':ref,
+                    'allele_resolver':allele_resolver
                 },
 
                 fragmentClass=fragmentClass,
@@ -176,21 +177,20 @@ def count_transcripts(cargs):
                         molecule.write_tags()
                         molecule.write_pysam(output_bam)
                     continue
+                    
                 molecule.annotate(args.annotmethod)
+                molecule.set_intron_exon_features()
+
                 if args.producebam:
                     molecule.write_tags()
                     molecule.write_pysam(output_bam)
-                hits = molecule.hits.keys()
+
                 allele= None
                 if allele_resolver is not None:
-                    allele = molecule.get_allele(allele_resolver)
-                    if len(allele)==1:
-                        allele = list(allele)[0]
-                    else:
+                    allele = molecule.allele
+                    if allele is None:
                         allele = 'noAllele'
 
-
-                molecule.set_intron_exon_features()
 
                 # Obtain total count introns/exons reduce it so the sum of the count will be 1:
                 total_count_for_molecule = len(molecule.genes )#len(molecule.introns.union( molecule.exons).difference(molecule.junctions))+len(molecule.junctions)
