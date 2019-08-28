@@ -21,7 +21,7 @@ import gzip
 from singlecellmultiomics.molecule import MoleculeIterator
 from singlecellmultiomics.alleleTools import alleleTools
 import multiprocessing
-
+from singlecellmultiomics.bamProcessing.bamFunctions import sort_and_index
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -121,7 +121,7 @@ def count_transcripts(cargs):
         moleculeClass = singlecellmultiomics.molecule.VASA
         fragmentClass = singlecellmultiomics.fragment.SingleEndTranscript
         pooling_method = 1
-        stranded=1 # data is stranded
+        stranded=1 # data is stranded, mapping to other strand
     else:
         raise ValueError("Supply a valid method")
 
@@ -168,16 +168,15 @@ def count_transcripts(cargs):
                 perform_qflag=True, # when the reads have not been tagged yet, this flag is very much required
                 pooling_method=pooling_method,
                 contig=contig
-
-
             )
+
             for i,molecule in enumerate(molecule_iterator):
                 if not molecule.is_valid():
                     if args.producebam:
                         molecule.write_tags()
                         molecule.write_pysam(output_bam)
                     continue
-                    
+
                 molecule.annotate(args.annotmethod)
                 molecule.set_intron_exon_features()
 
@@ -194,53 +193,51 @@ def count_transcripts(cargs):
 
                 # Obtain total count introns/exons reduce it so the sum of the count will be 1:
                 total_count_for_molecule = len(molecule.genes )#len(molecule.introns.union( molecule.exons).difference(molecule.junctions))+len(molecule.junctions)
-                if total_count_for_molecule>0:
-                    count_to_add = 1/total_count_for_molecule
+                if total_count_for_molecule==0:
+                    continue # we didn't find  any gene counts
 
-                    for gene in molecule.genes:
-                        if allele is not None:
-                            gene = f'{allele}_{gene}'
-                        gene_counts_per_cell[molecule.sample][gene] += count_to_add
-                        gene_set.add(gene)
-                        sample_set.add(molecule.get_sample())
+                # Distibute count over amount of gene hits:
+                count_to_add = 1/total_count_for_molecule
+                for gene in molecule.genes:
+                    if allele is not None:
+                        gene = f'{allele}_{gene}'
+                    gene_counts_per_cell[molecule.sample][gene] += count_to_add
+                    gene_set.add(gene)
+                    sample_set.add(molecule.get_sample())
 
-                    # Obtain introns/exons/splice junction information:
+                # Obtain introns/exons/splice junction information:
+                for intron in molecule.introns:
+                    gene = intron
+                    if allele is not None:
+                        gene = f'{allele}_{intron}'
+                    intron_counts_per_cell[molecule.sample][gene] += count_to_add
+                    gene_set.add(gene)
 
-                    for intron in molecule.introns: #.difference(molecule.junctions):
-                        gene = intron
-                        if allele is not None:
-                            gene = f'{allele}_{intron}'
-                        intron_counts_per_cell[molecule.sample][gene] += count_to_add
-                        gene_set.add(gene)
+                for exon in molecule.exons:
+                    gene = exon
+                    if allele is not None:
+                        gene = f'{allele}_{exon}'
+                    exon_counts_per_cell[molecule.sample][gene] += count_to_add
+                    gene_set.add(gene)
 
-                    for exon in molecule.exons: #difference(molecule.junctions):
-                        gene = exon
-                        if allele is not None:
-                            gene = f'{allele}_{exon}'
-                        exon_counts_per_cell[molecule.sample][gene] += count_to_add
-                        gene_set.add(gene)
+                for junction in molecule.junctions:
+                    gene = junction
+                    if allele is not None:
+                        gene = f'{allele}_{junction}'
+                    junction_counts_per_cell[molecule.sample][gene] += count_to_add
+                    gene_set.add(gene)
 
-                    for junction in molecule.junctions:
-                        gene = junction
-                        if allele is not None:
-                            gene = f'{allele}_{junction}'
-                        junction_counts_per_cell[molecule.sample][gene] += count_to_add
-                        gene_set.add(gene)
-
-                    annotated_molecules += 1
-                if args.head and i>args.head:
+                annotated_molecules += 1
+                if args.head and (i+1)>args.head:
                     print(f"-head was supplied, {i} molecules discovered, stopping")
                     break
+
         read_molecules+=i
 
     if args.producebam:
         output_bam.close()
         final_bam_path = bam_path_produced.replace('.unsorted','')
-        cmd = f"""samtools sort {bam_path_produced} > {final_bam_path}; samtools index {final_bam_path};
-        rm {bam_path_produced};
-        """
-        os.system(cmd)
-
+        sort_and_index( bam_path_produced,  final_bam_path, remove_unsorted=True)
 
     return (
         gene_set,
