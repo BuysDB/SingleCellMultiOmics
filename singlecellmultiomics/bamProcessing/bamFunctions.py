@@ -52,7 +52,11 @@ def add_readgroups_to_header( origin_bam_path, readgroups_in, target_bam_path=No
         readGroupsDict={}
         for readGroup in readgroups_in:
             flowCell,lane,sampleLib = readGroup.split('.')
-            library,_ = sampleLib.rsplit('_',1)
+            try:
+                library,_ = sampleLib.rsplit('_',1)
+            except Exception as e:
+                # the library is not part of the sample name:
+                library = 'undefinedLibrary'
             readGroupsDict[readGroup] = {
                     'ID':readGroup,
                     'LB':library,
