@@ -8,6 +8,7 @@ Single cell multi omics is a set of tools to deal with multiple measurements fro
 git clone https://github.com/BuysDB/SingleCellMultiOmics
 pip install ./SingleCellMultiOmics
 ```
+For creating a virtual environment look [here](https://github.com/BuysDB/SingleCellMultiOmics/wiki/Python-test-and-run-environment)
 
 # Usage
 
