@@ -23,7 +23,7 @@ class AlleleResolver:
             lazyLoad (bool) : the vcf file is valid and indexed and does not need to be loaded to memory
 
             select_samples (list) : Use only these samples from the VCF file
-            
+
         """
 
         try:
@@ -80,8 +80,10 @@ class AlleleResolver:
         print(f'Reading variants for {chrom} ', end='')
         with pysam.VariantFile(vcffile) as v:
             for rec in v.fetch(chrom):
+
+                used = False
                 for sample, sampleData in rec.samples.items():
-                    if not sample in self.select_samples:
+                    if self.select_samples is not None and not sample in self.select_samples:
                         continue
                     for base in sampleData.alleles:
                         if base is None:
@@ -89,9 +91,20 @@ class AlleleResolver:
                             continue
                         if len(base)==1:
                             self.locationToAllele[rec.chrom][ rec.pos-1][base].add(sample)
-                            added+=1
+                            used=True
+
                         else: # This location cannot be trusted:
                             unTrusted.append( (rec.chrom, rec.pos ) )
+                # We can prune this site if all samples are associated with the same base
+                if self.select_samples is not None and used:
+                    if len(self.locationToAllele[rec.chrom][ rec.pos-1][base])==len(self.select_samples):
+                        # The site is not informative
+                        del self.locationToAllele[rec.chrom][ rec.pos-1]
+                        used = False
+                if used:
+                    added+=1
+
+
 
         for t in unTrusted:
             if t in self.locationToAllele:
