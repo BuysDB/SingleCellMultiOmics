@@ -3,6 +3,7 @@ import pysamiterators.iterators
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 from singlecellmultiomics.utils import style_str
 complement = str.maketrans('ATCGN', 'TAGCN')
+import itertools
 
 class Fragment():
     """
@@ -92,6 +93,80 @@ class Fragment():
         self.set_strand(self.identify_strand())
         self.update_span()
         self.update_umi()
+
+
+
+    def write_tensor(self, chromosome=None, span_start=None, span_end=None, height=30, index_start=0,
+                base_content_table=None,
+                base_mismatches_table=None,
+                base_indel_table =None,
+                base_qual_table=None,
+
+                    ):
+
+        """
+        Get tensor representation of the fragment
+
+        Args:
+            chromosome( str ):
+                chromosome to view
+
+            span_start( int ):
+                first base to show
+
+            span_end( int ):
+                last base to show
+
+            show_read1(bool):
+                show read1
+
+            show_read2(bool):
+                show read2
+
+        Returns:
+            html(string) : html representation of the fragment
+
+        """
+        self.base_mapper = {}
+        for i,(strand,base) in enumerate(itertools.product((True,False),'NACTG-')):
+            self.base_mapper[(strand,base)] = i+2
+
+        if chromosome is None and span_start is None and span_end is None:
+            chromosome, span_start, span_end = self.get_span()
+
+        span_len = span_end - span_start
+
+        reads = self
+
+
+        for ri,read in enumerate(reads):
+            row_index = (ri+index_start) % height
+            if read is None:
+                continue
+            for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(read,with_seq=True):
+                if ref_pos is None:
+                    continue
+                if (ref_pos-span_start)<0 or (ref_pos-span_start)>(span_len-1):
+                    continue
+
+                ref_base = ref_base.upper()
+                if query_pos is None:
+                    query_base='-'
+                    qual = 0
+                    base_indel_table[row_index,ref_pos-span_start] = 1
+                else:
+                    query_base = read.seq[query_pos]
+                    qual = ord(read.qual[query_pos])
+
+                if ref_pos is not None:
+                    base_qual_table[row_index, ref_pos-span_start] = qual
+                    if query_base!=ref_base:
+                        base_content_table[row_index, ref_pos-span_start] = self.base_mapper[(read.is_reverse,query_base)]
+                    else:
+                        base_mismatches_table[row_index, ref_pos-span_start] = 0.2
+                    base_content_table[row_index, ref_pos-span_start] = self.base_mapper[(read.is_reverse,query_base)]
+        return ri+index_start+1
+
 
     def get_read_group(self):
         """
