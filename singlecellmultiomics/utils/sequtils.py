@@ -31,3 +31,18 @@ def complement(seq):
         complement (str)
     """
     return seq.translate(complement_translate)
+
+def split_nth(seq,separator,n):
+    """
+    Split sequence at the n-th occurence of separator
+
+    Args:
+        seq(str) : sequence to split
+        separator(str): separator to split on
+        n(int) : split at the n-th occurence
+    """
+    pos = 0
+    for i in range(n):
+        pos = seq.index(separator,pos+1)
+
+    return seq[:pos],seq[pos+1:]
