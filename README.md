@@ -30,7 +30,14 @@ The mapped reads are encoded in a BAM file. This BAM file still contains the enc
 universalBamTagger.py
 1) Recodes the original read names and extracts all information previously encoded by the demultiplexer.
 2) Adds allele information. (A VCF file is required for this)
-3) Supports multiple protocols: RNA:CELSEQ1 and CELSEQ2 (with 8 and 6bp UMI), methylation digest sequencing:SC MSPJI ,  lineage tracing:SCARTRACE, DNA digest sequencing: NLAIII, histone modification sequencing: scCHIC.
+3) Supports multiple protocols: 
+ RNA:CELSEQ1, CELSEQ2, VASA (with 8 and 6bp UMI), 
+ methylation digest sequencing:SC MSPJI ,  
+ lineage tracing:SCARTRACE, 
+ DNA digest sequencing: NLAIII, 
+ histone modification sequencing: scCHIC,
+ Single cell methylation : TAPs (in combination with any other supported protocol).
+ 
 4) Assigns reads to molecules to allow for deduplication, adds duplication BAM flag
 5) Assigns read groups
 
