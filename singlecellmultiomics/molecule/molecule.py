@@ -121,6 +121,28 @@ class Molecule():
                 # This happens when a consensus can not be obtained
                 pass
 
+    def get_feature_vector(self, window_size=90):
+        """ Obtain a feature vector representation of the molecule
+
+        Returns:
+            feature_vector(np.array)
+        """
+
+        return np.array([
+            self.get_strand(),
+            self.has_valid_span(),
+            self.get_umi_error_rate(),
+            self.get_consensus_gc_ratio(),
+            len(get_raw_barcode_sequences),
+            self.get_safely_aligned_length(),
+            self.get_max_mapping_qual(),
+            (self.alleles is None),
+            self.contains_valid_fragment(),
+            self.is_multimapped(),
+            self.get_feature_window(window_size=window_size)
+        ])
+
+
     def has_valid_span(self):
         """Check if the span of the molecule is determined
 
