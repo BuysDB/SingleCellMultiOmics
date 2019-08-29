@@ -145,7 +145,7 @@ class Molecule():
         if  self.umi is not None:
             self.set_meta('mI', self.umi)
         if self.allele is not None:
-            self.set_meta('DS', str(self.allele))
+            self.set_meta('DA', str(self.allele))
 
     def set_rejection_reason(self,reason):
         for fragment in self:
