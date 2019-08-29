@@ -213,7 +213,7 @@ class Molecule():
         """
         mc = 0
         other = 0
-        for i,(umi,obs) in enumerate( m.umi_counter.most_common() ):
+        for i,(umi,obs) in enumerate( self.umi_counter.most_common() ):
             if i==0:
                 mc = obs
             else:
