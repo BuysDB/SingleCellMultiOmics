@@ -112,7 +112,7 @@ class AlleleResolver:
         with gzip.open(path,'rt') as f:
             for line in f:
                 position, base, samples = line.strip().split('\t',3)
-                self.locationToAllele[chrom][int(position)] = set(samples.split(','))
+                self.locationToAllele[chrom][int(position)][base] = set(samples.split(','))
 
     def fetchChromosome(self, vcffile, chrom, clear=False):
         if clear:
