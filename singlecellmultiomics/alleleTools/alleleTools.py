@@ -4,10 +4,26 @@ import pysam
 import argparse
 import collections
 import functools
+import gzip
+import os
 
 class AlleleResolver:
 
-    def __init__(self, vcffile=None, chrom=None, uglyMode=False, lazyLoad=False, select_samples=None):
+    def __init__(self, vcffile=None,
+        chrom=None,
+        uglyMode=False,
+        lazyLoad=False,
+        select_samples=None,
+        use_cache = False # When this flag is true a cache file is generated containing usable SNPs for every chromosome in gzipped format
+        ):
+
+        # Convert file name to string if it is not
+        if type(vcffile)==pysam.libcbcf.VariantFile:
+            vcffile = vcffile.filename.decode('ascii')
+        if type(vcffile)==bytes:
+            vcffile = vcffile.decode('ascii')
+
+
         self.select_samples = select_samples
         self.vcffile=vcffile
         self.lazyLoad = lazyLoad
@@ -26,6 +42,8 @@ class AlleleResolver:
 
         """
 
+
+        self.use_cache = use_cache
         try:
             with  pysam.VariantFile(vcffile) as f:
                 pass
@@ -69,10 +87,63 @@ class AlleleResolver:
     def addAlleleInfoOneBased( self, chromosome, location, base, alleleName ):
         self.locationToAllele[chromosome][location][base].add(alleleName)
 
+    def write_cache(self, path, chrom):
+        """Write to cache file, this will make later lookups to the chromosome faster
+
+        Args:
+            path (str):  path of the cache file
+
+            chrom (str):  contig/chromosome to write cache file for (every contig has it's own cache)
+        """
+        temp_path = path+'.unfinished'
+        with gzip.open(temp_path,'wt') as f:
+            for position in sorted(list(self.locationToAllele[chrom].keys())):
+                for base in self.locationToAllele[chrom][position]:
+                    f.write(f'{position}\t{base}\t{",".join(sorted(list(self.locationToAllele[chrom][position][base])))}\n')
+        os.rename(temp_path,path)
+
+    def read_cached(self,path,chrom):
+        """Read cache file
+
+        Args:
+            path (str):  path of the cache file
+            chrom (str):  contig/chromosome
+        """
+        with gzip.open(path,'rt') as f:
+            for line in f:
+                position, base, samples = line.strip().split('\t',3)
+                self.locationToAllele[chrom][int(position)] = set(samples.split(','))
+
     def fetchChromosome(self, vcffile, chrom, clear=False):
         if clear:
-            self.locationToAllele = collections.defaultdict(  lambda: collections.defaultdict(  lambda: collections.defaultdict(set) )) #chrom -> pos-> base -> sample(s)
+            self.locationToAllele = collections.defaultdict(
+                lambda: collections.defaultdict(
+                lambda: collections.defaultdict(set) )) #chrom -> pos-> base -> sample(s)
         #allocate:
+
+        # Decide if this is an allele we would may be cache?
+        write_cache_file_flag=False
+        if self.use_cache:
+            if (chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom):
+                write_cache_file_flag=False
+            else:
+                write_cache_file_flag=True
+
+        if self.use_cache and write_cache_file_flag:
+            allele_dir = f'{os.path.abspath(vcffile)}_allele_cache/'
+            if not os.path.exists(allele_dir):
+                os.makedirs(allele_dir)
+            cache_file_name = f'{allele_dir}/{chrom}'
+            if self.select_samples is not None:
+                sample_list_id = '-'.join(sorted(list(self.select_samples)))
+                cache_file_name = cache_file_name+'_'+sample_list_id
+            cache_file_name+='.tsv.gz'
+            if os.path.exists(cache_file_name):
+                #print(f"Cached file exists at {cache_file_name}")
+                self.read_cached(cache_file_name,chrom)
+                return
+            #print(f"Cache enabled, but file is not available, creating cache file at {cache_file_name}")
+
         self.locationToAllele[chrom][-1]['N'].add('Nop')
 
         unTrusted = []
@@ -80,8 +151,11 @@ class AlleleResolver:
         print(f'Reading variants for {chrom} ', end='')
         with pysam.VariantFile(vcffile) as v:
             for rec in v.fetch(chrom):
-
                 used = False
+                bad = False
+                bases_to_alleles = collections.defaultdict(set) # base -> samples
+                samples_assigned = set()
+                most_assigned_base = 0
                 for sample, sampleData in rec.samples.items():
                     if self.select_samples is not None and not sample in self.select_samples:
                         continue
@@ -90,27 +164,36 @@ class AlleleResolver:
                             unTrusted.append( (rec.chrom, rec.pos ) )
                             continue
                         if len(base)==1:
-                            self.locationToAllele[rec.chrom][ rec.pos-1][base].add(sample)
+                            bases_to_alleles[base].add(sample)
                             used=True
-
+                            samples_assigned.add(sample)
                         else: # This location cannot be trusted:
-                            unTrusted.append( (rec.chrom, rec.pos ) )
+                            bad = True
                 # We can prune this site if all samples are associated with the same base
                 if self.select_samples is not None and used:
-                    if len(self.locationToAllele[rec.chrom][ rec.pos-1][base])==len(self.select_samples):
+                    if len(samples_assigned)!=len(self.select_samples):
                         # The site is not informative
-                        del self.locationToAllele[rec.chrom][ rec.pos-1]
-                        used = False
-                if used:
-                    added+=1
+                        bad=True
+                if len(bases_to_alleles)<2:
+                    bad=True
+                    # The site is not informative
+
+                if used and not bad:
+                    self.locationToAllele[rec.chrom][ rec.pos-1] = bases_to_alleles
 
 
 
-        for t in unTrusted:
-            if t in self.locationToAllele:
-                del self.locationToAllele[t[0]][t[1]]
-        del unTrusted
+        #for t in unTrusted:
+        #    if t in self.locationToAllele:
+        #        del self.locationToAllele[t[0]][t[1]]
+        #del unTrusted
         print(f'{added} variants [OK]')
+        if self.use_cache and write_cache_file_flag:
+            #print("writing cache file")
+            try:
+                self.write_cache(cache_file_name, chrom)
+            except Exception as e:
+                pass # @todo
 
     def getAllele( self, reads ):
         alleles = set()
@@ -132,6 +215,7 @@ class AlleleResolver:
             try:
                 self.fetchChromosome(self.vcffile, chrom, clear=True)
             except Exception as e:
+                print(e)
                 pass
 
         if not chrom in self.locationToAllele or not pos in self.locationToAllele[chrom] :
