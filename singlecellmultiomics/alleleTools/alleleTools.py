@@ -9,6 +9,14 @@ import os
 
 class AlleleResolver:
 
+    def clean_vcf_name(self, vcffile):
+        # Convert file name to string if it is not
+        if type(vcffile)==pysam.libcbcf.VariantFile:
+            vcffile = vcffile.filename.decode('ascii')
+        if type(vcffile)==bytes:
+            vcffile = vcffile.decode('ascii')
+        return vcffile
+
     def __init__(self, vcffile=None,
         chrom=None,
         uglyMode=False,
@@ -17,16 +25,12 @@ class AlleleResolver:
         use_cache = False # When this flag is true a cache file is generated containing usable SNPs for every chromosome in gzipped format
         ):
 
-        # Convert file name to string if it is not
-        if type(vcffile)==pysam.libcbcf.VariantFile:
-            vcffile = vcffile.filename.decode('ascii')
-        if type(vcffile)==bytes:
-            vcffile = vcffile.decode('ascii')
 
 
         self.select_samples = select_samples
-        self.vcffile=vcffile
+        self.vcffile=self.clean_vcf_name(vcffile)
         self.lazyLoad = lazyLoad
+        self.verbose = False
         """Initialise AlleleResolver
 
         Args:
@@ -50,10 +54,12 @@ class AlleleResolver:
         except Exception as e:
             print(e)
             uglyMode=True
-            print('Pysam cannot read the VCF, rolling back to slower homebrew parser')
+            if self.verbose:
+                print('Pysam cannot read the VCF, rolling back to slower homebrew parser')
 
         if lazyLoad and uglyMode:
-            print('Lazy loading is not supported for non proper VCFs. Loading all variants to memory.')
+            if self.verbose:
+                print('Lazy loading is not supported for non proper VCFs. Loading all variants to memory.')
             if self.select_samples is not None:
                 raise NotImplementedError("Sample selection is not implemented for non proper VCF")
             lazyLoad = False
@@ -76,13 +82,17 @@ class AlleleResolver:
                         elif chrom is not None and foundIt:
                             print('Stopping for speed')
                             break
-            print('Finished loading dirty vcf file')
+
+            if self.verbose:
+                print('Finished loading dirty vcf file')
 
         else:
             if not lazyLoad:
                 self.fetchChromosome(vcffile,chrom)
             else:
-                print('Lazy loading allele file')
+                if self.verbose:
+                    print('Lazy loading allele file')
+                pass
 
     def addAlleleInfoOneBased( self, chromosome, location, base, alleleName ):
         self.locationToAllele[chromosome][location][base].add(alleleName)
@@ -119,6 +129,8 @@ class AlleleResolver:
             self.locationToAllele = collections.defaultdict(
                 lambda: collections.defaultdict(
                 lambda: collections.defaultdict(set) )) #chrom -> pos-> base -> sample(s)
+
+        vcffile = self.clean_vcf_name(vcffile)
         #allocate:
 
         # Decide if this is an allele we would may be cache?
@@ -139,16 +151,19 @@ class AlleleResolver:
                 cache_file_name = cache_file_name+'_'+sample_list_id
             cache_file_name+='.tsv.gz'
             if os.path.exists(cache_file_name):
-                #print(f"Cached file exists at {cache_file_name}")
+                if self.verbose:
+                    print(f"Cached file exists at {cache_file_name}")
                 self.read_cached(cache_file_name,chrom)
                 return
-            #print(f"Cache enabled, but file is not available, creating cache file at {cache_file_name}")
+            if self.verbose:
+                print(f"Cache enabled, but file is not available, creating cache file at {cache_file_name}")
 
         self.locationToAllele[chrom][-1]['N'].add('Nop')
 
         unTrusted = []
         added = 0
-        print(f'Reading variants for {chrom} ', end='')
+        if self.verbose:
+            print(f'Reading variants for {chrom} ', end='')
         with pysam.VariantFile(vcffile) as v:
             for rec in v.fetch(chrom):
                 used = False
@@ -180,6 +195,7 @@ class AlleleResolver:
 
                 if used and not bad:
                     self.locationToAllele[rec.chrom][ rec.pos-1] = bases_to_alleles
+                    added+=1
 
 
 
@@ -187,12 +203,16 @@ class AlleleResolver:
         #    if t in self.locationToAllele:
         #        del self.locationToAllele[t[0]][t[1]]
         #del unTrusted
-        print(f'{added} variants [OK]')
+        if self.verbose:
+            print(f'{added} variants [OK]')
         if self.use_cache and write_cache_file_flag:
-            #print("writing cache file")
+            if self.verbose:
+                print("writing cache file")
             try:
                 self.write_cache(cache_file_name, chrom)
             except Exception as e:
+                if self.verbose:
+                    print(fail"Exception writing cache: {e}")
                 pass # @todo
 
     def getAllele( self, reads ):
