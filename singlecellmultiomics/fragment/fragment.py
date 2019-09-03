@@ -298,7 +298,7 @@ class Fragment():
                 )
             self.span = (contig,surfaceStart, surfaceEnd)
         except Exception as e:
-            if self.get_R1()!=None:
+            if self.get_R1()!=None and not self.get_R1().is_unmapped:
                 self.span = (contig, self.get_R1().reference_start,self.get_R1().reference_end)
 
 
