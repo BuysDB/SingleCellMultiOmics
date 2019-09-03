@@ -18,6 +18,26 @@ class TestMolecule(unittest.TestCase):
                 pass
             self.assertEqual(i,224)
 
+    def test_molecule_iterator_stability(self):
+        """Test if the simplest molecule iterator works"""
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            it = singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.Molecule,
+            fragmentClass=singlecellmultiomics.fragment.Fragment
+            )
+            pass
+
+    def test_NLA_molecule_iterator_stability(self):
+        """Test if the simplest molecule iterator works"""
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            it = singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
+            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+            )
+            pass
+
     def test_consensus(self):
         """Test if a right consensus sequence can be produced from a noisy molecule"""
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
