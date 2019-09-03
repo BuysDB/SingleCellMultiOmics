@@ -212,7 +212,7 @@ class AlleleResolver:
                 self.write_cache(cache_file_name, chrom)
             except Exception as e:
                 if self.verbose:
-                    print(fail"Exception writing cache: {e}")
+                    print(f"Exception writing cache: {e}")
                 pass # @todo
 
     def getAllele( self, reads ):
