@@ -339,7 +339,7 @@ class Molecule():
 
     def __repr__(self):
         frag_repr = '\n\t'.join([str(fragment) for fragment in self.fragments])
-        return f"""{self.__class__.split('.')[-1]}
+        return f"""{self.__class__.__name__}
         with {len(self.fragments)} assinged fragments
         { "Allele :" +  (self.allele if self.allele is not None else "No allele assigned")}
         """ + frag_repr
