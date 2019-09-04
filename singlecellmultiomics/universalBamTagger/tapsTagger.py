@@ -53,6 +53,7 @@ if __name__=='__main__':
     argparser.add_argument('-head',  type=int)
     argparser.add_argument('--stranded',  action='store_true')
     argparser.add_argument('-contig',  type=str,help='contig to run on')
+    argparser.add_argument('-method',  type=str,help='nla or chic')
     argparser.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
     argparser.add_argument('--no_sort_index', action='store_true', help='do not sort and index the output bam')
 
@@ -117,7 +118,6 @@ if __name__=='__main__':
     # Define molecule class arguments
     molecule_class_args={
         'reference':reference,
-        'site_has_to_be_mapped':True,
         'taps':taps,
         'min_max_mapping_quality':args.min_mq
     }
@@ -146,12 +146,28 @@ if __name__=='__main__':
             'features':transcriptome_features
         })
 
-        moleculeClass = singlecellmultiomics.molecule.AnnotatedTAPSNlaIIIMolecule
-        fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
-    else:
-        moleculeClass = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
-        fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
 
+    if args.method=='nla':
+        molecule_class_args.update({'site_has_to_be_mapped':True})
+
+    if args.transcriptome:
+        if args.method=='nla':
+            moleculeClass = singlecellmultiomics.molecule.AnnotatedTAPSNlaIIIMolecule
+            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+        elif args.method=='chic':
+            moleculeClass = singlecellmultiomics.molecule.AnnotatedTAPSCHICMolecule
+            fragmentClass=singlecellmultiomics.fragment.CHICFragment
+        else:
+            raise ValueError("Supply 'nla' or 'chic' for -method")
+    else:
+        if args.method=='nla':
+            moleculeClass = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
+            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+        elif args.method=='chic':
+            moleculeClass = singlecellmultiomics.molecule.TAPSCHICMolecule
+            fragmentClass=singlecellmultiomics.fragment.CHICFragment
+        else:
+            raise ValueError("Supply 'nla' or 'chic' for -method")
 
     ###############################################
     statistics = collections.defaultdict(collections.Counter)
@@ -169,7 +185,7 @@ if __name__=='__main__':
                     contig=args.contig
             )):
 
-            if args.head is not None and i>args.head:
+            if args.head is not None and i>=args.head:
                 print(colorama.Style.BRIGHT + colorama.Fore.RED + f"Head was supplied, stopped at {i} molecules" + colorama.Style.RESET_ALL)
                 break
             statistics['Input']['molecules'] += 1
@@ -198,7 +214,7 @@ if __name__=='__main__':
 
                     rejected_reads.append(molecule[0].reads)
                     continue
-                statistics['Filtering']['valid NLAIII molecule'] += 1
+                statistics['Filtering'][f'valid {args.method} molecule'] += 1
                 if len(molecule.junctions):
                     molecule.set_meta('RF','transcript_junction')
                     molecule.set_meta('dt','RNA')
@@ -209,19 +225,22 @@ if __name__=='__main__':
                         statistics['Data type detection']['DNA not mapping to gene'] += 1
                     else:
                         # Check if NLA III sites are skipped...
-                        skipped = molecule.get_undigested_site_count()
-                        if skipped==0:
-                            molecule.set_meta('dt','DNA')
+                        if args.method=='nla':
+                            skipped = molecule.get_undigested_site_count()
+                            if skipped==0:
+                                molecule.set_meta('dt','DNA')
+                            else:
+                                molecule.set_meta('dt','RNA or DNA')
                         else:
                             molecule.set_meta('dt','RNA or DNA')
             else:
                 if not molecule.is_valid():
-                    statistics['Filtering']['not valid NLAIII'] += 1
+                    statistics['Filtering'][f'not valid {args.method}'] += 1
                     molecule.set_meta('RF','rejected_molecule')
                     molecule.write_tags()
                     molecule.write_pysam(output)
                     continue
-                statistics['Filtering']['valid NLAIII molecule'] += 1
+                statistics['Filtering'][f'valid {args.method} molecule'] += 1
                 molecule.set_meta('RF','accepted_molecule')
 
 
@@ -306,10 +325,10 @@ if __name__=='__main__':
             if len(molecule.junctions):
                 molecule.set_meta('RF','recovered_transcript_junction')
                 statistics['Filtering']['recovered_transcript_junction'] += 1
-                statistics['Data type detection']['RNA because junction found and no NLAIII site mapped'] += 1
+                statistics['Data type detection'][f'RNA because junction found and no {args.method} site mapped'] += 1
             else:
                 molecule.set_meta('RF','recovered_transcript_gene')
-                statistics['Data type detection']['RNA because gene found and no NLAIII site mapped'] += 1
+                statistics['Data type detection'][f'RNA because gene found and no {args.method} site mapped'] += 1
                 statistics['Filtering']['recovered_transcript_gene'] += 1
             molecule.set_meta('dt','RNA')
             statistics['Data type detection']['RNA'] += 1
