@@ -122,6 +122,8 @@ if __name__=='__main__':
         'min_max_mapping_quality':args.min_mq
     }
 
+    fragment_class_args = {'umi_hamming_distance':args.uhd}
+
     # transcriptome mode specific arguments: ####
     if args.transcriptome:
 
@@ -147,8 +149,11 @@ if __name__=='__main__':
         })
 
 
+    # Method specific arguments
     if args.method=='nla':
         molecule_class_args.update({'site_has_to_be_mapped':True})
+    elif args.method=='chic':
+        fragment_class_args.update({'invert_strand':True})
 
     if args.transcriptome:
         if args.method=='nla':
@@ -179,7 +184,7 @@ if __name__=='__main__':
                     alignments=alignments,
                     moleculeClass=moleculeClass,
                     fragmentClass=fragmentClass,
-                    fragment_class_args={'umi_hamming_distance':args.uhd},
+                    fragment_class_args=fragment_class_args,
                     yield_invalid=True,
                     molecule_class_args=molecule_class_args,
                     contig=args.contig
