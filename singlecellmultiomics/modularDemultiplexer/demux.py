@@ -48,7 +48,7 @@ if __name__=='__main__':
 	inputArgs.add_argument('-slib', help="Assume all files belong to the same library, this flag supplies the name", type=str )
 	inputArgs.add_argument('-replace', action='append', default=None, help="""Replace part of the library name by another string, [SEARCH,REPLACEMENT]. For example if you want to remove FOO from the library name use "-replace FOO," if you want to replace FOO by BAR use "-replace FOO,BAR" """)
 
-	inputArgs.add_argument('-merge', default=None, help="""Merge libraries through multiple runs by selecting a merging method.
+	inputArgs.add_argument('-merge', default="_", help="""Merge libraries through multiple runs by selecting a merging method.
 	Options:None, delimiter[position], examples, given the samplename 'library_a_b': -merge _ yields 'library', -merge _2 yields 'library_a'as identifier.""")
 	inputArgs.add_argument('--ignore', action='store_true', help="Ignore non-demultiplexable read files")
 	#inputArgs.add_argument('-bfsp', help="Barcode file searchpaths", type=str, default='/media/sf_data/references,/hpc/hub_oudenaarden/bdebarbanson/ref')
