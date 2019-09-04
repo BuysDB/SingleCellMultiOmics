@@ -162,7 +162,7 @@ class TaggedRecord():
 
         else:
             #self.addTagByTag('aA',indexSequence, isPhred=False)
-            self.tags['aA']=indexSequence
+            self.tags['aa']=indexSequence
 
     def tagPysamRead(self, read):
 
