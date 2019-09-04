@@ -34,6 +34,34 @@ class TestCountTable(unittest.TestCase):
         # !samtools idxstats ./data/mini_nla_test.bam | head -n 1 | cut -f 3
         self.assertEqual(df.loc['chr1'].sum(),563)
 
+    def test_contig_selection(self):
+        """ Test if a contig is selected properly"""
+        df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
+            SimpleNamespace(
+                alignmentfiles=['./data/mini_nla_test.bam'],
+                head=None,
+                o=None,
+                bin=None,
+                binTag='DS',
+                sliding=None,
+                bedfile=None,
+                showtags=False,
+                featureTags=None,
+                joinedFeatureTags='reference_name',
+                byValue=None,
+                sampleTags='SM',
+                contig='chr5', 
+                minMQ=0,
+                filterXA=False,
+                dedup=False,
+                divideMultimapping=False,
+                doNotDivideFragments=True,
+                splitFeatures=False,
+                feature_delimiter=',',
+                 noNames=False) , return_df=True)
+        # !samtools idxstats ./data/mini_nla_test.bam | head -n 1 | cut -f 3
+        self.assertEqual(df.loc['chr1'].sum(),0)
+
     def test_total_molecule_counting(self):
         """ Test if the amount of molecules in a bam file is counted properly """
         df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
