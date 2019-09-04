@@ -339,7 +339,7 @@ class Molecule():
 
     def __repr__(self):
         frag_repr = '\n\t'.join([str(fragment) for fragment in self.fragments])
-        return f"""Molecule
+        return f"""{self.__class__.split('.')[-1]}
         with {len(self.fragments)} assinged fragments
         { "Allele :" +  (self.allele if self.allele is not None else "No allele assigned")}
         """ + frag_repr
@@ -986,12 +986,6 @@ class Molecule():
         reference_vis = ['?']  * span_len
         for location,query_base in consensus.items():
 
-            if reference_bases is None or reference_bases.get(location,'?')==query_base:
-                visualized[location[1]-self.spanStart] = query_base
-                if reference_bases is not None:
-                    reference_vis[location[1]-self.spanStart] = query_base # or reference_bases.get(location,'?')
-            else:
-                visualized[location[1]-self.spanStart] = style_str(query_base,color='red',weight=800)
                 if reference_bases is not None:
                     reference_vis[location[1]-self.spanStart] = style_str(reference_bases.get(location,'?'),color='black',weight=800)
 
