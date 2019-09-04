@@ -6,8 +6,10 @@ class NLAIIIFragment(Fragment):
         R1_primer_length=4,
         R2_primer_length=6,
         assignment_radius=1_000,
-        umi_hamming_distance=1
+        umi_hamming_distance=1,
+        invert_strand=False
         ):
+        self.invert_strand = invert_strand
         Fragment.__init__(self,
             reads,
             assignment_radius=assignment_radius,
@@ -28,7 +30,10 @@ class NLAIIIFragment(Fragment):
     def set_site(self, site_chrom, site_pos, site_strand=None ):
         self.set_meta('DS',site_pos)
         if site_strand is not None:
-            self.set_meta('RS',site_strand)
+            if self.invert_strand:
+                self.set_meta('RS',not site_strand)
+            else:
+                self.set_meta('RS',site_strand)
         self.set_strand(site_strand)
         self.site_location = (site_chrom, site_pos)
         self.cut_site_strand = site_strand

@@ -6,14 +6,18 @@ class CHICFragment(Fragment):
         R1_primer_length=4,
         R2_primer_length=6,
         assignment_radius=1_000,
-        umi_hamming_distance=1
+        umi_hamming_distance=1,
+        invert_strand=False
         ):
+        self.invert_strand = invert_strand
         Fragment.__init__(self,
             reads,
             assignment_radius=assignment_radius,
             R1_primer_length=R1_primer_length,
             R2_primer_length=R2_primer_length,
-            umi_hamming_distance=umi_hamming_distance )
+            umi_hamming_distance=umi_hamming_distance
+
+            )
         # set CHIC cut site given reads
         self.strand = None
         self.site_location = None
@@ -24,6 +28,8 @@ class CHICFragment(Fragment):
              self.site_location[0],self.site_location[1], self.sample)
         else:
             self.match_hash = None
+
+
 
     def set_site(self, site_chrom, site_pos, site_strand=None,is_trimmed=False ):
         self.set_meta('DS',site_pos)
@@ -63,7 +69,7 @@ class CHICFragment(Fragment):
             # The first base of the read has been taken off and the lh tag is already set, this can be copied to RZ
 
             self.set_site(
-                site_strand=int(not R1.is_reverse), # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
+                site_strand= R1.is_reverse if not self.invert_strand else not R1.is_reverse, # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
                 # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
                 site_chrom=R1.reference_name,
                 site_pos=(R1.reference_end if R1.is_reverse else R1.reference_start),
@@ -73,7 +79,7 @@ class CHICFragment(Fragment):
         else:
 
             self.set_site(
-                site_strand=int(not R1.is_reverse), # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
+                site_strand= R1.is_reverse if not self.invert_strand else not R1.is_reverse, # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
                 # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
                 site_chrom=R1.reference_name,
                 site_pos=(R1.reference_end-1 if R1.is_reverse else R1.reference_start+1),
