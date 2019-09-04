@@ -209,9 +209,8 @@ if __name__=='__main__':
                         statistics['Data type detection']['DNA not mapping to gene'] += 1
                     else:
                         # Check if NLA III sites are skipped...
-
                         skipped = molecule.get_undigested_site_count()
-                        if skipped>0:
+                        if skipped==0:
                             molecule.set_meta('dt','DNA')
                         else:
                             molecule.set_meta('dt','RNA or DNA')
