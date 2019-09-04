@@ -2,6 +2,8 @@ import itertools
 from singlecellmultiomics.molecule import Molecule
 from singlecellmultiomics.molecule.nlaIII import NlaIIIMolecule
 from singlecellmultiomics.molecule.nlaIII import AnnotatedNLAIIIMolecule
+from singlecellmultiomics.molecule.chic import CHICMolecule
+from singlecellmultiomics.molecule.chic import AnnotatedCHICMolecule
 
 complement = str.maketrans('ATGC', 'TACG')
 
@@ -204,4 +206,34 @@ class AnnotatedTAPSNlaIIIMolecule(AnnotatedNLAIIIMolecule,TAPSMolecule):
 
     def is_valid(self,set_rejection_reasons=False):
         return AnnotatedNLAIIIMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons) and \
+               TAPSMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons)
+
+class TAPSCHICMolecule(CHICMolecule,TAPSMolecule):
+    """Molecule class for combined TAPS and CHIC """
+    def __init__(self, fragments=None, taps=None, **kwargs):
+        CHICMolecule.__init__(self, fragments, **kwargs)
+        TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
+
+    def write_tags(self):
+        CHICMolecule.write_tags(self)
+        TAPSMolecule.write_tags(self)
+
+    def is_valid(self,set_rejection_reasons=False):
+        return CHICMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons) and \
+               TAPSMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons)
+
+
+class AnnotatedTAPSCHICMolecule(AnnotatedCHICMolecule,TAPSMolecule):
+    """Molecule class for combined TAPS, CHIC and transcriptome """
+    def __init__(self, fragments=None, features=None, taps=None, **kwargs):
+        assert features is not None, "Supply features!"
+        AnnotatedCHICMolecule.__init__(self, fragments, features=features, **kwargs)
+        TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
+
+    def write_tags(self):
+        AnnotatedCHICMolecule.write_tags(self)
+        TAPSMolecule.write_tags(self)
+
+    def is_valid(self,set_rejection_reasons=False):
+        return AnnotatedCHICMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons) and \
                TAPSMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons)
