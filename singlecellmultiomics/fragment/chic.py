@@ -25,7 +25,7 @@ class CHICFragment(Fragment):
         else:
             self.match_hash = None
 
-    def set_site(self, site_chrom, site_pos, site_strand=None ):
+    def set_site(self, site_chrom, site_pos, site_strand=None,is_trimmed=False ):
         self.set_meta('DS',site_pos)
         if site_strand is not None:
             self.set_meta('RS',site_strand)
@@ -35,9 +35,11 @@ class CHICFragment(Fragment):
 
     def identify_site(self):
 
+        R1 = self.get_R1()
+        R2 = self.get_R2()
+
         if R1 is None or R2 is None:
             return None
-        self.addAlleleInfo([read for read in reads if read is not None])
 
         """ Valid configs:
         Observed read pair:
@@ -55,41 +57,27 @@ class CHICFragment(Fragment):
 
         if R1.is_unmapped or R2.is_unmapped:
             return(None)
-        try:
-            start, end = tagtools.getPairGenomicLocations(R1,R2, R1PrimerLength=1 - int(is_trimmed), R2PrimerLength=6)
-            self.setFragmentSize(R1, end-start)
-            self.setFragmentSize(R2, end-start)
-            self.setFragmentTrust(R1, start, end)
-            self.setFragmentTrust(R2, start, end)
-
-        except Exception as e:
-            self.setFragmentSize(R1, 'unknown')
-            self.setFragmentSize(R2, 'unknown')
-
 
         #if R1.seq[0]=='T': # Site on the start of R1, R2 should map behind
         if is_trimmed:
             # The first base of the read has been taken off and the lh tag is already set, this can be copied to RZ
 
             self.set_site(
-                site_strand=int(R1.is_reverse), # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
+                site_strand=int(not R1.is_reverse), # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
                 # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
                 site_chrom=R1.reference_name,
                 site_pos=(R1.reference_end if R1.is_reverse else R1.reference_start),
                 is_trimmed=True
 
                   )
-                return(site_pos)
-
         else:
 
             self.set_site(
-                site_strand=int(R1.is_reverse), # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
+                site_strand=int(not R1.is_reverse), # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
                 # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
                 site_chrom=R1.reference_name,
                 site_pos=(R1.reference_end-1 if R1.is_reverse else R1.reference_start+1),
                 is_trimmed=False)
-                return(site_pos)
 
     def is_valid(self):
         return self.site_location is not None
@@ -98,7 +86,7 @@ class CHICFragment(Fragment):
         return self.site_location
 
     def __repr__(self):
-        return Fragment.__repr__(self)+f'\n\tRestriction site:{self.get_site_location()}'
+        return Fragment.__repr__(self)+f'\n\tMNase cut site:{self.get_site_location()}'
 
     def __eq__(self, other):
         # Make sure fragments map to the same strand, cheap comparisons
