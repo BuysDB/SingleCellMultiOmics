@@ -436,7 +436,7 @@ class Fragment():
         if chromosome is None and span_start is None and span_end is None:
             chromosome, span_start, span_end = self.get_span()
 
-        span_len = span_end - span_start
+        span_len = abs( span_end - span_start )
         visualized_frag = ['.']  * span_len
 
         if show_read1 is None and show_read2 is None:
@@ -464,8 +464,10 @@ class Fragment():
                          v = style_str(query_base,color='red',weight=500)
                     else:
                         v= query_base
-
-                    visualized_frag[ref_pos-span_start] = v
+                    try:
+                        visualized_frag[ref_pos-span_start] = v
+                    except IndexError:
+                        pass # the alignment is outside the requested view
         return ''.join(visualized_frag)
 
     def set_rejection_reason(self, reason):
