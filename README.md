@@ -82,6 +82,7 @@ raw_reads_[LIBRARY_TYPE]_[LIBRARY_NAME].png # Distribution of total reads
 usable_reads_[LIBRARY_TYPE]_[LIBRARY_NAME].png # Distribution of reads which can be assigned to a molecule
 unique_reads_[LIBRARY_TYPE]_[LIBRARY_NAME].png # Distribution of unique reads
 ```
+[All statistics plots can be generated with a single script, look here for details.](https://github.com/BuysDB/SingleCellMultiOmics/wiki/Library-statistics-plots)
 
 
 Create a contig by sample matrix and divide counts when reads are multimapping. (Used for counting transcriptome mapped reads)
