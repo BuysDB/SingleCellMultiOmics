@@ -986,8 +986,17 @@ class Molecule():
         reference_vis = ['?']  * span_len
         for location,query_base in consensus.items():
 
-                if reference_bases is not None:
-                    reference_vis[location[1]-self.spanStart] = style_str(reference_bases.get(location,'?'),color='black',weight=800)
+            try:
+                if reference_bases is None or reference_bases.get(location,'?')==query_base:
+                    visualized[location[1]-self.spanStart] = query_base
+                    if reference_bases is not None:
+                        reference_vis[location[1]-self.spanStart] = query_base # or reference_bases.get(location,'?')
+                else:
+                    visualized[location[1]-self.spanStart] = style_str(query_base,color='red',weight=800)
+                    if reference_bases is not None:
+                        reference_vis[location[1]-self.spanStart] = style_str(reference_bases.get(location,'?'),color='black',weight=800)
+            except IndexError as e:
+                pass # Tried to visualize a base outside view
 
         return ''.join(visualized) + '<br/><b>Reference:</b><br />' + ''.join(reference_vis)
 
