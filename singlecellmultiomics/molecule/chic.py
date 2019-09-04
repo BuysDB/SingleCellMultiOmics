@@ -6,7 +6,6 @@ class CHICMolecule(Molecule):
 
     Args:
         fragments (singlecellmultiomics.fragment.Fragment): Fragments to associate to the molecule
-
         **kwargs: extra args
 
     """
@@ -17,8 +16,16 @@ class CHICMolecule(Molecule):
     def write_tags(self):
         Molecule.write_tags(self)
 
-    def is_valid(self,set_rejection_reasons=False, reference=None):
-        # @todo
+
+    def is_valid(self,set_rejection_reasons=False):
+
+        try:
+            chrom,start,strand = self.get_cut_site()
+        except Exception as e:
+            if set_rejection_reasons:
+                self.set_rejection_reason('no_cut_site_found')
+            return False
+
         return True
 
     def get_fragment_span_sequence(self,reference=None):
