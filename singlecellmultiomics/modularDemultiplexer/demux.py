@@ -71,6 +71,7 @@ if __name__=='__main__':
 	indexArgs.add_argument('--li', help="List sequencing indices.", action='store_true')
 	indexArgs.add_argument('-indexDir', default=pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/'), help="Directory from which to obtain the sequencing indices,  when nothing is supplied the package resources are used")
 	indexArgs.add_argument('-si', help="Select only these sequencing indices -si CGATGT,TTAGGC")
+	indexArgs.add_argument('-ifa', help="Index file alias, select from the list supplied when running --li", default='illumina_merged_ThruPlex48S_RP', type=str)
 	indexArgs.add_argument('-hdi', help="Hamming distance INDEX sequence expansion, the hamming distance used for resolving the sequencing INDEX. For cell barcode hamming distance see -hd", type=int, default=1)
 
 	fragArgs = argparser.add_argument_group('Fragment configuration', '')
@@ -114,7 +115,8 @@ if __name__=='__main__':
 	barcodeParser = barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hd, barcodeDirectory=args.barcodeDir)
 
 	## Setup the index parser
-	indexFileAlias=None # let the multiplex methods decide which index file to use
+	indexFileAlias=args.ifa # let the multiplex methods decide which index file to use
+
 	if args.si: ## the user defines the sequencing indices
 		useSequencingIndices = args.si.split(',')
 		print(f"{Style.BRIGHT} Only these sequencing indices will be kept: {Style.RESET_ALL}")
