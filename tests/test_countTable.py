@@ -50,7 +50,7 @@ class TestCountTable(unittest.TestCase):
                 joinedFeatureTags='reference_name',
                 byValue=None,
                 sampleTags='SM',
-                contig='chr5', 
+                contig='chr5',
                 minMQ=0,
                 filterXA=False,
                 dedup=False,
@@ -60,7 +60,7 @@ class TestCountTable(unittest.TestCase):
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
         # !samtools idxstats ./data/mini_nla_test.bam | head -n 1 | cut -f 3
-        self.assertEqual(df.loc['chr1'].sum(),0)
+        self.assertEqual(df.sum().sum(),0)
 
     def test_total_molecule_counting(self):
         """ Test if the amount of molecules in a bam file is counted properly """
