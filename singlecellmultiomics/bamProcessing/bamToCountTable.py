@@ -401,7 +401,7 @@ def create_count_table(args, return_df=False):
     for bamFile in args.alignmentfiles:
 
         with pysam.AlignmentFile(bamFile) as f:
-
+            i=0 # make sure i is defined
             if args.bin:
                 # Obtain the reference sequence lengths
                 ref_lengths = {r:f.get_reference_length(r) for r in f.references}
