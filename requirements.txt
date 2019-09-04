@@ -5,3 +5,4 @@ colorama
 pysamiterators
 matplotlib
 more-itertools
+tabulate
