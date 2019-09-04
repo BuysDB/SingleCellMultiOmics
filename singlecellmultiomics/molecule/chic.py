@@ -34,3 +34,21 @@ class CHICMolecule(Molecule):
                     raise ValueError('Please supply a reference (PySAM.FastaFile)')
             reference = self.reference
             return reference.fetch(self.chromosome, self.spanStart, self.spanEnd).upper()
+
+
+class AnnotatedCHICMolecule(FeatureAnnotatedMolecule,CHICMolecule):
+    """Chic Molecule which is annotated with features (genes/exons/introns, .. )
+
+    Args:
+        fragments (singlecellmultiomics.fragment.Fragment): Fragments to associate to the molecule
+        features (singlecellmultiomics.features.FeatureContainer) : container to use to obtain features from
+        **kwargs: extra args
+
+    """
+    def write_tags(self):
+        CHICMolecule.write_tags(self)
+        FeatureAnnotatedMolecule.write_tags(self)
+
+    def __init__(self,fragment, features, **kwargs):
+        FeatureAnnotatedMolecule.__init__(self,fragment,features,**kwargs)
+        CHICMolecule.__init__(self,fragment,**kwargs)
