@@ -80,7 +80,7 @@ if __name__=='__main__':
 	fragArgs.add_argument('--se', help="Allow single end reads",  action='store_true')
 
 	techArgs = argparser.add_argument_group('Technical', '')
-	#techArgs.add_argument('-t', help="Amount of demultiplexing threads used" , type=int, default=8)
+	techArgs.add_argument('-g', help="group_id, don't use this yourself" , type=int, default=None)
 	techArgs.add_argument('-fh', help="When demultiplexing to mutliple cell files in multiple threads, the amount of opened files can exceed the limit imposed by your operating system. The amount of open handles per thread is kept below this parameter to prevent this from happening.", default=500, type=int)
 	techArgs.add_argument('-dsize', help="Amount of reads used to determine barcode type" , type=int, default=2000)
 
@@ -180,28 +180,59 @@ if __name__=='__main__':
 			print(f'{Fore.RED}NONE! The library will not be demultiplexed!{Style.RESET_ALL}')
 
 		if not args.y:
-			#with open(args.submit, 'w') as f:
-
-			filesForLib = []
-			for lane in libraries[library]:
-				for R1R2 in libraries[library][lane]:
-					for p in libraries[library][lane][R1R2]:
-						filesForLib.append( p )
+			print(f"\n{Style.BRIGHT}--y not supplied, execute the command below to run demultiplexing on the cluster:{Style.RESET_ALL}")
 			arguments = " ".join([x for x in sys.argv if x!='--dry' and not '--y' in x and not '-submit' in x and not '.fastq' in x and not '.fq' in x]) + " --y"
 
-			print(f"\n{Style.BRIGHT}--y not supplied, execute the command below to run demultiplexing on the cluster:{Style.RESET_ALL}")
-			print( '/hpc/hub_oudenaarden/bdebarbanson/internalTools/submission.py' + f' -y --nenv -time 50 -t 1 -m 8 -N NDMX%s "source /hpc/hub_oudenaarden/bdebarbanson/virtualEnvironments/py36/bin/activate; %s -use {",".join([x.shortName for x in selectedStrategies])}"\n' % (library, '%s %s'  % ( arguments, " ".join(filesForLib)) ))
+
+			submit_in_chunks = (not args.scsepf)
+			submitted_jobs = []
+			filesForLib = []
+			group_id=0
+			for lane in libraries[library]:
+				files_to_submit = []
+				for R1R2 in libraries[library][lane]:
+
+					for p in libraries[library][lane][R1R2]:
+						filesForLib.append( p )
+						files_to_submit.append(p)
+
+				if submit_in_chunks:
+					job_name=f'DMX_{library}_{group_id}'
+					submitted_jobs.append(job_name)
+
+					print( 'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job_name} "%s  -g {group_id} -use {",".join([x.shortName for x in selectedStrategies])}"\n' % ('%s %s'  % ( arguments, " ".join(files_to_submit)) ))
+				group_id+=1
+
+			if not submit_in_chunks:
+				job_name=f'DMX_{library}'
+				print( 'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job_name} "%s -use {",".join([x.shortName for x in selectedStrategies])}"\n' % ('%s %s'  % ( arguments, " ".join(filesForLib)) ))
+
+			else:
+				# we need a job which glues everything back together
+				#f'{args.o}/{library}/{prefix}demultiplexed
+				#f'{args.o}/{library}/{prefix}rejects
+				cmds = [
+					f'cat {args.o}/{library}/*_TEMP_demultiplexedR1.fastq.gz  > {args.o}/{library}/demultiplexedR1.fastq.gz && rm {args.o}/{library}/*_TEMP_demultiplexedR1.fastq.gz',
+					f'cat {args.o}/{library}/*_TEMP_demultiplexedR2.fastq.gz  > {args.o}/{library}/demultiplexedR2.fastq.gz && rm {args.o}/{library}/*_TEMP_demultiplexedR2.fastq.gz',
+					f'cat {args.o}/{library}/*_TEMP_rejectsR1.fastq.gz  > {args.o}/{library}/rejectsR1.fastq.gz && rm {args.o}/{library}/*_TEMP_rejectsR1.fastq.gz',
+					f'cat {args.o}/{library}/*_TEMP_rejectsR2.fastq.gz  > {args.o}/{library}/rejectsR2.fastq.gz && rm {args.o}/{library}/*_TEMP_rejectsR2.fastq.gz',
+					f'cat {args.o}/{library}/*_TEMP_demultiplexing.log  > {args.o}/{library}/demultiplexing.log && rm {args.o}/{library}/*_TEMP_demultiplexing.log'
+				]
+				for cmd in cmds:
+					print( 'submission.py' + f' -y --py36 -time 4 -t 1 -m 2 -N "glue_{library}" "{cmd}" -hold {",".join(submitted_jobs)}' )
 
 		if args.y:
+
 			targetDir = f'{args.o}/{library}'
 			if not os.path.exists(targetDir):
 				os.makedirs(targetDir)
-			handle = FastqHandle(f'{args.o}/{library}/demultiplexed' , True, single_cell=args.scsepf, maxHandles=args.fh)
 
-			rejectHandle = FastqHandle(f'{args.o}/{library}/rejects' , True)
+			prefix = '' if args.g is None else f'{args.g}_TEMP_'
+			handle = FastqHandle(f'{args.o}/{library}/{prefix}demultiplexed' , True, single_cell=args.scsepf, maxHandles=args.fh)
+			rejectHandle = FastqHandle(f'{args.o}/{library}/{prefix}rejects' , True)
 			"""Set up statistic file"""
 
-			log_location = os.path.abspath(f'{args.o}/{library}/demultiplexing.log');
+			log_location = os.path.abspath(f'{args.o}/{library}/{prefix}demultiplexing.log');
 			log_handle = open(log_location,'w')
 			log_handle.write(f'Demultiplexing operation started, writing to {args.o}/{library}\n')
 
@@ -211,6 +242,7 @@ if __name__=='__main__':
 					break
 				for readPair in readPairs:
 					pass
+
 				for readPairIdx,_ in enumerate(readPairs[readPair]):
 					files = [ readPairs[readPair][readPairIdx] for readPair in readPairs ]
 					processedReadPairs,strategyYields = dmx.demultiplex( files ,
