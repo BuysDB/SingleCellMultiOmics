@@ -159,12 +159,17 @@ class DemultiplexingStrategyLoader:
                     if targetFile is not None:
                         targetFile.write( recodedRecords )
 
-                except NonMultiplexable:
+                except NonMultiplexable as reason:
                     #print('NonMultiplexable')
                     if rejectHandle is not None:
+
                         try:
-                            rejectHandle.write( baseDemux.demultiplex(reads, library=library) )
+                            to_write = baseDemux.demultiplex(reads, library=library, reason=reason)
+                            rejectHandle.write( to_write )
+
                         except NonMultiplexable as e:
+                            # we cannot read the header of the read..
+                            reads = [ '\n'.join( (read.header+f';RR:{reason};Rr:{e}', read.sequence, read.plus, read.qual) ) for read in reads ]
                             rejectHandle.write( reads )
 
                     continue

@@ -40,7 +40,7 @@ def fqSafe(string):
 illuminaHeaderSplitRegex = re.compile(':| ', re.UNICODE)
 
 class TaggedRecord():
-    def __init__(self, tagDefinitions, rawRecord=False, library=None, **kwargs):
+    def __init__(self, tagDefinitions, rawRecord=False, library=None,  reason=None, **kwargs):
         self.tags = {} # 2 character Key -> value
         self.tagDefinitions = tagDefinitions
         if rawRecord is not False:
@@ -50,6 +50,8 @@ class TaggedRecord():
                 raise
         if library is not None:
             self.addTagByTag( 'LY',library, isPhred=False)
+        if reason is not None:
+            self.tags['RR'] = reason
 
         if type(rawRecord) is fastqIterator.FastqRecord:
             self.sequence = rawRecord.sequence
@@ -304,14 +306,14 @@ class IlluminaBaseDemultiplexer(DemultiplexingStrategy):
         self.description = 'Demultiplex as a bulk sample'
         self.indexSummary = f'sequencing indices: {indexFileAlias}'
 
-    def demultiplex(self, records, inherited=False, library=None, **kwargs):
+    def demultiplex(self, records, inherited=False, library=None, reason=None, **kwargs):
         global TagDefinitions
 
         try:
             if inherited:
-                return [ TaggedRecord(rawRecord=record,tagDefinitions=TagDefinitions, indexFileParser=self.indexFileParser, indexFileAlias=self.illuminaIndicesAlias, library=library) for record in records ]
+                return [ TaggedRecord(rawRecord=record,tagDefinitions=TagDefinitions, indexFileParser=self.indexFileParser, indexFileAlias=self.illuminaIndicesAlias, library=library, reason=reason) for record in records ]
             else:
-                return [TaggedRecord(rawRecord=record,tagDefinitions=TagDefinitions,indexFileParser=self.indexFileParser, indexFileAlias=self.illuminaIndicesAlias, library=library).asFastq(record.sequence, record.plus, record.qual) for record in records]
+                return [TaggedRecord(rawRecord=record,tagDefinitions=TagDefinitions,indexFileParser=self.indexFileParser, indexFileAlias=self.illuminaIndicesAlias, library=library, reason=reason).asFastq(record.sequence, record.plus, record.qual) for record in records]
         except NonMultiplexable:
             raise
 
@@ -372,7 +374,7 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
         barcodeIdentifier, barcode, hammingDistance = self.barcodeFileParser.getIndexCorrectedBarcodeAndHammingDistance(alias=self.barcodeFileAlias, barcode=rawBarcode)
         #print(self.barcodeFileParser,self.barcodeFileAlias,rawBarcode,barcodeIdentifier, barcode, hammingDistance)
         if barcodeIdentifier is None:
-            raise NonMultiplexable('barcode not set')
+            raise NonMultiplexable(f'bc:{rawBarcode}_not_matching_{self.barcodeFileAlias}')
 
         if self.umiLength!=0:
             umi = records[self.umiRead].sequence[self.umiStart:self.umiStart+self.umiLength]

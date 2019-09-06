@@ -22,13 +22,13 @@ class IlluminaBaseDemultiplexer(DemultiplexingStrategy):
 		self.barcodeSummary='Bulk, no cell barcodes'
 		self.indexSummary = f'sequencing indices: {indexFileAlias}'
 
-	def demultiplex(self, records, library=None, **kwargs):
+	def demultiplex(self, records, library=None, reason=None, **kwargs):
 		global TagDefinitions
 
 		try:
-			return [TaggedRecord(rawRecord=record,tagDefinitions=TagDefinitions,indexFileParser=self.indexFileParser, indexFileAlias=self.illuminaIndicesAlias, library=library) for record in records]
+			return [TaggedRecord(rawRecord=record,tagDefinitions=TagDefinitions,indexFileParser=self.indexFileParser, indexFileAlias=self.illuminaIndicesAlias, library=library, reason=reason) for record in records]
 			 #[TaggedRecord(rawRecord=record,tagDefinitions=TagDefinitions,indexFileParser=self.indexFileParser, indexFileAlias=self.illuminaIndicesAlias, library=library).asFastq(record.sequence, record.plus, record.qual) for record in records]
 		except NonMultiplexable:
 			raise
 		except Exception as e:
-			print( e )
+			raise
