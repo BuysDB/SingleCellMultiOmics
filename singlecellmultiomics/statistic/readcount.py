@@ -41,7 +41,8 @@ class ReadCount(Statistic):
         df = self.get_df() #,'UnmappedReads']]
 
         print(df)
-        df.plot.bar(figsize=(14,4)).legend(bbox_to_anchor=(1, 0.98))
+
+        df.plot.bar(figsize=(10,4)).legend(bbox_to_anchor=(1, 0.98))
         if title is not None:
             plt.title(title)
 
