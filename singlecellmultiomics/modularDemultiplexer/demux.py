@@ -227,7 +227,10 @@ if __name__=='__main__':
 
 			targetDir = f'{args.o}/{library}'
 			if not os.path.exists(targetDir):
-				os.makedirs(targetDir)
+				try:
+					os.makedirs(targetDir)
+				except FileExistsError:
+					continue 
 
 			prefix = '' if args.g is None else f'{args.g}_TEMP_'
 			handle = FastqHandle(f'{args.o}/{library}/{prefix}demultiplexed' , True, single_cell=args.scsepf, maxHandles=args.fh)
