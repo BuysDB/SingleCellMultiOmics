@@ -141,7 +141,7 @@ class PlateStatistic(object):
         else:
             offset = 1
 
-        format = 384 if '384' in mux else 96
+        format = 384 if ('384' in mux or mux.startswith('CS2')) else 96
 
         df['col'] =  [ index2well[format][(offset+int(x.rsplit('_')[-1]))][1]  for x in df.index]
         df['row'] = [ -rows.index(index2well[format][(offset+int(x.rsplit('_')[-1]))][0])  for x in df.index]
