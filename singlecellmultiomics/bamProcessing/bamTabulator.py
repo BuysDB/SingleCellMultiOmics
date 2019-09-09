@@ -87,7 +87,7 @@ if __name__=='__main__':
 
         with pysam.AlignmentFile(args.alignmentfile, ignore_truncation=True  ) as f:
             for i,read in enumerate(f):
-                if args.dedup and read.is_duplicate):
+                if args.dedup and read.is_duplicate:
                     continue
                 line = '%s\n' % '\t'.join([
                     #str(read.reference_name) if tag=='chrom' else (str(read.get_tag(tag) if read.has_tag(tag) else 'None'))
