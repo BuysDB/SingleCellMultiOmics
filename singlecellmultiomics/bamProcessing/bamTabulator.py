@@ -35,7 +35,7 @@ if __name__=='__main__':
         head = 1000
         tagObs = collections.Counter()
 
-        with pysam.AlignmentFile(args.alignmentfile) as f:
+        with pysam.AlignmentFile(args.alignmentfile, ignore_truncation=True ) as f:
             for i,read in enumerate(f):
                 tagObs += collections.Counter([ k for k,v in   read.get_tags(with_value_type=False)] )
                 if i==(head-1):
