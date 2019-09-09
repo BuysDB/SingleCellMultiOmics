@@ -101,11 +101,12 @@ class Fragment():
                 base_mismatches_table=None,
                 base_indel_table =None,
                 base_qual_table=None,
+                base_clip_table=None
 
                     ):
 
         """
-        Get tensor representation of the fragment
+        Write tensor representation of the fragment to supplied 2d arrays
 
         Args:
             chromosome( str ):
@@ -136,16 +137,49 @@ class Fragment():
 
         span_len = span_end - span_start
 
+
+
         reads = self
-
-
+        last_ref = None
         for ri,read in enumerate(reads):
-            row_index = (ri+index_start) % height
+
             if read is None:
                 continue
-            for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(read,with_seq=True):
+
+            alignment_operations = list(itertools.chain(*([operation]*l for operation,l in read.cigartuples if operation!=2)))
+
+            # Obtain the amount of operations before the alignment start
+            operations_before_alignment_start = 0
+            for  query_pos, ref_pos in read.get_aligned_pairs():
                 if ref_pos is None:
+                    operations_before_alignment_start+=1
+                else:
+                    break
+            initial_base_offset = read.reference_start - operations_before_alignment_start
+
+
+            # Obtain row index in the tensor
+            row_index = (ri+index_start) % height
+            # Where in the reference are we?
+            ref_pointer=read.reference_start
+
+            alignment_started = False
+            for operation, (cycle, query_pos, ref_pos, ref_base) in zip(alignment_operations,pysamiterators.iterators.ReadCycleIterator(read,with_seq=True)):
+
+                if ref_pos is None:
+                    if not alignment_started:
+                        ref_pointer = initial_base_offset+i
+                    else:
+                        ref_pointer+=1
+                    if operation==4:
+                        try:
+                            query_base = read.seq[query_pos]
+                            base_clip_table[row_index, ref_pointer-span_start] = self.base_mapper[(read.is_reverse,query_base)]
+                        except IndexError:
+                            pass
                     continue
+                ref_pointer = ref_pos
+
                 if (ref_pos-span_start)<0 or (ref_pos-span_start)>(span_len-1):
                     continue
 

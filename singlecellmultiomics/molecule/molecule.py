@@ -263,6 +263,7 @@ class Molecule():
         base_mismatches_table= np.zeros( (height,span_len))
         base_indel_table =np.zeros( (height,span_len))
         base_qual_table =np.zeros( (height,span_len))
+        base_clip_table =np.zeros( (height,span_len))
         pointer = 0
         for _,frags in self.get_rt_reactions().items() :
             for frag in frags:
@@ -271,6 +272,7 @@ class Molecule():
                                             base_mismatches_table=base_mismatches_table,
                                             base_indel_table=base_indel_table,
                                             base_qual_table=base_qual_table,
+                                            base_clip_table=base_clip_table,
                                             height=height
                                            )
         x = np.vstack(
@@ -278,7 +280,8 @@ class Molecule():
                 base_content_table,
                 base_mismatches_table,
                 base_indel_table,
-                base_qual_table
+                base_qual_table,
+                base_clip_table
             ])
 
         return x
