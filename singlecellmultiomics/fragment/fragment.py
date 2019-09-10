@@ -101,8 +101,9 @@ class Fragment():
                 base_mismatches_table=None,
                 base_indel_table =None,
                 base_qual_table=None,
-                base_clip_table=None
-
+                base_clip_table=None,
+                mask_reference_bases=None, # set with reference bases to mask (converted to N ) (chrom,pos)
+                reference=None
                     ):
 
         """
@@ -118,14 +119,25 @@ class Fragment():
             span_end( int ):
                 last base to show
 
-            show_read1(bool):
-                show read1
+            height (int) :
+                height of the tensor (reads)
 
-            show_read2(bool):
-                show read2
+            index_start(int): start writing tensor at this row
 
+            base_content_table(np.array) : 2d array to write base contents to
+
+            base_indel_table(np.array) : 2d array to write indel information to
+
+            base_content_table(np.array) : 2d array to write base contents to
+
+            base_content_table(np.array) : 2d array to write base contents to
+
+            mask_reference_bases(set): mask reference bases in this set with a N set( (chrom,pos), ... )
+
+            reference(pysam.FastaFile) :  Handle to reference file to use instead of MD tag. If None: MD tag is used.
+            
         Returns:
-            html(string) : html representation of the fragment
+            None
 
         """
         self.base_mapper = {}
@@ -136,8 +148,6 @@ class Fragment():
             chromosome, span_start, span_end = self.get_span()
 
         span_len = span_end - span_start
-
-
 
         reads = self
         last_ref = None
@@ -164,7 +174,17 @@ class Fragment():
             ref_pointer=read.reference_start
 
             alignment_started = False
-            for operation, (cycle, query_pos, ref_pos, ref_base) in zip(alignment_operations,pysamiterators.iterators.ReadCycleIterator(read,with_seq=True)):
+            for operation, (cycle, query_pos, ref_pos, ref_base) in zip(
+                alignment_operations,
+                pysamiterators.iterators.ReadCycleIterator(
+                    read,
+                    with_seq=True,
+                    reference=reference)):
+
+                # Mask locations from mask_reference_bases
+                if  mask_reference_bases is not None and ref_pos is not None  and (chromosome,ref_pos) in mask_reference_bases:
+                    ref_base = 'N'
+
 
                 if ref_pos is None:
                     if not alignment_started:

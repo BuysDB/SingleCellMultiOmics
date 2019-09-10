@@ -226,6 +226,7 @@ class Molecule():
         """
 
         return np.array([
+            len(self),
             self.get_strand(),
             self.has_valid_span(),
             self.get_umi_error_rate(),
@@ -240,7 +241,13 @@ class Molecule():
             self.is_valid()
         ])
 
-    def get_alignment_tensor(self, max_reads,window_radius=20,centroid=None):
+    def get_alignment_tensor(self,
+            max_reads,
+            window_radius=20,
+            centroid=None,
+            mask_centroid=False,
+            refence_backed=False
+            ):
         """ Obtain a tensor representation of the molecule alignment around the given centroid
         Args:
             max_reads (int) : maximum amount of reads returned in the tensor, this will be the amount of rows/4 of the returned feature matrix
@@ -249,9 +256,18 @@ class Molecule():
 
             centroid(int) : center of extracted window, when not specified the cut location of the molecule is used
 
+            mask_centroid(bool) : when True, mask reference base at centroid with N
+
+            refence_backed(bool) : when True the molecules reference is used to emit reference bases instead of the MD tag
         Returns:
             tensor_repr(np.array) : (4*window_radius*2*max_reads) dimensional feature matrix
         """
+        reference = None
+        if refence_backed:
+            reference  = self.reference
+            if self.reference is None:
+                raise ValueError("refence_backed set to True, but the molecule has no reference assigned. Assing one using pysam.FastaFile()")
+
         height = max_reads
         chromosome = self.chromosome
         if centroid is None:
@@ -265,15 +281,23 @@ class Molecule():
         base_qual_table =np.zeros( (height,span_len))
         base_clip_table =np.zeros( (height,span_len))
         pointer = 0
+
+        mask = None
+        if mask_centroid:
+            mask = set((chromosome,centroid))
+
         for _,frags in self.get_rt_reactions().items() :
             for frag in frags:
-                pointer = frag.write_tensor(chromosome, span_start, span_end, index_start=pointer,
+                pointer = frag.write_tensor(chromosome, span_start, span_end,
+                                            index_start=pointer,
                                            base_content_table=base_content_table,
                                             base_mismatches_table=base_mismatches_table,
                                             base_indel_table=base_indel_table,
                                             base_qual_table=base_qual_table,
                                             base_clip_table=base_clip_table,
-                                            height=height
+                                            height=height,
+                                            mask_reference_bases=mask,
+                                            reference= reference
                                            )
         x = np.vstack(
             [
