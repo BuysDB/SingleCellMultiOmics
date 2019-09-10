@@ -401,7 +401,7 @@ def create_count_table(args, return_df=False):
     for bamFile in args.alignmentfiles:
 
         with pysam.AlignmentFile(bamFile) as f:
-
+            i=0 # make sure i is defined
             if args.bin:
                 # Obtain the reference sequence lengths
                 ref_lengths = {r:f.get_reference_length(r) for r in f.references}
@@ -413,7 +413,7 @@ def create_count_table(args, return_df=False):
                 else:
                     pysam_iterator = f
 
-                for i,read in enumerate(f):
+                for i,read in enumerate(pysam_iterator):
                     if i%1_000_000==0:
                         print(f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
 

@@ -73,6 +73,7 @@ class Molecule():
         cache_size=10_000,
         reference=None,
         min_max_mapping_quality=None,# When all fragments have a mappin quality below this value the is_valid method will return False
+        allele_resolver=None,
         **kwargs):
         """Initialise Molecule
 
@@ -82,6 +83,8 @@ class Molecule():
             Fragment to assign to Molecule. More fragments can be added later
 
         min_max_mapping_quality :  When all fragments have a mappin quality below this value the is_valid method will return False
+
+        allele_resolver :  alleleTools.AlleleResolver or None. Supply an allele resolver in order to assign an allele to the molecule
 
         cache_size (int): radius of molecule assignment cache
         """
@@ -104,6 +107,41 @@ class Molecule():
                     self.add_fragment(frag)
             else:
                 self.add_fragment(fragments)
+
+        # Obtain allele if available
+        self.allele_resolver = allele_resolver
+        self.allele = None
+        if self.allele_resolver is not None:
+            try:
+                hits = self.get_allele(allele_resolver)
+                # Only store when we have a unique single hit:
+                if len(hits)==1:
+                    self.allele = list(hits)[0]
+            except ValueError as e:
+                # This happens when a consensus can not be obtained
+                pass
+
+    def get_feature_vector(self, window_size=90):
+        """ Obtain a feature vector representation of the molecule
+
+        Returns:
+            feature_vector(np.array)
+        """
+
+        return np.array([
+            self.get_strand(),
+            self.has_valid_span(),
+            self.get_umi_error_rate(),
+            self.get_consensus_gc_ratio(),
+            len(get_raw_barcode_sequences),
+            self.get_safely_aligned_length(),
+            self.get_max_mapping_qual(),
+            (self.alleles is None),
+            self.contains_valid_fragment(),
+            self.is_multimapped(),
+            self.get_feature_window(window_size=window_size)
+        ])
+
 
     def has_valid_span(self):
         """Check if the span of the molecule is determined
@@ -128,6 +166,8 @@ class Molecule():
         self.is_valid(set_rejection_reasons=True)
         if  self.umi is not None:
             self.set_meta('mI', self.umi)
+        if self.allele is not None:
+            self.set_meta('DA', str(self.allele))
 
     def set_rejection_reason(self,reason):
         for fragment in self:
@@ -178,6 +218,74 @@ class Molecule():
         """
         return collections.Counter( self.get_consensus().values() )
 
+    def get_feature_vector(self):
+        """ Obtain a feature vector representation of the molecule
+
+        Returns:
+            feature_vector(np.array)
+        """
+
+        return np.array([
+            self.get_strand(),
+            self.has_valid_span(),
+            self.get_umi_error_rate(),
+            self.get_consensus_gc_ratio(),
+            len(self.get_raw_barcode_sequences()),
+            self.get_safely_aligned_length(),
+            self.get_max_mapping_qual(),
+            (self.allele is None),
+            self.contains_valid_fragment(),
+            self.is_multimapped(),
+            self.get_undigested_site_count(),
+            self.is_valid()
+        ])
+
+    def get_alignment_tensor(self, max_reads,window_radius=20,centroid=None):
+        """ Obtain a tensor representation of the molecule alignment around the given centroid
+        Args:
+            max_reads (int) : maximum amount of reads returned in the tensor, this will be the amount of rows/4 of the returned feature matrix
+
+            window_radius (int) : radius of bp around centroid
+
+            centroid(int) : center of extracted window, when not specified the cut location of the molecule is used
+
+        Returns:
+            tensor_repr(np.array) : (4*window_radius*2*max_reads) dimensional feature matrix
+        """
+        height = max_reads
+        chromosome = self.chromosome
+        if centroid is None:
+            _,centroid,strand = self.get_cut_site()
+        span_start = centroid-window_radius
+        span_end = centroid+window_radius
+        span_len = abs(span_start-span_end)
+        base_content_table = np.zeros( (height,span_len))
+        base_mismatches_table= np.zeros( (height,span_len))
+        base_indel_table =np.zeros( (height,span_len))
+        base_qual_table =np.zeros( (height,span_len))
+        base_clip_table =np.zeros( (height,span_len))
+        pointer = 0
+        for _,frags in self.get_rt_reactions().items() :
+            for frag in frags:
+                pointer = frag.write_tensor(chromosome, span_start, span_end, index_start=pointer,
+                                           base_content_table=base_content_table,
+                                            base_mismatches_table=base_mismatches_table,
+                                            base_indel_table=base_indel_table,
+                                            base_qual_table=base_qual_table,
+                                            base_clip_table=base_clip_table,
+                                            height=height
+                                           )
+        x = np.vstack(
+            [
+                base_content_table,
+                base_mismatches_table,
+                base_indel_table,
+                base_qual_table,
+                base_clip_table
+            ])
+
+        return x
+
     def get_consensus_gc_ratio(self):
         """Obtain the GC ratio of the molecule consensus sequence
 
@@ -195,7 +303,7 @@ class Molecule():
         """
         mc = 0
         other = 0
-        for i,(umi,obs) in enumerate( m.umi_counter.most_common() ):
+        for i,(umi,obs) in enumerate( self.umi_counter.most_common() ):
             if i==0:
                 mc = obs
             else:
@@ -234,8 +342,9 @@ class Molecule():
 
     def __repr__(self):
         frag_repr = '\n\t'.join([str(fragment) for fragment in self.fragments])
-        return f"""Molecule
+        return f"""{self.__class__.__name__}
         with {len(self.fragments)} assinged fragments
+        { "Allele :" +  (self.allele if self.allele is not None else "No allele assigned")}
         """ + frag_repr
 
     def update_umi(self):
@@ -336,6 +445,17 @@ class Molecule():
         self.umi_hamming_distance = fragment.umi_hamming_distance
         self.saved_base_obs = None
         self.update_umi()
+
+    def get_safely_aligned_length(self):
+        """Get the amount of safely aligned bases (excludes primers)
+        Returns:
+            aligned_bases (int) : Amount of safely aligned bases
+             or None when this cannot be determined because both mates are not mapped
+        """
+        if self.spanStart is None or self.spanEnd is None:
+            return None
+        return abs( self.spanEnd - self.spanStart )
+
 
     def add_fragment(self, fragment, use_hash=True):
         """Associate a fragment with this Molecule
@@ -555,6 +675,7 @@ class Molecule():
         Returns:
             mean_phred_score (float)
         """
+        qualities = []
         for fragment in self:
             if fragment.span[0]!=chromosome:
                 continue
@@ -564,11 +685,12 @@ class Molecule():
                 start, end = pysamiterators.iterators.getPairGenomicLocations(
                 R1=R1,
                 R2=R2,
+                R1PrimerLength=fragment.R1_primer_length,
+                R2PrimerLength=fragment.R2_primer_length,
                 allow_unsafe=(R1 is None))
             except ValueError as e:
                 continue
 
-            qualities = []
             for read in (R1,R2):
                 for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(
                     read,with_seq=False):
@@ -675,6 +797,8 @@ class Molecule():
                 start, end = pysamiterators.iterators.getPairGenomicLocations(
                 R1=R1,
                 R2=R2,
+                R1PrimerLength=fragment.R1_primer_length,
+                R2PrimerLength=fragment.R2_primer_length,
                 allow_unsafe=(R1 is None))
             except ValueError as e:
                 ignored+=1
@@ -689,6 +813,7 @@ class Molecule():
                     if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
                         continue
                     query_base = read.seq[query_pos]
+                    #query_qual = read.qual[query_pos]
                     if query_base=='N':
                         continue
                     base_obs[(read.reference_name,ref_pos)][query_base]+=1
@@ -782,6 +907,9 @@ class Molecule():
             start, end = pysamiterators.iterators.getPairGenomicLocations(
                 R1=R1,
                 R2=R2,
+                R1PrimerLength=fragment.R1_primer_length,
+                R2PrimerLength=fragment.R2_primer_length,
+
                 allow_unsafe=(R1 is None))
             if start is None or end is None:
                 continue
@@ -861,14 +989,17 @@ class Molecule():
         reference_vis = ['?']  * span_len
         for location,query_base in consensus.items():
 
-            if reference_bases is None or reference_bases.get(location,'?')==query_base:
-                visualized[location[1]-self.spanStart] = query_base
-                if reference_bases is not None:
-                    reference_vis[location[1]-self.spanStart] = query_base # or reference_bases.get(location,'?')
-            else:
-                visualized[location[1]-self.spanStart] = style_str(query_base,color='red',weight=800)
-                if reference_bases is not None:
-                    reference_vis[location[1]-self.spanStart] = style_str(reference_bases.get(location,'?'),color='black',weight=800)
+            try:
+                if reference_bases is None or reference_bases.get(location,'?')==query_base:
+                    visualized[location[1]-self.spanStart] = query_base
+                    if reference_bases is not None:
+                        reference_vis[location[1]-self.spanStart] = query_base # or reference_bases.get(location,'?')
+                else:
+                    visualized[location[1]-self.spanStart] = style_str(query_base,color='red',weight=800)
+                    if reference_bases is not None:
+                        reference_vis[location[1]-self.spanStart] = style_str(reference_bases.get(location,'?'),color='black',weight=800)
+            except IndexError as e:
+                pass # Tried to visualize a base outside view
 
         return ''.join(visualized) + '<br/><b>Reference:</b><br />' + ''.join(reference_vis)
 

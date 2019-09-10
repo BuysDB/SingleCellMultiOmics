@@ -28,9 +28,10 @@ if __name__=='__main__':
 
     argparser.add_argument('alignmentfile',  type=str)
     argparser.add_argument('-ref',  type=str, help='path to reference fasta file, auto detected from bamfile')
-    argparser.add_argument('-head',  type=int)
+    argparser.add_argument('-head',  type=int,help='Tabulate the first N valid molecules')
     argparser.add_argument('-minmq',  type=int, default=50)
     argparser.add_argument('-contig',  type=str,help='contig to run on, all when not specified')
+    argparser.add_argument('-method',  type=str, default='nla')
     argparser.add_argument('-moleculeNameSep',  type=str,help='Separator to use in molecule name', default=':')
     argparser.add_argument('-samples',  type=str,help='Samples to select, separate with comma. For example CellA,CellC,CellZ', default=None)
     argparser.add_argument('-context',  type=str,help='Contexts to select, separate with comma. For example Z,H,X', default=None)
@@ -58,22 +59,34 @@ if __name__=='__main__':
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
     taps = singlecellmultiomics.molecule.TAPS(reference=reference)
 
+    molecule_class_args={
+        'reference':reference,
+        'taps':taps,
+        'min_max_mapping_quality':args.minmq
+    }
+    if args.method=='nla':
+        moleculeClass = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
+        fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+        molecule_class_args.update({    'site_has_to_be_mapped':True })
+    elif args.method=='chic':
+        moleculeClass = singlecellmultiomics.molecule.TAPSCHICMolecule
+        fragmentClass = singlecellmultiomics.fragment.CHICFragment
+    else:
+        raise ValueError("Supply 'nla' or 'chic' for -method")
+
+
     try:
         for i,molecule in  enumerate( singlecellmultiomics.molecule.MoleculeIterator(
             alignments=alignments,
-            moleculeClass=singlecellmultiomics.molecule.TAPSNlaIIIMolecule,
+            moleculeClass=moleculeClass,
             yield_invalid = (output is not None),
-            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+            fragmentClass=fragmentClass,
             fragment_class_args={'umi_hamming_distance':1},
-            molecule_class_args={
-                'reference':reference,
-                'site_has_to_be_mapped':True,
-                'taps':taps,
-                'min_max_mapping_quality':args.minmq
-            },
+
+            molecule_class_args=molecule_class_args,
             contig=args.contig)):
 
-            if args.head and i>=args.head:
+            if args.head and (i-1)>=args.head:
                 break
 
 

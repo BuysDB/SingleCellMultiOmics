@@ -4,128 +4,9 @@ import re
 import singlecellmultiomics.fastqProcessing.fastqIterator as fastqIterator
 import string
 from singlecellmultiomics.utils.sequtils import hamming_distance
+from singlecellmultiomics.tags import *
 
 complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
-
-class SamTag:
-
-    def __init__(self, tag, humanName, isPhred=False, doNotWrite=False):
-        self.tag = tag
-        self.humanName = humanName
-        self.isPhred=isPhred
-        self.doNotWrite = doNotWrite
-        if len(tag)!=2:
-            raise ValueError('Invalid tag length')
-
-tags = [
-    SamTag('SM', 'sampleName'),
-    SamTag('LY', 'sequencingLibrary'),
-    SamTag('EX', 'experiment'),
-    SamTag('MX', 'demultiplexingStrategy'),
-    SamTag('Fc', 'flowCellId'),
-    SamTag('La', 'lane'),
-    SamTag('Ti', 'tile'),
-    SamTag('Is', 'instrument'),
-    SamTag('BK', 'isBulk'),
-    SamTag('XC', 'plateCoord'),
-    SamTag('CX', 'clusterXpos'),
-    SamTag('CY', 'clusterYpos'),
-    SamTag('RP', 'readPairNumber', doNotWrite=True),
-    SamTag('RN', 'runNumber'),
-    SamTag('Fi', 'filterFlag'),
-    SamTag('CN', 'controlNumber'),
-    SamTag('aA', 'correctedIlluminaIndexSequence'),
-    SamTag('aI', 'indexSequence'),
-    SamTag('aa', 'rawIlluminaIndexSequence'),
-    SamTag('ah', 'hammingDistanceToIndex'),
-    SamTag('BC', 'barcode'),
-    SamTag('CB', 'cellBarcode'), # Same as bc
-    SamTag('QX', 'barcodeQual', isPhred=True),
-    SamTag('bc', 'rawBarcode'),
-    SamTag('hd', 'hammingDistanceRawBcAssignedBc'),
-    SamTag('BI', 'barcodeIndex'),
-    SamTag('QT', 'sampleBarcodeQuality', isPhred=True),
-    SamTag('RX', 'umi'),
-    SamTag('uL', 'umiLength'),
-    SamTag('RQ', 'umiQual', isPhred=True),
-    SamTag('BX', 'umiCorrected'),
-    SamTag('BZ', 'umiCorrectedQuality',isPhred=True),
-    SamTag('MI', 'molecularIdentifier'),
-    SamTag('QM', 'molecularIdentifierQuality',isPhred=True),
-    SamTag('DS', 'siteCoordinate'),
-    SamTag('DA', 'allele'),
-    SamTag('RZ', 'recognizedSequence'),
-    SamTag('RS', 'recognizedStrand'),
-    SamTag('LI', 'ligationMotif'),
-    SamTag('RC', 'moleculeOverseqCountIndex'),
-    SamTag('RR', 'rejectionReason'),
-    SamTag('DT', 'sourceType'),
-    SamTag('EX', 'exons'),
-    SamTag('IN', 'introns'),
-    SamTag('GN', 'genes'),
-    SamTag('JN', 'junctions'),
-    SamTag('IT', 'is_transcriptome'),
-    SamTag('nM', 'editDistanceToReference'),
-    SamTag('NM', 'editDistanceToReference'),
-    SamTag('AS', 'alignmentScore'),
-    SamTag('NH', 'occurencesOfFragment'),
-    SamTag('HI', 'queryHitIndex'),
-    SamTag('XS', 'assignmentStatus'),
-    SamTag('SQ', 'meanBaseQuality'),
-    SamTag('SD', 'scarDescription'),
-    SamTag('RG', 'readGroup'),
-    SamTag('XA', 'alternativeAlignmentHits'),
-    SamTag('MD', 'alignment'),
-    SamTag('dt', 'assingedDataType'),
-
-
-    SamTag('fS', 'fragmentSizeTag'),
-    SamTag('fe', 'fragmentEndTag'),
-    SamTag('fs', 'fragmentStartTag'),
-    SamTag('Us', 'undigestedSiteCount'),
-    SamTag('lh', 'ligationOverhangSequence'),
-    SamTag('lq', 'ligationOverhangQuality',isPhred = True),
-
-    SamTag('a1', 'Read1Clipped3primeBasesKmer'),
-    SamTag('A2', 'Read2Clipped3primeBasesKmer'),
-    SamTag('aQ', 'Read1Clipped3primeBasesKmerQuality',isPhred = True),
-    SamTag('AQ', 'Read2Clipped3primeBasesKmerQuality',isPhred = True),
-
-    SamTag('e1', 'Read1Clipped5primeBasesKmer'),
-    SamTag('eQ', 'Read2Clipped5primeBasesKmer'),
-    SamTag('eB', 'Read1Clipped5primeCycle'),
-    SamTag('EB', 'Read2Clipped5primeCycle'),
-    SamTag('E2', 'Read1Clipped5primeBasesKmerQuality',isPhred = True),
-    SamTag('EQ', 'Read2Clipped5primeBasesKmerQuality',isPhred = True),
-
-    SamTag('ES', 'EnzymeSequence'),  # Christoph
-    SamTag('eq', 'EnzymeSequenceQualities', isPhred = True),
-    SamTag('IS', 'ispcrSequence'),
-    SamTag('is', 'ispcrSequenceQualities', isPhred = True),
-
-    SamTag('H0', 'HexamerSequenceR1'),  # anna
-    SamTag('H1', 'HexamerPhredScoreR1', isPhred = True),
-    SamTag('H2', 'HexamerSequenceR2'),
-    SamTag('H3', 'HexamerPhredScoreR2', isPhred = True),
-
-    SamTag('XM', 'perBaseMethylationStatus'),
-    SamTag('Cm', 'modified3BPContexts'),
-    SamTag('Qm', 'modified4BPContexts'),
-    SamTag('Cu', 'unmodified3BPContexts'),
-    SamTag('Qu', 'unmodified4BPContexts'),
-    SamTag('MC', 'methylatedBaseCountForFragment'),
-
-    SamTag('rS', 'randomPrimerStart'),
-    SamTag('rP', 'randomPrimerSequence'),
-
-
-    SamTag('AI', 'AssignedIntrons'),
-    SamTag('AE', 'AssingedExons'),
-    SamTag('iH', 'IntronHits amount of bases aligned to intron'),
-    SamTag('eH', 'ExonHits amount of bases aligned to exon'),
-    SamTag('SP', 'IsSpliced')
-
-]
 
 
 TagDefinitions =  { tag.tag: tag for tag in tags }
@@ -159,7 +40,7 @@ def fqSafe(string):
 illuminaHeaderSplitRegex = re.compile(':| ', re.UNICODE)
 
 class TaggedRecord():
-    def __init__(self, tagDefinitions, rawRecord=False, library=None, **kwargs):
+    def __init__(self, tagDefinitions, rawRecord=False, library=None,  reason=None, **kwargs):
         self.tags = {} # 2 character Key -> value
         self.tagDefinitions = tagDefinitions
         if rawRecord is not False:
@@ -169,6 +50,8 @@ class TaggedRecord():
                 raise
         if library is not None:
             self.addTagByTag( 'LY',library, isPhred=False)
+        if reason is not None:
+            self.tags['RR'] = reason
 
         if type(rawRecord) is fastqIterator.FastqRecord:
             self.sequence = rawRecord.sequence
@@ -281,7 +164,7 @@ class TaggedRecord():
 
         else:
             #self.addTagByTag('aA',indexSequence, isPhred=False)
-            self.tags['aA']=indexSequence
+            self.tags['aa']=indexSequence
 
     def tagPysamRead(self, read):
 
@@ -423,14 +306,14 @@ class IlluminaBaseDemultiplexer(DemultiplexingStrategy):
         self.description = 'Demultiplex as a bulk sample'
         self.indexSummary = f'sequencing indices: {indexFileAlias}'
 
-    def demultiplex(self, records, inherited=False, library=None, **kwargs):
+    def demultiplex(self, records, inherited=False, library=None, reason=None, **kwargs):
         global TagDefinitions
 
         try:
             if inherited:
-                return [ TaggedRecord(rawRecord=record,tagDefinitions=TagDefinitions, indexFileParser=self.indexFileParser, indexFileAlias=self.illuminaIndicesAlias, library=library) for record in records ]
+                return [ TaggedRecord(rawRecord=record,tagDefinitions=TagDefinitions, indexFileParser=self.indexFileParser, indexFileAlias=self.illuminaIndicesAlias, library=library, reason=reason) for record in records ]
             else:
-                return [TaggedRecord(rawRecord=record,tagDefinitions=TagDefinitions,indexFileParser=self.indexFileParser, indexFileAlias=self.illuminaIndicesAlias, library=library).asFastq(record.sequence, record.plus, record.qual) for record in records]
+                return [TaggedRecord(rawRecord=record,tagDefinitions=TagDefinitions,indexFileParser=self.indexFileParser, indexFileAlias=self.illuminaIndicesAlias, library=library, reason=reason).asFastq(record.sequence, record.plus, record.qual) for record in records]
         except NonMultiplexable:
             raise
 
@@ -491,7 +374,7 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
         barcodeIdentifier, barcode, hammingDistance = self.barcodeFileParser.getIndexCorrectedBarcodeAndHammingDistance(alias=self.barcodeFileAlias, barcode=rawBarcode)
         #print(self.barcodeFileParser,self.barcodeFileAlias,rawBarcode,barcodeIdentifier, barcode, hammingDistance)
         if barcodeIdentifier is None:
-            raise NonMultiplexable('barcode not set')
+            raise NonMultiplexable(f'bc:{rawBarcode}_not_matching_{self.barcodeFileAlias}')
 
         if self.umiLength!=0:
             umi = records[self.umiRead].sequence[self.umiStart:self.umiStart+self.umiLength]

@@ -8,6 +8,7 @@ Single cell multi omics is a set of tools to deal with multiple measurements fro
 git clone https://github.com/BuysDB/SingleCellMultiOmics
 pip install ./SingleCellMultiOmics
 ```
+For creating a virtual environment look [here](https://github.com/BuysDB/SingleCellMultiOmics/wiki/Python-test-and-run-environment)
 
 # Usage
 
@@ -29,10 +30,18 @@ The mapped reads are encoded in a BAM file. This BAM file still contains the enc
 universalBamTagger.py
 1) Recodes the original read names and extracts all information previously encoded by the demultiplexer.
 2) Adds allele information. (A VCF file is required for this)
-3) Supports multiple protocols: RNA:CELSEQ1 and CELSEQ2 (with 8 and 6bp UMI), methylation digest sequencing:SC MSPJI ,  lineage tracing:SCARTRACE, DNA digest sequencing: NLAIII, histone modification sequencing: scCHIC.
+3) Supports multiple protocols: 
+ RNA:CELSEQ1, CELSEQ2, VASA (with 8 and 6bp UMI), 
+ methylation digest sequencing:SC MSPJI ,  
+ lineage tracing:SCARTRACE, 
+ DNA digest sequencing: NLAIII, 
+ histone modification sequencing: scCHIC,
+ Single cell methylation : TAPs (in combination with any other supported protocol).
+ 
 4) Assigns reads to molecules to allow for deduplication, adds duplication BAM flag
 5) Assigns read groups
 
+All SAM tags used and written by this package are listed in [TAGS.MD](https://github.com/BuysDB/SingleCellMultiOmics/blob/master/TAGS.MD)
 
 
 # Examples:
@@ -73,6 +82,7 @@ raw_reads_[LIBRARY_TYPE]_[LIBRARY_NAME].png # Distribution of total reads
 usable_reads_[LIBRARY_TYPE]_[LIBRARY_NAME].png # Distribution of reads which can be assigned to a molecule
 unique_reads_[LIBRARY_TYPE]_[LIBRARY_NAME].png # Distribution of unique reads
 ```
+[All statistics plots can be generated with a single script, look here for details.](https://github.com/BuysDB/SingleCellMultiOmics/wiki/Library-statistics-plots)
 
 
 Create a contig by sample matrix and divide counts when reads are multimapping. (Used for counting transcriptome mapped reads)

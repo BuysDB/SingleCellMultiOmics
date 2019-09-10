@@ -3,18 +3,58 @@ import pysamiterators.iterators
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 from singlecellmultiomics.utils import style_str
 complement = str.maketrans('ATCGN', 'TAGCN')
+import itertools
 
 class Fragment():
+    """
+    Fragment
+
+    This class holds 1 or more reads which are derived from the same cluster
+    """
+
     def __init__(self, reads, assignment_radius=3, umi_hamming_distance=1,
                 R1_primer_length=0,
                 R2_primer_length=6,
-                tag_definitions=None ):
+                tag_definitions=None,
+                mapping_dir = (False,True) # R1 forward, R2 reverse
+                 ):
+        """
+        Initialise Fragment
 
+            Args:
+                reads( list ):
+                    list containing pysam AlignedSegment reads
+
+                assignment_radius( int ):
+                    Assignment radius for molecule resolver
+
+                umi_hamming_distance( int ):
+                    umi_hamming_distance distance threshold for associating multiple fragments to a molecule
+
+                R1_primer_length(int):
+                    length of R1 primer, these bases are not taken into account when calculating a consensus
+
+                R2_primer_length(int):
+                    length of R2 primer, these bases are not taken into account when calculating a consensus
+
+                tag_definitions(list):
+                    sam TagDefinitions
+
+                mapping_dir( tuple ):
+                    expected mapping direction of mates,
+                    True for reverse, False for forward. This parameter is used in dovetail detection
+
+            Returns:
+                html(string) : html representation of the fragment
+        """
+        self.R1_primer_length = R1_primer_length
+        self.R2_primer_length = R2_primer_length
         if tag_definitions is None:
             tag_definitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
         self.tag_definitions = tag_definitions
         self.assignment_radius = assignment_radius
         self.umi_hamming_distance = umi_hamming_distance
+        self.mapping_dir = mapping_dir
         self.reads = reads
         self.strand = None
         self.meta = {} # dictionary of meta data
@@ -49,14 +89,131 @@ class Fragment():
                 read.is_read1 = False
                 read.is_read2 = True
 
-
-
-        self.R1_primer_length = R1_primer_length
-        self.R2_primer_length = R2_primer_length
         self.set_sample()
         self.set_strand(self.identify_strand())
         self.update_span()
         self.update_umi()
+
+
+
+    def write_tensor(self, chromosome=None, span_start=None, span_end=None, height=30, index_start=0,
+                base_content_table=None,
+                base_mismatches_table=None,
+                base_indel_table =None,
+                base_qual_table=None,
+                base_clip_table=None
+
+                    ):
+
+        """
+        Write tensor representation of the fragment to supplied 2d arrays
+
+        Args:
+            chromosome( str ):
+                chromosome to view
+
+            span_start( int ):
+                first base to show
+
+            span_end( int ):
+                last base to show
+
+            show_read1(bool):
+                show read1
+
+            show_read2(bool):
+                show read2
+
+        Returns:
+            html(string) : html representation of the fragment
+
+        """
+        self.base_mapper = {}
+        for i,(strand,base) in enumerate(itertools.product((True,False),'NACTG-')):
+            self.base_mapper[(strand,base)] = i+2
+
+        if chromosome is None and span_start is None and span_end is None:
+            chromosome, span_start, span_end = self.get_span()
+
+        span_len = span_end - span_start
+
+
+
+        reads = self
+        last_ref = None
+        for ri,read in enumerate(reads):
+
+            if read is None:
+                continue
+
+            alignment_operations = list(itertools.chain(*([operation]*l for operation,l in read.cigartuples if operation!=2)))
+
+            # Obtain the amount of operations before the alignment start
+            operations_before_alignment_start = 0
+            for  query_pos, ref_pos in read.get_aligned_pairs():
+                if ref_pos is None:
+                    operations_before_alignment_start+=1
+                else:
+                    break
+            initial_base_offset = read.reference_start - operations_before_alignment_start
+
+
+            # Obtain row index in the tensor
+            row_index = (ri+index_start) % height
+            # Where in the reference are we?
+            ref_pointer=read.reference_start
+
+            alignment_started = False
+            for operation, (cycle, query_pos, ref_pos, ref_base) in zip(alignment_operations,pysamiterators.iterators.ReadCycleIterator(read,with_seq=True)):
+
+                if ref_pos is None:
+                    if not alignment_started:
+                        ref_pointer = initial_base_offset+i
+                    else:
+                        ref_pointer+=1
+                    if operation==4:
+                        try:
+                            query_base = read.seq[query_pos]
+                            base_clip_table[row_index, ref_pointer-span_start] = self.base_mapper[(read.is_reverse,query_base)]
+                        except IndexError:
+                            pass
+                    continue
+                ref_pointer = ref_pos
+
+                if (ref_pos-span_start)<0 or (ref_pos-span_start)>(span_len-1):
+                    continue
+
+                ref_base = ref_base.upper()
+                if query_pos is None:
+                    query_base='-'
+                    qual = 0
+                    base_indel_table[row_index,ref_pos-span_start] = 1
+                else:
+                    query_base = read.seq[query_pos]
+                    qual = ord(read.qual[query_pos])
+
+                if ref_pos is not None:
+                    base_qual_table[row_index, ref_pos-span_start] = qual
+                    if query_base!=ref_base:
+                        base_content_table[row_index, ref_pos-span_start] = self.base_mapper[(read.is_reverse,query_base)]
+                    else:
+                        base_mismatches_table[row_index, ref_pos-span_start] = 0.2
+                    base_content_table[row_index, ref_pos-span_start] = self.base_mapper[(read.is_reverse,query_base)]
+        return ri+index_start+1
+
+
+    def get_read_group(self):
+        """
+        Obtain read group for this fragment
+        Returns:
+            read_group(str) : Read group containing flow cell lane and unique sample id
+        """
+        rg = None
+        for read in self.reads:
+            if read is not None:
+                rg = f"{read.get_tag('Fc') if read.has_tag('Fc') else 'NONE'}.{read.get_tag('La') if read.has_tag('La') else 'NONE'}.{read.get_tag('SM') if read.has_tag('SM') else 'NONE'}"
+                break
+        return rg
 
     def set_duplicate(self, is_duplicate):
         """Define this fragment as duplicate, sets the corresponding bam bit flag
@@ -70,11 +227,12 @@ class Fragment():
     def write_tags(self):
         self.set_meta('MQ',self.mapping_quality)
         self.set_meta('MM',self.is_multimapped)
+        self.set_meta('RG', self.get_read_group())
         if self.has_valid_span():
             # Write fragment size:
             self.set_meta('fS',abs(self.span[2]-self.span[1]))
             self.set_meta('fe',self.span[1])
-            self.set_meta('fs',self.span[2]-self.span[1])
+            self.set_meta('fs',self.span[2])
 
     def write_pysam(self, pysam_handle):
         """Write all associated reads to the target file
@@ -154,20 +312,32 @@ class Fragment():
 
 
     def update_span(self):
-        surfaceStart = None
-        surfaceEnd = None
+
+
+        if self.mapping_dir!=(False,True):
+            raise NotImplementedError("Sorry only FW RV is implemented")
+
         contig = None
         for read in self.reads:
-            if read is None:
-                continue
-            if contig is None and read.reference_name is not None:
+            if read is not None and not read.is_unmapped:
                 contig = read.reference_name
-            if read.reference_start is not None and (surfaceStart is None or read.reference_start<surfaceStart):
-                surfaceStart=read.reference_start
-            if read.reference_end is not None and( surfaceEnd is None or read.reference_end>surfaceEnd):
-                surfaceEnd=read.reference_end
 
-        self.span = (contig,surfaceStart, surfaceEnd)
+        try:
+            surfaceStart, surfaceEnd = pysamiterators.iterators.getPairGenomicLocations(
+                self.get_R1(),
+                self.get_R2(),
+                R1PrimerLength = self.R1_primer_length,
+                R2PrimerLength = self.R2_primer_length,
+                allow_unsafe=True
+                )
+            self.span = (contig,surfaceStart, surfaceEnd)
+        except Exception as e:
+
+            if self.has_R1() and not self.get_R1().is_unmapped:
+                self.span = (contig, self.get_R1().reference_start,self.get_R1().reference_end)
+
+
+
 
     def get_span(self):
         return self.span
@@ -188,6 +358,15 @@ class Fragment():
 
     def get_sample(self):
         return self.sample
+
+
+    def __len__(self):
+        """Obtain the amount of associated reads to the fragment
+
+        Returns:
+            assocoiated reads (int)
+        """
+        return(sum(read is not None for read in self.reads))
 
 
     def set_strand(self, strand):
@@ -291,7 +470,7 @@ class Fragment():
         if chromosome is None and span_start is None and span_end is None:
             chromosome, span_start, span_end = self.get_span()
 
-        span_len = span_end - span_start
+        span_len = abs( span_end - span_start )
         visualized_frag = ['.']  * span_len
 
         if show_read1 is None and show_read2 is None:
@@ -319,8 +498,10 @@ class Fragment():
                          v = style_str(query_base,color='red',weight=500)
                     else:
                         v= query_base
-
-                    visualized_frag[ref_pos-span_start] = v
+                    try:
+                        visualized_frag[ref_pos-span_start] = v
+                    except IndexError:
+                        pass # the alignment is outside the requested view
         return ''.join(visualized_frag)
 
     def set_rejection_reason(self, reason):

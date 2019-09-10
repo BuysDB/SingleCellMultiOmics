@@ -20,6 +20,10 @@ class DataTypeHistogram(StatisticHistogram):
             self.histogram[read.get_tag('MX')]+=1
         else:
             self.histogram["Not demultiplexed"]+=1
+
+        if read.has_tag('dt'):
+            self.histogram[read.get_tag('dt')]+=1
+        
     def __repr__(self):
         rt = 'Rejection reasons:'
         for dataType, obs in self.histogram.most_common():

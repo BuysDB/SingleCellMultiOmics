@@ -27,7 +27,7 @@ setup(
     author='Buys de Barbanson',
     author_email='b.barbanson@hubrecht.eu',
     url='https://github.com/BuysDB/SingleCellMultiOmics',
-    download_url = 'https://github.com/BuysDB/SingleCellMultiOmics/archive/v0.1.2.tar.gz',
+    download_url = 'https://github.com/BuysDB/SingleCellMultiOmics/archive/v0.1.4.tar.gz',
 
     license='MIT',
     packages=['singlecellmultiomics',
@@ -44,6 +44,7 @@ setup(
         'singlecellmultiomics.modularDemultiplexer',
         'singlecellmultiomics.molecule',
         'singlecellmultiomics.pyutils',
+        'singlecellmultiomics.tags',
         'singlecellmultiomics.statistic',
         'singlecellmultiomics.tagtools',
         'singlecellmultiomics.universalBamTagger',
@@ -62,6 +63,7 @@ setup(
 
         # Tagging
         'singlecellmultiomics/universalBamTagger/universalBamTagger.py',
+        'singlecellmultiomics/universalBamTagger/bamtagmultiome.py',
         'singlecellmultiomics/universalBamTagger/tapsTagger.py',
         'singlecellmultiomics/universalBamTagger/tapsTabulator.py',
 
@@ -89,7 +91,7 @@ setup(
 
         ],
   install_requires=[
-       'pysam','numpy','pandas','colorama','pysamiterators','more-itertools'
+       'pysam','numpy','pandas','colorama','pysamiterators','more-itertools','matplotlib','tabulate'
    ],
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],

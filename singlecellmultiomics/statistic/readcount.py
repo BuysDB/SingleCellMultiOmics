@@ -36,21 +36,25 @@ class ReadCount(Statistic):
 
     def to_csv(self, path):
         self.get_df().to_csv(path)
-    
+
     def plot(self, target_path, title=None):
         df = self.get_df() #,'UnmappedReads']]
 
         print(df)
+
         df.plot.bar(figsize=(10,4)).legend(bbox_to_anchor=(1, 0.98))
         if title is not None:
             plt.title(title)
 
         plt.subplots_adjust(right=0.6)
+        plt.tight_layout()
         plt.savefig(target_path)
 
         ax = plt.gca()
         ax.set_ylim(1,None)
+        ax.set_ylabel('Frequency')
         ax.set_yscale('log')
+        plt.tight_layout()
         plt.savefig(target_path.replace('.png','.log.png'))
 
         plt.close()
@@ -94,19 +98,23 @@ class ReadCount(Statistic):
                         self.totalDedupReads['R2']+=1
 
         else:
-            if read.has_tag('DS'):
-                if read.is_read1:
-                    self.totalAssignedSiteReads['R1']+=1
-                else:
-                    self.totalAssignedSiteReads['R2']+=1
+            if not read.is_unmapped:
+                if read.has_tag('DS'):
+                    if read.is_read1:
+                        self.totalAssignedSiteReads['R1']+=1
+                    elif read.is_read2:
+                        self.totalAssignedSiteReads['R2']+=1
+                    else:
+                        self.totalAssignedSiteReads['R?']+=1
 
-            if read.has_tag('RC') and read.get_tag('RC')==1:
+                if not read.is_duplicate:
 
-                if read.is_read1:
-                    self.totalDedupReads['R1']+=1
-                else:
-                    self.totalDedupReads['R2']+=1
-
+                    if read.is_read1:
+                        self.totalDedupReads['R1']+=1
+                    elif read.is_read2:
+                        self.totalDedupReads['R2']+=1
+                    else:
+                        self.totalDedupReads['R?']+=1
 
     def setRawReadCount(self, readCount, paired=True):
         self.rawReadCount = readCount *(2 if paired else 1)

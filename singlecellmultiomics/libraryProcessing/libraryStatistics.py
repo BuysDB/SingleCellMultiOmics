@@ -49,6 +49,7 @@ if __name__=='__main__':
      description='Obtain statistics from your libraries')
     argparser.add_argument('libraries',  type=str, nargs='*')
     argparser.add_argument('-head',  type=int)
+    argparser.add_argument('-tagged_bam',  type=str, help='Alias of subpath to tagged bam file. For example /tagged/sorted.bam')
     argparser.add_argument('--v',  action='store_true')
     argparser.add_argument('--nort',  action='store_true')
     args = argparser.parse_args()
@@ -103,6 +104,8 @@ if __name__=='__main__':
             f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.bam',
             f'{library}/tagged/sorted.bam'
         ]
+        if args.tagged_bam:
+            taggedFilesLookup.append(library+'/'+args.tagged_bam)
 
 
         if 'cluster' in library:
@@ -119,8 +122,6 @@ if __name__=='__main__':
         rejectFastqFiles = select_fastq_file(rejectFilesLookup)
 
         print("Selected files:")
-        if demuxFastqFiles is None:
-            print(Fore.RED)
         print(demuxFastqFiles)
         print(rejectFastqFiles)
         print(bamFile)

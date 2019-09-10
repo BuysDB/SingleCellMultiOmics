@@ -125,7 +125,7 @@ class PlateStatistic(object):
                     return
 
                 self.usableCount[(read.get_tag('LY'), read.get_tag('MX'))][read.get_tag('SM')] += 1
-                if read.get_tag('RC')==1:
+                if not read.is_duplicate:
                     self.moleculeCount[(read.get_tag('LY'), read.get_tag('MX'))][read.get_tag('SM')] += 1
             else:
                 self.skipReasons['No DS'] += 1
@@ -141,7 +141,7 @@ class PlateStatistic(object):
         else:
             offset = 1
 
-        format = 384 if '384' in mux else 96
+        format = 384 if ('384' in mux or mux.startswith('CS2')) else 96
 
         df['col'] =  [ index2well[format][(offset+int(x.rsplit('_')[-1]))][1]  for x in df.index]
         df['row'] = [ -rows.index(index2well[format][(offset+int(x.rsplit('_')[-1]))][0])  for x in df.index]

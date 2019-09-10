@@ -20,7 +20,7 @@ class FragmentSizeHistogram(StatisticHistogram):
         self.histogramReject = collections.Counter()
         self.histogramAccept = collections.Counter()
     def processRead(self,read):
-        if not read.is_paired or not read.is_read1 or readIsDuplicate(read):
+        if not read.is_proper_pair or not read.is_paired or not read.is_read1 or readIsDuplicate(read):
             return
 
         mateStart = read.next_reference_start
@@ -40,7 +40,7 @@ class FragmentSizeHistogram(StatisticHistogram):
         #print(fragmentSize, read.reference_start,  read.reference_end,mateStart,readLen  )
         self.histogram[fragmentSize]+=1
 
-        if read.has_tag('DS'):
+        if read.has_tag('DS') and not read.has_tag('RR'):
             self.histogramAccept[fragmentSize]+=1
         else:
             self.histogramReject[fragmentSize]+=1
