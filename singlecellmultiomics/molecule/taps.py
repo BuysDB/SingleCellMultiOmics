@@ -142,6 +142,12 @@ class TAPSMolecule(Molecule):
 
 
     def obtain_methylation_calls(self):
+        """ This methods returns a methylation call dictionary
+
+            returns:
+                mcalls(dict) : (chrom,pos) : {'consensus': consensusBase, 'reference': referenceBase, 'call': call}
+        """
+
         # Find all aligned positions and corresponding reference bases:
         aligned_reference_positions = {} #(chrom,pos)->base
         for read in self.iter_reads():
@@ -169,10 +175,13 @@ class TAPSMolecule(Molecule):
 
         # obtain the context of the conversions:
         conversion_contexts  ={
-            location : self.taps.position_to_context(
-                *location,
-                observed_base = observations['obs'],
-                strand = self.strand)[1]
+                location:
+                {'consensus': consensus[location],
+                 'reference_base':conversions[location]['ref'],
+                 'context':self.taps.position_to_context(
+                        *location,
+                        observed_base = observations['obs'],
+                        strand = self.strand)[1]}
             for location, observations in conversions.items()}
 
         # Write bismark tags:

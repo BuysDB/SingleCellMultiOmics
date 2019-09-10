@@ -226,6 +226,7 @@ class Molecule():
         """
 
         return np.array([
+            len(self),
             self.get_strand(),
             self.has_valid_span(),
             self.get_umi_error_rate(),
@@ -240,7 +241,13 @@ class Molecule():
             self.is_valid()
         ])
 
-    def get_alignment_tensor(self, max_reads,window_radius=20,centroid=None):
+    def get_alignment_tensor(self,
+            max_reads,
+            window_radius=20,
+            centroid=None,
+            mask_centroid=False,
+            refence_backed=False
+            ):
         """ Obtain a tensor representation of the molecule alignment around the given centroid
         Args:
             max_reads (int) : maximum amount of reads returned in the tensor, this will be the amount of rows/4 of the returned feature matrix
@@ -249,9 +256,18 @@ class Molecule():
 
             centroid(int) : center of extracted window, when not specified the cut location of the molecule is used
 
+            mask_centroid(bool) : when True, mask reference base at centroid with N
+
+            refence_backed(bool) : when True the molecules reference is used to emit reference bases instead of the MD tag
         Returns:
             tensor_repr(np.array) : (4*window_radius*2*max_reads) dimensional feature matrix
         """
+        reference = None
+        if refence_backed:
+            reference  = self.reference
+            if self.reference is None:
+                raise ValueError("refence_backed set to True, but the molecule has no reference assigned. Assing one using pysam.FastaFile()")
+
         height = max_reads
         chromosome = self.chromosome
         if centroid is None:
@@ -265,15 +281,23 @@ class Molecule():
         base_qual_table =np.zeros( (height,span_len))
         base_clip_table =np.zeros( (height,span_len))
         pointer = 0
+
+        mask = None
+        if mask_centroid:
+            mask = set((chromosome,centroid))
+
         for _,frags in self.get_rt_reactions().items() :
             for frag in frags:
-                pointer = frag.write_tensor(chromosome, span_start, span_end, index_start=pointer,
+                pointer = frag.write_tensor(chromosome, span_start, span_end,
+                                            index_start=pointer,
                                            base_content_table=base_content_table,
                                             base_mismatches_table=base_mismatches_table,
                                             base_indel_table=base_indel_table,
                                             base_qual_table=base_qual_table,
                                             base_clip_table=base_clip_table,
-                                            height=height
+                                            height=height,
+                                            mask_reference_bases=mask,
+                                            reference= reference
                                            )
         x = np.vstack(
             [
@@ -560,7 +584,8 @@ class Molecule():
         with a zZxXhH or ".", and a tag for both the total methylated C's and unmethylated C's
 
         Args:
-            call_dict (dict) : Dictionary containing bismark calls (chrom,pos) : letter
+            call_dict (dict) : Dictionary containing bismark calls (chrom,pos) :
+                        {'context':letter,'reference_base': letter   , 'consensus': letter }
 
             bismark_call_tag (str) : tag to write bismark call string
 
@@ -572,7 +597,12 @@ class Molecule():
             can_be_yielded (bool)
         """
         self.methylation_call_dict = call_dict
-        molecule_XM = collections.Counter( list(self.methylation_call_dict.values() ))
+
+        # molecule_XM dictionary containing count of contexts
+        molecule_XM = collections.Counter(
+            list(
+                d.get('context','.') for d in self.methylation_call_dict.values() )
+                )
         # Contruct XM strings
         for fragment in self:
             for read in fragment:
@@ -583,61 +613,49 @@ class Molecule():
                     bismark_call_tag,
                     ''.join([
                         call_dict.get(
-                            (read.reference_name,rpos),'.' )  # Obtain all aligned positions from the call dict
+                            (read.reference_name,rpos),{} ).get('context','.')  # Obtain all aligned positions from the call dict
                         for qpos, rpos in read.get_aligned_pairs(matches_only=True) # iterate all positions in the alignment
                         if qpos is not None and rpos is not None]) # make sure to ignore non matching positions ? is this neccesary?
                 )
 
-                # Set total methylated bases
 
+
+                # Set total methylated bases
                 read.set_tag(
                     total_methylated_tag,
                     molecule_XM['Z']+molecule_XM['X']+molecule_XM['H'] )
-
 
                 # Set total unmethylated bases
                 read.set_tag(
                     total_unmethylated_tag,
                     molecule_XM['z']+molecule_XM['x']+molecule_XM['h'] )
 
-
                 # Set total CPG methylated and unmethylated:
                 read.set_tag(
                     total_methylated_CPG_tag,
                     molecule_XM['Z'])
 
-
                 read.set_tag(
                     total_unmethylated_CPG_tag,
                     molecule_XM['z'])
-
 
                 # Set total CHG methylated and unmethylated:
                 read.set_tag(
                     total_methylated_CHG_tag,
                     molecule_XM['X'])
 
-
                 read.set_tag(
                     total_unmethylated_CHG_tag,
                     molecule_XM['x'])
-
 
                 # Set total CHH methylated and unmethylated:
                 read.set_tag(
                     total_methylated_CHH_tag,
                     molecule_XM['H'])
 
-
                 read.set_tag(
                     total_unmethylated_CHH_tag,
                     molecule_XM['h'])
-
-
-
-
-
-
 
     def set_meta(self,tag,value):
         """Set meta information to all fragments
