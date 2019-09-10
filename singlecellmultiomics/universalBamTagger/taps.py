@@ -93,6 +93,8 @@ class TAPSFlagger(DigestFlagger ):
                     if qbase=='T':
                         methylated=True
                     methylationStateString = self.context_mapping[methylated].get(context,'uU'[methylated])
+                    readCoversionString = 'CT'
+                    genomeConversionString = 'CT'
                     if methylated:
                         modified_contexts.append(three_context)
                         modified_5b_contexts.append(penta_context)
@@ -108,6 +110,8 @@ class TAPSFlagger(DigestFlagger ):
                     if qbase=='A':
                         methylated=True
                     methylationStateString = self.context_mapping[methylated].get(context,'uU'[methylated])
+                    readCoversionString = 'CT'
+                    genomeConversionString = 'GA'
                     if methylated:
                         modified_contexts.append(three_context)
                         modified_5b_contexts.append(penta_context)
