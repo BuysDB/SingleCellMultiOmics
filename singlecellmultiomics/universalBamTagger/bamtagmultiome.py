@@ -7,6 +7,7 @@ import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sort_and_index, get_reference_from_pysam_alignmentFile, add_readgroups_to_header
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads  import CustomAssingmentQueryNameFlagger
+import pysamiterators
 import argparse
 import uuid
 import os
