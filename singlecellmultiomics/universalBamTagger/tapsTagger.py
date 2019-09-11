@@ -259,11 +259,11 @@ if __name__=='__main__':
                 if contexts is not None and call not in contexts:
                     continue
                 got_context_hit+=1
-                mcs[call] += 1
+                mcs[call['context']] += 1
                 if call['context'] in ['X', 'H', 'Z']:
                     readString.append(call['consensus'])
                     genomeString.append(call['reference_base'])
-                if call.isupper():
+                if call['context'].isupper():
                     methylated_hits += 1
                 else:
                     unmethylated_hits += 1
