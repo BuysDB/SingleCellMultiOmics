@@ -90,10 +90,27 @@ elif args.method=='vasa' or args.method=='cs':
 else:
     raise ValueError("Supply a valid method")
 
+# We needed to check if every argument is properly placed. If so; the jobs can be sent to the cluster
+if args.cluster:
+    if args.contig is None:
+        # Create jobs for all chromosomes:
+        temp_prefix = os.path.abspath( os.path.dirname(args.o) )+ '/' + str(uuid.uuid4())
+        hold_merge=[]
+        for chrom in input_bam.references:
+            if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom  or chrom.endswith('_alt') or "HLA-" in chrom:
+                continue
+            temp_bam_path = f'{temp_prefix}_{chrom}.bam'
+            arguments = " ".join([x for x in sys.argv if not x==args.o in x and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
+            job = f'TAPS_{str(uuid.uuid4())}'
+            os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"' )
+            hold_merge.append(job)
+
+        hold =  ','.join(hold_merge)
+        os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"' )
+        exit()
 
 #####
 
-input_bam_path = args.bamin
 out_bam_path = args.o
 
 # Temp bam file to write tagged records to. This file does not have read groups yet,
