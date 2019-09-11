@@ -34,6 +34,9 @@ cluster.add_argument('-mem',  default=40, type=int, help='Memory used per job')
 cluster.add_argument('-time',  default=52, type=int, help='Time requested per job')
 args = argparser.parse_args()
 
+if not args.o.endswith('.bam'):
+    raise ValueError("Supply an output which ends in .bam, for example -o output.bam")
+
 
 input_bam =  pysam.AlignmentFile(args.bamin, "rb")
 
