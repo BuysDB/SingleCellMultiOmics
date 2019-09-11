@@ -84,7 +84,7 @@ if args.method=='qflag':
 
 elif args.method=='chic':
     moleculeClass = singlecellmultiomics.molecule.CHICMolecule
-    fragmentClass = singlecellmultiomics.fragment.NLAIIIFragment
+    fragmentClass = singlecellmultiomics.fragment.CHICFragment
 
 elif args.method=='nla':
     moleculeClass = singlecellmultiomics.molecule.NlaIIIMolecule
