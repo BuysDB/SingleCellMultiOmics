@@ -31,6 +31,13 @@ argparser.add_argument('-allele_samples',  type=str, help="Comma separated sampl
 
 argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
 args = argparser.parse_args()
+# autodetect reference:
+reference = None
+if args.ref is None:
+    args.ref = get_reference_from_pysam_alignmentFile(input_bam)
+
+if args.ref is not None:
+    reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
 
 
 ##### Define fragment and molecule class arguments and instances: ####
