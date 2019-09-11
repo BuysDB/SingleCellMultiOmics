@@ -30,7 +30,7 @@ argparser.add_argument('-allele_samples',  type=str, help="Comma separated sampl
 argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
-cluster.add_argument('-mem',  default=40, type=int, help='Memory used per job')
+cluster.add_argument('-mem',  default=40, type=int, help='Memory requested per job')
 cluster.add_argument('-time',  default=52, type=int, help='Time requested per job')
 args = argparser.parse_args()
 
@@ -134,7 +134,7 @@ if args.cluster:
             if chrom.startswith('KN') or chrom.startswith('KZ')  or chrom.startswith('JH') or chrom.startswith('GL') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom  or chrom.endswith('_alt') or "HLA-" in chrom:
                 continue
             temp_bam_path = f'{temp_prefix}_{chrom}.bam'
-            arguments = " ".join([x for x in sys.argv if not x==args.o in x and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
+            arguments = " ".join([x for x in sys.argv if not x==args.o and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
             job = f'SCMULTIOMICS_{str(uuid.uuid4())}'
             os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"' )
             hold_merge.append(job)
