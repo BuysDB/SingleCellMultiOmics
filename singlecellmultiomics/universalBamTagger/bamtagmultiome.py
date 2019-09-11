@@ -36,8 +36,6 @@ args = argparser.parse_args()
 
 input_bam =  pysam.AlignmentFile(args.bamin, "rb")
 
-argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
-args = argparser.parse_args()
 # autodetect reference:
 reference = None
 if args.ref is None:
@@ -58,7 +56,7 @@ if args.qflagger is not None:
 
 molecule_class_args = {
     'umi_hamming_distance' : args.umi_hamming_distance,
-    'reference' : args.ref
+    'reference' : reference
 }
 fragment_class_args = {}
 yield_invalid= None # if invalid reads should be written
@@ -91,6 +89,24 @@ elif args.method=='nla_transcriptome':
         'pooling_method' : 1, # all data from the same cell can be dealt with separately
         'stranded': None # data is not stranded
     })
+
+elif args.method=='nla_taps':
+    moleculeClass = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
+    fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+
+    molecule_class_args.update({
+        'reference':reference,
+        'taps':singlecellmultiomics.molecule.TAPS(reference=reference)
+    })
+
+elif args.method=='chic_taps':
+
+    molecule_class_args.update({
+        'reference':reference,
+        'taps':singlecellmultiomics.molecule.TAPS(reference=reference)
+    })
+    moleculeClass = singlecellmultiomics.molecule.TAPSCHICMolecule
+    fragmentClass=singlecellmultiomics.fragment.CHICFragment
 
 elif args.method=='vasa' or args.method=='cs':
     moleculeClass = singlecellmultiomics.molecule.VASA
@@ -134,14 +150,10 @@ out_bam_temp_path = f'{out_bam_path}.unsorted'
 # This is the path with read groups added:
 out_bam_temp_path_rg = f'{out_bam_path}.unsorted.rg'
 
-# Open the input bam file
-with pysam.AlignmentFile(input_bam_path, "rb") as input_bam:
-    #Copy the header
-    input_header = input_bam.header.copy()
+#Copy the header
+input_header = input_bam.header.copy()
 
-    # No "with" statement , because the nesting is _really_ ugly.
-    # Sorry. Dont forget to close this handle. See: @close
-    out_bam_temp = pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header)
+with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_bam_temp:
 
     read_groups = set() # Store unique read groups in this set
     for i,molecule in enumerate(
@@ -152,7 +164,8 @@ with pysam.AlignmentFile(input_bam_path, "rb") as input_bam:
                 fragmentClass=fragmentClass,
                 molecule_class_args=molecule_class_args,
                 fragment_class_args=fragment_class_args,
-                yield_invalid=yield_invalid
+                yield_invalid=yield_invalid,
+                contig=args.contig
             )
         ):
 
