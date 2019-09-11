@@ -252,6 +252,8 @@ if __name__=='__main__':
             got_context_hit = False
             methylated_hits = 0
             unmethylated_hits = 0
+            readString = []
+            genomeString = []
             for (chromosome, location),call in molecule.methylation_call_dict.items():
                 if call=='.': # Only use calls concerning C's
                     continue
