@@ -30,6 +30,7 @@ argparser.add_argument('-allele_samples',  type=str, help="Comma separated sampl
 argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
+cluster.add_argument('--write_rejects', action='store_true', help='Write rejected reads to output file')
 cluster.add_argument('-mem',  default=40, type=int, help='Memory requested per job')
 cluster.add_argument('-time',  default=52, type=int, help='Time requested per job')
 args = argparser.parse_args()
@@ -62,8 +63,12 @@ molecule_class_args = {
     'umi_hamming_distance' : args.umi_hamming_distance,
     'reference' : reference
 }
+
 fragment_class_args = {}
 yield_invalid= None # if invalid reads should be written
+
+if args.write_rejects:
+    yield_invalid = True
 
 if args.alleles is not None:
     molecule_class_args['allele_resolver'] = \
