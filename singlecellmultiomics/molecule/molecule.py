@@ -710,6 +710,8 @@ class Molecule():
                 continue
 
             for read in (R1,R2):
+                if read is None:
+                    continue
                 for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(
                     read,with_seq=False):
                     if query_pos is None or ref_pos != position or read.seq[query_pos]!=base:
