@@ -42,9 +42,9 @@ class CHICFragment(Fragment):
     def identify_site(self):
 
         R1 = self.get_R1()
-        R2 = self.get_R2()
+        #R2 = self.get_R2()
 
-        if R1 is None or R2 is None:
+        if R1 is None:# or R2 is None:
             return None
 
         """ Valid configs:
