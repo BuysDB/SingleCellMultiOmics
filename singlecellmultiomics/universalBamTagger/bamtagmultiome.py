@@ -1,33 +1,40 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 import pysam
 from singlecellmultiomics.molecule import MoleculeIterator
 import singlecellmultiomics.molecule
 import singlecellmultiomics.fragment
-from singlecellmultiomics.bamProcessing.bamFunctions import sort_and_index
-from singlecellmultiomics.bamProcessing.bamFunctions import add_readgroups_to_header
+from singlecellmultiomics.bamProcessing.bamFunctions import sort_and_index, get_reference_from_pysam_alignmentFile, add_readgroups_to_header
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads  import CustomAssingmentQueryNameFlagger
-
 import argparse
+import uuid
+import os
+import sys
 
 argparser = argparse.ArgumentParser(
  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
  description='Assign molecules, set sample tags, set alleles')
-
 argparser.add_argument('bamin',  type=str)
 argparser.add_argument('-o',  type=str, help="output bam file", required=True)
+argparser.add_argument('-method',  type=str, default=None, help="Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps")
 argparser.add_argument('-qflagger',  type=str, default=None, help="Query flagging algorithm")
 argparser.add_argument('-custom_flags',  type=str, default="MI,RX,BI,SM" )
-argparser.add_argument('-method',  type=str, default=None, help="Protocol to tag, select from:nla,qflag,chic,nla_transcriptome,vasa,cs")
-argparser.add_argument('-ref',  type=str, default=None, help="Path to reference fasta")
+argparser.add_argument('-ref',  type=str, default=None, help="Path to reference fast (autodected if not supplied)")
 argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
 argparser.add_argument('-head',  type=int)
+argparser.add_argument('-contig',  type=str, help='Contig to only process')
 argparser.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
 argparser.add_argument('-allele_samples',  type=str, help="Comma separated samples to extract from the VCF file. For example B6,SPRET" )
+argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
+cluster = argparser.add_argument_group('cluster execution')
+cluster.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
+cluster.add_argument('-mem',  default=40, type=int, help='Memory used per job')
+cluster.add_argument('-time',  default=52, type=int, help='Time requested per job')
+args = argparser.parse_args()
 
 
+input_bam =  pysam.AlignmentFile(args.bamin, "rb")
 
 argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
 args = argparser.parse_args()
