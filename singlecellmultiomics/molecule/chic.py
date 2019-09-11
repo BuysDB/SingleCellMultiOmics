@@ -23,7 +23,7 @@ class CHICMolecule(Molecule):
             chrom,start,strand = self.get_cut_site()
         except Exception as e:
             if set_rejection_reasons:
-                self.set_rejection_reason(f'no_cut_site_found{e}')
+                self.set_rejection_reason(f'no_cut_site_found')
             return False
 
         return True
