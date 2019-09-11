@@ -158,15 +158,11 @@ with pysam.AlignmentFile(input_bam_path, "rb") as input_bam:
         # Write the reads to the output file
         molecule.write_pysam( out_bam_temp )
 
+# Add readgroups to the bam file
+add_readgroups_to_header(
+    out_bam_temp_path,
+    read_groups,
+    target_bam_path=out_bam_temp_path )
 
-    # @close
-    out_bam_temp.close()
-
-    # Add readgroups to the bam file
-    add_readgroups_to_header(
-        out_bam_temp_path,
-        read_groups,
-        target_bam_path=out_bam_temp_path )
-
-    # Sort and index
-    sort_and_index( out_bam_temp_path,  out_bam_path, remove_unsorted=True)
+# Sort and index
+sort_and_index( out_bam_temp_path,  out_bam_path, remove_unsorted=True)
