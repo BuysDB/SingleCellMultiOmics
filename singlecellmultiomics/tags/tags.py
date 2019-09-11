@@ -75,6 +75,8 @@ tags = [
     SamTag('MD', 'alignment'),
     SamTag('dt', 'assingedDataType'),
 
+    SamTag('rt', 'rtReactionIndex'),
+    SamTag('rd', 'rtDuplicateIndex'),
 
     SamTag('fS', 'fragmentSizeTag'),
     SamTag('fe', 'fragmentEndTag'),
