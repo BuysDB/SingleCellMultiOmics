@@ -132,7 +132,7 @@ if args.cluster:
                 continue
             temp_bam_path = f'{temp_prefix}_{chrom}.bam'
             arguments = " ".join([x for x in sys.argv if not x==args.o in x and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
-            job = f'TAPS_{str(uuid.uuid4())}'
+            job = f'SCMULTIOMICS_{str(uuid.uuid4())}'
             os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"' )
             hold_merge.append(job)
 
