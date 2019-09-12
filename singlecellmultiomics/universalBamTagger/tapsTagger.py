@@ -252,6 +252,8 @@ if __name__=='__main__':
             got_context_hit = False
             methylated_hits = 0
             unmethylated_hits = 0
+            readString = []
+            genomeString = []
             for (chromosome, location),call in molecule.methylation_call_dict.items():
                 if call=='.': # Only use calls concerning C's
                     continue
@@ -259,9 +261,11 @@ if __name__=='__main__':
                 if contexts is not None and call not in contexts:
                     continue
                 got_context_hit+=1
-
-                mcs[call] += 1
-                if call.isupper():
+                mcs[call['context']] += 1
+                if call['context'] in ['X', 'H', 'Z']:
+                    readString.append(call['consensus'])
+                    genomeString.append(call['reference_base'])
+                if call['context'].isupper():
                     methylated_hits += 1
                 else:
                     unmethylated_hits += 1
@@ -278,10 +282,35 @@ if __name__=='__main__':
                             binned_data[(chromosome, binIdx)][molecule.get_sample()][call.isupper()]+=1
                             cell_count[molecule.get_sample()]+=1
 
+            refbase = max(set(genomeString), key = genomeString.count)
+            readbase = max(set(readString), key = readString.count)
+            ## OT
+            if readbase=='T' and refbase=='C' and molecule.get_strand() == 1: #'+'
+                readConversionString = 'CT'
+                genomeConversionString = 'CT'
+            ## OB
+            elif readbase=='A' and refbase=='G' and molecule.get_strand() == 0: #'-'
+                readConversionString = 'CT'
+                genomeConversionString = 'GA'
+            ## CTOT
+            elif readbase=='A' and refbase=='C' and molecule.get_strand() == 1: #'+'
+                readConversionString = 'GA'
+                genomeConversionString = 'CT'
+            ## CTOB
+            elif readbase=='A' and refbase=='G' and molecule.get_strand() == 0: #'-'
+                readConversionString = 'GA'
+                genomeConversionString = 'GA'
+            else:
+                readConversionString = ''
+                genomeConversionString = ''
+
+
             molecule.set_meta('ME',methylated_hits)
             molecule.set_meta('um',unmethylated_hits)
             statistics['Methylation']['methylated Cs'] += methylated_hits
             statistics['Methylation']['unmethylated Cs'] += unmethylated_hits
+            molecule.set_meta('XR',readConversionString)
+            molecule.set_meta('XG',genomeConversionString)
             molecule.write_tags()
             molecule.write_pysam(output)
 

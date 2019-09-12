@@ -69,6 +69,8 @@ class TAPSFlagger(DigestFlagger ):
                 continue
             strand = read.get_tag('RS')
             methylationBlocks = []
+            readCoversionString = []
+            genomeConversionString = []
 
             for qpos, rpos, ref_base in read.get_aligned_pairs(with_seq=True):
                 methylationStateString = '.'
@@ -96,6 +98,8 @@ class TAPSFlagger(DigestFlagger ):
                     if methylated:
                         modified_contexts.append(three_context)
                         modified_5b_contexts.append(penta_context)
+                        readCoversionString.append('CT')
+                        genomeConversionString.append('CT')
                     else:
                         unmodified_contexts.append(three_context)
                         unmodified_5b_contexts.append(penta_context)
@@ -111,6 +115,8 @@ class TAPSFlagger(DigestFlagger ):
                     if methylated:
                         modified_contexts.append(three_context)
                         modified_5b_contexts.append(penta_context)
+                        readCoversionString.append('CT')
+                        genomeConversionString.append('GA')
                     else:
                         unmodified_contexts.append(three_context)
                         unmodified_5b_contexts.append(penta_context)
@@ -122,9 +128,9 @@ class TAPSFlagger(DigestFlagger ):
 
             if len(methylationBlocks)>0:
                 read.set_tag('XM',''.join(methylationBlocks))
-        for read in reads:
-            if read is None:
-                continue
+                read.set_tag('XR',max(set(readCoversionString), key = readConversionString.count))
+                read.set_tag('XG',max(set(genomeConversionString), key = genomeConversionString.count))
+
             if len(modified_contexts):
                 read.set_tag('Cm',','.join(list(sorted(modified_contexts))))
                 read.set_tag('Qm',','.join(list(sorted(modified_5b_contexts))))
