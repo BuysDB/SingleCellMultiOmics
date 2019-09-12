@@ -1,0 +1,217 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.universalBamTagger.nlaIII &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.universalBamTagger.nlaIII</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">singlecellmultiomics.universalBamTagger.digest</span> <span class="k">import</span> <span class="n">DigestFlagger</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.tagtools</span> <span class="k">import</span> <span class="n">tagtools</span>
+
+<div class="viewcode-block" id="NlaIIIFlagger"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.nlaIII.NlaIIIFlagger">[docs]</a><span class="k">class</span> <span class="nc">NlaIIIFlagger</span><span class="p">(</span> <span class="n">DigestFlagger</span> <span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">DigestFlagger</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+
+<div class="viewcode-block" id="NlaIIIFlagger.addSite"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.nlaIII.NlaIIIFlagger.addSite">[docs]</a>    <span class="k">def</span> <span class="nf">addSite</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reads</span><span class="p">,</span> <span class="n">strand</span><span class="p">,</span> <span class="n">restrictionChrom</span><span class="p">,</span> <span class="n">restrictionPos</span> <span class="p">):</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">reads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sampleTag</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">reads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">umiTag</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="n">sample</span> <span class="o">=</span> <span class="n">reads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sampleTag</span><span class="p">)</span>
+        <span class="n">umi</span> <span class="o">=</span> <span class="n">reads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">umiTag</span><span class="p">)</span>
+        <span class="n">allele</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">reads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alleleTag</span><span class="p">)</span> <span class="k">else</span> <span class="n">reads</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alleleTag</span><span class="p">)</span>
+        <span class="n">siteInfo</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span> <span class="p">[</span> <span class="n">x</span>  <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[</span><span class="n">strand</span><span class="p">,</span> <span class="n">allele</span><span class="p">,</span> <span class="n">umi</span><span class="p">]</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">])</span>
+        <span class="n">moleculeId</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">increaseAndRecordOversequencing</span><span class="p">(</span>  <span class="n">sample</span><span class="p">,</span>  <span class="n">restrictionChrom</span><span class="p">,</span> <span class="n">restrictionPos</span><span class="p">,</span> <span class="n">siteInfo</span><span class="o">=</span><span class="n">siteInfo</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">reads</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">read</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setSiteOversequencing</span><span class="p">(</span> <span class="n">read</span><span class="p">,</span> <span class="n">moleculeId</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setSiteCoordinate</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">restrictionPos</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setSource</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="s1">&#39;NLA&#39;</span><span class="p">),</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="n">allele</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setAllele</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">allele</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">setStrand</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="s1">&#39;+&#39;</span> <span class="k">if</span> <span class="n">strand</span><span class="o">==</span><span class="mi">1</span> <span class="k">else</span> <span class="p">(</span><span class="s1">&#39;-&#39;</span> <span class="k">if</span> <span class="n">strand</span><span class="o">==</span><span class="mi">0</span> <span class="k">else</span> <span class="s1">&#39;?&#39;</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="NlaIIIFlagger.digest"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.nlaIII.NlaIIIFlagger.digest">[docs]</a>    <span class="k">def</span> <span class="nf">digest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reads</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">reads</span><span class="p">)</span><span class="o">!=</span><span class="mi">2</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">reads</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setRejectionReason</span><span class="p">(</span><span class="n">reads</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;unmapped mate&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setRejectionReason</span><span class="p">(</span><span class="n">reads</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;nopair&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span> <span class="c1"># Only made for mate pair</span>
+        <span class="n">R1</span><span class="p">,</span><span class="n">R2</span> <span class="o">=</span> <span class="n">reads</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">addAlleleInfo</span><span class="p">([</span><span class="n">read</span> <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">reads</span> <span class="k">if</span> <span class="n">read</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">])</span>
+
+        <span class="sd">&quot;&quot;&quot; Valid configs:</span>
+<span class="sd">        CATG######## R1 ########## ^ ########## R2 ##########</span>
+<span class="sd">        ############ R2 ########## ^ ########### R1 #####CATG  reverse case</span>
+<span class="sd">        !BWA inverts the query sequence if it maps to the negative strand!</span>
+
+<span class="sd">        or R2.is_unmapped:</span>
+<span class="sd">            if R1.is_unmapped and R2.is_unmapped:</span>
+<span class="sd">                self.setRejectionReason(R1, &#39;unmapped R1;R2&#39;)</span>
+<span class="sd">            elif R1.is_unmapped:</span>
+<span class="sd">                self.setRejectionReason(R1, &#39;unmapped R1&#39;)</span>
+<span class="sd">                self.setRejectionReason(R2, &#39;unmapped R1&#39;)</span>
+<span class="sd">            else:</span>
+<span class="sd">                self.setRejectionReason(R1, &#39;unmapped R2&#39;)</span>
+<span class="sd">                self.setRejectionReason(R2, &#39;unmapped R2&#39;)</span>
+<span class="sd">            return(None)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+
+        <span class="c1"># Obtain RT hexamer:</span>
+        <span class="k">if</span> <span class="n">R2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hstart</span><span class="p">,</span> <span class="n">hseq</span> <span class="o">=</span> <span class="n">tagtools</span><span class="o">.</span><span class="n">getRandomPrimerHash</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="n">onStart</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">primerLength</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setRandomPrimer</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span><span class="n">R2</span><span class="p">,</span> <span class="n">hstart</span><span class="p">,</span> <span class="n">hseq</span> <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">R1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_unmapped</span> <span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setRejectionReason</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="s1">&#39;unmapped R1&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setRejectionReason</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="s1">&#39;unmapped R1&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[:</span><span class="mi">4</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;CATG&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+            <span class="n">rpos</span> <span class="o">=</span> <span class="p">(</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_name</span><span class="p">,</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_start</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addSite</span><span class="p">(</span> <span class="p">[</span><span class="n">R1</span><span class="p">,</span><span class="n">R2</span><span class="p">],</span>  <span class="n">strand</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">restrictionChrom</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">restrictionPos</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setRecognizedSequence</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="s1">&#39;CATG&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setRecognizedSequence</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="s1">&#39;CATG&#39;</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="n">rpos</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">:]</span><span class="o">==</span><span class="s1">&#39;CATG&#39;</span> <span class="ow">and</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+            <span class="n">rpos</span> <span class="o">=</span> <span class="p">(</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_name</span><span class="p">,</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_end</span><span class="o">-</span><span class="mi">4</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addSite</span><span class="p">(</span> <span class="p">[</span><span class="n">R1</span><span class="p">,</span><span class="n">R2</span><span class="p">],</span>  <span class="n">strand</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">restrictionChrom</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">restrictionPos</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setRecognizedSequence</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="s1">&#39;CATG&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setRecognizedSequence</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="s1">&#39;CATG&#39;</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="n">rpos</span><span class="p">)</span>
+
+        <span class="c1"># Sometimes the cycle is off</span>
+        <span class="k">elif</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;ATG&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+            <span class="n">rpos</span> <span class="o">=</span> <span class="p">(</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_name</span><span class="p">,</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_start</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addSite</span><span class="p">(</span> <span class="p">[</span><span class="n">R1</span><span class="p">,</span><span class="n">R2</span><span class="p">],</span>  <span class="n">strand</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">restrictionChrom</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">restrictionPos</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setRecognizedSequence</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="s1">&#39;ATG&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setRecognizedSequence</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="s1">&#39;ATG&#39;</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="n">rpos</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:]</span><span class="o">==</span><span class="s1">&#39;CAT&#39;</span> <span class="ow">and</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span> <span class="c1"># First base was trimmed or lost</span>
+            <span class="n">rpos</span> <span class="o">=</span> <span class="p">(</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_name</span><span class="p">,</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_end</span><span class="o">-</span><span class="mi">3</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addSite</span><span class="p">(</span> <span class="p">[</span><span class="n">R1</span><span class="p">,</span><span class="n">R2</span><span class="p">],</span>  <span class="n">strand</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">restrictionChrom</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">restrictionPos</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setRecognizedSequence</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="s1">&#39;CAT&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setRecognizedSequence</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="s1">&#39;CAT&#39;</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="n">rpos</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[:</span><span class="mi">4</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;CATG&#39;</span> <span class="ow">and</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setRejectionReason</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="s1">&#39;found CATG R1 REV exp FWD&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setRejectionReason</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="s1">&#39;found CATG R1 REV exp FWD&#39;</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">:]</span><span class="o">==</span><span class="s1">&#39;CATG&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setRejectionReason</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="s1">&#39;found CATG R1 FWD exp REV&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setRejectionReason</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="s1">&#39;found CATG R1 FWD exp REV&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setRejectionReason</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="s1">&#39;no CATG&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">setRejectionReason</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="s1">&#39;no CATG&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">tagtools</span><span class="o">.</span><span class="n">getPairGenomicLocations</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span><span class="n">R2</span><span class="p">,</span> <span class="n">R1PrimerLength</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">R2PrimerLength</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setFragmentSize</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="n">end</span><span class="o">-</span><span class="n">start</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setFragmentSize</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="n">end</span><span class="o">-</span><span class="n">start</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setFragmentTrust</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setFragmentTrust</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setFragmentSize</span><span class="p">(</span><span class="n">R1</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setFragmentSize</span><span class="p">(</span><span class="n">R2</span><span class="p">,</span> <span class="s1">&#39;unknown&#39;</span><span class="p">)</span>
+
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        if R1.seq[:4]==&#39;CATG&#39; and R1.reference_start&lt;=R2.reference_start: # Site on the start of R1, R2 should map behind</span>
+<span class="sd">            self.addSite( [R1,R2],  strand=0, restrictionChrom=R1.reference_name, restrictionPos=R1.reference_start )</span>
+<span class="sd">            return(( R1.reference_name, R1.reference_start))</span>
+
+<span class="sd">        if R1.seq[-4:]==&#39;CATG&#39; and R1.reference_start&gt;=R2.reference_start: # Site on the end of R1, R2 should map before</span>
+<span class="sd">            self.addSite( [R1,R2],  strand=1, restrictionChrom=R1.reference_name, restrictionPos=R1.reference_end-4 )</span>
+<span class="sd">            return( (R1.reference_name, R1.reference_end-4))</span>
+<span class="sd">        &quot;&quot;&quot;</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

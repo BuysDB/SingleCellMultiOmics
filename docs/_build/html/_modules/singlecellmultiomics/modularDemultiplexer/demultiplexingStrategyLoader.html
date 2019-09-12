@@ -1,0 +1,281 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">colorama</span> <span class="k">import</span> <span class="n">Fore</span>
+<span class="kn">from</span> <span class="nn">colorama</span> <span class="k">import</span> <span class="n">Back</span>
+<span class="kn">from</span> <span class="nn">colorama</span> <span class="k">import</span> <span class="n">Style</span>
+<span class="kn">import</span> <span class="nn">importlib</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+<span class="kn">import</span> <span class="nn">singlecellmultiomics.modularDemultiplexer.demultiplexModules</span>
+<span class="kn">import</span> <span class="nn">singlecellmultiomics.fastqProcessing.fastqIterator</span> <span class="k">as</span> <span class="nn">fastqIterator</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods</span> <span class="k">import</span> <span class="n">NonMultiplexable</span><span class="p">,</span><span class="n">IlluminaBaseDemultiplexer</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.fastqProcessing.fastqHandle</span> <span class="k">import</span> <span class="n">FastqHandle</span>
+
+<div class="viewcode-block" id="DemultiplexingStrategyLoader"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader.DemultiplexingStrategyLoader">[docs]</a><span class="k">class</span> <span class="nc">DemultiplexingStrategyLoader</span><span class="p">:</span>
+	<span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">barcodeParser</span><span class="p">,</span> <span class="n">moduleSearchDir</span><span class="o">=</span> <span class="s1">&#39;demultiplexModules&#39;</span><span class="p">,</span> <span class="n">indexParser</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ignoreMethods</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">indexFileAlias</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+		<span class="n">package</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;singlecellmultiomics.modularDemultiplexer.</span><span class="si">{moduleSearchDir}</span><span class="s1">&#39;</span>
+		<span class="n">moduleSearchPath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">realpath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)),</span> <span class="n">moduleSearchDir</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;/./&#39;</span><span class="p">,</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">barcodeParser</span> <span class="o">=</span> <span class="n">barcodeParser</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">indexParser</span> <span class="o">=</span> <span class="n">indexParser</span>
+		<span class="n">moduleSearchPath</span> <span class="o">=</span> <span class="n">moduleSearchPath</span>
+		<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{Style.DIM}</span><span class="s1">Current script location: </span><span class="si">{__file__}</span><span class="s1">&#39;</span><span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Searchdir: </span><span class="si">{moduleSearchDir}</span><span class="s1">&#39;</span><span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Looking for modules in </span><span class="si">{moduleSearchPath}{Style.RESET_ALL}</span><span class="s1">&#39;</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">demultiplexingStrategies</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">modulePath</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{moduleSearchPath}</span><span class="s1">/*.py&#39;</span><span class="p">):</span>
+			<span class="c1">#print(f&quot;Found {modulePath}&quot;)</span>
+			<span class="k">try</span><span class="p">:</span>
+				<span class="n">module</span> <span class="o">=</span> <span class="p">(</span><span class="n">modulePath</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.py&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">))</span>
+				<span class="c1">#print(f&quot;Module:{module}, package:{package}&quot;)</span>
+
+				<span class="k">if</span> <span class="n">ignoreMethods</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">ignoreMethods</span><span class="p">:</span>
+					<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{Style.DIM}</span><span class="s2">Ignoring demultiplex method </span><span class="si">{module}</span><span class="s2">, use -ignoreMethods none to re-enable</span><span class="si">{Style.RESET_ALL}</span><span class="s2">&quot;</span><span class="p">)</span>
+					<span class="k">continue</span>
+				<span class="k">if</span> <span class="n">module</span><span class="o">==</span><span class="s1">&#39;__init__&#39;</span><span class="p">:</span>
+					<span class="k">continue</span>
+ <span class="c1">#modulePath.replace(&#39;\\&#39;,&#39;/&#39;).replace(&#39;/&#39;,&#39;.&#39;).replace(&#39;..&#39;,&#39;&#39;).replace(&#39;.py&#39;,&#39;&#39;).lstrip(&#39;.&#39;).split(&#39;.&#39;)[-1]</span>
+
+				<span class="n">loadedModule</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;.</span><span class="si">{module}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">package</span><span class="p">)</span>
+				<span class="c1"># Only obtain classes defined in the module, not imported ones:</span>
+				<span class="n">is_class_member</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">member</span><span class="p">:</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">member</span><span class="p">)</span> <span class="ow">and</span> <span class="n">member</span><span class="o">.</span><span class="vm">__module__</span> <span class="o">==</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{package}</span><span class="s1">.</span><span class="si">{module}</span><span class="s1">&#39;</span>
+				<span class="k">for</span> <span class="n">className</span><span class="p">,</span> <span class="n">classDetails</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getmembers</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{package}</span><span class="s1">.</span><span class="si">{module}</span><span class="s1">&#39;</span><span class="p">],</span> <span class="n">is_class_member</span><span class="p">):</span>
+					<span class="c1"># Obtain a handle to the class and instatiate the strategy</span>
+					<span class="k">if</span> <span class="s1">&#39;Base_&#39;</span> <span class="ow">in</span> <span class="n">className</span><span class="p">:</span>
+						<span class="k">continue</span>
+
+					<span class="n">class_</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">loadedModule</span><span class="p">,</span> <span class="n">className</span><span class="p">)</span>
+					<span class="n">initiatedDemultiplexingStrategy</span> <span class="o">=</span> <span class="n">class_</span><span class="p">(</span> <span class="n">barcodeFileParser</span><span class="o">=</span><span class="n">barcodeParser</span><span class="p">,</span> <span class="n">indexFileParser</span><span class="o">=</span><span class="n">indexParser</span><span class="p">,</span><span class="n">indexFileAlias</span><span class="o">=</span><span class="n">indexFileAlias</span><span class="p">)</span>
+					<span class="bp">self</span><span class="o">.</span><span class="n">demultiplexingStrategies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">initiatedDemultiplexingStrategy</span><span class="p">)</span>
+					<span class="c1">#print(initiatedDemultiplexingStrategy.name)</span>
+
+			<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+
+				<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{Fore.RED}{Style.BRIGHT}</span><span class="s2">FAILED LOADING </span><span class="si">{module}</span><span class="s2"> at </span><span class="si">{modulePath}</span><span class="se">\n</span><span class="s2">Exception: </span><span class="si">{e}{Style.RESET_ALL}</span><span class="se">\n</span><span class="s2">Traceback for the error:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+				<span class="kn">import</span> <span class="nn">traceback</span>
+				<span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+
+				<span class="kn">from</span> <span class="nn">os</span> <span class="k">import</span> <span class="n">stat</span>
+				<span class="kn">from</span> <span class="nn">pwd</span> <span class="k">import</span> <span class="n">getpwuid</span>
+
+				<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Contact </span><span class="si">{Style.BRIGHT}%s{Style.RESET_ALL}</span><span class="s1"> for help</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">getpwuid</span><span class="p">(</span><span class="n">stat</span><span class="p">(</span><span class="n">modulePath</span><span class="p">)</span><span class="o">.</span><span class="n">st_uid</span><span class="p">)</span><span class="o">.</span><span class="n">pw_name</span><span class="p">)</span>
+				<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;The error only affects this module.</span><span class="se">\n</span><span class="s1">Proceeding to load more modules...</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DemultiplexingStrategyLoader.getSelectedStrategiesFromStringList"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader.DemultiplexingStrategyLoader.getSelectedStrategiesFromStringList">[docs]</a>	<span class="k">def</span> <span class="nf">getSelectedStrategiesFromStringList</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strList</span><span class="p">):</span>
+		<span class="n">selectedStrategies</span> <span class="o">=</span> <span class="p">[]</span>
+
+		<span class="n">resolved</span> <span class="o">=</span> <span class="p">{</span><span class="n">part</span><span class="p">:</span><span class="kc">False</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">strList</span><span class="p">}</span>
+		<span class="k">for</span> <span class="n">strategy</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">demultiplexingStrategies</span><span class="p">:</span>
+			<span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">shortName</span> <span class="ow">in</span> <span class="n">strList</span><span class="p">:</span>
+				<span class="n">selectedStrategies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
+				<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Selected strategy </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">strategy</span><span class="p">)</span>
+				<span class="n">resolved</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">shortName</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+
+		<span class="k">if</span> <span class="nb">any</span><span class="p">(</span> <span class="p">[</span><span class="n">v</span> <span class="ow">is</span> <span class="kc">False</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">resolved</span><span class="o">.</span><span class="n">values</span><span class="p">()]):</span>
+			<span class="k">for</span> <span class="n">strat</span> <span class="ow">in</span> <span class="n">strList</span><span class="p">:</span>
+				<span class="k">if</span> <span class="n">resolved</span><span class="p">[</span><span class="n">strat</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+					<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{Fore.RED}</span><span class="s1">Could not resolve </span><span class="si">{strat}{Style.RESET_ALL}</span><span class="s1">&#39;</span><span class="p">)</span>
+					<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Available:&#39;</span><span class="p">)</span>
+					<span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">demultiplexingStrategies</span><span class="p">:</span>
+						<span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">shortName</span><span class="p">)</span>
+					<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Strategy </span><span class="si">{strat}</span><span class="s1"> not found&#39;</span><span class="p">)</span>
+
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">()</span>
+		<span class="k">return</span> <span class="n">selectedStrategies</span></div>
+
+<div class="viewcode-block" id="DemultiplexingStrategyLoader.list"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader.DemultiplexingStrategyLoader.list">[docs]</a>	<span class="k">def</span> <span class="nf">list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{Style.BRIGHT}</span><span class="s2">Available demultiplexing strategies:</span><span class="si">{Style.RESET_ALL}</span><span class="s2">&quot;</span><span class="p">)</span>
+		<span class="c1">#print(&#39;Name, alias, will be auto detected, description&#39;)</span>
+		<span class="k">for</span> <span class="n">strategy</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">demultiplexingStrategies</span><span class="p">:</span>
+
+			<span class="k">try</span><span class="p">:</span>
+				<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{Style.BRIGHT}{strategy.shortName}{Style.RESET_ALL}</span><span class="se">\t</span><span class="si">{strategy.longName}</span><span class="se">\t</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{Fore.GREEN}</span><span class="s1">Will be autodetected&#39;</span> <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">autoDetectable</span> <span class="k">else</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{Fore.RED}</span><span class="s1">Will not be autodetected&#39;</span><span class="p">)</span><span class="o">+</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span> <span class="o">+</span> <span class="n">Style</span><span class="o">.</span><span class="n">DIM</span> <span class="o">+</span> <span class="n">f</span><span class="s1">&#39; {strategy.barcodeFileParser.getTargetCount(strategy.barcodeFileAlias) if strategy.barcodeFileParser is not None else &quot;NA&quot;} targets</span><span class="se">\n</span><span class="s1"> &#39;</span><span class="o">+</span> <span class="n">Style</span><span class="o">.</span><span class="n">DIM</span> <span class="o">+</span> <span class="n">strategy</span><span class="o">.</span><span class="n">description</span> <span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">+</span><span class="n">strategy</span><span class="o">.</span><span class="n">getParserSummary</span><span class="p">()</span> <span class="o">+</span> <span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span> <span class="o">+</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="p">)</span>
+			<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+				<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{Fore.RED}{Style.BRIGHT}</span><span class="s2">Error in: </span><span class="si">{strategy.shortName}</span><span class="se">\n</span><span class="s2">Exception: </span><span class="si">{e}{Style.RESET_ALL}</span><span class="se">\n</span><span class="s2">Traceback for the error:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+				<span class="kn">import</span> <span class="nn">traceback</span>
+				<span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+				<span class="kn">from</span> <span class="nn">os</span> <span class="k">import</span> <span class="n">stat</span>
+				<span class="kn">from</span> <span class="nn">pwd</span> <span class="k">import</span> <span class="n">getpwuid</span>
+				<span class="k">try</span><span class="p">:</span>
+					<span class="n">modulePath</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="vm">__module__</span><span class="p">]</span><span class="o">.</span><span class="vm">__file__</span>
+
+					<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Contact </span><span class="si">{Style.BRIGHT}%s{Style.RESET_ALL}</span><span class="s1"> for help</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">getpwuid</span><span class="p">(</span><span class="n">stat</span><span class="p">(</span><span class="n">modulePath</span><span class="p">)</span><span class="o">.</span><span class="n">st_uid</span><span class="p">)</span><span class="o">.</span><span class="n">pw_name</span><span class="p">)</span>
+					<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;The error only affects this module.</span><span class="se">\n</span><span class="s1">Proceeding to load more modules...</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+				<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+					<span class="k">pass</span></div>
+
+<div class="viewcode-block" id="DemultiplexingStrategyLoader.getAutodetectStrategies"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader.DemultiplexingStrategyLoader.getAutodetectStrategies">[docs]</a>	<span class="k">def</span> <span class="nf">getAutodetectStrategies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">return</span> <span class="p">[</span><span class="n">strategy</span> <span class="k">for</span> <span class="n">strategy</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">demultiplexingStrategies</span> <span class="k">if</span>  <span class="n">strategy</span><span class="o">.</span><span class="n">autoDetectable</span> <span class="p">]</span></div>
+
+<div class="viewcode-block" id="DemultiplexingStrategyLoader.getDemultiplexingSelectedStrategies"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader.DemultiplexingStrategyLoader.getDemultiplexingSelectedStrategies">[docs]</a>	<span class="k">def</span> <span class="nf">getDemultiplexingSelectedStrategies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectedStrategies</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;No strategies selected&#39;</span><span class="p">)</span>
+		<span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">selectedStrategies</span></div>
+
+<div class="viewcode-block" id="DemultiplexingStrategyLoader.demultiplex"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader.DemultiplexingStrategyLoader.demultiplex">[docs]</a>	<span class="k">def</span> <span class="nf">demultiplex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fastqfiles</span><span class="p">,</span> <span class="n">maxReadPairs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">strategies</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">library</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">targetFile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rejectHandle</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">probe</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
+		<span class="n">useStrategies</span> <span class="o">=</span> <span class="n">strategies</span> <span class="k">if</span> <span class="n">strategies</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">getAutodetectStrategies</span><span class="p">()</span>
+		<span class="n">strategyYields</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span><span class="p">()</span>
+		<span class="n">processedReadPairs</span><span class="o">=</span><span class="mi">0</span>
+		<span class="n">baseDemux</span> <span class="o">=</span> <span class="n">IlluminaBaseDemultiplexer</span><span class="p">(</span><span class="n">indexFileParser</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">indexParser</span><span class="p">,</span> <span class="n">barcodeParser</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">barcodeParser</span><span class="p">,</span><span class="n">probe</span><span class="o">=</span><span class="n">probe</span><span class="p">)</span>
+
+		<span class="k">for</span> <span class="n">processedReadPairs</span><span class="p">,</span> <span class="n">reads</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fastqIterator</span><span class="o">.</span><span class="n">FastqIterator</span><span class="p">(</span><span class="o">*</span><span class="n">fastqfiles</span><span class="p">)):</span>
+			<span class="k">for</span> <span class="n">strategy</span> <span class="ow">in</span> <span class="n">useStrategies</span><span class="p">:</span>
+				<span class="k">try</span><span class="p">:</span>
+					<span class="n">recodedRecords</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">demultiplex</span><span class="p">(</span><span class="n">reads</span><span class="p">,</span> <span class="n">library</span><span class="o">=</span><span class="n">library</span><span class="p">,</span><span class="n">probe</span><span class="o">=</span><span class="n">probe</span><span class="p">)</span>
+
+					<span class="k">if</span> <span class="n">targetFile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+						<span class="n">targetFile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span> <span class="n">recodedRecords</span> <span class="p">)</span>
+
+				<span class="k">except</span> <span class="n">NonMultiplexable</span><span class="p">:</span>
+					<span class="c1">#print(&#39;NonMultiplexable&#39;)</span>
+					<span class="k">if</span> <span class="n">rejectHandle</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+						<span class="k">try</span><span class="p">:</span>
+							<span class="n">rejectHandle</span><span class="o">.</span><span class="n">write</span><span class="p">(</span> <span class="n">baseDemux</span><span class="o">.</span><span class="n">demultiplex</span><span class="p">(</span><span class="n">reads</span><span class="p">,</span> <span class="n">library</span><span class="o">=</span><span class="n">library</span><span class="p">)</span> <span class="p">)</span>
+						<span class="k">except</span> <span class="n">NonMultiplexable</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+							<span class="n">rejectHandle</span><span class="o">.</span><span class="n">write</span><span class="p">(</span> <span class="n">reads</span> <span class="p">)</span>
+
+					<span class="k">continue</span>
+				<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+					<span class="nb">print</span><span class="p">(</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span> <span class="p">)</span>
+					<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{Fore.RED}</span><span class="s1">Fatal error. While demultiplexing strategy </span><span class="si">{strategy.longName}</span><span class="s1"> yielded an error, the error message was: </span><span class="si">{e}</span><span class="s1">&#39;</span><span class="p">)</span>
+					<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;The read(s) causing the error looked like this:&#39;</span><span class="p">)</span>
+					<span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">reads</span><span class="p">:</span>
+						<span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">read</span><span class="p">))</span>
+					<span class="nb">print</span><span class="p">(</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="p">)</span>
+				<span class="c1">#print(recodedRecord)</span>
+				<span class="n">strategyYields</span><span class="p">[</span><span class="n">strategy</span><span class="o">.</span><span class="n">shortName</span><span class="p">]</span><span class="o">+=</span><span class="mi">1</span>
+			<span class="k">if</span> <span class="p">(</span> <span class="n">maxReadPairs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">processedReadPairs</span><span class="p">)</span><span class="o">&gt;=</span><span class="n">maxReadPairs</span><span class="p">):</span>
+				<span class="k">break</span>
+		<span class="k">return</span> <span class="n">processedReadPairs</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">strategyYields</span></div>
+
+
+
+<div class="viewcode-block" id="DemultiplexingStrategyLoader.detectLibYields"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader.DemultiplexingStrategyLoader.detectLibYields">[docs]</a>	<span class="k">def</span> <span class="nf">detectLibYields</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">libraries</span><span class="p">,</span> <span class="n">strategies</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">testReads</span><span class="o">=</span><span class="mi">100000</span><span class="p">,</span><span class="n">maxAutoDetectMethods</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">minAutoDetectPct</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+		<span class="n">libYields</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+		<span class="k">for</span> <span class="n">lib</span><span class="p">,</span> <span class="n">lanes</span> <span class="ow">in</span> <span class="n">libraries</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+			<span class="k">for</span> <span class="n">lane</span><span class="p">,</span> <span class="n">readPairs</span> <span class="ow">in</span> <span class="n">lanes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+
+				<span class="k">for</span> <span class="n">readPair</span> <span class="ow">in</span> <span class="n">readPairs</span><span class="p">:</span>
+					<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">readPairs</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+						<span class="n">processedReadPairs</span><span class="p">,</span> <span class="n">strategyYields</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">demultiplex</span><span class="p">(</span> <span class="p">[</span><span class="n">readPairs</span><span class="p">[</span><span class="s1">&#39;R1&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]],</span><span class="n">maxReadPairs</span><span class="o">=</span><span class="n">testReads</span><span class="p">,</span><span class="n">strategies</span><span class="o">=</span><span class="n">strategies</span> <span class="p">,</span> <span class="n">probe</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span>
+					<span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">readPairs</span><span class="p">)</span><span class="o">==</span><span class="mi">2</span><span class="p">:</span>
+						<span class="n">processedReadPairs</span><span class="p">,</span> <span class="n">strategyYields</span>  <span class="o">=</span>  <span class="bp">self</span><span class="o">.</span><span class="n">demultiplex</span><span class="p">(</span> <span class="p">(</span><span class="n">readPairs</span><span class="p">[</span><span class="s1">&#39;R1&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">readPairs</span><span class="p">[</span><span class="s1">&#39;R2&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="p">),</span><span class="n">maxReadPairs</span><span class="o">=</span><span class="n">testReads</span><span class="p">,</span><span class="n">strategies</span><span class="o">=</span><span class="n">strategies</span> <span class="p">,</span> <span class="n">probe</span><span class="o">=</span><span class="kc">True</span>  <span class="p">)</span>
+					<span class="k">else</span><span class="p">:</span>
+						<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Error: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">readPairs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+				<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Report for </span><span class="si">{lib}</span><span class="s1">:&#39;</span><span class="p">)</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">strategyYieldsToFormattedReport</span><span class="p">(</span> <span class="n">processedReadPairs</span><span class="p">,</span> <span class="n">strategyYields</span><span class="p">,</span><span class="n">maxAutoDetectMethods</span><span class="o">=</span><span class="n">maxAutoDetectMethods</span><span class="p">,</span><span class="n">minAutoDetectPct</span><span class="o">=</span><span class="n">minAutoDetectPct</span><span class="p">)</span>
+				<span class="n">libYields</span><span class="p">[</span><span class="n">lib</span><span class="p">]</span><span class="o">=</span> <span class="p">{</span><span class="s1">&#39;processedReadPairs&#39;</span><span class="p">:</span><span class="n">processedReadPairs</span><span class="p">,</span> <span class="s1">&#39;strategyYields&#39;</span><span class="p">:</span><span class="n">strategyYields</span> <span class="p">}</span>
+				<span class="k">break</span>
+		<span class="k">return</span> <span class="n">processedReadPairs</span><span class="p">,</span> <span class="n">libYields</span></div>
+
+<div class="viewcode-block" id="DemultiplexingStrategyLoader.strategyYieldsToFormattedReport"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader.DemultiplexingStrategyLoader.strategyYieldsToFormattedReport">[docs]</a>	<span class="k">def</span> <span class="nf">strategyYieldsToFormattedReport</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">processedReadPairs</span><span class="p">,</span> <span class="n">strategyYields</span><span class="p">,</span> <span class="n">selectedStrategies</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">maxAutoDetectMethods</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span><span class="n">minAutoDetectPct</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+		<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Analysed </span><span class="si">{Style.BRIGHT}{processedReadPairs}{Style.RESET_ALL}</span><span class="s1"> read pairs&#39;</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="n">selectedStrategies</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="n">selectedStrategies</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="c1">#selectedStrategies = self.selectedStrategiesBasedOnYield(processedReadPairs, strategyYields)</span>
+		<span class="k">for</span> <span class="n">i</span><span class="p">,(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">strategyYield</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">strategyYields</span><span class="o">.</span><span class="n">most_common</span><span class="p">()):</span>
+			<span class="n">yieldRatio</span> <span class="o">=</span> <span class="n">strategyYield</span><span class="o">/</span><span class="p">(</span><span class="mf">0.001</span><span class="o">+</span><span class="n">processedReadPairs</span><span class="p">)</span>
+			<span class="nb">print</span><span class="p">(</span> <span class="p">(</span> <span class="n">Style</span><span class="o">.</span><span class="n">BRIGHT</span><span class="o">+</span><span class="n">Fore</span><span class="o">.</span><span class="n">GREEN</span> <span class="k">if</span> <span class="p">((</span><span class="n">strategy</span> <span class="ow">in</span> <span class="n">selectedStrategies</span><span class="p">)</span> <span class="ow">or</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">maxAutoDetectMethods</span><span class="p">)</span> <span class="k">else</span> <span class="p">(</span><span class="n">Fore</span><span class="o">.</span><span class="n">YELLOW</span> <span class="k">if</span> <span class="n">yieldRatio</span><span class="o">*</span><span class="mi">100</span><span class="o">&gt;=</span><span class="n">minAutoDetectPct</span> <span class="k">else</span> <span class="n">Style</span><span class="o">.</span><span class="n">DIM</span><span class="p">))</span> <span class="o">+</span>  <span class="n">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1"> </span><span class="si">{strategy}</span><span class="s1">:</span><span class="si">%.2f%%{Style.RESET_ALL}</span><span class="s1">&#39;</span><span class="o">%</span> <span class="p">(</span><span class="mf">100.0</span><span class="o">*</span><span class="n">yieldRatio</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="DemultiplexingStrategyLoader.selectedStrategiesBasedOnYield"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader.DemultiplexingStrategyLoader.selectedStrategiesBasedOnYield">[docs]</a>	<span class="k">def</span> <span class="nf">selectedStrategiesBasedOnYield</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">processedReadPairs</span><span class="p">,</span> <span class="n">strategyYields</span><span class="p">,</span> <span class="n">maxAutoDetectMethods</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">minAutoDetectPct</span><span class="o">=</span><span class="mf">0.05</span><span class="p">):</span>
+		<span class="n">selectedStrategies</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">strategyYield</span> <span class="ow">in</span> <span class="n">strategyYields</span><span class="o">.</span><span class="n">most_common</span><span class="p">(</span><span class="n">maxAutoDetectMethods</span><span class="p">):</span>
+			<span class="n">yieldRatio</span> <span class="o">=</span> <span class="n">strategyYield</span><span class="o">/</span><span class="p">(</span><span class="mf">0.001</span><span class="o">+</span><span class="n">processedReadPairs</span><span class="p">)</span><span class="o">*</span><span class="mf">100.0</span>
+			<span class="k">if</span> <span class="n">yieldRatio</span><span class="o">&gt;=</span><span class="n">minAutoDetectPct</span><span class="p">:</span>
+				<span class="n">selectedStrategies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">strategy</span><span class="p">)</span>
+		<span class="k">return</span> <span class="n">selectedStrategies</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

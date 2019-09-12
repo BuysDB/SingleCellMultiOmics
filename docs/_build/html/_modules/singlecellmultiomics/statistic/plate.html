@@ -1,0 +1,285 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.statistic.plate &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.statistic.plate</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">.statistic</span> <span class="k">import</span> <span class="n">StatisticHistogram</span>
+<span class="kn">import</span> <span class="nn">singlecellmultiomics.pyutils</span> <span class="k">as</span> <span class="nn">pyutils</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="n">matplotlib</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;figure.dpi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">160</span>
+<span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;Agg&#39;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">import</span> <span class="nn">string</span>
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">matplotlib.patheffects</span> <span class="k">as</span> <span class="nn">path_effects</span>
+
+<div class="viewcode-block" id="human_readable"><a class="viewcode-back" href="../../../source/singlecellmultiomics.statistic.html#singlecellmultiomics.statistic.plate.human_readable">[docs]</a><span class="k">def</span> <span class="nf">human_readable</span><span class="p">(</span> <span class="n">value</span><span class="p">,</span> <span class="n">targetDigits</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span><span class="n">fp</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+
+    <span class="c1">#Float:</span>
+    <span class="k">if</span> <span class="n">value</span><span class="o">&lt;</span><span class="mi">1</span> <span class="ow">and</span> <span class="n">value</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%.2f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">value</span> <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="k">return</span><span class="p">(</span><span class="s1">&#39;0&#39;</span><span class="p">)</span>
+
+    <span class="n">baseId</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">))</span><span class="o">/</span><span class="mf">3.0</span> <span class="p">))</span>
+    <span class="n">suffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">baseId</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="n">sVal</span> <span class="o">=</span>  <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">value</span><span class="p">,</span><span class="n">targetDigits</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sVal</span><span class="p">)</span><span class="o">&gt;</span><span class="n">targetDigits</span> <span class="ow">and</span> <span class="n">sVal</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">):</span>
+            <span class="n">sVal</span> <span class="o">=</span> <span class="n">sVal</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">elif</span> <span class="n">baseId</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+
+        <span class="n">sStrD</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">targetDigits</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span> <span class="s1">&#39;</span><span class="si">{:.0f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">((</span><span class="n">value</span><span class="o">/</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="n">baseId</span><span class="o">*</span><span class="mi">3</span><span class="p">))))</span> <span class="p">)))</span>
+
+
+        <span class="n">sVal</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;{:.</span><span class="si">%s</span><span class="s1">f}&#39;</span> <span class="o">%</span> <span class="nb">min</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">sStrD</span><span class="p">))</span><span class="o">.</span><span class="n">format</span><span class="p">((</span><span class="n">value</span><span class="o">/</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="n">baseId</span><span class="o">*</span><span class="mi">3</span><span class="p">))))</span>
+        <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;kMGTYZ&#39;</span><span class="p">[</span><span class="n">baseId</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="n">sStrD</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">targetDigits</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span> <span class="s1">&#39;</span><span class="si">{:.0f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">((</span><span class="n">value</span><span class="o">*</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="o">-</span><span class="n">baseId</span><span class="o">*</span><span class="mi">3</span><span class="p">))))</span> <span class="p">)))</span>
+        <span class="n">sVal</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;{:.</span><span class="si">%s</span><span class="s1">f}&#39;</span> <span class="o">%</span>  <span class="nb">min</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">sStrD</span><span class="p">))</span><span class="o">.</span><span class="n">format</span><span class="p">((</span><span class="n">value</span><span class="o">*</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="o">-</span><span class="n">baseId</span><span class="o">*</span><span class="mi">3</span><span class="p">))))</span>
+        <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;mnpf&#39;</span><span class="p">[</span><span class="o">-</span><span class="n">baseId</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sVal</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="o">&gt;</span><span class="n">targetDigits</span><span class="p">:</span>
+            <span class="c1"># :(</span>
+            <span class="n">sVal</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">value</span><span class="p">,</span><span class="n">fp</span><span class="p">))[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+
+    <span class="k">return</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">sVal</span><span class="p">,</span><span class="n">suffix</span><span class="p">))</span></div>
+
+
+<span class="c1"># Visualize the following:</span>
+<span class="c1"># PER LIBRARY / DEMUX method</span>
+<span class="c1"># total fragments</span>
+<span class="c1"># total fragments with correct site</span>
+<span class="c1"># unique molecules</span>
+
+<span class="c1"># 384 well format:</span>
+
+<span class="n">well2index</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+<span class="n">index2well</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+<span class="n">rows</span> <span class="o">=</span> <span class="n">string</span><span class="o">.</span><span class="n">ascii_uppercase</span><span class="p">[:</span><span class="mi">16</span><span class="p">]</span>
+<span class="n">columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">25</span><span class="p">))</span>
+
+<span class="k">for</span> <span class="n">ci</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">385</span><span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">ci</span><span class="o">-</span><span class="mi">1</span>
+    <span class="n">rowIndex</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span> <span class="n">i</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span> <span class="p">)</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">rowIndex</span><span class="p">]</span>
+    <span class="n">column</span> <span class="o">=</span> <span class="n">columns</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)]</span>
+    <span class="n">well2index</span><span class="p">[</span><span class="mi">384</span><span class="p">][(</span><span class="n">row</span><span class="p">,</span><span class="n">column</span><span class="p">)]</span> <span class="o">=</span> <span class="n">ci</span>
+    <span class="n">index2well</span><span class="p">[</span><span class="mi">384</span><span class="p">][</span><span class="n">ci</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">row</span><span class="p">,</span><span class="n">column</span><span class="p">)</span>
+
+
+<span class="n">rows96</span> <span class="o">=</span> <span class="n">string</span><span class="o">.</span><span class="n">ascii_uppercase</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span>
+
+<span class="n">columns96</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">13</span><span class="p">))</span>
+
+<span class="k">for</span> <span class="n">ci</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">97</span><span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">ci</span><span class="o">-</span><span class="mi">1</span>
+    <span class="n">rowIndex</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span> <span class="n">i</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">columns96</span><span class="p">)</span> <span class="p">)</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="n">rows96</span><span class="p">[</span><span class="n">rowIndex</span><span class="p">]</span>
+    <span class="n">column</span> <span class="o">=</span> <span class="n">columns96</span><span class="p">[</span><span class="n">i</span><span class="o">%</span><span class="nb">len</span><span class="p">(</span><span class="n">columns96</span><span class="p">)]</span>
+    <span class="n">well2index</span><span class="p">[</span><span class="mi">96</span><span class="p">][(</span><span class="n">row</span><span class="p">,</span><span class="n">column</span><span class="p">)]</span> <span class="o">=</span> <span class="n">ci</span>
+    <span class="n">index2well</span><span class="p">[</span><span class="mi">96</span><span class="p">][</span><span class="n">ci</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">row</span><span class="p">,</span><span class="n">column</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="PlateStatistic"><a class="viewcode-back" href="../../../source/singlecellmultiomics.statistic.html#singlecellmultiomics.statistic.plate.PlateStatistic">[docs]</a><span class="k">class</span> <span class="nc">PlateStatistic</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">=</span> <span class="n">args</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">rawFragmentCount</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span> <span class="p">)</span> <span class="c1"># (library, mux) -&gt; cell -&gt; counts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">usableCount</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span> <span class="p">)</span> <span class="c1"># (library, mux) -&gt; cell -&gt; counts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">moleculeCount</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span> <span class="p">)</span> <span class="c1"># (library, mux) -&gt; cell -&gt; counts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skipReasons</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span><span class="p">()</span>
+
+<div class="viewcode-block" id="PlateStatistic.to_csv"><a class="viewcode-back" href="../../../source/singlecellmultiomics.statistic.html#singlecellmultiomics.statistic.plate.PlateStatistic.to_csv">[docs]</a>    <span class="k">def</span> <span class="nf">to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">moleculeCount</span><span class="p">)</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.csv&#39;</span><span class="p">,</span><span class="s1">&#39;molecules.csv&#39;</span><span class="p">))</span>
+        <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">usableCount</span><span class="p">)</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.csv&#39;</span><span class="p">,</span><span class="s1">&#39;usable_reads.csv&#39;</span><span class="p">))</span>
+        <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rawFragmentCount</span><span class="p">)</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.csv&#39;</span><span class="p">,</span><span class="s1">&#39;raw_fragments.csv&#39;</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="PlateStatistic.processRead"><a class="viewcode-back" href="../../../source/singlecellmultiomics.statistic.html#singlecellmultiomics.statistic.plate.PlateStatistic.processRead">[docs]</a>    <span class="k">def</span> <span class="nf">processRead</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">read</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;MX&#39;</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">rawFragmentCount</span><span class="p">[(</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;LY&#39;</span><span class="p">),</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;MX&#39;</span><span class="p">))][</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;SM&#39;</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">if</span>  <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;MX&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;CS2&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;XT&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;EX&#39;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">is_read1</span><span class="p">:</span> <span class="c1"># We only count reads2</span>
+                    <span class="k">return</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">usableCount</span><span class="p">[(</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;LY&#39;</span><span class="p">),</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;MX&#39;</span><span class="p">))][</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;SM&#39;</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="k">if</span>  <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;RC&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;RC&#39;</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">moleculeCount</span><span class="p">[(</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;LY&#39;</span><span class="p">),</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;MX&#39;</span><span class="p">))][</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;SM&#39;</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;DS&#39;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">read</span><span class="o">.</span><span class="n">is_read1</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">skipReasons</span><span class="p">[</span><span class="s1">&#39;Not R1&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">return</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">usableCount</span><span class="p">[(</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;LY&#39;</span><span class="p">),</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;MX&#39;</span><span class="p">))][</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;SM&#39;</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;RC&#39;</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">moleculeCount</span><span class="p">[(</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;LY&#39;</span><span class="p">),</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;MX&#39;</span><span class="p">))][</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;SM&#39;</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">skipReasons</span><span class="p">[</span><span class="s1">&#39;No DS&#39;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;Plate statistic&#39;</span>
+
+<div class="viewcode-block" id="PlateStatistic.cell_counts_to_dataframe"><a class="viewcode-back" href="../../../source/singlecellmultiomics.statistic.html#singlecellmultiomics.statistic.plate.PlateStatistic.cell_counts_to_dataframe">[docs]</a>    <span class="k">def</span> <span class="nf">cell_counts_to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell_counts</span><span class="p">,</span> <span class="n">mux</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;raw_reads&#39;</span><span class="p">):</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span><span class="n">cell_counts</span><span class="p">}</span> <span class="p">)</span>
+        <span class="k">if</span> <span class="n">mux</span><span class="o">==</span><span class="s1">&#39;CS2C8U6&#39;</span>  <span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="nb">format</span> <span class="o">=</span> <span class="mi">384</span> <span class="k">if</span> <span class="s1">&#39;384&#39;</span> <span class="ow">in</span> <span class="n">mux</span> <span class="k">else</span> <span class="mi">96</span>
+
+        <span class="n">df</span><span class="p">[</span><span class="s1">&#39;col&#39;</span><span class="p">]</span> <span class="o">=</span>  <span class="p">[</span> <span class="n">index2well</span><span class="p">[</span><span class="nb">format</span><span class="p">][(</span><span class="n">offset</span><span class="o">+</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))][</span><span class="mi">1</span><span class="p">]</span>  <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">df</span><span class="p">[</span><span class="s1">&#39;row&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span> <span class="o">-</span><span class="n">rows</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">index2well</span><span class="p">[</span><span class="nb">format</span><span class="p">][(</span><span class="n">offset</span><span class="o">+</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))][</span><span class="mi">0</span><span class="p">])</span>  <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">df</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">name</span><span class="p">],</span><span class="mi">99</span><span class="p">)</span><span class="o">*</span><span class="mi">200</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">df</span></div>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rawFragmentCount</span><span class="p">,</span><span class="s1">&#39;raw_reads&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">usableCount</span><span class="p">,</span><span class="s1">&#39;usable_reads&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">moleculeCount</span><span class="p">,</span> <span class="s1">&#39;unique_molecules&#39;</span><span class="p">)]:</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">library</span><span class="p">,</span> <span class="n">mux</span><span class="p">),</span> <span class="n">cellCounts</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell_counts_to_dataframe</span><span class="p">(</span><span class="n">cellCounts</span><span class="p">,</span><span class="n">mux</span><span class="p">,</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">row</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+                    <span class="k">yield</span> <span class="n">i</span><span class="p">,</span> <span class="n">row</span>
+
+
+<div class="viewcode-block" id="PlateStatistic.plot"><a class="viewcode-back" href="../../../source/singlecellmultiomics.statistic.html#singlecellmultiomics.statistic.plate.PlateStatistic.plot">[docs]</a>    <span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_path</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">data</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rawFragmentCount</span><span class="p">,</span><span class="s1">&#39;raw_reads&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">usableCount</span><span class="p">,</span><span class="s1">&#39;usable_reads&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">moleculeCount</span><span class="p">,</span> <span class="s1">&#39;unique_molecules&#39;</span><span class="p">)]:</span>
+
+            <span class="k">for</span> <span class="p">(</span><span class="n">library</span><span class="p">,</span> <span class="n">mux</span><span class="p">),</span> <span class="n">cellCounts</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+
+                <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell_counts_to_dataframe</span><span class="p">(</span><span class="n">cellCounts</span><span class="p">,</span><span class="n">mux</span><span class="p">,</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">plot</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s1">&#39;col&#39;</span><span class="p">,</span><span class="n">y</span><span class="o">=</span><span class="s1">&#39;row&#39;</span><span class="p">,</span><span class="n">s</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">],</span>
+                               <span class="n">c</span><span class="o">=</span><span class="p">[(</span><span class="mf">0.2</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.9</span><span class="p">)]</span>
+                               <span class="p">)</span>
+
+                <span class="c1"># Annotate the outliers with values:</span>
+                <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">ii</span><span class="p">,</span><span class="n">row</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">&gt;</span><span class="mi">0</span> <span class="ow">and</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">&lt;</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">name</span><span class="p">],</span><span class="mi">5</span><span class="p">)</span> <span class="ow">or</span> <span class="n">row</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">&gt;</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">name</span><span class="p">],</span><span class="mi">95</span><span class="p">)):</span>
+                        <span class="n">text</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span> <span class="n">human_readable</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">name</span><span class="p">])),</span> <span class="p">(</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;col&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;row&#39;</span><span class="p">]),</span>
+                        <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span><span class="n">va</span><span class="o">=</span><span class="s1">&#39;baseline&#39;</span><span class="p">,</span><span class="n">color</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">,</span><span class="n">size</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+                        <span class="n">text</span><span class="o">.</span><span class="n">set_path_effects</span><span class="p">([</span><span class="n">path_effects</span><span class="o">.</span><span class="n">Stroke</span><span class="p">(</span><span class="n">linewidth</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">foreground</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">),</span>
+                               <span class="n">path_effects</span><span class="o">.</span><span class="n">Normal</span><span class="p">()])</span>
+
+                <span class="n">plt</span><span class="o">.</span><span class="n">yticks</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;row&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;col&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()),</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span> <span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">fr</span><span class="s1">&#39;</span><span class="si">{name}</span><span class="s1"> with $</span><span class="si">{mux}</span><span class="s1">$ adapter&#39;</span><span class="o">+</span><span class="n">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="si">{library}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+                <span class="c1"># Create legend:</span>
+                <span class="c1">#ld = []</span>
+                <span class="c1">#for x in np.linspace(1, max(df[name]), 4):</span>
+            <span class="c1">#        size = (x/np.percentile(df[name],99))*200</span>
+                <span class="c1">#    ld.append( mlines.Line2D([], [], color=&#39;blue&#39;, marker=&#39;.&#39;, linestyle=&#39;None&#39;,</span>
+                <span class="c1">##                  markersize=np.sqrt(size), label=f&#39;{int(x)}:{size}&#39;))</span>
+                <span class="c1">#plt.legend(handles=ld)</span>
+
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">target_path</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.png&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{name}</span><span class="s1">_</span><span class="si">{mux}</span><span class="s1">_</span><span class="si">{library}</span><span class="s1">.png&#39;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

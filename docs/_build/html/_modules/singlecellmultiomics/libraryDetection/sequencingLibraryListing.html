@@ -1,0 +1,265 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.libraryDetection.sequencingLibraryListing &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.libraryDetection.sequencingLibraryListing</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="kn">import</span> <span class="nn">glob</span><span class="o">,</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">colorama</span> <span class="k">import</span> <span class="n">Fore</span>
+<span class="kn">from</span> <span class="nn">colorama</span> <span class="k">import</span> <span class="n">Back</span>
+<span class="kn">from</span> <span class="nn">colorama</span> <span class="k">import</span> <span class="n">Style</span>
+
+<div class="viewcode-block" id="formatColor"><a class="viewcode-back" href="../../../source/singlecellmultiomics.libraryDetection.html#singlecellmultiomics.libraryDetection.sequencingLibraryListing.formatColor">[docs]</a><span class="k">def</span> <span class="nf">formatColor</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
+    <span class="k">return</span><span class="p">(</span>
+        <span class="n">string</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;[GREEN]&quot;</span><span class="p">,</span> <span class="n">Fore</span><span class="o">.</span><span class="n">GREEN</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;[RED]&quot;</span><span class="p">,</span> <span class="n">Fore</span><span class="o">.</span><span class="n">RED</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;[DIM]&quot;</span><span class="p">,</span> <span class="n">Style</span><span class="o">.</span><span class="n">DIM</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;[RESET]&quot;</span><span class="p">,</span> <span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;[BRIGHT]&quot;</span><span class="p">,</span> <span class="n">Style</span><span class="o">.</span><span class="n">BRIGHT</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;[NORMAL]&quot;</span><span class="p">,</span> <span class="n">Style</span><span class="o">.</span><span class="n">NORMAL</span><span class="p">)</span>
+    <span class="p">)</span></div>
+<div class="viewcode-block" id="SequencingLibraryLister"><a class="viewcode-back" href="../../../source/singlecellmultiomics.libraryDetection.html#singlecellmultiomics.libraryDetection.sequencingLibraryListing.SequencingLibraryLister">[docs]</a><span class="k">class</span> <span class="nc">SequencingLibraryLister</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+
+    <span class="c1"># Function which replaces the substring(s) in library within args.replace</span>
+<div class="viewcode-block" id="SequencingLibraryLister.libraryReplace"><a class="viewcode-back" href="../../../source/singlecellmultiomics.libraryDetection.html#singlecellmultiomics.libraryDetection.sequencingLibraryListing.SequencingLibraryLister.libraryReplace">[docs]</a>    <span class="k">def</span> <span class="nf">libraryReplace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">library</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">replace</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">library</span>
+
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">replace</span><span class="p">:</span>
+            <span class="n">origin</span><span class="p">,</span> <span class="n">replace</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+            <span class="n">library</span> <span class="o">=</span> <span class="n">library</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span><span class="n">replace</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">library</span></div>
+
+<div class="viewcode-block" id="SequencingLibraryLister.detect"><a class="viewcode-back" href="../../../source/singlecellmultiomics.libraryDetection.html#singlecellmultiomics.libraryDetection.sequencingLibraryListing.SequencingLibraryLister.detect">[docs]</a>    <span class="k">def</span> <span class="nf">detect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filesToList</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">replace</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Library name replacement:&quot;</span> <span class="p">)</span>
+                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">replace</span><span class="p">:</span>
+                    <span class="n">origin</span><span class="p">,</span> <span class="n">replace</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span> <span class="n">formatColor</span><span class="p">(</span><span class="s2">&quot;  -&gt; [DIM]looking for[RESET] &#39;</span><span class="si">%s</span><span class="s2">&#39; [DIM]replace with:[RESET]&#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">replace</span><span class="p">)))</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">mergeReport</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Glob expansion:</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span> <span class="s1">&#39;*&#39;</span> <span class="ow">in</span> <span class="n">path</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">fastqfiles</span> <span class="p">):</span>
+            <span class="n">fqfiles</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">fastqfiles</span><span class="p">:</span>
+                <span class="n">fqfiles</span> <span class="o">+=</span> <span class="nb">list</span><span class="p">(</span><span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fqfiles</span> <span class="o">=</span>  <span class="n">args</span><span class="o">.</span><span class="n">fastqfiles</span>
+
+        <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">fqfiles</span><span class="p">:</span>
+            <span class="n">completefastqFileName</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="n">fastqFileName</span> <span class="o">=</span> <span class="n">completefastqFileName</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.fastq&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.gz&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.fq&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Base Clear format: Organoid-VG-diff_32158_TTAGGCATTCTTTCCC_L001_R2_001_BHGFKLBCX2.filt.fastq.gz</span>
+            <span class="k">if</span> <span class="n">fastqFileName</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.filt&#39;</span><span class="p">):</span>
+                <span class="n">fastqFileName</span> <span class="o">=</span> <span class="n">fastqFileName</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="c1">#Check if we are dealing with a raw illumina or SRR fastq file:</span>
+
+            <span class="k">if</span> <span class="n">fastqFileName</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;_R1&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">fastqFileName</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;_R2&#39;</span><span class="p">):</span>
+                <span class="n">lane</span> <span class="o">=</span> <span class="s1">&#39;0&#39;</span> <span class="c1"># Create &quot;fake&quot; lane</span>
+                <span class="n">library</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraryReplace</span><span class="p">(</span><span class="n">fastqFileName</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;_R&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">args</span><span class="p">)</span>
+                <span class="n">r1ORr2</span> <span class="o">=</span> <span class="n">fastqFileName</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">library</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">lane</span><span class="p">:</span> <span class="p">{}}</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">r1ORr2</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">][</span><span class="n">lane</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">][</span><span class="n">lane</span><span class="p">][</span><span class="n">r1ORr2</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">][</span><span class="n">lane</span><span class="p">][</span><span class="n">r1ORr2</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">path</span> <span class="p">)</span>
+                <span class="c1">#print(path, library, r1ORr2, self.libraries)</span>
+
+            <span class="k">elif</span> <span class="n">fastqFileName</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;SRR&quot;</span><span class="p">):</span>
+
+                <span class="n">library</span><span class="p">,</span><span class="n">r1ORr2</span> <span class="o">=</span> <span class="n">fastqFileName</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span>
+                <span class="n">library</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraryReplace</span><span class="p">(</span><span class="n">library</span><span class="p">,</span><span class="n">args</span><span class="p">)</span>
+                <span class="n">r1ORr2</span> <span class="o">=</span> <span class="s1">&#39;R</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">r1ORr2</span> <span class="c1">#The demultiplexer expects the format &#39;R1&#39;</span>
+                <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">slib</span><span class="o">!=</span><span class="kc">None</span><span class="p">:</span>
+                    <span class="n">lane</span> <span class="o">=</span> <span class="n">library</span>
+                    <span class="n">library</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">slib</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">lane</span> <span class="o">=</span> <span class="s1">&#39;0&#39;</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">library</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">lane</span><span class="p">:{}}</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">lane</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">][</span><span class="n">lane</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">r1ORr2</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">][</span><span class="n">lane</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">][</span><span class="n">lane</span><span class="p">][</span><span class="n">r1ORr2</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">][</span><span class="n">lane</span><span class="p">][</span><span class="n">r1ORr2</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">path</span> <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">library</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraryReplace</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;_L[0-9]</span><span class="si">{3}</span><span class="s1">_R(1|2)_[0-9]</span><span class="si">{3}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">fastqFileName</span><span class="p">),</span><span class="n">args</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">slib</span><span class="o">!=</span><span class="kc">None</span><span class="p">:</span>
+                    <span class="n">lane</span> <span class="o">=</span> <span class="n">library</span>
+                    <span class="n">library</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">slib</span>
+
+                <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">merge</span><span class="p">:</span>
+                    <span class="n">delim</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">merge</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="n">nThSplit</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">merge</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">merge</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span>
+                    <span class="n">newLibraryName</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">library</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">merge</span><span class="p">[</span><span class="mi">0</span><span class="p">])[:</span><span class="n">nThSplit</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">mergeReport</span><span class="p">:</span>
+                        <span class="c1">#print(&quot;Library merger: %sSplitting on &#39;%s%s%s%s&#39;, until part %s%s%s, %s %s-&gt;%s %s&quot; % (Style.DIM, Style.RESET_ALL, delim, Style.DIM, Style.RESET_ALL,  nThSplit, Style.DIM, Style.RESET_ALL, library, Style.DIM, Style.RESET_ALL, newLibraryName))</span>
+
+                        <span class="nb">print</span><span class="p">(</span> <span class="n">formatColor</span><span class="p">(</span><span class="s2">&quot;Library merger: [DIM]Splitting on &#39;[RESET]</span><span class="si">%s</span><span class="s2">[DIM]&#39;, until part [RESET]</span><span class="si">%s</span><span class="s2">[DIM], [RESET]</span><span class="si">%s</span><span class="s2">[DIM] -&gt; [RESET]</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="n">delim</span><span class="p">,</span> <span class="n">nThSplit</span><span class="p">,</span> <span class="n">library</span><span class="p">,</span> <span class="n">newLibraryName</span><span class="p">))</span>
+
+                        <span class="n">mergeReport</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="n">library</span> <span class="o">=</span> <span class="n">newLibraryName</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">library</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">lane</span> <span class="o">=</span>     <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;_R(1|2)_[0-9]</span><span class="si">{3}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">fastqFileName</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">lane</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">][</span><span class="n">lane</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="c1">#Obtaining that it is R1 or R2:</span>
+                <span class="n">r1ORr2</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span> <span class="sa">r</span><span class="s1">&#39;_[0-9]</span><span class="si">{3}</span><span class="s1">&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">fastqFileName</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_&#39;</span> <span class="o">%</span> <span class="n">lane</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">))</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">r1ORr2</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">][</span><span class="n">lane</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">][</span><span class="n">lane</span><span class="p">][</span><span class="n">r1ORr2</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">library</span><span class="p">][</span><span class="n">lane</span><span class="p">][</span><span class="n">r1ORr2</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">path</span> <span class="p">)</span>
+
+
+        <span class="n">inconsistent</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">ignoreFiles</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span><span class="n">lib</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">)):</span>
+            <span class="nb">print</span><span class="p">((</span><span class="s1">&#39;</span><span class="si">%s%s%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="k">if</span> <span class="n">idx</span><span class="o">&gt;</span><span class="mi">0</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">lib</span><span class="p">,</span> <span class="n">Style</span><span class="o">.</span><span class="n">DIM</span><span class="p">,</span> <span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="p">)))</span>
+
+            <span class="n">inconsistentLane</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">lane</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">lib</span><span class="p">]):</span>
+                <span class="nb">print</span><span class="p">((</span><span class="s2">&quot;   </span><span class="si">%s%s%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">Style</span><span class="o">.</span><span class="n">DIM</span><span class="p">,</span><span class="n">lane</span><span class="p">,</span><span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="p">)))</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">lib</span><span class="p">][</span><span class="n">lane</span><span class="p">])</span><span class="o">!=</span><span class="mi">2</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">se</span><span class="p">:</span>
+                        <span class="n">inconsistent</span> <span class="o">=</span> <span class="kc">True</span>
+                        <span class="n">inconsistentLane</span> <span class="o">=</span> <span class="kc">True</span>
+                        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">ignore</span><span class="p">:</span>
+                            <span class="n">ignoreFiles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="p">(</span><span class="n">lib</span><span class="p">,</span> <span class="n">lane</span><span class="p">)</span> <span class="p">)</span>
+                            <span class="nb">print</span><span class="p">((</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">    </span><span class="si">%s</span><span class="s1"> IGNORED FILE.. BOTH MATES NOT AVAILABLE or no mates? </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">Fore</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span> <span class="n">lib</span><span class="p">,</span> <span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="p">)))</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">((</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">    </span><span class="si">%s</span><span class="s1"> BOTH MATES NOT AVAILABLE</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">Fore</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span> <span class="n">lib</span><span class="p">,</span> <span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="p">)))</span>
+
+                <span class="n">prevSize</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">for</span> <span class="n">R1R2</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">lib</span><span class="p">][</span><span class="n">lane</span><span class="p">]):</span>
+                    <span class="k">if</span> <span class="n">prevSize</span><span class="o">!=</span><span class="kc">None</span> <span class="ow">and</span> <span class="n">prevSize</span><span class="o">!=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">lib</span><span class="p">][</span><span class="n">lane</span><span class="p">][</span><span class="n">R1R2</span><span class="p">]):</span>
+                        <span class="c1">#Missing a mate file</span>
+                        <span class="n">inconsistent</span><span class="o">=</span><span class="kc">True</span>
+                        <span class="nb">print</span><span class="p">((</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">    </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">Fore</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span> <span class="n">R1R2</span><span class="p">,</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">lib</span><span class="p">][</span><span class="n">lane</span><span class="p">][</span><span class="n">R1R2</span><span class="p">]</span> <span class="p">),</span> <span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="p">)))</span>
+                        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">ignore</span><span class="p">:</span>
+                            <span class="n">ignoreFiles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="p">(</span><span class="n">lib</span><span class="p">,</span> <span class="n">lane</span><span class="p">)</span> <span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">prevSize</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">lib</span><span class="p">][</span><span class="n">lane</span><span class="p">][</span><span class="n">R1R2</span><span class="p">])</span>
+                        <span class="c1">#Correct library</span>
+                        <span class="nb">print</span><span class="p">((</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">    </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">Fore</span><span class="o">.</span><span class="n">RED</span> <span class="k">if</span> <span class="n">inconsistentLane</span> <span class="k">else</span> <span class="n">Fore</span><span class="o">.</span><span class="n">GREEN</span><span class="p">,</span> <span class="n">R1R2</span><span class="p">,</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">lib</span><span class="p">][</span><span class="n">lane</span><span class="p">][</span><span class="n">R1R2</span><span class="p">]</span> <span class="p">),</span> <span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="p">)))</span>
+
+
+        <span class="k">if</span> <span class="n">inconsistent</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">ignore</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Mate information missing for some files. --ignore was supplied, ignoring these files:&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">ignore</span> <span class="ow">in</span> <span class="n">ignoreFiles</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ignore</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ignore</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">ignore</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="n">ignore</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+                <span class="c1">#Drop empty self.libraries:</span>
+                <span class="n">dropLibs</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">lib</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">lib</span><span class="p">])</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                        <span class="n">dropLibs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lib</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">dropLibs</span><span class="p">)):</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span><span class="p">[</span><span class="n">d</span><span class="p">]</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">((</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">Exitting, mate-information missing</span><span class="si">%s</span><span class="s1">. Supply --se to allow single end reads or --ignore to ignore these files.&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">Fore</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span> <span class="n">Style</span><span class="o">.</span><span class="n">RESET_ALL</span><span class="p">)))</span>
+                <span class="n">exit</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">libraries</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

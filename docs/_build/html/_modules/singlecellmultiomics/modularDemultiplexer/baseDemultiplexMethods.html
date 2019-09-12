@@ -1,0 +1,584 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">singlecellmultiomics.fastqProcessing.fastqIterator</span> <span class="k">as</span> <span class="nn">fastqIterator</span>
+<span class="kn">import</span> <span class="nn">string</span>
+
+
+<span class="n">complement</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="s1">&#39;T&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">:</span> <span class="s1">&#39;G&#39;</span><span class="p">,</span> <span class="s1">&#39;G&#39;</span><span class="p">:</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;T&#39;</span><span class="p">:</span> <span class="s1">&#39;A&#39;</span><span class="p">}</span>
+
+<div class="viewcode-block" id="SamTag"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.SamTag">[docs]</a><span class="k">class</span> <span class="nc">SamTag</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">humanName</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">doNotWrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tag</span> <span class="o">=</span> <span class="n">tag</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">humanName</span> <span class="o">=</span> <span class="n">humanName</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">isPhred</span><span class="o">=</span><span class="n">isPhred</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">doNotWrite</span> <span class="o">=</span> <span class="n">doNotWrite</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span><span class="o">!=</span><span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Invalid tag length&#39;</span><span class="p">)</span></div>
+
+<span class="n">tags</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;SM&#39;</span><span class="p">,</span> <span class="s1">&#39;sampleName&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;LY&#39;</span><span class="p">,</span> <span class="s1">&#39;sequencingLibrary&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;EX&#39;</span><span class="p">,</span> <span class="s1">&#39;experiment&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;MX&#39;</span><span class="p">,</span> <span class="s1">&#39;demultiplexingStrategy&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;Fc&#39;</span><span class="p">,</span> <span class="s1">&#39;flowCellId&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;La&#39;</span><span class="p">,</span> <span class="s1">&#39;lane&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;Ti&#39;</span><span class="p">,</span> <span class="s1">&#39;tile&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;Is&#39;</span><span class="p">,</span> <span class="s1">&#39;instrument&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;BK&#39;</span><span class="p">,</span> <span class="s1">&#39;isBulk&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;XC&#39;</span><span class="p">,</span> <span class="s1">&#39;plateCoord&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;CX&#39;</span><span class="p">,</span> <span class="s1">&#39;clusterXpos&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;CY&#39;</span><span class="p">,</span> <span class="s1">&#39;clusterYpos&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;RP&#39;</span><span class="p">,</span> <span class="s1">&#39;readPairNumber&#39;</span><span class="p">,</span> <span class="n">doNotWrite</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;RN&#39;</span><span class="p">,</span> <span class="s1">&#39;runNumber&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;Fi&#39;</span><span class="p">,</span> <span class="s1">&#39;filterFlag&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;CN&#39;</span><span class="p">,</span> <span class="s1">&#39;controlNumber&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;aA&#39;</span><span class="p">,</span> <span class="s1">&#39;correctedIlluminaIndexSequence&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;aI&#39;</span><span class="p">,</span> <span class="s1">&#39;indexSequence&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;aa&#39;</span><span class="p">,</span> <span class="s1">&#39;rawIlluminaIndexSequence&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;ah&#39;</span><span class="p">,</span> <span class="s1">&#39;hammingDistanceToIndex&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;BC&#39;</span><span class="p">,</span> <span class="s1">&#39;barcode&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;CB&#39;</span><span class="p">,</span> <span class="s1">&#39;cellBarcode&#39;</span><span class="p">),</span> <span class="c1"># Same as bc</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;QX&#39;</span><span class="p">,</span> <span class="s1">&#39;barcodeQual&#39;</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;bc&#39;</span><span class="p">,</span> <span class="s1">&#39;rawBarcode&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;hd&#39;</span><span class="p">,</span> <span class="s1">&#39;hammingDistanceRawBcAssignedBc&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;BI&#39;</span><span class="p">,</span> <span class="s1">&#39;barcodeIndex&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;QT&#39;</span><span class="p">,</span> <span class="s1">&#39;sampleBarcodeQuality&#39;</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;RX&#39;</span><span class="p">,</span> <span class="s1">&#39;umi&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;uL&#39;</span><span class="p">,</span> <span class="s1">&#39;umiLength&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;RQ&#39;</span><span class="p">,</span> <span class="s1">&#39;umiQual&#39;</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;BX&#39;</span><span class="p">,</span> <span class="s1">&#39;umiCorrected&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;BZ&#39;</span><span class="p">,</span> <span class="s1">&#39;umiCorrectedQuality&#39;</span><span class="p">,</span><span class="n">isPhred</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;MI&#39;</span><span class="p">,</span> <span class="s1">&#39;molecularIdentifier&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;QM&#39;</span><span class="p">,</span> <span class="s1">&#39;molecularIdentifierQuality&#39;</span><span class="p">,</span><span class="n">isPhred</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;DS&#39;</span><span class="p">,</span> <span class="s1">&#39;siteCoordinate&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;DA&#39;</span><span class="p">,</span> <span class="s1">&#39;allele&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;RZ&#39;</span><span class="p">,</span> <span class="s1">&#39;recognizedSequence&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;RS&#39;</span><span class="p">,</span> <span class="s1">&#39;recognizedStrand&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;LI&#39;</span><span class="p">,</span> <span class="s1">&#39;ligationMotif&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;RC&#39;</span><span class="p">,</span> <span class="s1">&#39;moleculeOverseqCountIndex&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;RR&#39;</span><span class="p">,</span> <span class="s1">&#39;rejectionReason&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;DT&#39;</span><span class="p">,</span> <span class="s1">&#39;sourceType&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;EX&#39;</span><span class="p">,</span> <span class="s1">&#39;exons&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;IN&#39;</span><span class="p">,</span> <span class="s1">&#39;introns&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;GN&#39;</span><span class="p">,</span> <span class="s1">&#39;genes&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;nM&#39;</span><span class="p">,</span> <span class="s1">&#39;editDistanceToReference&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;NM&#39;</span><span class="p">,</span> <span class="s1">&#39;editDistanceToReference&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;AS&#39;</span><span class="p">,</span> <span class="s1">&#39;alignmentScore&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;NH&#39;</span><span class="p">,</span> <span class="s1">&#39;occurencesOfFragment&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;HI&#39;</span><span class="p">,</span> <span class="s1">&#39;queryHitIndex&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;XS&#39;</span><span class="p">,</span> <span class="s1">&#39;assignmentStatus&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;SQ&#39;</span><span class="p">,</span> <span class="s1">&#39;meanBaseQuality&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;SD&#39;</span><span class="p">,</span> <span class="s1">&#39;scarDescription&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;RG&#39;</span><span class="p">,</span> <span class="s1">&#39;readGroup&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;XA&#39;</span><span class="p">,</span> <span class="s1">&#39;alternativeAlignmentHits&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;MD&#39;</span><span class="p">,</span> <span class="s1">&#39;alignment&#39;</span><span class="p">),</span>
+
+
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;fS&#39;</span><span class="p">,</span> <span class="s1">&#39;fragmentSizeTag&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;fe&#39;</span><span class="p">,</span> <span class="s1">&#39;fragmentEndTag&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;fs&#39;</span><span class="p">,</span> <span class="s1">&#39;fragmentStartTag&#39;</span><span class="p">),</span>
+
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;lh&#39;</span><span class="p">,</span> <span class="s1">&#39;ligationOverhangSequence&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;lq&#39;</span><span class="p">,</span> <span class="s1">&#39;ligationOverhangQuality&#39;</span><span class="p">,</span><span class="n">isPhred</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span>
+
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;a1&#39;</span><span class="p">,</span> <span class="s1">&#39;Read1Clipped3primeBasesKmer&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;A2&#39;</span><span class="p">,</span> <span class="s1">&#39;Read2Clipped3primeBasesKmer&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;aQ&#39;</span><span class="p">,</span> <span class="s1">&#39;Read1Clipped3primeBasesKmerQuality&#39;</span><span class="p">,</span><span class="n">isPhred</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;AQ&#39;</span><span class="p">,</span> <span class="s1">&#39;Read2Clipped3primeBasesKmerQuality&#39;</span><span class="p">,</span><span class="n">isPhred</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span>
+
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;e1&#39;</span><span class="p">,</span> <span class="s1">&#39;Read1Clipped5primeBasesKmer&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;eQ&#39;</span><span class="p">,</span> <span class="s1">&#39;Read2Clipped5primeBasesKmer&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;eB&#39;</span><span class="p">,</span> <span class="s1">&#39;Read1Clipped5primeCycle&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;EB&#39;</span><span class="p">,</span> <span class="s1">&#39;Read2Clipped5primeCycle&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;E2&#39;</span><span class="p">,</span> <span class="s1">&#39;Read1Clipped5primeBasesKmerQuality&#39;</span><span class="p">,</span><span class="n">isPhred</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;EQ&#39;</span><span class="p">,</span> <span class="s1">&#39;Read2Clipped5primeBasesKmerQuality&#39;</span><span class="p">,</span><span class="n">isPhred</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span>
+
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;ES&#39;</span><span class="p">,</span> <span class="s1">&#39;EnzymeSequence&#39;</span><span class="p">),</span>  <span class="c1"># Christoph</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;eq&#39;</span><span class="p">,</span> <span class="s1">&#39;EnzymeSequenceQualities&#39;</span><span class="p">,</span> <span class="n">isPhred</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;IS&#39;</span><span class="p">,</span> <span class="s1">&#39;ispcrSequence&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;is&#39;</span><span class="p">,</span> <span class="s1">&#39;ispcrSequenceQualities&#39;</span><span class="p">,</span> <span class="n">isPhred</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span>
+
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;H0&#39;</span><span class="p">,</span> <span class="s1">&#39;HexamerSequenceR1&#39;</span><span class="p">),</span>  <span class="c1"># anna</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;H1&#39;</span><span class="p">,</span> <span class="s1">&#39;HexamerPhredScoreR1&#39;</span><span class="p">,</span> <span class="n">isPhred</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;H2&#39;</span><span class="p">,</span> <span class="s1">&#39;HexamerSequenceR2&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;H3&#39;</span><span class="p">,</span> <span class="s1">&#39;HexamerPhredScoreR2&#39;</span><span class="p">,</span> <span class="n">isPhred</span> <span class="o">=</span> <span class="kc">True</span><span class="p">),</span>
+
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;XM&#39;</span><span class="p">,</span> <span class="s1">&#39;perBaseMethylationStatus&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;Cm&#39;</span><span class="p">,</span> <span class="s1">&#39;modified3BPContexts&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;Qm&#39;</span><span class="p">,</span> <span class="s1">&#39;modified4BPContexts&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;Cu&#39;</span><span class="p">,</span> <span class="s1">&#39;unmodified3BPContexts&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;Qu&#39;</span><span class="p">,</span> <span class="s1">&#39;unmodified4BPContexts&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;MC&#39;</span><span class="p">,</span> <span class="s1">&#39;methylatedBaseCountForFragment&#39;</span><span class="p">),</span>
+
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;rS&#39;</span><span class="p">,</span> <span class="s1">&#39;randomPrimerStart&#39;</span><span class="p">),</span>
+    <span class="n">SamTag</span><span class="p">(</span><span class="s1">&#39;rP&#39;</span><span class="p">,</span> <span class="s1">&#39;randomPrimerSequence&#39;</span><span class="p">)</span>
+
+<span class="p">]</span>
+
+
+<span class="n">TagDefinitions</span> <span class="o">=</span>  <span class="p">{</span> <span class="n">tag</span><span class="o">.</span><span class="n">tag</span><span class="p">:</span> <span class="n">tag</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">tags</span> <span class="p">}</span>
+
+<span class="c1">## Obtain metadata from read</span>
+
+<div class="viewcode-block" id="metaFromRead"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.metaFromRead">[docs]</a><span class="k">def</span> <span class="nf">metaFromRead</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">tag</span><span class="o">==</span><span class="s1">&#39;chrom&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">read</span><span class="o">.</span><span class="n">reference_name</span>
+
+    <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">tag</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">pass</span>
+        <span class="c1">#print(e)</span>
+
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<span class="c1"># Clean a string to be able to be used in a fastq file header</span>
+<span class="n">fastqCleanerRegex</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;[^a-zA-Z0-9-_]&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">UNICODE</span><span class="p">)</span>
+<div class="viewcode-block" id="fqSafe"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.fqSafe">[docs]</a><span class="k">def</span> <span class="nf">fqSafe</span><span class="p">(</span><span class="n">string</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">fastqCleanerRegex</span>
+    <span class="k">return</span><span class="p">(</span> <span class="n">fastqCleanerRegex</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">string</span><span class="p">)</span> <span class="p">)</span></div>
+
+
+<span class="n">illuminaHeaderSplitRegex</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;:| &#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">UNICODE</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TaggedRecord"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TaggedRecord">[docs]</a><span class="k">class</span> <span class="nc">TaggedRecord</span><span class="p">():</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tagDefinitions</span><span class="p">,</span> <span class="n">rawRecord</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">library</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span> <span class="o">=</span> <span class="p">{}</span> <span class="c1"># 2 character Key -&gt; value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tagDefinitions</span> <span class="o">=</span> <span class="n">tagDefinitions</span>
+        <span class="k">if</span> <span class="n">rawRecord</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fromRawFastq</span><span class="p">(</span><span class="n">rawRecord</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">NonMultiplexable</span><span class="p">:</span>
+                <span class="k">raise</span>
+        <span class="k">if</span> <span class="n">library</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span> <span class="s1">&#39;LY&#39;</span><span class="p">,</span><span class="n">library</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">rawRecord</span><span class="p">)</span> <span class="ow">is</span> <span class="n">fastqIterator</span><span class="o">.</span><span class="n">FastqRecord</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sequence</span> <span class="o">=</span> <span class="n">rawRecord</span><span class="o">.</span><span class="n">sequence</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">qualities</span> <span class="o">=</span> <span class="n">rawRecord</span><span class="o">.</span><span class="n">qual</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">plus</span> <span class="o">=</span> <span class="n">rawRecord</span><span class="o">.</span><span class="n">plus</span>
+
+<div class="viewcode-block" id="TaggedRecord.addTagByTag"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TaggedRecord.addTagByTag">[docs]</a>    <span class="k">def</span> <span class="nf">addTagByTag</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span><span class="n">tagName</span><span class="p">,</span>  <span class="n">value</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">decodePhred</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">isPhred</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">isPhred</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tagDefinitions</span><span class="p">[</span><span class="n">tagName</span><span class="p">]</span><span class="o">.</span><span class="n">isPhred</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">!=</span><span class="nb">str</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">isPhred</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="n">decodePhred</span><span class="p">:</span>
+                <span class="c1"># Convert encoded phred scores back to original ascii</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="n">tagName</span><span class="p">]</span> <span class="o">=</span> <span class="n">fastqHeaderSafeQualitiesToPhred</span><span class="p">(</span> <span class="n">value</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="mi">3</span> <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="n">tagName</span><span class="p">]</span> <span class="o">=</span> <span class="n">phredToFastqHeaderSafeQualities</span><span class="p">(</span> <span class="n">value</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="mi">3</span> <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="n">tagName</span><span class="p">]</span> <span class="o">=</span> <span class="n">fqSafe</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">asFastq</span><span class="p">()</span>
+
+<div class="viewcode-block" id="TaggedRecord.asFastq"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TaggedRecord.asFastq">[docs]</a>    <span class="k">def</span> <span class="nf">asFastq</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sequence</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dirAtt</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">baseQualities</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;illumina&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sequence</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">()</span>
+            <span class="n">sequence</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequence</span>
+        <span class="k">if</span> <span class="n">dirAtt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plus</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">()</span>
+            <span class="n">dirAtt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plus</span>
+        <span class="k">if</span> <span class="n">baseQualities</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">qualities</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">()</span>
+            <span class="n">baseQualities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qualities</span>
+
+        <span class="n">header</span> <span class="o">=</span> <span class="s2">&quot;;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span> <span class="n">f</span><span class="s2">&quot;</span><span class="si">{attribute}</span><span class="s2">:</span><span class="si">{value}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">attribute</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">tagDefinitions</span><span class="p">[</span><span class="n">attribute</span><span class="p">]</span><span class="o">.</span><span class="n">doNotWrite</span> <span class="p">])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">header</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">255</span><span class="p">:</span> <span class="c1"># the header length is stored as uint_8 and includes a null character. The maximum length is thus 255</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The length of the demultiplexed header is longer than 255 characters. Reduce the length of the header. For example by using -merge _ which will not put the flow cell in the sample name&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;@</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span>
+            <span class="n">header</span><span class="p">,</span>
+            <span class="n">sequence</span><span class="p">,</span>
+            <span class="n">dirAtt</span><span class="p">,</span>
+            <span class="n">baseQualities</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaggedRecord.has_tag"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TaggedRecord.has_tag">[docs]</a>    <span class="k">def</span> <span class="nf">has_tag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">tag</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span></div>
+
+<div class="viewcode-block" id="TaggedRecord.asIlluminaHeader"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TaggedRecord.asIlluminaHeader">[docs]</a>    <span class="k">def</span> <span class="nf">asIlluminaHeader</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">{Is}</span><span class="s1">:</span><span class="si">{RN}</span><span class="s1">:</span><span class="si">{Fc}</span><span class="s1">:</span><span class="si">{La}</span><span class="s1">:</span><span class="si">{Ti}</span><span class="s1">:</span><span class="si">{CX}</span><span class="s1">:</span><span class="si">{CY}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span> <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TaggedRecord.fromRawFastq"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TaggedRecord.fromRawFastq">[docs]</a>    <span class="k">def</span> <span class="nf">fromRawFastq</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fastqRecord</span><span class="p">,</span> <span class="n">indexFileParser</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">indexFileAlias</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">illuminaHeaderSplitRegex</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">instrument</span><span class="p">,</span> <span class="n">runNumber</span><span class="p">,</span> <span class="n">flowCellId</span><span class="p">,</span> <span class="n">lane</span><span class="p">,</span> <span class="n">tile</span><span class="p">,</span> <span class="n">clusterXpos</span><span class="p">,</span> <span class="n">clusterYpos</span><span class="p">,</span> <span class="n">readPairNumber</span><span class="p">,</span> <span class="n">isFiltered</span><span class="p">,</span> <span class="n">controlNumber</span><span class="p">,</span> <span class="n">indexSequence</span> <span class="o">=</span> <span class="n">illuminaHeaderSplitRegex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">fastqRecord</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">instrument</span><span class="p">,</span> <span class="n">runNumber</span><span class="p">,</span> <span class="n">flowCellId</span><span class="p">,</span> <span class="n">lane</span><span class="p">,</span> <span class="n">tile</span><span class="p">,</span> <span class="n">clusterXpos</span><span class="p">,</span> <span class="n">clusterYpos</span><span class="p">,</span> <span class="n">readPairNumber</span><span class="p">,</span> <span class="n">isFiltered</span><span class="p">,</span> <span class="n">controlNumber</span> <span class="o">=</span> <span class="n">illuminaHeaderSplitRegex</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">fastqRecord</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;::&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">))</span>
+            <span class="n">indexSequence</span><span class="o">=</span><span class="s2">&quot;N&quot;</span>
+            <span class="c1">#NS500413:32:H14TKBGXX:2:11101:16448:1664 1:N:0::</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span> <span class="s1">&#39;Is&#39;</span><span class="p">,</span><span class="n">instrument</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;RN&#39;</span><span class="p">,</span><span class="n">runNumber</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;Fc&#39;</span><span class="p">,</span><span class="n">flowCellId</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;La&#39;</span><span class="p">,</span><span class="n">lane</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;Ti&#39;</span><span class="p">,</span><span class="n">tile</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;CX&#39;</span><span class="p">,</span><span class="n">clusterXpos</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;CY&#39;</span><span class="p">,</span><span class="n">clusterYpos</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;RP&#39;</span><span class="p">,</span><span class="n">readPairNumber</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;Fi&#39;</span><span class="p">,</span><span class="n">isFiltered</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;CN&#39;</span><span class="p">,</span><span class="n">controlNumber</span><span class="p">)</span>
+
+
+        <span class="k">if</span> <span class="n">indexFileParser</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">indexFileAlias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indexIdentifier</span><span class="p">,</span> <span class="n">correctedIndex</span><span class="p">,</span> <span class="n">hammingDistance</span> <span class="o">=</span> <span class="n">indexFileParser</span><span class="o">.</span><span class="n">getIndexCorrectedBarcodeAndHammingDistance</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="n">indexFileAlias</span><span class="p">,</span> <span class="n">barcode</span><span class="o">=</span><span class="n">indexSequence</span><span class="p">)</span>
+
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;aa&#39;</span><span class="p">,</span><span class="n">indexSequence</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">correctedIndex</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1">#</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;aA&#39;</span><span class="p">,</span><span class="n">correctedIndex</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;aI&#39;</span><span class="p">,</span><span class="n">indexIdentifier</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">NonMultiplexable</span><span class="p">(</span><span class="s1">&#39;Could not obtain index for </span><span class="si">%s</span><span class="s1">  </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span> <span class="n">indexSequence</span><span class="p">,</span> <span class="n">correctedIndex</span><span class="p">,</span> <span class="n">indexIdentifier</span><span class="p">))</span>
+                <span class="c1">#self.addTagByTag(&#39;aA&#39;,&quot;None&quot;)</span>
+                <span class="c1">#self.addTagByTag(&#39;aI&#39;,-1)</span>
+                <span class="c1">#self.addTagByTag(&#39;ah&#39;,hammingDistance)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;aA&#39;</span><span class="p">,</span><span class="n">indexSequence</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaggedRecord.tagPysamRead"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TaggedRecord.tagPysamRead">[docs]</a>    <span class="k">def</span> <span class="nf">tagPysamRead</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">read</span><span class="p">):</span>
+
+        <span class="n">moleculeIdentifier</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">moleculeQuality</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">moleculeIdentifiyingTags</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s1">&#39;BC&#39;</span><span class="p">,</span><span class="s1">&#39;QT&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;RX&#39;</span><span class="p">,</span><span class="s1">&#39;RQ&#39;</span><span class="p">,</span><span class="kc">False</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;aA&#39;</span><span class="p">,</span><span class="kc">None</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">tag</span><span class="p">,</span><span class="n">qualityTag</span><span class="p">,</span> <span class="n">required</span> <span class="ow">in</span> <span class="n">moleculeIdentifiyingTags</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">moleculeIdentifier</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">qualityTag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="c1"># Padding:</span>
+                        <span class="n">moleculeQuality</span><span class="o">+=</span> <span class="p">(</span> <span class="s1">&#39;o&#39;</span><span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="n">tag</span><span class="p">]))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">moleculeQuality</span><span class="o">+=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="n">qualityTag</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="n">required</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="n">NonMultiplexable</span><span class="p">(</span><span class="s1">&#39;Tag was defined to be required&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">moleculeQuality</span><span class="p">)</span><span class="o">!=</span><span class="nb">len</span><span class="p">(</span><span class="n">moleculeIdentifier</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Could not reconstruct molecule identifier&#39;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;MI&#39;</span><span class="p">,</span><span class="n">moleculeIdentifier</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;QM&#39;</span><span class="p">,</span><span class="n">moleculeQuality</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="n">NonMultiplexable</span><span class="p">:</span>
+
+            <span class="c1"># Its bulk</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s1">&#39;BK&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># Add sample tag: (If possible)</span>
+        <span class="c1"># If the BI tag is present it means we know the index of the cell</span>
+        <span class="c1"># if no BI tag is present, assume the sample is bulk</span>
+        <span class="k">if</span> <span class="s1">&#39;BI&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;SM&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{self.tags[&quot;LY&quot;]}</span><span class="s1">_</span><span class="si">{self.tags[&quot;BI&quot;]}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;SM&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{self.tags[&quot;LY&quot;]}</span><span class="s1">_BULK&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Now we defined the desired values of the tags. Write them to the record:</span>
+        <span class="k">for</span> <span class="n">tag</span><span class="p">,</span><span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="c1">#print(tag,value)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tagDefinitions</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span><span class="o">.</span><span class="n">isPhred</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">fastqHeaderSafeQualitiesToPhred</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+            <span class="n">read</span><span class="o">.</span><span class="n">set_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;QM&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;QM&#39;</span><span class="p">))</span><span class="o">!=</span><span class="nb">len</span><span class="p">(</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;MI&#39;</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;QM and MI tag length not matching&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaggedRecord.fromTaggedFastq"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TaggedRecord.fromTaggedFastq">[docs]</a>    <span class="k">def</span> <span class="nf">fromTaggedFastq</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fastqRecord</span> <span class="p">):</span>
+        <span class="k">for</span> <span class="n">keyValue</span> <span class="ow">in</span> <span class="n">fastqRecord</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;@&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;;&#39;</span><span class="p">):</span>
+            <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">keyValue</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">decodePhred</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TaggedRecord.fromTaggedBamRecord"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TaggedRecord.fromTaggedBamRecord">[docs]</a>    <span class="k">def</span> <span class="nf">fromTaggedBamRecord</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pysamRecord</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">keyValue</span> <span class="ow">in</span> <span class="n">pysamRecord</span><span class="o">.</span><span class="n">query_name</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;;&#39;</span><span class="p">):</span>
+            <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="n">keyValue</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="reverseComplement"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.reverseComplement">[docs]</a><span class="k">def</span> <span class="nf">reverseComplement</span><span class="p">(</span><span class="n">seq</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">complement</span>
+    <span class="k">return</span><span class="p">(</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">complement</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span> <span class="k">for</span> <span class="n">base</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">seq</span><span class="p">))</span> <span class="p">)</span></div>
+
+<div class="viewcode-block" id="phredToFastqHeaderSafeQualities"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.phredToFastqHeaderSafeQualities">[docs]</a><span class="k">def</span> <span class="nf">phredToFastqHeaderSafeQualities</span><span class="p">(</span> <span class="n">asciiEncodedPhredScores</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="mi">3</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Convert ASCII encoded pred string to fastq safe string.</span>
+<span class="sd">    numeric encoded string (method 0),</span>
+<span class="sd">    or 65 shifted (method 1) which is safe to use in the fastq header&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">method</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span><span class="p">(</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="n">phred</span><span class="p">)</span><span class="o">-</span><span class="mi">33</span><span class="p">)</span> <span class="k">for</span> <span class="n">phred</span> <span class="ow">in</span> <span class="n">asciiEncodedPhredScores</span><span class="p">])</span> <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">method</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span><span class="p">(</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">chr</span><span class="p">(</span><span class="nb">ord</span><span class="p">(</span><span class="n">phred</span><span class="p">)</span><span class="o">+</span><span class="mi">32</span><span class="p">)</span> <span class="k">for</span> <span class="n">phred</span> <span class="ow">in</span> <span class="n">asciiEncodedPhredScores</span><span class="p">])</span> <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span><span class="p">(</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">string</span><span class="o">.</span><span class="n">ascii_letters</span><span class="p">[</span><span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">ord</span><span class="p">(</span><span class="n">phred</span><span class="p">)</span><span class="o">-</span><span class="mi">33</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">ascii_letters</span><span class="p">))]</span> <span class="k">for</span> <span class="n">phred</span> <span class="ow">in</span> <span class="n">asciiEncodedPhredScores</span><span class="p">])</span> <span class="p">)</span></div>
+
+<div class="viewcode-block" id="fastqHeaderSafeQualitiesToPhred"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.fastqHeaderSafeQualitiesToPhred">[docs]</a><span class="k">def</span> <span class="nf">fastqHeaderSafeQualitiesToPhred</span><span class="p">(</span><span class="n">phred</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="c1">#print(phred)</span>
+    <span class="k">return</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span> <span class="nb">chr</span><span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">ascii_letters</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="o">+</span><span class="mi">33</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">phred</span> <span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="NonMultiplexable"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.NonMultiplexable">[docs]</a><span class="k">class</span> <span class="nc">NonMultiplexable</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+<span class="c1"># The demultplexing strategy converts a tuple if fastq record(s) into a demultiplexed record</span>
+
+<span class="c1"># Every demultiplexing strategy has :</span>
+<span class="c1"># a full name: the name shown in the tool</span>
+<span class="c1"># shortName : a short name, will be put into EVERY fastq record, so keep it really short</span>
+<span class="c1"># autoDetectable: a flag indicating if this method should be auto detected;</span>
+<span class="c1"># for example for whole genome sequencing reads, we cannot tell from the reads that it is this data, and the flag should be False</span>
+
+<span class="c1"># Method demultiplex( *records (R1, R2, R3 ... )</span>
+<span class="c1"># Raises NonMultiplexable Exception if the records do not yield a valid result (which is used to determine if the demultplexing method is valid to use)</span>
+
+<span class="c1"># Upon initialisation the strategies recieve a dictionary containing the barcodes loaded by the barcode file parser</span>
+<span class="c1"># (barcodeMapping)</span>
+
+<div class="viewcode-block" id="DemultiplexingStrategy"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.DemultiplexingStrategy">[docs]</a><span class="k">class</span> <span class="nc">DemultiplexingStrategy</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shortName</span> <span class="o">=</span> <span class="s1">&#39;place holder demultiplexing method&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">longName</span> <span class="o">=</span> <span class="s1">&#39;placeHolder&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">autoDetectable</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s1">&#39;inherit this class to build your own demultipexing strategy&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">indexSummary</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">barcodeSummary</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+<div class="viewcode-block" id="DemultiplexingStrategy.demultiplex"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.DemultiplexingStrategy.demultiplex">[docs]</a>    <span class="k">def</span> <span class="nf">demultiplex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{self.longName}</span><span class="s1"> </span><span class="si">{self.shortName}</span><span class="s1"> </span><span class="si">{self.description}</span><span class="s1"> DemultiplexingStrategy&#39;</span>
+
+<div class="viewcode-block" id="DemultiplexingStrategy.getParserSummary"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.DemultiplexingStrategy.getParserSummary">[docs]</a>    <span class="k">def</span> <span class="nf">getParserSummary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">indexSummary</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1"> barcodes:&#39;</span> <span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">barcodeSummary</span> <span class="p">)</span></div></div>
+
+
+
+<div class="viewcode-block" id="IlluminaBaseDemultiplexer"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.IlluminaBaseDemultiplexer">[docs]</a><span class="k">class</span> <span class="nc">IlluminaBaseDemultiplexer</span><span class="p">(</span><span class="n">DemultiplexingStrategy</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indexFileParser</span><span class="p">,</span>  <span class="n">indexFileAlias</span><span class="o">=</span><span class="s1">&#39;illumina_merged_ThruPlex48S_RP&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">DemultiplexingStrategy</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indexFileParser</span> <span class="o">=</span> <span class="n">indexFileParser</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">illuminaIndicesAlias</span> <span class="o">=</span> <span class="n">indexFileAlias</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shortName</span> <span class="o">=</span> <span class="s1">&#39;ILLU&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">longName</span> <span class="o">=</span> <span class="s1">&#39;IlluminaDemux&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s1">&#39;Demultiplex as a bulk sample&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">indexSummary</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;sequencing indices: </span><span class="si">{indexFileAlias}</span><span class="s1">&#39;</span>
+
+<div class="viewcode-block" id="IlluminaBaseDemultiplexer.demultiplex"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.IlluminaBaseDemultiplexer.demultiplex">[docs]</a>    <span class="k">def</span> <span class="nf">demultiplex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">inherited</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">library</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">global</span> <span class="n">TagDefinitions</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">inherited</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[</span> <span class="n">TaggedRecord</span><span class="p">(</span><span class="n">rawRecord</span><span class="o">=</span><span class="n">record</span><span class="p">,</span><span class="n">tagDefinitions</span><span class="o">=</span><span class="n">TagDefinitions</span><span class="p">,</span> <span class="n">indexFileParser</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">indexFileParser</span><span class="p">,</span> <span class="n">indexFileAlias</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">illuminaIndicesAlias</span><span class="p">,</span> <span class="n">library</span><span class="o">=</span><span class="n">library</span><span class="p">)</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span> <span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">TaggedRecord</span><span class="p">(</span><span class="n">rawRecord</span><span class="o">=</span><span class="n">record</span><span class="p">,</span><span class="n">tagDefinitions</span><span class="o">=</span><span class="n">TagDefinitions</span><span class="p">,</span><span class="n">indexFileParser</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">indexFileParser</span><span class="p">,</span> <span class="n">indexFileAlias</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">illuminaIndicesAlias</span><span class="p">,</span> <span class="n">library</span><span class="o">=</span><span class="n">library</span><span class="p">)</span><span class="o">.</span><span class="n">asFastq</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">sequence</span><span class="p">,</span> <span class="n">record</span><span class="o">.</span><span class="n">plus</span><span class="p">,</span> <span class="n">record</span><span class="o">.</span><span class="n">qual</span><span class="p">)</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span><span class="p">]</span>
+        <span class="k">except</span> <span class="n">NonMultiplexable</span><span class="p">:</span>
+            <span class="k">raise</span></div></div>
+
+<span class="c1"># Base strategy for read pairs which have both an umi and sample barcode</span>
+<div class="viewcode-block" id="UmiBarcodeDemuxMethod"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.UmiBarcodeDemuxMethod">[docs]</a><span class="k">class</span> <span class="nc">UmiBarcodeDemuxMethod</span><span class="p">(</span><span class="n">IlluminaBaseDemultiplexer</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+        <span class="n">umiRead</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">umiStart</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">umiLength</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+        <span class="n">barcodeRead</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">barcodeStart</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="n">barcodeLength</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+         <span class="n">barcodeFileParser</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">barcodeFileAlias</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">indexFileParser</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+         <span class="n">indexFileAlias</span> <span class="o">=</span> <span class="s1">&#39;illumina_merged_ThruPlex48S_RP&#39;</span><span class="p">,</span>
+         <span class="o">**</span><span class="n">kwargs</span> <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="o">=</span><span class="s1">&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">barcodeFileAlias</span> <span class="o">=</span> <span class="n">barcodeFileAlias</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">barcodeFileParser</span> <span class="o">=</span> <span class="n">barcodeFileParser</span>
+        <span class="n">IlluminaBaseDemultiplexer</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">indexFileParser</span><span class="o">=</span><span class="n">indexFileParser</span><span class="p">,</span><span class="n">indexFileAlias</span><span class="o">=</span><span class="n">indexFileAlias</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">barcodeSummary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">barcodeFileAlias</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">umiRead</span> <span class="o">=</span> <span class="n">umiRead</span> <span class="c1"># 0:Read 1, 1: Read 2 etc</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">umiStart</span> <span class="o">=</span> <span class="n">umiStart</span> <span class="c1"># First base</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">umiLength</span> <span class="o">=</span> <span class="n">umiLength</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">barcodeRead</span> <span class="o">=</span> <span class="n">barcodeRead</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">barcodeStart</span> <span class="o">=</span> <span class="n">barcodeStart</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">barcodeLength</span> <span class="o">=</span> <span class="n">barcodeLength</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">autoDetectable</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sequenceCapture</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="p">,</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="p">]</span> <span class="c1"># ranges</span>
+        <span class="k">if</span> <span class="n">umiLength</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Barcode only</span>
+            <span class="k">if</span> <span class="n">barcodeStart</span><span class="o">!=</span><span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;Complicated slice where we need to capture around a region&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sequenceCapture</span><span class="p">[</span><span class="n">barcodeRead</span><span class="p">]</span> <span class="o">=</span>     <span class="nb">slice</span><span class="p">(</span> <span class="n">barcodeLength</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">umiRead</span><span class="o">!=</span><span class="n">barcodeRead</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span><span class="p">(</span> <span class="n">umiStart</span><span class="o">==</span><span class="mi">0</span> <span class="ow">or</span> <span class="n">barcodeStart</span><span class="o">==</span><span class="mi">0</span> <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;Complicated slice where we need to capture around a region&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sequenceCapture</span><span class="p">[</span><span class="n">barcodeRead</span><span class="p">]</span> <span class="o">=</span>     <span class="nb">slice</span><span class="p">(</span> <span class="n">barcodeLength</span><span class="o">+</span><span class="n">umiLength</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{self.longName}</span><span class="s1"> bc: </span><span class="si">{self.barcodeStart}</span><span class="s1">:</span><span class="si">{self.barcodeLength}</span><span class="s1">, umi: </span><span class="si">{self.umiStart}</span><span class="s1">:</span><span class="si">{self.umiLength}</span><span class="s1"> </span><span class="si">{self.description}</span><span class="s1">&#39;</span>
+
+<div class="viewcode-block" id="UmiBarcodeDemuxMethod.demultiplex"><a class="viewcode-back" href="../../../source/singlecellmultiomics.modularDemultiplexer.html#singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.UmiBarcodeDemuxMethod.demultiplex">[docs]</a>    <span class="k">def</span> <span class="nf">demultiplex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="c1"># Check if the supplied reads are mate-pair:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">records</span><span class="p">)</span><span class="o">!=</span><span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">NonMultiplexable</span><span class="p">(</span><span class="s1">&#39;Not mate pair&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Perform first pass demultiplexing of the illumina fragments:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">taggedRecords</span> <span class="o">=</span> <span class="n">IlluminaBaseDemultiplexer</span><span class="o">.</span><span class="n">demultiplex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">records</span><span class="p">,</span> <span class="n">inherited</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">NonMultiplexable</span><span class="p">:</span>
+            <span class="k">raise</span>
+
+        <span class="n">rawBarcode</span> <span class="o">=</span> <span class="n">records</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">barcodeRead</span><span class="p">]</span><span class="o">.</span><span class="n">sequence</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">barcodeStart</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">barcodeStart</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">barcodeLength</span><span class="p">]</span>
+        <span class="n">barcodeQual</span> <span class="o">=</span>  <span class="n">records</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">barcodeRead</span><span class="p">]</span><span class="o">.</span><span class="n">qual</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">barcodeStart</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">barcodeStart</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">barcodeLength</span><span class="p">]</span>
+
+        <span class="n">barcodeIdentifier</span><span class="p">,</span> <span class="n">barcode</span><span class="p">,</span> <span class="n">hammingDistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">barcodeFileParser</span><span class="o">.</span><span class="n">getIndexCorrectedBarcodeAndHammingDistance</span><span class="p">(</span><span class="n">alias</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">barcodeFileAlias</span><span class="p">,</span> <span class="n">barcode</span><span class="o">=</span><span class="n">rawBarcode</span><span class="p">)</span>
+        <span class="c1">#print(self.barcodeFileParser,self.barcodeFileAlias,rawBarcode,barcodeIdentifier, barcode, hammingDistance)</span>
+        <span class="k">if</span> <span class="n">barcodeIdentifier</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">NonMultiplexable</span><span class="p">(</span><span class="s1">&#39;barcode not set&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">umiLength</span><span class="o">!=</span><span class="mi">0</span><span class="p">:</span>
+            <span class="n">umi</span> <span class="o">=</span> <span class="n">records</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">umiRead</span><span class="p">]</span><span class="o">.</span><span class="n">sequence</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">umiStart</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">umiStart</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">umiLength</span><span class="p">]</span>
+            <span class="n">umiQual</span> <span class="o">=</span> <span class="n">records</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">umiRead</span><span class="p">]</span><span class="o">.</span><span class="n">qual</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">umiStart</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">umiStart</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">umiLength</span><span class="p">]</span>
+
+
+        <span class="k">for</span> <span class="n">tr</span> <span class="ow">in</span>  <span class="n">taggedRecords</span><span class="p">:</span>
+            <span class="c1">#tr.addTagByTag(&#39;uL&#39;, self.umiLength, isPhred=False)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">umiLength</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                <span class="c1">#tr.addTagByTag(&#39;MI&#39;, barcode, isPhred=False)</span>
+                <span class="c1">#tr.addTagByTag(&#39;QM&#39;, barcodeQual, isPhred=True)</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tr</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;RX&#39;</span><span class="p">,</span> <span class="n">umi</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="n">tr</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;RQ&#39;</span><span class="p">,</span> <span class="n">umiQual</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="c1">#tr.addTagByTag(&#39;MI&#39;, barcode+umi, isPhred=False)</span>
+                <span class="c1">#tr.addTagByTag(&#39;QM&#39;, barcodeQual+umiQual, isPhred=True)</span>
+
+            <span class="n">tr</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;BI&#39;</span><span class="p">,</span> <span class="n">barcodeIdentifier</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">tr</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;bc&#39;</span><span class="p">,</span> <span class="n">rawBarcode</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="c1">#tr.addTagByTag(&#39;hd&#39;, hammingDistance, isPhred=False)</span>
+
+            <span class="n">tr</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;BC&#39;</span><span class="p">,</span> <span class="n">barcode</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">False</span> <span class="p">)</span>
+            <span class="n">tr</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;QT&#39;</span><span class="p">,</span> <span class="n">barcodeQual</span><span class="p">,</span> <span class="n">isPhred</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">barcode</span><span class="p">)</span><span class="o">!=</span><span class="nb">len</span><span class="p">(</span><span class="n">barcodeQual</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">()</span>
+
+
+            <span class="n">tr</span><span class="o">.</span><span class="n">addTagByTag</span><span class="p">(</span><span class="s1">&#39;MX&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shortName</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">rid</span><span class="p">,(</span><span class="n">record</span><span class="p">,</span> <span class="n">taggedRecord</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span> <span class="nb">zip</span><span class="p">(</span><span class="n">records</span><span class="p">,</span> <span class="n">taggedRecords</span><span class="p">)):</span>
+            <span class="n">taggedRecord</span><span class="o">.</span><span class="n">sequence</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">sequence</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sequenceCapture</span><span class="p">[</span><span class="n">rid</span><span class="p">]]</span>
+            <span class="n">taggedRecord</span><span class="o">.</span><span class="n">qualities</span> <span class="o">=</span>  <span class="n">record</span><span class="o">.</span><span class="n">qual</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">sequenceCapture</span><span class="p">[</span><span class="n">rid</span><span class="p">]]</span>
+            <span class="n">taggedRecord</span><span class="o">.</span><span class="n">plus</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">plus</span>
+
+        <span class="k">return</span> <span class="n">taggedRecords</span></div></div>
+        <span class="c1">#return [ tr.asFastq(record.sequence[self.sequenceCapture[rid]], record.plus, record.qual[self.sequenceCapture[rid]]) for rid,(tr,record) in enumerate(zip(taggedRecords, records))]</span>
+        <span class="c1"># Add information and rebuild header</span>
+        <span class="c1">#header = f&#39;@UMI:{umi};UMIQ:{umiQual};CBI:{barcodeIdentifier};CB:{barcode};CBQ:{barcodeQual};&#39;</span>
+
+
+        <span class="c1">#return fastqIterator.FastqRecord(header, records[1].sequence, records[1].plus,  records[1].qual )</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

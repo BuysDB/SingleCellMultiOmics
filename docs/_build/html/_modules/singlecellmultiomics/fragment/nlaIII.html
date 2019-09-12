@@ -1,0 +1,187 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.fragment.nlaIII &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.fragment.nlaIII</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">singlecellmultiomics.fragment</span> <span class="k">import</span> <span class="n">Fragment</span>
+<span class="kn">from</span> <span class="nn">singlecellmultiomics.utils.sequtils</span> <span class="k">import</span> <span class="n">hamming_distance</span>
+<div class="viewcode-block" id="NLAIIIFragment"><a class="viewcode-back" href="../../../source/singlecellmultiomics.fragment.html#singlecellmultiomics.fragment.nlaIII.NLAIIIFragment">[docs]</a><span class="k">class</span> <span class="nc">NLAIIIFragment</span><span class="p">(</span><span class="n">Fragment</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">reads</span><span class="p">,</span> <span class="n">R1_primer_length</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span><span class="n">R2_primer_length</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span><span class="n">assignment_radius</span><span class="o">=</span><span class="mi">1</span><span class="n">_000</span><span class="p">,</span> <span class="n">umi_hamming_distance</span><span class="o">=</span><span class="mi">1</span>  <span class="p">):</span>
+        <span class="n">Fragment</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reads</span><span class="p">,</span> <span class="n">assignment_radius</span><span class="o">=</span><span class="n">assignment_radius</span><span class="p">,</span><span class="n">R1_primer_length</span><span class="o">=</span><span class="n">R1_primer_length</span><span class="p">,</span><span class="n">R2_primer_length</span><span class="o">=</span><span class="n">R2_primer_length</span><span class="p">,</span> <span class="n">umi_hamming_distance</span><span class="o">=</span><span class="n">umi_hamming_distance</span> <span class="p">)</span>
+        <span class="c1"># set NLAIII cut site given reads</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">strand</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">site_location</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cut_site_strand</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">identify_site</span><span class="p">()</span>
+
+<div class="viewcode-block" id="NLAIIIFragment.set_site"><a class="viewcode-back" href="../../../source/singlecellmultiomics.fragment.html#singlecellmultiomics.fragment.nlaIII.NLAIIIFragment.set_site">[docs]</a>    <span class="k">def</span> <span class="nf">set_site</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">site_chrom</span><span class="p">,</span> <span class="n">site_pos</span><span class="p">,</span> <span class="n">site_strand</span><span class="o">=</span><span class="kc">None</span> <span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_strand</span><span class="p">(</span><span class="n">site_strand</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">site_location</span> <span class="o">=</span> <span class="p">(</span><span class="n">site_chrom</span><span class="p">,</span> <span class="n">site_pos</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cut_site_strand</span> <span class="o">=</span> <span class="n">site_strand</span></div>
+
+<div class="viewcode-block" id="NLAIIIFragment.identify_site"><a class="viewcode-back" href="../../../source/singlecellmultiomics.fragment.html#singlecellmultiomics.fragment.nlaIII.NLAIIIFragment.identify_site">[docs]</a>    <span class="k">def</span> <span class="nf">identify_site</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="n">R1</span><span class="p">,</span><span class="n">R2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reads</span>
+
+        <span class="sd">&quot;&quot;&quot; Valid configs:</span>
+<span class="sd">        CATG######## R1 ########## ^ ########## R2 ##########</span>
+<span class="sd">        ############ R2 ########## ^ ########### R1 #####CATG  reverse case</span>
+<span class="sd">        !BWA inverts the query sequence if it maps to the negative strand!</span>
+
+<span class="sd">        or R2.is_unmapped:</span>
+<span class="sd">            if R1.is_unmapped and R2.is_unmapped:</span>
+<span class="sd">                self.set_rejection_reason(R1, &#39;unmapped R1;R2&#39;)</span>
+<span class="sd">            elif R1.is_unmapped:</span>
+<span class="sd">                self.set_rejection_reason(R1, &#39;unmapped R1&#39;)</span>
+<span class="sd">                self.set_rejection_reason(R2, &#39;unmapped R1&#39;)</span>
+<span class="sd">            else:</span>
+<span class="sd">                self.set_rejection_reason(R1, &#39;unmapped R2&#39;)</span>
+<span class="sd">                self.set_rejection_reason(R2, &#39;unmapped R2&#39;)</span>
+<span class="sd">            return(None)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">R1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_unmapped</span> <span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_rejection_reason</span><span class="p">(</span><span class="s1">&#39;unmapped R1&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[:</span><span class="mi">4</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;CATG&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+            <span class="n">rpos</span> <span class="o">=</span> <span class="p">(</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_name</span><span class="p">,</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_start</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_site</span><span class="p">(</span>  <span class="n">site_strand</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">site_chrom</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">site_pos</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_recognized_sequence</span><span class="p">(</span> <span class="s1">&#39;CATG&#39;</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="n">rpos</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">:]</span><span class="o">==</span><span class="s1">&#39;CATG&#39;</span> <span class="ow">and</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+            <span class="n">rpos</span> <span class="o">=</span> <span class="p">(</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_name</span><span class="p">,</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_end</span><span class="o">-</span><span class="mi">4</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_site</span><span class="p">(</span>  <span class="n">site_strand</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">site_chrom</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">site_pos</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_recognized_sequence</span><span class="p">(</span> <span class="s1">&#39;CATG&#39;</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="n">rpos</span><span class="p">)</span>
+
+        <span class="c1"># Sometimes the cycle is off</span>
+        <span class="k">elif</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[:</span><span class="mi">3</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;ATG&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+            <span class="n">rpos</span> <span class="o">=</span> <span class="p">(</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_name</span><span class="p">,</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_start</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_site</span><span class="p">(</span>  <span class="n">site_strand</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">site_chrom</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">site_pos</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_recognized_sequence</span><span class="p">(</span> <span class="s1">&#39;ATG&#39;</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="n">rpos</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:]</span><span class="o">==</span><span class="s1">&#39;CAT&#39;</span> <span class="ow">and</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span> <span class="c1"># First base was trimmed or lost</span>
+            <span class="n">rpos</span> <span class="o">=</span> <span class="p">(</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_name</span><span class="p">,</span> <span class="n">R1</span><span class="o">.</span><span class="n">reference_end</span><span class="o">-</span><span class="mi">3</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_site</span><span class="p">(</span>   <span class="n">site_strand</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">site_chrom</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">site_pos</span><span class="o">=</span><span class="n">rpos</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_recognized_sequence</span><span class="p">(</span> <span class="s1">&#39;CAT&#39;</span><span class="p">)</span>
+            <span class="k">return</span><span class="p">(</span><span class="n">rpos</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[:</span><span class="mi">4</span><span class="p">]</span><span class="o">==</span><span class="s1">&#39;CATG&#39;</span> <span class="ow">and</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_rejection_reason</span><span class="p">(</span><span class="s1">&#39;found CATG R1 REV exp FWD&#39;</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">R1</span><span class="o">.</span><span class="n">seq</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">:]</span><span class="o">==</span><span class="s1">&#39;CATG&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">R1</span><span class="o">.</span><span class="n">is_reverse</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_rejection_reason</span><span class="p">(</span> <span class="s1">&#39;found CATG R1 FWD exp REV&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_rejection_reason</span><span class="p">(</span> <span class="s1">&#39;no CATG&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="NLAIIIFragment.is_valid"><a class="viewcode-back" href="../../../source/singlecellmultiomics.fragment.html#singlecellmultiomics.fragment.nlaIII.NLAIIIFragment.is_valid">[docs]</a>    <span class="k">def</span> <span class="nf">is_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">site_location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="NLAIIIFragment.get_site_location"><a class="viewcode-back" href="../../../source/singlecellmultiomics.fragment.html#singlecellmultiomics.fragment.nlaIII.NLAIIIFragment.get_site_location">[docs]</a>    <span class="k">def</span> <span class="nf">get_site_location</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">site_location</span></div>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Fragment</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">+</span><span class="n">f</span><span class="s1">&#39;</span><span class="se">\n\t</span><span class="s1">Restriction site:{self.get_site_location()}&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="c1"># Make sure fragments map to the same strand, cheap comparisons</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_sample</span><span class="p">()</span><span class="o">!=</span><span class="n">other</span><span class="o">.</span><span class="n">get_sample</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_strand</span><span class="p">()</span><span class="o">!=</span><span class="n">other</span><span class="o">.</span><span class="n">get_strand</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_site_location</span><span class="p">()</span><span class="o">!=</span><span class="n">other</span><span class="o">.</span><span class="n">get_site_location</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Make sure UMI&#39;s are similar enough, more expensive hamming distance calculation</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">umi_hamming_distance</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_umi</span><span class="p">()</span><span class="o">==</span><span class="n">other</span><span class="o">.</span><span class="n">get_umi</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">hamming_distance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_umi</span><span class="p">(),</span><span class="n">other</span><span class="o">.</span><span class="n">get_umi</span><span class="p">())</span><span class="o">&lt;=</span><span class="bp">self</span><span class="o">.</span><span class="n">umi_hamming_distance</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,580 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.bamProcessing.bamToCountTable &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.bamProcessing.bamToCountTable</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">pysam</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods</span>
+<span class="n">TagDefinitions</span> <span class="o">=</span> <span class="n">singlecellmultiomics</span><span class="o">.</span><span class="n">modularDemultiplexer</span><span class="o">.</span><span class="n">baseDemultiplexMethods</span><span class="o">.</span><span class="n">TagDefinitions</span>
+<span class="kn">import</span> <span class="nn">singlecellmultiomics.modularDemultiplexer</span>
+
+
+<div class="viewcode-block" id="coordinate_to_sliding_bin_locations"><a class="viewcode-back" href="../../../source/singlecellmultiomics.bamProcessing.html#singlecellmultiomics.bamProcessing.bamToCountTable.coordinate_to_sliding_bin_locations">[docs]</a><span class="k">def</span> <span class="nf">coordinate_to_sliding_bin_locations</span><span class="p">(</span><span class="n">dp</span><span class="p">,</span> <span class="n">bin_size</span><span class="p">,</span> <span class="n">sliding_increment</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a single value to a list of overlapping bins</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    point : int</span>
+<span class="sd">        coordinate to look up</span>
+
+<span class="sd">    bin_size : int</span>
+<span class="sd">        bin size</span>
+
+<span class="sd">    sliding_increment : int</span>
+<span class="sd">        sliding window offset, this is the increment between bins</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    start : int</span>
+<span class="sd">        the start coordinate of the first overlapping bin</span>
+<span class="sd">    end :int</span>
+<span class="sd">        the end of the last overlapping bin</span>
+
+<span class="sd">    start_id : int</span>
+<span class="sd">        the index of the first overlapping bin</span>
+<span class="sd">    end_id : int</span>
+<span class="sd">        the index of the last overlapping bin</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">start_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">((</span> <span class="p">(</span><span class="n">dp</span><span class="o">-</span><span class="n">bin_size</span><span class="p">)</span><span class="o">/</span><span class="n">sliding_increment</span> <span class="p">))</span>   <span class="p">)</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">start_id</span> <span class="o">*</span> <span class="n">sliding_increment</span>
+    <span class="n">end_id</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">dp</span><span class="o">/</span><span class="n">sliding_increment</span><span class="p">))</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="n">end_id</span> <span class="o">*</span> <span class="n">sliding_increment</span>  <span class="o">+</span> <span class="n">bin_size</span>
+    <span class="k">return</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">start_id</span><span class="p">,</span> <span class="n">end_id</span></div>
+
+<div class="viewcode-block" id="coordinate_to_bins"><a class="viewcode-back" href="../../../source/singlecellmultiomics.bamProcessing.html#singlecellmultiomics.bamProcessing.bamToCountTable.coordinate_to_bins">[docs]</a><span class="k">def</span> <span class="nf">coordinate_to_bins</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">bin_size</span><span class="p">,</span> <span class="n">sliding_increment</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a single value to a list of overlapping bins</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    point : int</span>
+<span class="sd">        coordinate to look up</span>
+
+<span class="sd">    bin_size : int</span>
+<span class="sd">        bin size</span>
+
+<span class="sd">    sliding_increment : int</span>
+<span class="sd">        sliding window offset, this is the increment between bins</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list: [(bin_start,bin_end), .. ]</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">start</span><span class="p">,</span><span class="n">end</span><span class="p">,</span><span class="n">start_id</span><span class="p">,</span><span class="n">end_id</span> <span class="o">=</span> <span class="n">coordinate_to_sliding_bin_locations</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">bin_size</span><span class="p">,</span><span class="n">sliding_increment</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span> <span class="p">(</span><span class="n">i</span><span class="o">*</span><span class="n">sliding_increment</span><span class="p">,</span><span class="n">i</span><span class="o">*</span><span class="n">sliding_increment</span><span class="o">+</span><span class="n">bin_size</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start_id</span><span class="p">,</span><span class="n">end_id</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span></div>
+
+<div class="viewcode-block" id="read_has_alternative_hits_to_non_alts"><a class="viewcode-back" href="../../../source/singlecellmultiomics.bamProcessing.html#singlecellmultiomics.bamProcessing.bamToCountTable.read_has_alternative_hits_to_non_alts">[docs]</a><span class="k">def</span> <span class="nf">read_has_alternative_hits_to_non_alts</span><span class="p">(</span><span class="n">read</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;XA&#39;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">alt_align</span> <span class="ow">in</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;XA&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;;&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">alt_align</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span> <span class="c1"># Sometimes this tag is empty for some reason</span>
+                <span class="k">continue</span>
+
+            <span class="n">hchrom</span><span class="p">,</span> <span class="n">hpos</span><span class="p">,</span> <span class="n">hcigar</span><span class="p">,</span> <span class="n">hflag</span> <span class="o">=</span> <span class="n">alt_align</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">hchrom</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;_alt&#39;</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="readTag"><a class="viewcode-back" href="../../../source/singlecellmultiomics.bamProcessing.html#singlecellmultiomics.bamProcessing.bamToCountTable.readTag">[docs]</a><span class="k">def</span> <span class="nf">readTag</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">defective</span><span class="o">=</span><span class="s1">&#39;None&#39;</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">value</span><span class="o">=</span><span class="n">singlecellmultiomics</span><span class="o">.</span><span class="n">modularDemultiplexer</span><span class="o">.</span><span class="n">metaFromRead</span><span class="p">(</span><span class="n">read</span><span class="p">,</span><span class="n">tag</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">defective</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+<span class="c1"># define if a read should be used</span>
+<div class="viewcode-block" id="read_should_be_counted"><a class="viewcode-back" href="../../../source/singlecellmultiomics.bamProcessing.html#singlecellmultiomics.bamProcessing.bamToCountTable.read_should_be_counted">[docs]</a><span class="k">def</span> <span class="nf">read_should_be_counted</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check if a read should be counted given the filter arguments</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    read : pysam.AlignedSegment or None</span>
+<span class="sd">        read to check if it should be counted</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<span class="c1"># Read is empty</span>
+    <span class="k">if</span> <span class="n">read</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="c1"># Mapping quality below threshold</span>
+    <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">mapping_quality</span><span class="o">&lt;</span><span class="n">args</span><span class="o">.</span><span class="n">minMQ</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="c1"># Read has alternative hits</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">filterXA</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">read_has_alternative_hits_to_non_alts</span><span class="p">(</span><span class="n">read</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="c1"># Read is a duplicate</span>
+    <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">is_unmapped</span> <span class="ow">or</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">dedup</span> <span class="ow">and</span> <span class="p">(</span> <span class="ow">not</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;RC&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;RC&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;RC&#39;</span><span class="p">)</span><span class="o">!=</span><span class="mi">1</span><span class="p">))):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="tagToHumanName"><a class="viewcode-back" href="../../../source/singlecellmultiomics.bamProcessing.html#singlecellmultiomics.bamProcessing.bamToCountTable.tagToHumanName">[docs]</a><span class="k">def</span> <span class="nf">tagToHumanName</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span><span class="n">TagDefinitions</span> <span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">TagDefinitions</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">tag</span>
+    <span class="k">return</span> <span class="n">TagDefinitions</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span><span class="o">.</span><span class="n">humanName</span></div>
+
+
+<div class="viewcode-block" id="assignReads"><a class="viewcode-back" href="../../../source/singlecellmultiomics.bamProcessing.html#singlecellmultiomics.bamProcessing.bamToCountTable.assignReads">[docs]</a><span class="k">def</span> <span class="nf">assignReads</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">countTable</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">joinFeatures</span><span class="p">,</span> <span class="n">featureTags</span><span class="p">,</span> <span class="n">sampleTags</span><span class="p">,</span> <span class="n">more_args</span> <span class="o">=</span> <span class="p">[]):</span>
+
+    <span class="n">assigned</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">read_should_be_counted</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">assigned</span>
+
+    <span class="c1"># Get the sample to which this read belongs</span>
+    <span class="n">sample</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span> <span class="n">readTag</span><span class="p">(</span><span class="n">read</span><span class="p">,</span><span class="n">tag</span><span class="p">)</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">sampleTags</span> <span class="p">)</span>
+
+    <span class="c1"># Decide how many counts this read yields</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">doNotDivideFragments</span><span class="p">:</span>
+        <span class="n">countToAdd</span><span class="o">=</span><span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">countToAdd</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.5</span> <span class="k">if</span> <span class="p">(</span><span class="n">read</span><span class="o">.</span><span class="n">is_paired</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">dedup</span><span class="p">)</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">assigned</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">divideMultimapping</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;XA&#39;</span><span class="p">):</span>
+            <span class="n">countToAdd</span> <span class="o">=</span> <span class="n">countToAdd</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span> <span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;XA&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;;&#39;</span><span class="p">)</span> <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">read</span><span class="o">.</span><span class="n">has_tag</span><span class="p">(</span><span class="s1">&#39;NH&#39;</span><span class="p">):</span>
+            <span class="n">countToAdd</span> <span class="o">=</span> <span class="n">countToAdd</span><span class="o">/</span><span class="nb">int</span><span class="p">(</span><span class="n">read</span><span class="o">.</span><span class="n">get_tag</span><span class="p">(</span><span class="s1">&#39;NH&#39;</span><span class="p">)</span> <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">countToAdd</span> <span class="o">=</span> <span class="n">countToAdd</span>
+
+    <span class="c1"># Define what counts to add to what samples</span>
+    <span class="c1"># [ (sample, feature, increment), .. ]</span>
+    <span class="n">count_increment</span> <span class="o">=</span> <span class="p">[]</span>
+
+
+    <span class="n">feature_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">joined_feature</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">used_features</span> <span class="o">=</span>  <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">featureTags</span><span class="p">:</span>
+        <span class="n">feat</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">readTag</span><span class="p">(</span><span class="n">read</span><span class="p">,</span><span class="n">tag</span><span class="p">))</span>
+        <span class="n">feature_dict</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">feat</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">bin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">binTag</span><span class="o">==</span><span class="n">tag</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">byValue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">tag</span><span class="o">==</span><span class="n">args</span><span class="o">.</span><span class="n">byValue</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">joined_feature</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">feat</span><span class="p">)</span>
+        <span class="n">used_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">joinFeatures</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">splitFeatures</span><span class="p">:</span>
+            <span class="c1"># Obtain all key states:</span>
+            <span class="n">key_states</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">featureTags</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">feature_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span>
+                <span class="n">key_states</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">featureDelimiter</span><span class="p">))</span>
+
+            <span class="k">for</span> <span class="n">state</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="o">*</span><span class="n">key_states</span><span class="p">):</span>
+                <span class="n">joined_feature</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">feature_dict</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="n">feature</span><span class="p">:</span><span class="n">value</span>
+                    <span class="k">for</span> <span class="n">feature</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">featureTags</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">feature</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">featureTags</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">bin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">binTag</span><span class="o">==</span><span class="n">feature</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+                        <span class="n">joined_feature</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">joined_feature</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;None&#39;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">byValue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;By value is not implemented for --splitFeatures&#39;</span><span class="p">)</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">count_increment</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                            <span class="s1">&#39;key&#39;</span><span class="p">:</span><span class="nb">tuple</span><span class="p">(</span><span class="n">joined_feature</span><span class="p">)</span> <span class="p">,</span>
+                            <span class="s1">&#39;features&#39;</span><span class="p">:</span><span class="n">feature_dict</span><span class="p">,</span>
+                            <span class="s1">&#39;samples&#39;</span><span class="p">:[</span><span class="n">sample</span><span class="p">],</span>
+                            <span class="s1">&#39;increment&#39;</span><span class="p">:</span><span class="n">countToAdd</span><span class="p">})</span>
+                    <span class="n">joined_feature</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">byValue</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">add</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">feature_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">byValue</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="n">add</span> <span class="o">=</span> <span class="mi">0</span>
+
+                <span class="n">count_increment</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;key&#39;</span><span class="p">:</span><span class="nb">tuple</span><span class="p">(</span><span class="n">joined_feature</span><span class="p">)</span> <span class="p">,</span>
+                    <span class="s1">&#39;features&#39;</span><span class="p">:</span><span class="n">feature_dict</span><span class="p">,</span>
+                    <span class="s1">&#39;samples&#39;</span><span class="p">:[</span><span class="n">sample</span><span class="p">],</span>
+                    <span class="s1">&#39;increment&#39;</span><span class="p">:</span><span class="n">add</span><span class="p">})</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">count_increment</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;key&#39;</span><span class="p">:</span><span class="nb">tuple</span><span class="p">(</span><span class="n">joined_feature</span><span class="p">)</span> <span class="p">,</span>
+                    <span class="s1">&#39;features&#39;</span><span class="p">:</span><span class="n">feature_dict</span><span class="p">,</span>
+                    <span class="s1">&#39;samples&#39;</span><span class="p">:[</span><span class="n">sample</span><span class="p">],</span>
+                    <span class="s1">&#39;increment&#39;</span><span class="p">:</span><span class="n">countToAdd</span><span class="p">})</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">bin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;Try using -joinedFeatureTags&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">feature</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">feature_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">splitFeatures</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">featureDelimiter</span><span class="p">):</span>
+                    <span class="n">count_increment</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                        <span class="s1">&#39;key&#39;</span><span class="p">:(</span><span class="n">f</span><span class="p">)</span> <span class="p">,</span>
+                        <span class="s1">&#39;features&#39;</span><span class="p">:{</span><span class="n">feature</span><span class="p">:</span><span class="n">f</span><span class="p">},</span>
+                        <span class="s1">&#39;samples&#39;</span><span class="p">:[</span><span class="n">sample</span><span class="p">],</span>
+                        <span class="s1">&#39;increment&#39;</span><span class="p">:</span><span class="n">countToAdd</span>
+                        <span class="p">})</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">count_increment</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;key&#39;</span><span class="p">:(</span><span class="n">value</span><span class="p">,</span> <span class="p">)</span> <span class="p">,</span>
+                    <span class="s1">&#39;features&#39;</span><span class="p">:{</span><span class="n">feature</span><span class="p">:</span><span class="n">value</span><span class="p">},</span>
+                    <span class="s1">&#39;samples&#39;</span><span class="p">:[</span><span class="n">sample</span><span class="p">],</span>
+                    <span class="s1">&#39;increment&#39;</span><span class="p">:</span><span class="n">countToAdd</span><span class="p">})</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Now we have a list of dicts:</span>
+<span class="sd">    {</span>
+<span class="sd">    &#39;key&#39;:feature,</span>
+<span class="sd">    &#39;features&#39;:{feature:value},</span>
+<span class="sd">    &#39;samples&#39;:[sample],</span>
+<span class="sd">    &#39;increment&#39;:countToAdd})</span>
+<span class="sd">    }</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># increment the count table accordingly:</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">bin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="p">:</span>
+        <span class="k">for</span> <span class="n">dtable</span> <span class="ow">in</span> <span class="n">count_increment</span><span class="p">:</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">dtable</span><span class="p">[</span><span class="s1">&#39;key&#39;</span><span class="p">]</span>
+            <span class="n">countToAdd</span> <span class="o">=</span> <span class="n">dtable</span><span class="p">[</span><span class="s1">&#39;increment&#39;</span><span class="p">]</span>
+            <span class="n">samples</span> <span class="o">=</span> <span class="n">dtable</span><span class="p">[</span><span class="s1">&#39;samples&#39;</span><span class="p">]</span>
+            <span class="n">value_to_be_binned</span> <span class="o">=</span> <span class="n">dtable</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">binTag</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+
+            <span class="k">if</span> <span class="n">value_to_be_binned</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span>  <span class="n">value_to_be_binned</span> <span class="o">==</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="n">coordinate_to_bins</span><span class="p">(</span> <span class="nb">int</span><span class="p">(</span><span class="n">value_to_be_binned</span><span class="p">),</span> <span class="n">args</span><span class="o">.</span><span class="n">bin</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">sliding</span><span class="p">):</span>
+                <span class="c1"># Reject bins outside boundary</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">keepOverBounds</span> <span class="ow">and</span> <span class="p">(</span><span class="n">start</span><span class="o">&lt;</span><span class="mi">0</span> <span class="ow">or</span> <span class="n">end</span><span class="o">&gt;</span><span class="n">args</span><span class="o">.</span><span class="n">ref_lengths</span><span class="p">[</span><span class="n">read</span><span class="o">.</span><span class="n">reference_name</span><span class="p">]):</span>
+                    <span class="k">continue</span>
+                <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+                    <span class="n">countTable</span><span class="p">[</span><span class="n">sample</span><span class="p">][</span> <span class="nb">tuple</span><span class="p">(</span> <span class="nb">list</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">+</span> <span class="p">[</span><span class="n">start</span><span class="p">,</span><span class="n">end</span><span class="p">])]</span> <span class="o">+=</span> <span class="n">countToAdd</span>
+
+
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">bedfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+
+        <span class="k">for</span> <span class="n">dtable</span> <span class="ow">in</span> <span class="n">count_increment</span><span class="p">:</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">dtable</span><span class="p">[</span><span class="s1">&#39;key&#39;</span><span class="p">]</span>
+            <span class="n">countToAdd</span> <span class="o">=</span> <span class="n">dtable</span><span class="p">[</span><span class="s1">&#39;increment&#39;</span><span class="p">]</span>
+            <span class="n">samples</span> <span class="o">=</span> <span class="n">dtable</span><span class="p">[</span><span class="s1">&#39;samples&#39;</span><span class="p">]</span>
+
+            <span class="c1"># Get features from bedfile</span>
+            <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">bname</span> <span class="o">=</span> <span class="n">more_args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">more_args</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">more_args</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">jfeat</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span> <span class="nb">list</span><span class="p">(</span> <span class="n">key</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">bname</span><span class="p">])</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+                <span class="n">countTable</span><span class="p">[</span><span class="n">sample</span><span class="p">][</span> <span class="n">jfeat</span> <span class="p">]</span> <span class="o">+=</span> <span class="n">countToAdd</span>
+            <span class="c1">#else: this will also emit non assigned reads</span>
+            <span class="c1">#    countTable[sample][ &#39;None&#39; ] += countToAdd</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">dtable</span> <span class="ow">in</span> <span class="n">count_increment</span><span class="p">:</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">dtable</span><span class="p">[</span><span class="s1">&#39;key&#39;</span><span class="p">]</span>
+            <span class="n">countToAdd</span> <span class="o">=</span> <span class="n">dtable</span><span class="p">[</span><span class="s1">&#39;increment&#39;</span><span class="p">]</span>
+            <span class="n">samples</span> <span class="o">=</span> <span class="n">dtable</span><span class="p">[</span><span class="s1">&#39;samples&#39;</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">==</span><span class="mi">1</span><span class="p">:</span>
+                    <span class="n">countTable</span><span class="p">[</span><span class="n">sample</span><span class="p">][</span><span class="n">key</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">+=</span><span class="n">countToAdd</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">countTable</span><span class="p">[</span><span class="n">sample</span><span class="p">][</span><span class="n">key</span><span class="p">]</span><span class="o">+=</span><span class="n">countToAdd</span>
+
+    <span class="k">return</span> <span class="n">assigned</span></div>
+
+
+<div class="viewcode-block" id="create_count_table"><a class="viewcode-back" href="../../../source/singlecellmultiomics.bamProcessing.html#singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table">[docs]</a><span class="k">def</span> <span class="nf">create_count_table</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">return_df</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">alignmentfiles</span><span class="p">)</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Supply at least one bam file&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">bedfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">assert</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">bedfile</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">sliding</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">sliding</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">bin</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">return_df</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">o</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span>  <span class="n">args</span><span class="o">.</span><span class="n">alignmentfiles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">showtags</span><span class="o">=</span><span class="kc">True</span>
+
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">showtags</span><span class="p">:</span>
+        <span class="c1"># Find which tags are available in the file:</span>
+        <span class="n">head</span> <span class="o">=</span> <span class="mi">1000</span>
+        <span class="n">tagObs</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">bamFile</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">alignmentfiles</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">bamFile</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">read</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+                    <span class="n">tagObs</span> <span class="o">+=</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span><span class="p">([</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span>   <span class="n">read</span><span class="o">.</span><span class="n">get_tags</span><span class="p">(</span><span class="n">with_value_type</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="p">)</span>
+                    <span class="k">if</span> <span class="n">i</span><span class="o">==</span><span class="p">(</span><span class="n">head</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+                        <span class="k">break</span>
+        <span class="kn">import</span> <span class="nn">colorama</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{colorama.Style.BRIGHT}</span><span class="s1">Tags seen in the supplied bam file(s):</span><span class="si">{colorama.Style.RESET_ALL}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">observedTag</span> <span class="ow">in</span> <span class="n">tagObs</span><span class="p">:</span>
+            <span class="n">tag</span> <span class="o">=</span> <span class="n">observedTag</span>
+            <span class="k">if</span> <span class="n">observedTag</span> <span class="ow">in</span> <span class="n">TagDefinitions</span><span class="p">:</span>
+                <span class="n">t</span> <span class="o">=</span> <span class="n">TagDefinitions</span><span class="p">[</span><span class="n">observedTag</span><span class="p">]</span>
+                <span class="n">humanName</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">humanName</span>
+                <span class="n">isPhred</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">isPhred</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">t</span> <span class="o">=</span> <span class="n">observedTag</span>
+                <span class="n">isPhred</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">humanName</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{colorama.Style.RESET_ALL}</span><span class="s1">&lt;No information available&gt;&#39;</span>
+
+            <span class="n">allReadsHaveTag</span> <span class="o">=</span> <span class="p">(</span> <span class="n">tagObs</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span><span class="o">==</span><span class="n">head</span> <span class="p">)</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">GREEN</span> <span class="k">if</span> <span class="n">allReadsHaveTag</span> <span class="k">else</span> <span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">YELLOW</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{color}</span><span class="s1">{ colorama.Style.BRIGHT}</span><span class="si">{tag}{colorama.Style.RESET_ALL}</span><span class="se">\t</span><span class="s1">{color+humanName}</span><span class="se">\t</span><span class="si">{colorama.Style.DIM}</span><span class="s1">{&quot;PHRED&quot; if isPhred else &quot;&quot;}</span><span class="si">{colorama.Style.RESET_ALL}</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">f</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">{&quot;&quot; if allReadsHaveTag else &quot;Not all reads have this tag&quot;}&#39;</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{colorama.Style.BRIGHT}</span><span class="se">\n</span><span class="s1">AVO lab tag list:</span><span class="si">{colorama.Style.RESET_ALL}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">tag</span><span class="p">,</span><span class="n">t</span> <span class="ow">in</span> <span class="n">TagDefinitions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{colorama.Style.BRIGHT}{tag}{colorama.Style.RESET_ALL}</span><span class="se">\t</span><span class="si">{t.humanName}</span><span class="se">\t</span><span class="si">{colorama.Style.DIM}</span><span class="s1">{&quot;PHRED&quot; if t.isPhred else &quot;&quot;}</span><span class="si">{colorama.Style.RESET_ALL}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">exit</span><span class="p">()</span>
+
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">o</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span>  <span class="n">return_df</span> <span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Supply an output file&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">alignmentfiles</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Supply alignment (BAM) files&#39;</span><span class="p">)</span>
+
+
+    <span class="n">joinFeatures</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">featureTags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">featureTags</span><span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">featureTags</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">joinedFeatureTags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">featureTags</span><span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">joinedFeatureTags</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+        <span class="n">joinFeatures</span><span class="o">=</span><span class="kc">True</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">bin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">binTag</span> <span class="ow">in</span> <span class="n">featureTags</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The bin tag was not supplied as feature, automatically appending the bin feature.&quot;</span><span class="p">)</span>
+        <span class="n">featureTags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">binTag</span><span class="p">)</span>
+
+
+
+    <span class="n">sampleTags</span><span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">sampleTags</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+    <span class="n">countTable</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="n">collections</span><span class="o">.</span><span class="n">Counter</span><span class="p">)</span> <span class="c1"># cell-&gt;feature-&gt;count</span>
+
+    <span class="n">assigned</span><span class="o">=</span><span class="mi">0</span>
+    <span class="k">for</span> <span class="n">bamFile</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">alignmentfiles</span><span class="p">:</span>
+
+        <span class="k">with</span> <span class="n">pysam</span><span class="o">.</span><span class="n">AlignmentFile</span><span class="p">(</span><span class="n">bamFile</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">bin</span><span class="p">:</span>
+                <span class="c1"># Obtain the reference sequence lengths</span>
+                <span class="n">ref_lengths</span> <span class="o">=</span> <span class="p">{</span><span class="n">r</span><span class="p">:</span><span class="n">f</span><span class="o">.</span><span class="n">get_reference_length</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">references</span><span class="p">}</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">ref_lengths</span> <span class="o">=</span> <span class="n">ref_lengths</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">bedfile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># for adding counts associated with a tag OR with binning</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">read</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">i</span><span class="o">%</span><span class="mi">1</span><span class="n">_000_000</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{bamFile}</span><span class="s2"> Processed </span><span class="si">{i}</span><span class="s2"> reads, assigned </span><span class="si">{assigned}</span><span class="s2">, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%&quot;</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">head</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">i</span><span class="o">&gt;</span><span class="n">args</span><span class="o">.</span><span class="n">head</span><span class="p">:</span>
+                        <span class="k">break</span>
+
+                    <span class="n">assigned</span> <span class="o">+=</span> <span class="n">assignReads</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">countTable</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">joinFeatures</span><span class="p">,</span> <span class="n">featureTags</span><span class="p">,</span> <span class="n">sampleTags</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># for adding counts associated with a bedfile</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">bedfile</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">bfile</span><span class="p">:</span>
+                    <span class="c1">#breader = csv.reader(bfile, delimiter = &quot;\t&quot;)</span>
+                    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">bfile</span><span class="p">:</span>
+                        <span class="n">parts</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+                        <span class="n">chromo</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">bname</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="n">parts</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+                        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">read</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">chromo</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">)):</span>
+                            <span class="k">if</span> <span class="n">i</span><span class="o">%</span><span class="mi">1</span><span class="n">_000_000</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span>
+                                <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{bamFile}</span><span class="s2"> Processed </span><span class="si">{i}</span><span class="s2"> reads, assigned </span><span class="si">{assigned}</span><span class="s2">, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%&quot;</span><span class="p">)</span>
+                            <span class="n">assigned</span> <span class="o">+=</span> <span class="n">assignReads</span><span class="p">(</span><span class="n">read</span><span class="p">,</span> <span class="n">countTable</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">joinFeatures</span><span class="p">,</span> <span class="n">featureTags</span><span class="p">,</span> <span class="n">sampleTags</span><span class="p">,</span> <span class="n">more_args</span> <span class="o">=</span> <span class="p">[</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">bname</span><span class="p">])</span>
+
+                            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">head</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">i</span><span class="o">&gt;</span><span class="n">args</span><span class="o">.</span><span class="n">head</span><span class="p">:</span>
+                                <span class="k">break</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Finished: </span><span class="si">{bamFile}</span><span class="s2"> Processed </span><span class="si">{i}</span><span class="s2"> reads, assigned </span><span class="si">{assigned}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Finished counting, now exporting to </span><span class="si">{args.o}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span> <span class="n">countTable</span> <span class="p">)</span>
+
+    <span class="c1"># Set names of indices</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">noNames</span><span class="p">:</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">set_names</span><span class="p">([</span><span class="n">tagToHumanName</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">TagDefinitions</span> <span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">sampleTags</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">bin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">index_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">tagToHumanName</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">TagDefinitions</span> <span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">featureTags</span> <span class="k">if</span> <span class="n">t</span><span class="o">!=</span><span class="n">args</span><span class="o">.</span><span class="n">binTag</span><span class="p">]</span><span class="o">+</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">,</span><span class="s1">&#39;end&#39;</span><span class="p">]</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">set_names</span><span class="p">(</span><span class="n">index_names</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">bedfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">index_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">tagToHumanName</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">TagDefinitions</span> <span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">featureTags</span> <span class="k">if</span> <span class="n">t</span><span class="o">!=</span><span class="n">args</span><span class="o">.</span><span class="n">binTag</span><span class="p">]</span><span class="o">+</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">,</span><span class="s1">&#39;end&#39;</span><span class="p">,</span> <span class="s1">&#39;bname&#39;</span><span class="p">]</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">set_names</span><span class="p">(</span><span class="n">index_names</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">joinFeatures</span><span class="p">:</span>
+                <span class="n">index_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">tagToHumanName</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">TagDefinitions</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">featureTags</span><span class="p">]</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">set_names</span><span class="p">(</span><span class="n">index_names</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">index_names</span> <span class="o">=</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">tagToHumanName</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">TagDefinitions</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">featureTags</span><span class="p">])</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">set_names</span><span class="p">(</span><span class="n">index_names</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">index_names</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">return_df</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">df</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">o</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.pickle&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">o</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.pickle.gz&#39;</span><span class="p">):</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">o</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">o</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">args</span><span class="o">.</span><span class="n">o</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Finished export.&quot;</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span><span class="o">==</span><span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">argparser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+     <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentDefaultsHelpFormatter</span><span class="p">,</span>
+     <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Convert BAM file(s) which has been annotated using featureCounts or otherwise to a count matrix&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-o&#39;</span><span class="p">,</span>  <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;output csv path, or pandas dataframe if path ends with pickle.gz&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-featureTags&#39;</span><span class="p">,</span>  <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Tag(s) used for defining the COLUMNS of the matrix. Single dimension.&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-joinedFeatureTags&#39;</span><span class="p">,</span>  <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;These define the COLUMNS of your matrix. For example if you want allele (DA) and restriction site (DS) use DA,DS. If you want a column containing the chromosome mapped to use &quot;chrom&quot; as feature. Use this argument if you want to use a multidimensional index&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-sampleTags&#39;</span><span class="p">,</span>  <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;SM&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Comma separated tags defining the names of the ROWS in the output matrix&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;alignmentfiles&#39;</span><span class="p">,</span>  <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;*&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-head&#39;</span><span class="p">,</span>  <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Run the algorithm only on the first N reads to check if the result looks like what you expect.&#39;</span><span class="p">)</span>
+
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--splitFeatures&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Split features by , . For example if a read has a feature Foo,Bar increase counts for both Foo and Bar&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-featureDelimiter&#39;</span><span class="p">,</span><span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span><span class="n">default</span><span class="o">=</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+
+    <span class="n">multimapping_args</span> <span class="o">=</span> <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument_group</span><span class="p">(</span><span class="s1">&#39;Multimapping&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">multimapping_args</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--divideMultimapping&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Divide multimapping reads over all targets. Requires the XA or NH tag to be set.&#39;</span><span class="p">)</span>
+    <span class="n">multimapping_args</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--doNotDivideFragments&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;When used every read is counted once, a fragment will count as two reads. 0.5 otherwise&#39;</span><span class="p">)</span>
+    <span class="n">multimapping_args</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-minMQ&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;minimum mapping quality&quot;</span><span class="p">)</span>
+    <span class="n">multimapping_args</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--filterXA&#39;</span><span class="p">,</span><span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Do not count reads where the XA (alternative hits) tag has been set for a non-alternative locus.&quot;</span><span class="p">)</span>
+
+
+
+
+    <span class="n">binning_args</span> <span class="o">=</span> <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument_group</span><span class="p">(</span><span class="s1">&#39;Binning&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="c1">#binning_args.add_argument(&#39;-offset&#39;, type=int, default=0, help=&quot;Add offset to bin. If bin=1000, offset=200, f=1999 -&gt; 1200. f=4199 -&gt; 3200&quot;)</span>
+    <span class="n">binning_args</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-sliding&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>  <span class="n">help</span><span class="o">=</span><span class="s2">&quot;make bins overlapping, the stepsize is equal to the supplied value here. If nothing is supplied this value equals the bin size&quot;</span><span class="p">)</span>
+    <span class="n">binning_args</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--keepOverBounds&#39;</span><span class="p">,</span><span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Keep bins which go over chromsome bounds (start&lt;0) end &gt; chromsome length&quot;</span><span class="p">)</span>
+
+    <span class="n">binning_args</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-bin&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Devide and floor to bin features. If bin=1000, f=1999 -&gt; 1000.&quot;</span> <span class="p">)</span>
+    <span class="c1">#binning_args.add_argument(&#39;--showBinEnd&#39;, action=&#39;store_true&#39;, help=&quot;If True, then show DS column as 120000-220000, otherwise 120000 only. This specifies the bin range in which the read was counted&quot; ) this is now always on!</span>
+    <span class="n">binning_args</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-binTag&#39;</span><span class="p">,</span><span class="n">default</span><span class="o">=</span><span class="s1">&#39;DS&#39;</span> <span class="p">)</span>
+    <span class="n">binning_args</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-byValue&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Extract the value from the supplied tag and use this as count to add&#39;</span><span class="p">)</span>
+
+    <span class="n">bed_args</span> <span class="o">=</span> <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument_group</span><span class="p">(</span><span class="s1">&#39;Bedfiles&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">bed_args</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;-bedfile&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Bed file containing 3 columns, chromo, start, end to be read for fetching counts&quot;</span><span class="p">)</span>
+
+
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--dedup&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Count only the first occurence of a molecule. Requires RC tag to be set. Reads without RC tag will be ignored!&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--noNames&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Do not set names of the index and columns, this simplifies the resulting CSV/pickle file&#39;</span><span class="p">)</span>
+    <span class="n">argparser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--showtags&#39;</span><span class="p">,</span><span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Show a list of commonly used tags&#39;</span> <span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">argparser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">create_count_table</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

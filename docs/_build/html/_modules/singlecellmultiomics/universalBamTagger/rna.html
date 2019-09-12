@@ -1,0 +1,156 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>singlecellmultiomics.universalBamTagger.rna &#8212; SingleCellMultiOmics 0.0.2 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.2',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for singlecellmultiomics.universalBamTagger.rna</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">singlecellmultiomics.features</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<div class="viewcode-block" id="RNA_Flagger"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.rna.RNA_Flagger">[docs]</a><span class="k">class</span> <span class="nc">RNA_Flagger</span><span class="p">():</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alleleResolver</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">moleculeRadius</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">exon_gtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">intron_gtf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">annotations</span><span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">annotations</span><span class="p">[</span><span class="s1">&#39;EX&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">singlecellmultiomics</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">FeatureContainer</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">annotations</span><span class="p">[</span><span class="s1">&#39;EX&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">loadGTF</span><span class="p">(</span> <span class="n">exon_gtf</span><span class="p">,</span> <span class="n">select_feature_type</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;exon&#39;</span><span class="p">]</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">annotations</span><span class="p">[</span><span class="s1">&#39;IN&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">singlecellmultiomics</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">FeatureContainer</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">annotations</span><span class="p">[</span><span class="s1">&#39;IN&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">loadGTF</span><span class="p">(</span> <span class="n">intron_gtf</span><span class="p">,</span> <span class="n">select_feature_type</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;intron&#39;</span><span class="p">]</span> <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">exon_hit_tag</span> <span class="o">=</span> <span class="s1">&#39;eH&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">intron_hit_tag</span> <span class="o">=</span> <span class="s1">&#39;iH&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assinged_exons_tag</span> <span class="o">=</span> <span class="s1">&#39;AE&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assinged_introns_tag</span> <span class="o">=</span> <span class="s1">&#39;AI&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_spliced_tag</span> <span class="o">=</span> <span class="s1">&#39;SP&#39;</span> <span class="c1">#unused</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">overlap_tag</span> <span class="o">=</span> <span class="s1">&#39;XM&#39;</span>
+
+<div class="viewcode-block" id="RNA_Flagger.digest"><a class="viewcode-back" href="../../../source/singlecellmultiomics.universalBamTagger.html#singlecellmultiomics.universalBamTagger.rna.RNA_Flagger.digest">[docs]</a>    <span class="k">def</span> <span class="nf">digest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reads</span><span class="p">):</span>
+
+        <span class="n">feature_overlap</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span><span class="p">()</span> <span class="c1">#feature-&gt;overlap</span>
+        <span class="c1"># Go over reads and calculate overlap with features</span>
+
+        <span class="n">exon_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">intron_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">reads</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">read</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">states</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;.&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">read</span><span class="o">.</span><span class="n">query_length</span>
+            <span class="k">for</span> <span class="n">q_pos</span><span class="p">,</span> <span class="n">ref_pos</span> <span class="ow">in</span> <span class="n">read</span><span class="o">.</span><span class="n">get_aligned_pairs</span><span class="p">(</span><span class="n">matches_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">with_seq</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+                <span class="n">overlaps_with_intron</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">overlaps_with_exon</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">exon_hits</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+                <span class="k">for</span> <span class="n">hit</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">annotations</span><span class="p">[</span><span class="s1">&#39;EX&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">findFeaturesAt</span><span class="p">(</span><span class="n">chromosome</span><span class="o">=</span><span class="n">read</span><span class="o">.</span><span class="n">reference_name</span><span class="p">,</span><span class="n">lookupCoordinate</span><span class="o">=</span><span class="n">ref_pos</span><span class="p">,</span><span class="n">strand</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                    <span class="n">hit_start</span><span class="p">,</span> <span class="n">hit_end</span><span class="p">,</span> <span class="n">hit_id</span><span class="p">,</span> <span class="n">hit_strand</span><span class="p">,</span> <span class="n">hit_ids</span> <span class="o">=</span> <span class="n">hit</span>
+                    <span class="n">overlaps_with_exon</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">exon_hits</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">hit_id</span><span class="p">)</span>
+
+                <span class="n">intron_hits</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">hit</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">annotations</span><span class="p">[</span><span class="s1">&#39;IN&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">findFeaturesAt</span><span class="p">(</span><span class="n">chromosome</span><span class="o">=</span><span class="n">read</span><span class="o">.</span><span class="n">reference_name</span><span class="p">,</span><span class="n">lookupCoordinate</span><span class="o">=</span><span class="n">ref_pos</span><span class="p">,</span><span class="n">strand</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                    <span class="n">hit_start</span><span class="p">,</span> <span class="n">hit_end</span><span class="p">,</span> <span class="n">hit_id</span><span class="p">,</span> <span class="n">hit_strand</span><span class="p">,</span> <span class="n">hit_ids</span> <span class="o">=</span> <span class="n">hit</span>
+                    <span class="n">overlaps_with_intron</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">intron_hits</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">hit_id</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">overlaps_with_exon</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">overlaps_with_intron</span><span class="p">:</span>
+                    <span class="n">exon_count</span><span class="o">+=</span><span class="mi">1</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">overlap_tag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">states</span><span class="p">[</span><span class="n">q_pos</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;Z&#39;</span>
+                <span class="k">elif</span> <span class="ow">not</span> <span class="n">overlaps_with_exon</span> <span class="ow">and</span> <span class="n">overlaps_with_intron</span><span class="p">:</span>
+                    <span class="n">intron_count</span><span class="o">+=</span><span class="mi">1</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">overlap_tag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">states</span><span class="p">[</span><span class="n">q_pos</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;X&#39;</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">overlap_tag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">read</span><span class="o">.</span><span class="n">set_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">overlap_tag</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">states</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">read</span> <span class="ow">in</span> <span class="n">reads</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">read</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">read</span><span class="o">.</span><span class="n">set_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exon_hit_tag</span><span class="p">,</span> <span class="n">exon_count</span><span class="p">)</span>
+                <span class="n">read</span><span class="o">.</span><span class="n">set_tag</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intron_hit_tag</span><span class="p">,</span> <span class="n">intron_count</span><span class="p">)</span>
+
+                <span class="n">read</span><span class="o">.</span><span class="n">set_tag</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">assinged_exons_tag</span><span class="p">,</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">exon_hits</span><span class="p">)</span> <span class="p">))</span>
+                <span class="n">read</span><span class="o">.</span><span class="n">set_tag</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">assinged_introns_tag</span><span class="p">,</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">intron_hits</span><span class="p">)</span> <span class="p">))</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Buys de Barbanson, Jake Yeung.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
