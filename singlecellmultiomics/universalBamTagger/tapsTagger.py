@@ -282,8 +282,8 @@ if __name__=='__main__':
                             binned_data[(chromosome, binIdx)][molecule.get_sample()][call.isupper()]+=1
                             cell_count[molecule.get_sample()]+=1
 
-            refbase = max(set(genomeString), key = genomeString.count)
-            readbase = max(set(readString), key = readString.count)
+            refbase = '' if not genomeString else max(set(genomeString), key = genomeString.count)
+            readbase = '' if not readString else max(set(readString), key = readString.count)
             ## OT
             if readbase=='T' and refbase=='C' and molecule.get_strand() == 1: #'+'
                 readConversionString = 'CT'
