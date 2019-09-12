@@ -103,14 +103,14 @@ if __name__=='__main__':
                 continue
 
             for (chromosome, location),call in molecule.methylation_call_dict.items():
-                if call=='.': # Only print calls concerning C's
+                if call['context']=='.': # Only print calls concerning C's
                     continue
 
                 # Skip non-selected contexts
-                if contexts is not None and call not in contexts:
+                if contexts is not None and call['context'] not in contexts:
                     continue
 
-                print(f'{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call}')
+                print(f'{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}')
 
             molecule.write_pysam(output)
     except (KeyboardInterrupt,BrokenPipeError) as e:
