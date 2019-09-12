@@ -255,7 +255,7 @@ if __name__=='__main__':
             readString = []
             genomeString = []
             for (chromosome, location),call in molecule.methylation_call_dict.items():
-                if call=='.': # Only use calls concerning C's
+                if call['context'] == '.': # Only use calls concerning C's
                     continue
                 # Skip non-selected contexts
                 if contexts is not None and call not in contexts:
@@ -276,10 +276,10 @@ if __name__=='__main__':
                             continue
 
                         if args.stranded:
-                            binned_data[(chromosome, molecule.get_strand_repr(), binIdx)][molecule.get_sample()][call.isupper()]+=1
+                            binned_data[(chromosome, molecule.get_strand_repr(), binIdx)][molecule.get_sample()][call['context'].isupper()]+=1
                             cell_count[molecule.get_sample()]+=1
                         else:
-                            binned_data[(chromosome, binIdx)][molecule.get_sample()][call.isupper()]+=1
+                            binned_data[(chromosome, binIdx)][molecule.get_sample()][call['context'].isupper()]+=1
                             cell_count[molecule.get_sample()]+=1
 
             refbase = '' if not genomeString else max(set(genomeString), key = genomeString.count)
@@ -300,17 +300,15 @@ if __name__=='__main__':
             elif readbase=='A' and refbase=='G' and molecule.get_strand() == 0: #'-'
                 readConversionString = 'GA'
                 genomeConversionString = 'GA'
-            else:
-                readConversionString = ''
-                genomeConversionString = ''
-
 
             molecule.set_meta('ME',methylated_hits)
             molecule.set_meta('um',unmethylated_hits)
             statistics['Methylation']['methylated Cs'] += methylated_hits
             statistics['Methylation']['unmethylated Cs'] += unmethylated_hits
-            molecule.set_meta('XR',readConversionString)
-            molecule.set_meta('XG',genomeConversionString)
+            if readConversionString is not None:
+                molecule.set_meta('XR',readConversionString)
+            if genomeConversionString is not None:
+                molecule.set_meta('XG',genomeConversionString)
             molecule.write_tags()
             molecule.write_pysam(output)
 
