@@ -300,6 +300,10 @@ if __name__=='__main__':
             elif readbase=='A' and refbase=='G' and molecule.get_strand() == 0: #'-'
                 readConversionString = 'GA'
                 genomeConversionString = 'GA'
+            else:
+                readConversionString = ''
+                genomeConversionString = ''
+
 
             molecule.set_meta('ME',methylated_hits)
             molecule.set_meta('um',unmethylated_hits)
