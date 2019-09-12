@@ -95,4 +95,6 @@
 | nM    | editDistanceToReference                      | No         | No                   |
 | rP    | randomPrimerSequence                         | No         | No                   |
 | rS    | randomPrimerStart                            | No         | No                   |
+| rd    | rtDuplicateIndex                             | No         | No                   |
+| rt    | rtReactionIndex                              | No         | No                   |
 | uL    | umiLength                                    | No         | No                   |

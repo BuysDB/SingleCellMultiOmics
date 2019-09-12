@@ -18,15 +18,11 @@ class NlaIIIMolecule(Molecule):
 
     def write_tags(self):
         Molecule.write_tags(self)
-        if self.get_cut_site() is not None:
-            self.set_meta('Us', self.get_undigested_site_count() )
+        if self.reference is not None: # Only calculate this statistic when a reference is available
+            if self.get_cut_site() is not None:
+                self.set_meta('Us', self.get_undigested_site_count() )
 
     def is_valid(self,set_rejection_reasons=False, reference=None):
-
-        if reference is None:
-            if self.reference is None:
-                raise ValueError('Please supply a reference (PySAM.FastaFile)')
-        reference = self.reference
 
         try:
             chrom,start,strand = self.get_cut_site()
@@ -36,6 +32,12 @@ class NlaIIIMolecule(Molecule):
             return False
 
         if self.site_has_to_be_mapped:
+
+            if reference is None:
+                if self.reference is None:
+                    raise ValueError('Please supply a reference (PySAM.FastaFile)')
+            reference = self.reference
+
             if reference.fetch(chrom,start,start+4).upper()!='CATG':
                 if set_rejection_reasons:
                     self.set_rejection_reason('no_CATG_in_ref')

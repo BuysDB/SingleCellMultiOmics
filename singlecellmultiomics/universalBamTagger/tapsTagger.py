@@ -95,7 +95,7 @@ if __name__=='__main__':
                 if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom:
                     continue
                 temp_bam_path = f'{temp_prefix}_{chrom}.bam'
-                arguments = " ".join([x for x in sys.argv if not x==args.o in x and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
+                arguments = " ".join([x for x in sys.argv if not x==args.o and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
                 job = f'TAPS_{str(uuid.uuid4())}'
                 os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"' )
                 hold_merge.append(job)

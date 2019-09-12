@@ -163,11 +163,18 @@ class Molecule():
             return '+'
 
     def write_tags(self):
+        """ Write BAM tags to all reads associated to this molecule """
         self.is_valid(set_rejection_reasons=True)
         if  self.umi is not None:
             self.set_meta('mI', self.umi)
         if self.allele is not None:
             self.set_meta('DA', str(self.allele))
+
+        # Write RT reaction tags (rt: rt reaction index, rd rt duplicate index)
+        for rt_reaction_index,(_,frags) in enumerate(self.get_rt_reactions().items()):
+            for rt_duplicate_index,frag in enumerate(frags):
+                frag.set_meta('rt', rt_reaction_index)
+                frag.set_meta('rd', rt_duplicate_index)
 
     def set_rejection_reason(self,reason):
         for fragment in self:
@@ -525,6 +532,11 @@ class Molecule():
         return position < (self.spanStart-self.cache_size*0.5) or position > (self.spanEnd+self.cache_size*0.5)
 
     def get_rt_reactions(self):
+        """Obtain RT reaction dictionary
+
+        returns:
+            rt_dict (dict):  {(primer,pos) : [fragment, fragment..] }
+        """
         return molecule_to_random_primer_dict(self)
 
     def get_rt_reaction_fragment_sizes(self):
@@ -710,6 +722,8 @@ class Molecule():
                 continue
 
             for read in (R1,R2):
+                if read is None:
+                    continue
                 for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(
                     read,with_seq=False):
                     if query_pos is None or ref_pos != position or read.seq[query_pos]!=base:

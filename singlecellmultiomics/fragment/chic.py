@@ -42,9 +42,9 @@ class CHICFragment(Fragment):
     def identify_site(self):
 
         R1 = self.get_R1()
-        R2 = self.get_R2()
 
-        if R1 is None or R2 is None:
+        if R1 is None:
+            self.set_rejection_reason("R1_undefined")
             return None
 
         """ Valid configs:
@@ -61,7 +61,8 @@ class CHICFragment(Fragment):
 
         is_trimmed = (R1.has_tag('MX') and R1.get_tag('MX').startswith('scCHIC'))
 
-        if R1.is_unmapped or R2.is_unmapped:
+        if R1.is_unmapped:
+            self.set_rejection_reason("R1_unmapped")
             return(None)
 
         #if R1.seq[0]=='T': # Site on the start of R1, R2 should map behind

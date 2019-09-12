@@ -135,7 +135,7 @@ class Fragment():
             mask_reference_bases(set): mask reference bases in this set with a N set( (chrom,pos), ... )
 
             reference(pysam.FastaFile) :  Handle to reference file to use instead of MD tag. If None: MD tag is used.
-            
+
         Returns:
             None
 
@@ -305,11 +305,18 @@ class Fragment():
         raise ValueError()
 
 
-    def set_meta(self, key, value):
+    def set_meta(self, key, value, as_set=False):
         self.meta[key] = value
         for read in self:
             if read is not None:
-                read.set_tag(key,value)
+                if as_set and read.has_tag(key) :
+
+                    data = set(read.get_tag(key).split(','))
+                    data.add(value)
+                    read.set_tag(key,','.join(list(data)))
+
+                else:
+                    read.set_tag(key,value)
 
     def get_R1(self):
         if len(self.reads)==0:
@@ -525,7 +532,7 @@ class Fragment():
         return ''.join(visualized_frag)
 
     def set_rejection_reason(self, reason):
-        self.set_meta('RR',reason)
+        self.set_meta('RR',reason,as_set=True)
 
     def set_recognized_sequence(self, seq):
         self.set_meta('RZ',seq)
