@@ -113,7 +113,7 @@ if __name__=='__main__':
 
                 if args.fmt == "table":
                     print(f"{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
-                else if args.fmt == "bed":
+                elif args.fmt == "bed":
                     sample = molecule.sample.split("_")[-1]
                     print(f'{chromosome}\t{location-1}\t{location}\t{sample}\t{molecule.get_strand_repr()}\t1')
 
