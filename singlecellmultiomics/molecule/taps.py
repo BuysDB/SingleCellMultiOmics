@@ -9,7 +9,19 @@ complement = str.maketrans('ATGC', 'TACG')
 
 class TAPS():
     # Methylated Cs get converted into T readout
-    def __init__(self, reference, **kwargs):
+    def __init__(self, reference, reference_variants=None,**kwargs):
+        """
+        Intialise the TAPS class
+
+        Args:
+            reference (pysam.FastaFile) : reference fasta file
+
+            reference_variants(pysam.VariantFile) : variants in comparison to supplied reference. @todo
+
+        """
+        if reference_variants is not None:
+            raise NotImplementedError()
+
         self.overlap_tag = 'XM'
         self.reference = reference
         if self.reference is None:
@@ -64,6 +76,9 @@ class TAPS():
         qbase = observed_base.upper()
 
         ref_base= self.reference.fetch(chromosome, position,position+1).upper()
+
+        # if a vcf file is supplied  we can extract the possible reference bases
+        # @todo
 
         context=None
         methylated = False
