@@ -110,7 +110,7 @@ if __name__=='__main__':
                 if contexts is not None and call['context'] not in contexts:
                     continue
 
-                print(f'{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}')
+                print(f"{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
 
             molecule.write_pysam(output)
     except (KeyboardInterrupt,BrokenPipeError) as e:

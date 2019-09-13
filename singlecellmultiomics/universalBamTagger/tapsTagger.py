@@ -285,6 +285,8 @@ if __name__=='__main__':
             refbase = '' if not genomeString else max(set(genomeString), key = genomeString.count)
             readbase = '' if not readString else max(set(readString), key = readString.count)
             ## OT
+            readConversionString = None
+            genomeConversionString = None
             if readbase=='T' and refbase=='C' and molecule.get_strand() == 1: #'+'
                 readConversionString = 'CT'
                 genomeConversionString = 'CT'
