@@ -79,7 +79,8 @@ if __name__=='__main__':
             DataTypeHistogram(args),
             TagHistogram(args),
             PlateStatistic(args),
-            ScCHICLigation(args)
+            ScCHICLigation(args),
+            ConversionMatrix(args)
 
         ]
 

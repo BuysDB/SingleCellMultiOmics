@@ -37,17 +37,24 @@ warnedMissing = set()
 totalMasked=0
 variants = pysam.VariantFile(args.vcf)
 for chrom in referenceNames:
-    chrom_seq = bytearray(faIn.fetch(chrom),'ascii' )
-    for rec in variants.fetch(chrom):
-        if rec.start>=(referenceLengths[rec.chrom]):
-            print(f"WARNING record {rec.chrom} {rec.pos} defines a variant outside the supplied fasta file!")
-            continue
+    try:
+        chrom_seq = bytearray(faIn.fetch(chrom),'ascii' )
+        for rec in variants.fetch(chrom):
+            if rec.start>=(referenceLengths[rec.chrom]):
+                print(f"WARNING record {rec.chrom} {rec.pos} defines a variant outside the supplied fasta file!")
+                continue
 
-        if len(rec.alleles[0])==1 and len(rec.alleles[1])==1:
+            if len(rec.alleles)==1 and len(rec.alleles[0])==1:
+                chrom_seq[rec.pos-1] = 78 #ord N
+                totalMasked+=1
+            elif len(rec.alleles[0])==1 and len(rec.alleles[1])==1:
 
-            chrom_seq[rec.pos-1] = 78 #ord N
-            totalMasked+=1
+                chrom_seq[rec.pos-1] = 78 #ord N
+                totalMasked+=1
 
+    except ValueError:
+        print(f"No variants for {chrom}")
+        pass
     # Write chromsome
     outputHandle.write(f'>{chrom}\n'.encode('ascii'))
     outputHandle.write(chrom_seq)

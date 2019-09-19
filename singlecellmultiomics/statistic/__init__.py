@@ -11,3 +11,4 @@ from .trimming import *
 from .plate import *
 from .methylation import *
 from .scchicligation import *
+from .conversions import *

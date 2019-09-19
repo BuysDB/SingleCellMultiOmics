@@ -300,6 +300,8 @@ if __name__=='__main__':
             readConversionString = None
             genomeConversionString = None
             ## OT
+            readConversionString = None
+            genomeConversionString = None
             if readbase=='T' and refbase=='C' and molecule.get_strand() == 1: #'+'
                 readConversionString = 'CT'
                 genomeConversionString = 'CT'
