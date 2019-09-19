@@ -39,21 +39,24 @@ if __name__=='__main__':
 
     argparser.add_argument('alignmentfile',  type=str)
     argparser.add_argument('-o',  type=str, help="output BAM path", required=True)
+    argparser.add_argument('-bed',  type=str, help="output bed file (base-level methylation status)", default=None, required=False)
+    # these options need to go <- VB
     argparser.add_argument('-table',  type=str, help="output table alias", default=None, required=False)
-
     argparser.add_argument('-bin_size',  type=int, default=250_000)
     argparser.add_argument('-sliding_increment',  type=int, default=50_000)
-
-
+    #
     argparser.add_argument('-ref',  type=str, required=False, help='path to reference fasta file ')
     argparser.add_argument('-min_mq',  default=20, type=int, help='Min mapping qual')
     argparser.add_argument('-uhd',  default=1, type=int, help='Umi hamming distance')
     argparser.add_argument('-mem',  default=40, type=int, help='Memory used per job')
     argparser.add_argument('-time',  default=52, type=int, help='Time requested per job')
     argparser.add_argument('-head',  type=int)
-    argparser.add_argument('--stranded',  action='store_true')
     argparser.add_argument('-contig',  type=str,help='contig to run on')
     argparser.add_argument('-method',  type=str,help='nla or chic')
+    argparser.add_argument('-samples',  type=str,help='Samples to select, separate with comma. For example CellA,CellC,CellZ', default=None)
+    argparser.add_argument('-context',  type=str,help='Contexts to select, separate with comma. For example Z,H,X', default=None)
+
+    argparser.add_argument('--stranded',  action='store_true')
     argparser.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
     argparser.add_argument('--no_sort_index', action='store_true', help='do not sort and index the output bam')
 
@@ -64,9 +67,6 @@ if __name__=='__main__':
     tr.add_argument('-exons', type=str, help='Exon GTF file')
     tr.add_argument('-introns', type=str, help='Intron GTF file, use exonGTF_to_intronGTF.py to create this file')
     tr.add_argument('-recovery_umi_pool_radius', type=int, help='BP radius. When assigning transcripts without NLA site found, use this radius for molecule pooling', default=4)
-
-    argparser.add_argument('-samples',  type=str,help='Samples to select, separate with comma. For example CellA,CellC,CellZ', default=None)
-    argparser.add_argument('-context',  type=str,help='Contexts to select, separate with comma. For example Z,H,X', default=None)
     args = argparser.parse_args()
 
     samples = None if args.samples is None else set(args.samples.split(','))
@@ -95,13 +95,16 @@ if __name__=='__main__':
                 if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom:
                     continue
                 temp_bam_path = f'{temp_prefix}_{chrom}.bam'
-                arguments = " ".join([x for x in sys.argv if not x==args.o and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
+                temp_bed_path = f'{temp_prefix}_{chrom}.bed'
+
+                arguments = " ".join([x for x in sys.argv if not x==args.o and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path} -bed {temp_bed_path}"
+
                 job = f'TAPS_{str(uuid.uuid4())}'
                 os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"' )
                 hold_merge.append(job)
 
             hold =  ','.join(hold_merge)
-            os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"' )
+            os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"; cat {temp_prefix}*.bed > {args.bed}' )
             exit()
 
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
@@ -178,6 +181,8 @@ if __name__=='__main__':
     statistics = collections.defaultdict(collections.Counter)
     mcs = collections.Counter() # methylation calls seen
     print(colorama.Style.BRIGHT + "Running TAPS tagging" + colorama.Style.RESET_ALL)
+    if args.bed is not None:
+        bed = open(args.bed, "w")
     with pysam.AlignmentFile(temp_out , "wb",header=alignments.header) as output:
         for i,molecule in  enumerate(
             singlecellmultiomics.molecule.MoleculeIterator(
@@ -257,18 +262,16 @@ if __name__=='__main__':
             for (chromosome, location),call in molecule.methylation_call_dict.items():
                 if call['context'] == '.': # Only use calls concerning C's
                     continue
-                # Skip non-selected contexts
-                if contexts is not None and call not in contexts:
-                    continue
+
                 got_context_hit+=1
                 mcs[call['context']] += 1
-                if call['context'] in ['X', 'H', 'Z']:
-                    readString.append(call['consensus'])
-                    genomeString.append(call['reference_base'])
                 if call['context'].isupper():
                     methylated_hits += 1
+                    readString.append(call['consensus'])
+                    genomeString.append(call['reference_base'])
                 else:
                     unmethylated_hits += 1
+### NEED TO REMOVE THIS CODE ENTIRELY!! <- VB
                 if args.table is not None:
                     for binIdx in singlecellmultiomics.utils.coordinate_to_bins(location, args.bin_size, args.sliding_increment):
                         bin_start, bin_end = binIdx
@@ -281,9 +284,21 @@ if __name__=='__main__':
                         else:
                             binned_data[(chromosome, binIdx)][molecule.get_sample()][call['context'].isupper()]+=1
                             cell_count[molecule.get_sample()]+=1
+###
+                if args.bed is not None:
+                # Skip non-selected contexts only for table
+                    if contexts is not None and call['context'] not in contexts:
+                        continue
+                    else:
+                        # name = cell barcode + context
+                        name = ":".join([molecule.sample.split("_")[-1], call['context']])
+                        bed.write(f'{chromosome}\t{location-1}\t{location}\t{name}\t1\t{molecule.get_strand_repr()}\n')
 
             refbase = '' if not genomeString else max(set(genomeString), key = genomeString.count)
             readbase = '' if not readString else max(set(readString), key = readString.count)
+
+            readConversionString = None
+            genomeConversionString = None
             ## OT
             if readbase=='T' and refbase=='C' and molecule.get_strand() == 1: #'+'
                 readConversionString = 'CT'
@@ -301,16 +316,20 @@ if __name__=='__main__':
                 readConversionString = 'GA'
                 genomeConversionString = 'GA'
 
-            molecule.set_meta('ME',methylated_hits)
-            molecule.set_meta('um',unmethylated_hits)
-            statistics['Methylation']['methylated Cs'] += methylated_hits
-            statistics['Methylation']['unmethylated Cs'] += unmethylated_hits
             if readConversionString is not None:
                 molecule.set_meta('XR',readConversionString)
             if genomeConversionString is not None:
                 molecule.set_meta('XG',genomeConversionString)
+
+            molecule.set_meta('ME',methylated_hits)
+            molecule.set_meta('um',unmethylated_hits)
+            statistics['Methylation']['methylated Cs'] += methylated_hits
+            statistics['Methylation']['unmethylated Cs'] += unmethylated_hits
             molecule.write_tags()
             molecule.write_pysam(output)
+# close bed
+    if args.bed is not None:
+        bed.close()
 
     if args.transcriptome:
         print(colorama.Style.BRIGHT + f"Running transcriptome recovery on {len(rejected_reads)} reads")
