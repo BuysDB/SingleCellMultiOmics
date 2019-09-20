@@ -32,6 +32,7 @@ if __name__=='__main__':
     argparser.add_argument('-minmq',  type=int, default=50)
     argparser.add_argument('-contig',  type=str,help='contig to run on, all when not specified')
     argparser.add_argument('-method',  type=str, default='nla')
+    argparser.add_argument('-fmt',  type=str, default='table', help = "output format (options are: 'bed' or 'table')")
     argparser.add_argument('-moleculeNameSep',  type=str,help='Separator to use in molecule name', default=':')
     argparser.add_argument('-samples',  type=str,help='Samples to select, separate with comma. For example CellA,CellC,CellZ', default=None)
     argparser.add_argument('-context',  type=str,help='Contexts to select, separate with comma. For example Z,H,X', default=None)
@@ -110,9 +111,12 @@ if __name__=='__main__':
                 if contexts is not None and call['context'] not in contexts:
                     continue
 
-                print(f"{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
+                if args.fmt == "table":
+                    print(f"{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
+                elif args.fmt == "bed":
+                    sample = molecule.sample.split("_")[-1]
+                    print(f'{chromosome}\t{location}\t{location+1}\t{sample}\t1\t{molecule.get_strand_repr()}')
 
-            molecule.write_pysam(output)
     except (KeyboardInterrupt,BrokenPipeError) as e:
         pass
 if output is not None:
