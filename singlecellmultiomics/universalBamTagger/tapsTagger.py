@@ -104,7 +104,7 @@ if __name__=='__main__':
                 hold_merge.append(job)
 
             hold =  ','.join(hold_merge)
-            os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"; cat {temp_prefix}*.bed > {args.bed}' )
+            os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"; cat {temp_prefix}*.bed > {args.bed}; rm {temp_prefix}*.bed' )
             exit()
 
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
