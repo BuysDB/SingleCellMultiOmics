@@ -292,7 +292,7 @@ if __name__=='__main__':
                     else:
                         # name = cell barcode + context
                         name = ":".join([molecule.sample.split("_")[-1], call['context']])
-                        bed.write(f'{chromosome}\t{location-1}\t{location}\t{name}\t1\t{molecule.get_strand_repr()}\n')
+                        bed.write(f'{chromosome}\t{location}\t{location+1}\t{name}\t1\t{molecule.get_strand_repr()}\n')
 
             refbase = '' if not genomeString else max(set(genomeString), key = genomeString.count)
             readbase = '' if not readString else max(set(readString), key = readString.count)
