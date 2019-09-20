@@ -54,7 +54,7 @@ if __name__=='__main__':
     argparser.add_argument('-contig',  type=str,help='contig to run on')
     argparser.add_argument('-method',  type=str,help='nla or chic')
     argparser.add_argument('-samples',  type=str,help='Samples to select, separate with comma. For example CellA,CellC,CellZ', default=None)
-    argparser.add_argument('-context',  type=str,help='Contexts to select, separate with comma. For example Z,H,X', default=None)
+    argparser.add_argument('-context',  type=str,help='Context to select, separate with comma. For example Z,H,X', default=None)
 
     argparser.add_argument('--stranded',  action='store_true')
     argparser.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
@@ -70,9 +70,10 @@ if __name__=='__main__':
     args = argparser.parse_args()
 
     samples = None if args.samples is None else set(args.samples.split(','))
-    contexts = None if args.context is None else set(
-        [x.upper() for x in  args.context.split(',')] +
-        [x.lower() for x in  args.context.split(',')])
+    contexts = None if args.context is None else set(args.context.split(','))
+#    set(
+#        [x.upper() for x in  args.context.split(',')] +
+#        [x.lower() for x in  args.context.split(',')])
 
     alignments= pysam.AlignmentFile(args.alignmentfile)
     # Auto detect reference:
