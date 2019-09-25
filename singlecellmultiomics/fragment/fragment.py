@@ -541,3 +541,29 @@ class Fragment():
 class SingleEndTranscript(Fragment):
     def __init__(self,reads, **kwargs):
         Fragment.__init__(self, reads, **kwargs)
+
+class FragmentWithoutUMI(Fragment):
+    """
+    Use this class when no UMI information is available
+    """
+    def __init__(self,reads, **kwargs):
+        Fragment.__init__(self, reads, **kwargs)
+
+    # remove the set_umi function
+    def set_umi(self, **kwargs):
+        pass
+
+    # Replace the equality function
+    def __eq__(self, other): # other can also be a Molecule!
+        # Make sure fragments map to the same strand, cheap comparisons
+        if self.sample!=other.sample:
+            return False
+
+        if self.strand!=other.strand:
+            return False
+
+        if min(  abs( self.span[1] - other.span[1] ),  abs( self.span[2] - other.span[2] ) ) >self.assignment_radius:
+            return False
+
+        # Sample matches and starting position is within the defined span radius
+        return True
