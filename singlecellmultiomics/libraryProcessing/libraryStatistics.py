@@ -47,7 +47,12 @@ if __name__=='__main__':
     argparser = argparse.ArgumentParser(
      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
      description='Obtain statistics from your libraries')
-    argparser.add_argument('libraries',  type=str, nargs='*')
+    argparser.add_argument('libraries',  type=str, nargs='*', help = "either a library structured folder, or the tagged BAM file")
+    argparser.add_argument('-t',  type=str, default = 'all-stats',
+    help = "type of staistics to produce. options are \
+            'demult-stats', 'tag-stats', 'meth-stats', 'chic-stats' and 'all-stats'")
+    argparser.add_argument('-o',  type=str, help= "output file prefix")
+    argparser.add_argument('--plotsOnly',  action='store_true', help= "only make plots")
     argparser.add_argument('-head',  type=int)
     argparser.add_argument('-tagged_bam',  type=str, help='Alias of subpath to tagged bam file. For example /tagged/sorted.bam')
     argparser.add_argument('--v',  action='store_true')
@@ -67,22 +72,30 @@ if __name__=='__main__':
             bamFile=None
         rc = ReadCount(args) # Is also mappability
 
-        statistics = [
-            rc,
+        statistics = [rc]
+        if(args.t in ['meth-stats', 'all-stats']):
+            statistics.extend([
             MethylationContextHistogram(args),
+            ConversionMatrix(args)
+            ])
+
+        if(args.t in ['tag-stats', 'all-stats']):
+            statistics.extend([
             MappingQualityHistogram(args),
             OversequencingHistogram(args),
             FragmentSizeHistogram(args),
+            RejectionReasonHistogram(args),
+            ScCHICLigation(args)
+            ])
+
+        if(args.t in ['demult-stats', 'all-stats']):
+            statistics.extend([
             TrimmingStats(args),
             AlleleHistogram(args),
-            RejectionReasonHistogram(args),
             DataTypeHistogram(args),
             TagHistogram(args),
-            PlateStatistic(args),
-            ScCHICLigation(args),
-            ConversionMatrix(args)
-
-        ]
+            PlateStatistic(args)
+            ])
 
         demuxFastqFilesLookup = [
             (f'{library}/demultiplexedR1.fastq.gz', f'{library}/demultiplexedR2.fastq.gz'),
@@ -228,7 +241,10 @@ if __name__=='__main__':
 
 
         # Make plots:
-        plot_dir = f'{library}/plots'
+        if args.o is None:
+            plot_dir = f'{library}/plots'
+        else:
+            plot_dir = args.o
         if not os.path.exists(plot_dir):
             os.makedirs(plot_dir)
         for statistic in statistics:
@@ -243,19 +259,21 @@ if __name__=='__main__':
                     traceback.print_exc()
 
         # Make tables:
-        table_dir = f'{library}/tables'
-        if not os.path.exists(table_dir):
-            os.makedirs(table_dir)
-        for statistic in statistics:
-            if not hasattr(statistic, 'to_csv'):
-                print(f'Not making a table for {statistic.__class__.__name__} as to_csv method is not defined')
-                continue
-            try:
-                statistic.to_csv(f'{table_dir}/{statistic.__class__.__name__}_{library_name}.csv')
-            except Exception as e:
-                if args.v:
-                    import traceback
-                    traceback.print_exc()
+        if not args.plotsOnly:
+            table_dir = f'{library}/tables'
+            if not os.path.exists(table_dir):
+                os.makedirs(table_dir)
+            for statistic in statistics:
+                if not hasattr(statistic, 'to_csv'):
+                    print(f'Not making a table for {statistic.__class__.__name__} as to_csv method is not defined')
+                    continue
+                try:
+                    statistic.to_csv(f'{table_dir}/{statistic.__class__.__name__}_{library_name}.csv')
+                except Exception as e:
+                    if args.v:
+                        import traceback
+                        traceback.print_exc()
+
 
         # Make RT reaction plot:
         if not args.nort:
