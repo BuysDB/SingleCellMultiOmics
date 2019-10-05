@@ -119,7 +119,7 @@ if __name__=='__main__':
             f'{library}/tagged/sorted.bam'
         ]
         if args.tagged_bam:
-            taggedFilesLookup.append(library+'/'+args.tagged_bam)
+            taggedFilesLookup = [library+'/'+args.tagged_bam] + taggedFilesLookup 
 
 
         if 'cluster' in library:
