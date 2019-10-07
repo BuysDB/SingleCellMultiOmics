@@ -387,7 +387,7 @@ class Molecule():
         return f"""{self.__class__.__name__}
         with {len(self.fragments)} assinged fragments
         { "Allele :" +  (self.allele if self.allele is not None else "No allele assigned")}
-        """ + frag_repr + ('' if len(self.fragments)<max_show else f'... {len(self.fragments)-max_show} fragments not shown'
+        """ + frag_repr + ('' if len(self.fragments)<max_show else f'... {len(self.fragments)-max_show} fragments not shown')
 
 
     def update_umi(self):
@@ -820,6 +820,7 @@ class Molecule():
             { genome_location (tuple) : base (string) if return_refbases is True }
         '''
 
+
         # Check if cached is available
         if self.saved_base_obs is not None:
             if not return_refbases:
@@ -829,7 +830,7 @@ class Molecule():
                     return self.saved_base_obs
 
         base_obs = collections.defaultdict(collections.Counter)
-        
+
         ref_bases = {}
         used = 0 #  some alignments yielded valid calls
         ignored = 0
