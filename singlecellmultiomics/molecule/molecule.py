@@ -7,6 +7,7 @@ import itertools
 import numpy as np
 from singlecellmultiomics.utils import style_str
 from more_itertools import consecutive_groups
+import textwrap
 
 def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2, max_N_distance=0): #1: read1 2: read2
     rp = collections.defaultdict(list)
@@ -377,7 +378,10 @@ class Molecule():
         return self.strand
 
     def __repr__(self):
-        frag_repr = '\n\t'.join([str(fragment) for fragment in self.fragments])
+        frag_repr = '\n\t'.join([
+            textwrap.indent(str(fragment),' '*4) for fragment in self.fragments]
+        )
+
         return f"""{self.__class__.__name__}
         with {len(self.fragments)} assinged fragments
         { "Allele :" +  (self.allele if self.allele is not None else "No allele assigned")}
