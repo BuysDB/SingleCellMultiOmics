@@ -1038,9 +1038,9 @@ class Molecule():
 
         html = f"""<h3>{self.chromosome}:{self.spanStart}-{self.spanEnd}
             sample:{self.get_sample()}  {'valid molecule' if self[0].is_valid() else 'Non valid molecule'}</h3>
-            <h5>UMI:{self.get_umi()} Mapping qual:{round(self.get_mean_mapping_qual(),1)} Cut loc: {"%s:%s" % self[0].get_site_location()} </h5>
+            <h5>UMI:{self.get_umi()} Mapping qual:{round(self.get_mean_mapping_qual(),1)} </h5>
             <div style="white-space:nowrap; font-family:monospace; color:#888">"""
-        #undigested:{self.get_undigested_site_count()}
+        #undigested:{self.get_undigested_site_count()}  Cut loc: {"%s:%s" % self[0].get_site_location()}
         consensus = self.get_consensus()
 
         # Obtain reference bases dictionary:
