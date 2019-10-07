@@ -8,7 +8,7 @@ import numpy as np
 from singlecellmultiomics.utils import style_str
 from more_itertools import consecutive_groups
 import textwrap
-import  singlecellmultiomics.alleleTools 
+import  singlecellmultiomics.alleleTools
 
 def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2, max_N_distance=0): #1: read1 2: read2
     rp = collections.defaultdict(list)
@@ -1088,7 +1088,16 @@ class Molecule():
             except IndexError as e:
                 pass # Tried to visualize a base outside view
 
-        return ''.join(visualized) + '<br/><b>Reference:</b><br />' + ''.join(reference_vis)
+        if show_consensus_sequence:
+            html+=''.join(visualized) + '<br />'
+
+        if show_reference_sequence:
+            html+=''.join(reference_vis) + '<br />'
+
+
+        html+="</div>"
+        return html
+
 
 
     def get_methylation_dict(self):
