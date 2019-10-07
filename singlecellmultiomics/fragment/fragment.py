@@ -164,7 +164,7 @@ class Fragment():
             print(alignment_operations)
             # Obtain the amount of operations before the alignment start
             operations_before_alignment_start = 0
-            for  query_pos, ref_pos in read.get_aligsned_pairs():
+            for  query_pos, ref_pos in read.get_aligned_pairs():
                 if ref_pos is None:
                     operations_before_alignment_start+=1
                 else:
