@@ -170,6 +170,9 @@ class Molecule():
         if self.allele is not None:
             self.set_meta('DA', str(self.allele))
 
+        # associatedFragmentCount :
+        self.set_meta('af', len(self))
+
         # Write RT reaction tags (rt: rt reaction index, rd rt duplicate index)
         for rt_reaction_index,(_,frags) in enumerate(self.get_rt_reactions().items()):
             for rt_duplicate_index,frag in enumerate(frags):

@@ -7,11 +7,13 @@ import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sort_and_index, get_reference_from_pysam_alignmentFile, add_readgroups_to_header
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads  import CustomAssingmentQueryNameFlagger
+import singlecellmultiomics.features
 import pysamiterators
 import argparse
 import uuid
 import os
 import sys
+import colorama
 
 argparser = argparse.ArgumentParser(
  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -33,11 +35,14 @@ cluster.add_argument('--cluster', action='store_true', help='split by chromosome
 cluster.add_argument('--write_rejects', action='store_true', help='Write rejected reads to output file')
 cluster.add_argument('-mem',  default=40, type=int, help='Memory requested per job')
 cluster.add_argument('-time',  default=52, type=int, help='Time requested per job')
+
+tr = argparser.add_argument_group('transcriptome specific settings')
+tr.add_argument('-exons', type=str, help='Exon GTF file')
+tr.add_argument('-introns', type=str, help='Intron GTF file, use exonGTF_to_intronGTF.py to create this file')
 args = argparser.parse_args()
 
 if not args.o.endswith('.bam'):
     raise ValueError("Supply an output which ends in .bam, for example -o output.bam")
-
 
 input_bam =  pysam.AlignmentFile(args.bamin, "rb")
 
@@ -76,6 +81,35 @@ if args.alleles is not None:
                                                 select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
                                                 lazyLoad=True )
 
+### Transcriptome configuration ###
+if args.method in ('nla_transcriptome', 'cs', 'vasa'):
+    print(colorama.Style.BRIGHT +'Running in transcriptome annotation mode'+ colorama.Style.RESET_ALL)
+    if args.exons is None or args.introns is None:
+        raise ValueError("Please supply both intron and exon GTF files")
+
+    transcriptome_features = singlecellmultiomics.features.FeatureContainer()
+    print("Loading exons", end='\r')
+    transcriptome_features.loadGTF(args.exons,
+                                    select_feature_type=['exon'],
+                                   identifierFields=('exon_id','gene_id'),
+                                   store_all=True, contig=args.contig ,head=None)
+
+    print("Loading introns",end='\r')
+    transcriptome_features.loadGTF(args.introns,
+                                   select_feature_type=['intron'],
+                                   identifierFields=['transcript_id'],
+                                   store_all=True, contig=args.contig,head=None)
+    print("All features loaded")
+
+    rejected_reads = [] # Store all rejected, potential transcript reads
+
+    # Add more molecule class arguments
+    molecule_class_args.update({
+        'features':transcriptome_features,
+        'auto_set_intron_exon_features':True
+    })
+
+### Method specific configuration ###
 if args.method=='qflag':
     moleculeClass = singlecellmultiomics.molecule.Molecule
     fragmentClass = singlecellmultiomics.fragment.Fragment
@@ -122,8 +156,8 @@ elif args.method=='vasa' or args.method=='cs':
     fragmentClass = singlecellmultiomics.fragment.SingleEndTranscript
 
     molecule_class_args.update({
-        'pooling_method' : 0, # all data from the same cell can be dealt with separately
-        'stranded': 1 # data is not stranded
+        'pooling_method' : 1, # all data from the same cell can be dealt with separately
+        'stranded': 1 # data is stranded
     })
 
 else:

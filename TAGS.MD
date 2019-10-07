@@ -76,6 +76,7 @@
 | aI    | indexSequence                                | No         | No                   |
 | aQ    | Read1Clipped3primeBasesKmerQuality           | Yes        | No                   |
 | aa    | rawIlluminaIndexSequence                     | No         | No                   |
+| af    | associatedFragmentCount                      | No         | No                   |
 | ah    | hammingDistanceToIndex                       | No         | No                   |
 | bc    | rawBarcode                                   | No         | No                   |
 | dt    | assingedDataType                             | No         | No                   |
@@ -97,4 +98,11 @@
 | rS    | randomPrimerStart                            | No         | No                   |
 | rd    | rtDuplicateIndex                             | No         | No                   |
 | rt    | rtReactionIndex                              | No         | No                   |
+| sH    | Total CHH methylated                         | No         | No                   |
+| sX    | Total CHG methylated                         | No         | No                   |
+| sZ    | Total CPG methylated                         | No         | No                   |
+| sh    | Total CHH unmethylated                       | No         | No                   |
+| sx    | Total CHG unmethylated                       | No         | No                   |
+| sz    | Total CPG unmethylated                       | No         | No                   |
+| uC    | totalUnmethylated                            | No         | No                   |
 | uL    | umiLength                                    | No         | No                   |

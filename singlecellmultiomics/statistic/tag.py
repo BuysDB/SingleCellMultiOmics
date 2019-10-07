@@ -16,6 +16,21 @@ class TagHistogram(StatisticHistogram):
         self.histogram = collections.Counter()
 
     def processRead(self,read):
+        if read.is_duplicate:
+            return
+
+        if read.has_tag('DS'):
+            self.histogram["Assigned to cut site"]+=1
+
+        if read.has_tag('GN'):
+            self.histogram["Assigned to gene"]+=1
+
+        if read.has_tag('IN'):
+            self.histogram["Overlapping with intron"]+=1
+
+        if read.has_tag('JN'):
+            self.histogram["Intron/exon junction"]+=1
+
         if read.has_tag('EX'):
             if read.get_tag('EX')=='Unassigned_NoFeatures':
                 self.histogram["Not assigned to exon"]+=1
@@ -23,6 +38,7 @@ class TagHistogram(StatisticHistogram):
                 self.histogram["Assigned to exon"]+=1
             else:
                 self.histogram["Unkown exon assignment"]+=1
+
 
         if read.has_tag('XS'):
             if read.get_tag('XS')=='Unassigned_NoFeatures':

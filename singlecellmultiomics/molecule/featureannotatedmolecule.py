@@ -7,12 +7,13 @@ class FeatureAnnotatedMolecule(Molecule):
     """Molecule which is annotated with features (genes/exons/introns, .. )
     """
 
-    def __init__(self, fragment, features, stranded=None, **kwargs):
+    def __init__(self, fragment, features, stranded=None, auto_set_intron_exon_features=False, **kwargs):
         """
             Args:
                 fragments (singlecellmultiomics.fragment.Fragment): Fragments to associate to the molecule
                 features (singlecellmultiomics.features.FeatureContainer) : container to use to obtain features from
                 stranded : None; not stranded, False: same strand as R1, True: other strand
+                auto_set_intron_exon_features(bool) : obtain intron_exon_features upon initialising
                 **kwargs: extra args
 
         """
@@ -28,6 +29,9 @@ class FeatureAnnotatedMolecule(Molecule):
         self.exons = set()
         self.exon_hit_gene_names = set() # readable names
         self.is_spliced=None
+
+        if auto_set_intron_exon_features:
+            self.set_intron_exon_features()
 
     def set_spliced(self, is_spliced):
         """ Set wether the transcript is spliced, False has priority over True """
@@ -67,7 +71,7 @@ class FeatureAnnotatedMolecule(Molecule):
             elif meta.get('type')=='intron':
                 self.genes.add(meta['gene_id'])
                 self.introns.add(meta['gene_id'])
-                
+
 
         # Find junctions and add all annotations to annotation sets
         debug = []

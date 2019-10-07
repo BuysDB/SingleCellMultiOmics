@@ -55,6 +55,7 @@ tags = [
     SamTag('RS', 'recognizedStrand'),
     SamTag('LI', 'ligationMotif'),
     SamTag('RC', 'moleculeOverseqCountIndex'),
+    SamTag('af', 'associatedFragmentCount'),
     SamTag('RR', 'rejectionReason'),
     SamTag('DT', 'sourceType'),
     SamTag('EX', 'exons'),
@@ -113,15 +114,24 @@ tags = [
     SamTag('Cu', 'unmodified3BPContexts'),
     SamTag('Qu', 'unmodified4BPContexts'),
     SamTag('MC', 'methylatedBaseCountForFragment'),
+    SamTag('uC', 'totalUnmethylated'),
+    SamTag('sZ', 'Total CPG methylated'),
+    SamTag('sz', 'Total CPG unmethylated'),
+    SamTag('sH', 'Total CHH methylated'),
+    SamTag('sh', 'Total CHH unmethylated'),
+    SamTag('sX', 'Total CHG methylated'),
+    SamTag('sx', 'Total CHG unmethylated'),
+
 
     SamTag('rS', 'randomPrimerStart'),
     SamTag('rP', 'randomPrimerSequence'),
-
 
     SamTag('AI', 'AssignedIntrons'),
     SamTag('AE', 'AssingedExons'),
     SamTag('iH', 'IntronHits amount of bases aligned to intron'),
     SamTag('eH', 'ExonHits amount of bases aligned to exon'),
-    SamTag('SP', 'IsSpliced')
+    SamTag('SP', 'IsSpliced'),
+
+
 
 ]

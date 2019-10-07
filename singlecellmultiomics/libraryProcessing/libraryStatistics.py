@@ -50,7 +50,7 @@ if __name__=='__main__':
     argparser.add_argument('libraries',  type=str, nargs='*', help = "either a library structured folder, or the tagged BAM file")
     argparser.add_argument('-t',  type=str, default = 'all-stats',
     help = "type of staistics to produce. options are \
-            'demult-stats', 'tag-stats', 'meth-stats', 'chic-stats' and 'all-stats'")
+            'demult-stats', 'meth-stats', 'chic-stats' and 'all-stats'")
     argparser.add_argument('-o',  type=str, help= "output file prefix")
     argparser.add_argument('--plotsOnly',  action='store_true', help= "only make plots")
     argparser.add_argument('-head',  type=int)
@@ -72,21 +72,21 @@ if __name__=='__main__':
             bamFile=None
         rc = ReadCount(args) # Is also mappability
 
-        statistics = [rc]
+        statistics = [
+        rc,
+        FragmentSizeHistogram(args),
+        RejectionReasonHistogram(args),
+        MappingQualityHistogram(args),
+        OversequencingHistogram(args)
+        ]
         if(args.t in ['meth-stats', 'all-stats']):
             statistics.extend([
             MethylationContextHistogram(args),
             ConversionMatrix(args)
             ])
 
-        if(args.t in ['tag-stats', 'all-stats']):
-            statistics.extend([
-            MappingQualityHistogram(args),
-            OversequencingHistogram(args),
-            FragmentSizeHistogram(args),
-            RejectionReasonHistogram(args),
-            ScCHICLigation(args)
-            ])
+        if(args.t in ['chic-stats', 'all-stats']):
+            statistics.extend([ScCHICLigation(args)])
 
         if(args.t in ['demult-stats', 'all-stats']):
             statistics.extend([
@@ -119,7 +119,7 @@ if __name__=='__main__':
             f'{library}/tagged/sorted.bam'
         ]
         if args.tagged_bam:
-            taggedFilesLookup.append(library+'/'+args.tagged_bam)
+            taggedFilesLookup = [library+'/'+args.tagged_bam] + taggedFilesLookup 
 
 
         if 'cluster' in library:
@@ -129,8 +129,6 @@ if __name__=='__main__':
         if bamFile is None:
             bamFile = select_bam_file(taggedFilesLookup)
 
-
-        statFile = f'{library}/statistics.pickle.gz'
 
         demuxFastqFiles = select_fastq_file(demuxFastqFilesLookup)
         rejectFastqFiles = select_fastq_file(rejectFilesLookup)
@@ -217,15 +215,6 @@ if __name__=='__main__':
 
 
 
-
-        if os.path.exists(statFile):
-            with gzip.open(statFile,'rb') as f:
-                try:
-                    statDict.update(pickle.load(f))
-                except Exception as e:
-                    pass
-
-
         for statistic in statistics:
             try:
                 print(f'\t{statistic.__class__.__name__}')
@@ -236,15 +225,18 @@ if __name__=='__main__':
                 if args.v:
                     print(e)
 
-        with gzip.open(statFile,'wb') as f:
-            pickle.dump(statDict, f)
-
-
         # Make plots:
         if args.o is None:
             plot_dir = f'{library}/plots'
+            table_dir = f'{library}/tables'
+            statFile = f'{library}/statistics.pickle.gz'
         else:
             plot_dir = args.o
+            table_dir = f'{args.o}/tables'
+            statFile = f'{args.o}/statistics.pickle.gz'
+
+
+
         if not os.path.exists(plot_dir):
             os.makedirs(plot_dir)
         for statistic in statistics:
@@ -260,7 +252,15 @@ if __name__=='__main__':
 
         # Make tables:
         if not args.plotsOnly:
-            table_dir = f'{library}/tables'
+            with gzip.open(statFile,'wb') as f:
+                    pickle.dump(statDict, f)
+            if os.path.exists(statFile):
+                with gzip.open(statFile,'rb') as f:
+                    try:
+                        statDict.update(pickle.load(f))
+                    except Exception as e:
+                        pass
+
             if not os.path.exists(table_dir):
                 os.makedirs(table_dir)
             for statistic in statistics:
