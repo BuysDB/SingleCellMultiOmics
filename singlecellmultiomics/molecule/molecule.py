@@ -253,7 +253,8 @@ class Molecule():
             window_radius=20,
             centroid=None,
             mask_centroid=False,
-            refence_backed=False
+            refence_backed=False,
+            skip_missing_reads=False
             ):
         """ Obtain a tensor representation of the molecule alignment around the given centroid
         Args:
@@ -304,7 +305,8 @@ class Molecule():
                                             base_clip_table=base_clip_table,
                                             height=height,
                                             mask_reference_bases=mask,
-                                            reference= reference
+                                            reference= reference,
+                                            skip_missing_reads=skip_missing_reads
                                            )
         x = np.vstack(
             [

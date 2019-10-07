@@ -103,7 +103,8 @@ class Fragment():
                 base_qual_table=None,
                 base_clip_table=None,
                 mask_reference_bases=None, # set with reference bases to mask (converted to N ) (chrom,pos)
-                reference=None
+                reference=None,
+                skip_missing_reads = False
                     ):
 
         """
@@ -136,6 +137,8 @@ class Fragment():
 
             reference(pysam.FastaFile) :  Handle to reference file to use instead of MD tag. If None: MD tag is used.
 
+            skip_missing_reads (bool) : when enabled only existing (non None) reads are added to the tensor. Use this option when mapping single-end
+
         Returns:
             None
 
@@ -151,16 +154,17 @@ class Fragment():
 
         reads = self
         last_ref = None
+        used_reads = 0
         for ri,read in enumerate(reads):
 
             if read is None:
                 continue
 
             alignment_operations = list(itertools.chain(*([operation]*l for operation,l in read.cigartuples if operation!=2)))
-
+            print(alignment_operations)
             # Obtain the amount of operations before the alignment start
             operations_before_alignment_start = 0
-            for  query_pos, ref_pos in read.get_aligned_pairs():
+            for  query_pos, ref_pos in read.get_aligsned_pairs():
                 if ref_pos is None:
                     operations_before_alignment_start+=1
                 else:
@@ -169,7 +173,11 @@ class Fragment():
 
 
             # Obtain row index in the tensor
-            row_index = (ri+index_start) % height
+            if skip_missing_reads:
+                row_index = (used_reads+index_start) % height
+            else:
+                row_index = (ri+index_start) % height
+
             # Where in the reference are we?
             ref_pointer=read.reference_start
 
@@ -219,7 +227,12 @@ class Fragment():
                     else:
                         base_mismatches_table[row_index, ref_pos-span_start] = 0.2
                     base_content_table[row_index, ref_pos-span_start] = self.base_mapper[(read.is_reverse,query_base)]
-        return ri+index_start+1
+
+            used_reads+=1
+        if skip_missing_reads:
+            return used_reads+index_start+1
+        else:
+            return ri+index_start+1
 
 
     def get_read_group(self):
@@ -467,7 +480,7 @@ class Fragment():
         strand:{self.get_strand_repr()}
         has R1: {"yes" if self.has_R1() else "no"}
         has R2: {"yes" if self.has_R2() else "no"}
-        """ + '\n\t'.join([f'{key}:{str(value)}'for key,value in self.meta.items()])
+        """ + '\n\t'.join([f'{key}:{str(value)}' for key,value in self.meta.items()])
 
     def get_html(self, chromosome=None, span_start=None, span_end=None, show_read1=None, show_read2=None):
         """
