@@ -28,6 +28,28 @@ class TestMolecule(unittest.TestCase):
             )
             pass
 
+    def test_Molecule_repr_stability(self):
+        """Test if the molecule representation function is stable"""
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            it = singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.Molecule,
+            fragmentClass=singlecellmultiomics.fragment.Fragment
+            )
+            for molecule in it:
+                str(molecule)
+
+    def test_NLA_Molecule_repr_stability(self):
+        """Test if the molecule representation function is stable"""
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            it = singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
+            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+            )
+            for molecule in it:
+                str(molecule)
+
     def test_NLA_molecule_iterator_stability(self):
         """Test if the simplest molecule iterator works"""
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
