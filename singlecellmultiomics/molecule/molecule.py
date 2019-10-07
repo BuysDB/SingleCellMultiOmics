@@ -829,9 +829,8 @@ class Molecule():
                     return self.saved_base_obs
 
         base_obs = collections.defaultdict(collections.Counter)
-
-        if return_refbases:
-            ref_bases = {}
+        
+        ref_bases = {}
         used = 0 #  some alignments yielded valid calls
         ignored = 0
         for fragment in self:
