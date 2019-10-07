@@ -378,14 +378,17 @@ class Molecule():
         return self.strand
 
     def __repr__(self):
+
+        max_show = 6 # maximum amount of fragments to show
         frag_repr = '\n\t'.join([
-            textwrap.indent(str(fragment),' '*4) for fragment in self.fragments]
+            textwrap.indent(str(fragment),' '*4) for fragment in self.fragments[:max_show]]
         )
 
         return f"""{self.__class__.__name__}
         with {len(self.fragments)} assinged fragments
         { "Allele :" +  (self.allele if self.allele is not None else "No allele assigned")}
-        """ + frag_repr
+        """ + frag_repr + ('' if len(self.fragments)<max_show else f'... {len(self.fragments)-max_show} fragments not shown'
+
 
     def update_umi(self):
         """Set UMI
