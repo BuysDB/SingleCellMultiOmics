@@ -37,7 +37,7 @@ class TagHistogram(StatisticHistogram):
             elif read.get_tag('EX')=='Assigned':
                 self.histogram["Assigned to exon"]+=1
             else:
-                self.histogram["Unkown exon assignment"]+=1
+                self.histogram["Overlapping with exon"]+=1
 
 
         if read.has_tag('XS'):
@@ -46,7 +46,7 @@ class TagHistogram(StatisticHistogram):
             elif read.get_tag('XS')=='Assigned':
                 self.histogram["Assigned to gene/intron"]+=1
             else:
-                self.histogram["Unkown gene/intron assignment"]+=1
+                self.histogram["Unknown gene/intron assignment"]+=1
 
         if read.has_tag('Is'):
             self.histogram[f"Sequencer_{read.get_tag('Is')}"]+=1
