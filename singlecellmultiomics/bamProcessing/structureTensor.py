@@ -215,10 +215,9 @@ else:
 
         print('Calculating conversion tensor')
         #list(itertools.product('ACTG',repeat=2))
-        initial_dict = {'insert':0, 'deleted':0,'match':0, 'mismatch':0, 'clip':0, 'A':0, 'T':0, 'C':0, 'G':0}
         #for baseA,baseB in itertools.product('ACTG')
 
-        conversions = collections.defaultdict(lambda:initial_dict)
+        conversions = collections.defaultdict(lambda:{'insert':0, 'deleted':0,'match':0, 'mismatch':0, 'clip':0, 'A':0, 'T':0, 'C':0, 'G':0})
         for ii,read in enumerate(alignments_positive.fetch(contig)):
 
             last_ref_pos = None
