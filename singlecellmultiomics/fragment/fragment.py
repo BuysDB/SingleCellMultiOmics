@@ -164,7 +164,7 @@ class Fragment():
             print(alignment_operations)
             # Obtain the amount of operations before the alignment start
             operations_before_alignment_start = 0
-            for  query_pos, ref_pos in read.get_aligsned_pairs():
+            for  query_pos, ref_pos in read.get_aligned_pairs():
                 if ref_pos is None:
                     operations_before_alignment_start+=1
                 else:
@@ -525,9 +525,11 @@ class Fragment():
         for read in reads:
             if read is None:
                 continue
-            for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(read,with_seq=True):
-                if ref_pos is None:
+            #for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(read,with_seq=True):
+            for query_pos, ref_pos, ref_base in read.get_aligned_pairs(with_seq=True,matches_only=True):
+                if ref_pos is None or ref_pos<span_start or ref_pos>span_end:
                     continue
+
                 ref_base = ref_base.upper()
                 if query_pos is None:
                     query_base='-'
