@@ -159,10 +159,18 @@ class Molecule():
             return True
         return False
 
-    def get_strand_repr(self):
+    def get_strand_repr(self, unknown='?'):
+        """Get string representation of mapping strand
+        Args:
+            unknown (str) :  set what character/string to return
+                             when the strand is not available
+
+        Returns:
+            strand_repr (str) : + forward, - reverse, ? unknown
+        """
         s = self.get_strand()
         if s is None:
-            return '?'
+            return unknown
         if s:
             return '-'
         else:
