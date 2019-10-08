@@ -77,6 +77,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamFeatureDensityVisualisation.py',
         'singlecellmultiomics/bamProcessing/bamDuprate.py',
         'singlecellmultiomics/bamProcessing/bamToRNACounts.py',
+        'singlecellmultiomics/bamProcessing/structureTensor.py',
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py',
         'singlecellmultiomics/libraryDetection/archivestats.py',
