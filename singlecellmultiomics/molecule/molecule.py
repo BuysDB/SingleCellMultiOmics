@@ -1006,6 +1006,17 @@ class Molecule():
 
         return variant_calls
 
+    def get_aligned_reference_bases_dict(self):
+        """Get dictionary containing all reference bases to which this molecule aligns
+        Returns:
+            aligned_reference_positions (dict) :  { (chrom,pos) : 'A', (chrom,pos):'T', .. }
+        """
+        aligned_reference_positions={}
+        for read in self.iter_reads():
+            for read_pos, ref_pos, ref_base in read.get_aligned_pairs(with_seq=True, matches_only=True):
+                aligned_reference_positions[(read.reference_name,ref_pos)] = ref_base.upper()
+        return aligned_reference_positions
+
 
     def iter_reads(self):
         """Iterate over all associated reads
@@ -1040,23 +1051,52 @@ class Molecule():
         r = collections.Counter()
 
 
-    def get_html(self,reference=None,consensus=None, reference_bases=None):
+    def get_html(self,reference=None,consensus=None, show_reference_sequence=True, show_consensus_sequence=True, reference_bases=None):
         """Get html representation of the molecule
-
         Returns:
             html_rep(str) : Html representation of the molecule
         """
 
-        span_len = self.spanEnd-self.spanStart
-        if span_len > 1000:
-            raise ValueError('The molecule is too long to display')
+        html = f"""<h3>{self.chromosome}:{self.spanStart}-{self.spanEnd}
+            sample:{self.get_sample()}  {'valid molecule' if self[0].is_valid() else 'Non valid molecule'}</h3>
+            <h5>UMI:{self.get_umi()} Mapping qual:{round(self.get_mean_mapping_qual(),1)} Cut loc: {"%s:%s" % self[0].get_site_location()} </h5>
+            <div style="white-space:nowrap; font-family:monospace; color:#888">"""
+        #undigested:{self.get_undigested_site_count()}
+        consensus = self.get_consensus()
 
+        # Obtain reference bases dictionary:
+        if reference_bases is None:
+            if reference is None:
+                reference_bases= self.get_aligned_reference_bases_dict()
+
+            else:
+                # obtain reference_bases from reference file
+                raise NotImplementedError()
+
+        for fragment in itertools.chain(*self.get_rt_reactions().values()):
+            html+= f'<h5>{fragment.get_R1().query_name}</h5>'
+            for readid,read in [
+                    (1,fragment.get_R1()),
+                    (2, fragment.get_R2())]: # go over R1 and R2:
+                # This is just the sequence:
+                if read is None:
+                    continue
+                html+= fragment.get_html(
+                    self.chromosome,
+                    self.spanStart,
+                    self.spanEnd,
+                    show_read1=(readid==1),
+                    show_read2=(readid==2)
+                    ) + '<br />'
+
+        # Obtain reference sequence and consensus sequence:
         if consensus is None:
             consensus = self.get_consensus()
+
+        span_len = self.spanEnd - self.spanStart
         visualized = ['.']  * span_len
         reference_vis = ['?']  * span_len
         for location,query_base in consensus.items():
-
             try:
                 if reference_bases is None or reference_bases.get(location,'?')==query_base:
                     visualized[location[1]-self.spanStart] = query_base
@@ -1069,7 +1109,15 @@ class Molecule():
             except IndexError as e:
                 pass # Tried to visualize a base outside view
 
-        return ''.join(visualized) + '<br/><b>Reference:</b><br />' + ''.join(reference_vis)
+        if show_consensus_sequence:
+            html+=''.join(visualized) + '<br />'
+
+        if show_reference_sequence:
+            html+=''.join(reference_vis) + '<br />'
+
+
+        html+="</div>"
+        return html
 
 
     def get_methylation_dict(self):
