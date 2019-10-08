@@ -127,6 +127,68 @@ class Molecule():
                 # This happens when a consensus can not be obtained
                 pass
 
+    def get_consensus_read(self, target_file, read_name):
+        """get pysam.AlignedSegment containing aggregated molecule information
+
+        Args:
+            target_file(pysam.AlignmentFile) : File to create the read for
+
+            read_name(str) : name of the read to write
+        Returns:
+            read(pysam.AlignedSegment)
+        """
+        try: # Obtain the consensus sequence
+            consensus = self.get_consensus()
+        except Exception as e:
+            raise
+
+        sequence = ''.join(( consensus.get((self.chromosome, ref_pos),'N')
+             for ref_pos in range(self.spanStart, self.spanEnd+1)
+            ))
+
+        # Construct consensus - read
+        cread = pysam.AlignedSegment(header=target_file.header)
+        cread.reference_name = self.chromosome
+        cread.reference_start = self.spanStart
+        cread.query_name = read_name
+        cread.query_sequence = sequence
+        cread.query_qualities = [33] * len(sequence) #todo
+        cread.cigarstring  = f'{len(sequence)}M'
+        cread.mapping_quality = self.get_max_mapping_qual()
+        cread.is_reverse = self.strand
+
+        cread.set_tag('SM', self.sample)
+        #if self.is_valid():
+        #    cread.set_tag('DS', molecule.get_cut_site()[1])
+        if self.umi is not None:
+            cread.set_tag('RX',self.umi)
+            bc = list(self.get_barcode_sequences())[0]
+            cread.set_tag('BC',bc)
+            cread.set_tag('MI',bc+self.umi)
+
+        return cread
+
+    """ method = 1
+        sequence = []
+        cigar = []
+        if method==0:
+            prev_end = None
+            for block_start,block_end in molecule.get_aligned_blocks():
+                if molecule.strand:
+                    print(block_end>block_start,block_start, block_end)
+                if prev_end is not None:
+                    cigar.append(f'{block_start - prev_end}D')
+
+                block_len = block_end-block_start+1
+                cigar.append(f'{block_len}M')
+                for ref_pos in range(block_start,block_end+1):
+                    call = consensus.get((molecule.chromosome, ref_pos),'N')
+                    sequence.append(call)
+                prev_end = block_end+1
+
+            cigarstring = ''.join(cigar)
+        """
+
     def get_feature_vector(self, window_size=90):
         """ Obtain a feature vector representation of the molecule
 
