@@ -1,8 +1,8 @@
-pysam
-numpy
-pandas
+pysam>=0.15.3
+numpy>=1.16.4
+pandas>=0.25.0
 colorama
-pysamiterators
+pysamiterators>=1.6
 matplotlib
 more-itertools
 tabulate
