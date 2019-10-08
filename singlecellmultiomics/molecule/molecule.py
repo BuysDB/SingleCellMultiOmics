@@ -8,7 +8,11 @@ import numpy as np
 from singlecellmultiomics.utils import style_str
 from more_itertools import consecutive_groups
 import textwrap
-import  singlecellmultiomics.alleleTools 
+import  singlecellmultiomics.alleleTools
+
+import typing
+import pysam
+import pysamiterators
 
 def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2, max_N_distance=0): #1: read1 2: read2
     rp = collections.defaultdict(list)
@@ -71,11 +75,11 @@ class Molecule():
     """
 
     def __init__(self,
-        fragments=None,
-        cache_size=10_000,
-        reference=None,
-        min_max_mapping_quality=None,# When all fragments have a mappin quality below this value the is_valid method will return False
-        allele_resolver : singlecellmultiomics.alleleTools.AlleleResolver =None ,
+        fragments : typing.Optional[typing.Iterable] = None,
+        cache_size : int = 10_000,
+        reference : typing.Union[pysam.FastaFile, pysamiterators.CachedFasta] = None,
+        min_max_mapping_quality :  typing.Optional[int] = None,# When all fragments have a mappin quality below this value the is_valid method will return False
+        allele_resolver : typing.Optional[singlecellmultiomics.alleleTools.AlleleResolver] = None ,
         **kwargs):
         """Initialise Molecule
 
