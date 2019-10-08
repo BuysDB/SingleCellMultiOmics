@@ -194,6 +194,10 @@ class Molecule():
                 frag.set_meta('rd', rt_duplicate_index)
 
     def set_rejection_reason(self,reason):
+        """ Add rejection reason to all fragments associated to this molecule
+        Args:
+            reason (str)
+        """
         for fragment in self:
             fragment.set_rejection_reason(reason)
 
@@ -412,6 +416,13 @@ class Molecule():
         self.umi = self.umi_counter.most_common(1)[0][0]
 
     def get_umi(self):
+        """Obtain umi of molecule
+
+        Returns:
+            umi (str):
+                return main umi associated with this molecule
+        """
+
         return self.umi
 
     def get_sample(self):
