@@ -63,6 +63,7 @@ class Fragment():
         self.is_multimapped = True
         self.mapping_quality = 0
         self.match_hash=None
+        self.safe_span = None # wether the span of the fragment could be determined
 
         # Span:\
         self.span=[None,None,None]
@@ -371,11 +372,12 @@ class Fragment():
                 allow_unsafe=True
                 )
             self.span = (contig,surfaceStart, surfaceEnd)
+            self.safe_span = True
         except Exception as e:
 
             if self.has_R1() and not self.get_R1().is_unmapped:
                 self.span = (contig, self.get_R1().reference_start,self.get_R1().reference_end)
-
+            self.safe_span = False
 
 
 
