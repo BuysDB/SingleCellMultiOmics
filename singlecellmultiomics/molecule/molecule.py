@@ -127,7 +127,7 @@ class Molecule():
                 # This happens when a consensus can not be obtained
                 pass
 
-    def get_consensus_read(self, target_file, read_name):
+    def get_consensus_read(self, target_file, read_name,consensus=None,phred_scores=None):
         """get pysam.AlignedSegment containing aggregated molecule information
 
         Args:
@@ -137,14 +137,19 @@ class Molecule():
         Returns:
             read(pysam.AlignedSegment)
         """
-        try: # Obtain the consensus sequence
-            consensus = self.get_consensus()
-        except Exception as e:
-            raise
+        if consensus is None:
+            try: # Obtain the consensus sequence
+                consensus = self.get_consensus()
+            except Exception as e:
+                raise
 
         sequence = ''.join(( consensus.get((self.chromosome, ref_pos),'N')
              for ref_pos in range(self.spanStart, self.spanEnd+1)
             ))
+
+        phred_score_array = list( phred_scores.get((self.chromosome, ref_pos),0)
+             for ref_pos in range(self.spanStart, self.spanEnd+1)
+            )
 
         # Construct consensus - read
         cread = pysam.AlignedSegment(header=target_file.header)
@@ -152,7 +157,7 @@ class Molecule():
         cread.reference_start = self.spanStart
         cread.query_name = read_name
         cread.query_sequence = sequence
-        cread.query_qualities = [33] * len(sequence) #todo
+        cread.query_qualities = phred_score_array
         cread.cigarstring  = f'{len(sequence)}M'
         cread.mapping_quality = self.get_max_mapping_qual()
         cread.is_reverse = self.strand
@@ -1014,6 +1019,8 @@ class Molecule():
                 consensus[location] = votes[0][0]
 
         return consensus
+
+
 
     def check_variants(self, variants, exclude_other_calls=True ): #when enabled other calls (non ref non alt will be set None)
         """Verify variants in molecule
