@@ -142,14 +142,19 @@ class Molecule():
                 consensus = self.get_consensus()
             except Exception as e:
                 raise
-
-        sequence = ''.join(( consensus.get((self.chromosome, ref_pos),'N')
+        if type(consensus)==str:
+            sequence = consensus
+        else:
+            sequence = ''.join(( consensus.get((self.chromosome, ref_pos),'N')
              for ref_pos in range(self.spanStart, self.spanEnd+1)
             ))
 
-        phred_score_array = list( phred_scores.get((self.chromosome, ref_pos),0)
+        if type(phred_scores)==dict:
+            phred_score_array = list( phred_scores.get((self.chromosome, ref_pos),0)
              for ref_pos in range(self.spanStart, self.spanEnd+1)
             )
+        else:
+            phred_score_array = phred_scores
 
         # Construct consensus - read
         cread = pysam.AlignedSegment(header=target_file.header)
