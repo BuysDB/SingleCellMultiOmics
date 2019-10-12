@@ -220,7 +220,7 @@ class Molecule():
             self.get_feature_window(window_size=window_size)
         ])
 
-    def deduplicate_to_single(self, target_file, read_name, classifier):
+    def deduplicate_to_single(self, target_bam, read_name, classifier):
         # Set all associated reads to duplicate
         for read in self.iter_reads():
             read.is_duplicate = True
@@ -234,75 +234,75 @@ class Molecule():
 
         read = self.get_consensus_read(
                     read_name=read_name,
-                    target_file = target_file,
+                    target_file = target_bam,
                     consensus=''.join(predicted_sequence),
                     phred_scores=phred_scores)
-        target_bam.write( read )
+
         return read
 
     def get_base_calling_feature_matrix(self):
-
-        RT_INDEX = 0
-        PHRED_INDEX = 1
-        RC_INDEX = 2
-        ALIGNED_WP_INDEX = 3
-        CYCLE_INDEX = 4
-        MQ_INDEX = 5
-        FS_INDEX = 6
-        features = np.zeros( (self.spanEnd - self.spanStart, 36) )
-        #ref_bases={}
-        features_per_block = 7
-        for rt_id,fragments in self.get_rt_reactions().items():
-            # we need to keep track what positions where covered by this RT reaction
-            RT_reaction_coverage = set() # (pos, base_call)
-            for fragment in fragments:
-                for read in fragment:
-                    if read is None:
-                        continue
-                    for cycle, q_pos, ref_pos, ref_base in  pysamiterators.ReadCycleIterator(read, matches_only=True,with_seq=True):
-                        query_base = read.seq[q_pos]
-                        #ref_bases[(self.chromosome, ref_pos)] = ref_base
-                        # Base index block:
-                        block_index = 'ACTGN'.index(query_base)
-                        row_index = ref_pos-self.spanStart
-                        if row_index<0 or row_index>=features.shape[0]:
+        with np.errstate(divide='ignore', invalid='ignore'):
+            RT_INDEX = 0
+            PHRED_INDEX = 1
+            RC_INDEX = 2
+            ALIGNED_WP_INDEX = 3
+            CYCLE_INDEX = 4
+            MQ_INDEX = 5
+            FS_INDEX = 6
+            features = np.zeros( (self.spanEnd - self.spanStart, 36) )
+            #ref_bases={}
+            features_per_block = 7
+            for rt_id,fragments in self.get_rt_reactions().items():
+                # we need to keep track what positions where covered by this RT reaction
+                RT_reaction_coverage = set() # (pos, base_call)
+                for fragment in fragments:
+                    for read in fragment:
+                        if read is None:
                             continue
+                        for cycle, q_pos, ref_pos, ref_base in  pysamiterators.ReadCycleIterator(read, matches_only=True,with_seq=True):
+                            query_base = read.seq[q_pos]
+                            #ref_bases[(self.chromosome, ref_pos)] = ref_base
+                            # Base index block:
+                            block_index = 'ACTGN'.index(query_base)
+                            row_index = ref_pos-self.spanStart
+                            if row_index<0 or row_index>=features.shape[0]:
+                                continue
 
-                        # Update rt_reactions
-                        features[row_index][RT_INDEX + 1+features_per_block*block_index] += 1
+                            # Update rt_reactions
+                            features[row_index][RT_INDEX + 1+features_per_block*block_index] += 1
 
-                        # Update total phred score
-                        features[row_index][PHRED_INDEX + 1+features_per_block*block_index] += read.query_qualities[q_pos]
+                            # Update total phred score
+                            features[row_index][PHRED_INDEX + 1+features_per_block*block_index] += read.query_qualities[q_pos]
 
-                        # Update total reads
-                        if not (ref_pos,query_base) in RT_reaction_coverage:
-                            features[row_index][RC_INDEX + 1+features_per_block*block_index] += 1
-                        RT_reaction_coverage.add( (ref_pos,query_base) )
+                            # Update total reads
+                            if not (ref_pos,query_base) in RT_reaction_coverage:
+                                features[row_index][RC_INDEX + 1+features_per_block*block_index] += 1
+                            RT_reaction_coverage.add( (ref_pos,query_base) )
 
-                        # Update primer mp
-                        if fragment.safe_span:
-                            features[row_index][ALIGNED_WP_INDEX + 1+features_per_block*block_index] +=  (ref_pos<fragment.span[1] or ref_pos>fragment.span[2] )
-                        else:
-                            features[row_index][ALIGNED_WP_INDEX + 1+features_per_block*block_index] +=  (ref_pos<fragment.span[1] or ref_pos>fragment.span[2] )
-                            #fragment_sizes[key].append( abs( fragment.span[1] - fragment.span[2] ) )
+                            # Update primer mp
+                            if fragment.safe_span:
+                                features[row_index][ALIGNED_WP_INDEX + 1+features_per_block*block_index] +=  (ref_pos<fragment.span[1] or ref_pos>fragment.span[2] )
+                            else:
+                                features[row_index][ALIGNED_WP_INDEX + 1+features_per_block*block_index] +=  (ref_pos<fragment.span[1] or ref_pos>fragment.span[2] )
+                                #fragment_sizes[key].append( abs( fragment.span[1] - fragment.span[2] ) )
 
-                        # Update fragment sizes:
-                        features[row_index][FS_INDEX + 1+features_per_block*block_index] += abs( fragment.span[1] - fragment.span[2] )
+                            # Update fragment sizes:
+                            features[row_index][FS_INDEX + 1+features_per_block*block_index] += abs( fragment.span[1] - fragment.span[2] )
 
-                        # Update cycle
-                        features[row_index][CYCLE_INDEX + 1+features_per_block*block_index] += cycle
+                            # Update cycle
+                            features[row_index][CYCLE_INDEX + 1+features_per_block*block_index] += cycle
 
-                        # Update MQ:
-                        features[row_index][MQ_INDEX + 1+features_per_block*block_index] += read.mapping_quality
-                        features[row_index][0] = ref_pos
-        # Normalize all and return
+                            # Update MQ:
+                            features[row_index][MQ_INDEX + 1+features_per_block*block_index] += read.mapping_quality
+                            features[row_index][0] = ref_pos
+            # Normalize all and return
 
-        for block_index in range(5): #ACGTN
-            for index in (PHRED_INDEX, ALIGNED_WP_INDEX, CYCLE_INDEX, MQ_INDEX, FS_INDEX  ):
-                features[:,index + 1+features_per_block*block_index] /=  features[:,RC_INDEX + 1+features_per_block*block_index]
-        #np.nan_to_num( features, nan=-1, copy=False )
-        features[np.isnan(features)] = -1
-        return features
+            for block_index in range(5): #ACGTN
+                for index in (PHRED_INDEX, ALIGNED_WP_INDEX, CYCLE_INDEX, MQ_INDEX, FS_INDEX  ):
+                    features[:,index + 1+features_per_block*block_index] /=  features[:,RC_INDEX + 1+features_per_block*block_index]
+            #np.nan_to_num( features, nan=-1, copy=False )
+            features[np.isnan(features)] = -1
+            return features
 
     def has_valid_span(self):
         """Check if the span of the molecule is determined
