@@ -39,6 +39,10 @@ cluster.add_argument('-time',  default=52, type=int, help='Time requested per jo
 tr = argparser.add_argument_group('transcriptome specific settings')
 tr.add_argument('-exons', type=str, help='Exon GTF file')
 tr.add_argument('-introns', type=str, help='Intron GTF file, use exonGTF_to_intronGTF.py to create this file')
+cg = argparser.add_argument_group('molecule consensus specific settings')
+cg.add_argument('--consensus', action='store_true', help='Calculate molecule consensus read, this feature is _VERY_ experimental')
+cg.add_argument('-consensus_model', type=str, help='Name of or path to consensus classifier', default='nla_140bp_pe_juan_1M.pickle')
+cg.add_argument('--no_source_reads', action='store_true', help='Do not write original reads, only consensus ')
 args = argparser.parse_args()
 
 if not args.o.endswith('.bam'):
