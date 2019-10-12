@@ -14,6 +14,9 @@ import uuid
 import os
 import sys
 import colorama
+import sklearn
+import pkg_resources
+import pickle
 
 argparser = argparse.ArgumentParser(
  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -39,6 +42,7 @@ cluster.add_argument('-time',  default=52, type=int, help='Time requested per jo
 tr = argparser.add_argument_group('transcriptome specific settings')
 tr.add_argument('-exons', type=str, help='Exon GTF file')
 tr.add_argument('-introns', type=str, help='Intron GTF file, use exonGTF_to_intronGTF.py to create this file')
+
 cg = argparser.add_argument_group('molecule consensus specific settings')
 cg.add_argument('--consensus', action='store_true', help='Calculate molecule consensus read, this feature is _VERY_ experimental')
 cg.add_argument('-consensus_model', type=str, help='Name of or path to consensus classifier', default='nla_140bp_pe_juan_1M.pickle')
@@ -58,6 +62,14 @@ if args.ref is None:
 if args.ref is not None:
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
 
+if args.consensus:
+    # Load from path if available:
+    if os.path.exists(args.consensus_model):
+        model_path = args.consensus_model
+    else:
+        model_path = pkg_resources.resource_filename('singlecellmultiomics',f'molecule/consensus_model/{args.consensus_model}')
+    with open(model_path, 'rb') as f:
+        consensus_model = pickle.load(f)
 
 ##### Define fragment and molecule class arguments and instances: ####
 
@@ -222,6 +234,7 @@ with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_
 
         # set unique molecule identifier
         molecule.set_meta('mi', i)
+
         # Write tag values
         molecule.write_tags()
 
@@ -229,8 +242,18 @@ with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_
         for fragment in molecule:
             read_groups.add(fragment.get_read_group())
 
+        # Calculate molecule consensus
+        if args.consensus:
+            consensus_read = molecule.deduplicate_to_single(
+                    out_bam_temp,
+                    f'consensus_{i}',
+                    consensus_model)
+            consensus_read.set_tag('RG', molecule[0].get_read_group() )
+            consensus_read.set_tag('mi', i)
+            out_bam_temp.write(consensus_read)
         # Write the reads to the output file
-        molecule.write_pysam( out_bam_temp )
+        if not args.no_source_reads:
+            molecule.write_pysam( out_bam_temp )
 
 # Add readgroups to the bam file
 add_readgroups_to_header(
