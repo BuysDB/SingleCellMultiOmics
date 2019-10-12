@@ -220,6 +220,26 @@ class Molecule():
             self.get_feature_window(window_size=window_size)
         ])
 
+    def deduplicate_to_single(self, target_file, read_name, classifier):
+        # Set all associated reads to duplicate
+        for read in self.iter_reads():
+            read.is_duplicate = True
+
+        features = self.get_base_calling_feature_matrix()
+        predicted_sequence = classifier.predict(features[:,1:])
+        predicted_sequence[ features[:, [ x*7+1 for x in range(4) ] ].sum(1)==0 ] ='N'
+        phred_scores = np.rint(
+                -10*np.log10( 1-classifier.predict_proba(features[:,1:]).max(1) )
+            ).astype('B')
+
+        read = self.get_consensus_read(
+                    read_name=read_name,
+                    target_file = target_file,
+                    consensus=''.join(predicted_sequence),
+                    phred_scores=phred_scores)
+        target_bam.write( read )
+        return read
+
     def get_base_calling_feature_matrix(self):
 
         RT_INDEX = 0
