@@ -325,6 +325,7 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
         barcodeRead=0, barcodeStart = 6, barcodeLength=8,
          barcodeFileParser=None, barcodeFileAlias=None, indexFileParser=None,
          indexFileAlias = 'illumina_merged_ThruPlex48S_RP',
+         random_primer_read = None, random_primer_length = 6,
          **kwargs ):
         self.description=''
         self.barcodeFileAlias = barcodeFileAlias
@@ -340,7 +341,10 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
         self.barcodeLength = barcodeLength
         self.autoDetectable = False
 
-        self.sequenceCapture = [slice(None) , slice(None) ] # ranges
+        self.random_primer_read = random_primer_read
+        self.random_primer_length = random_primer_length
+
+        self.sequenceCapture = [slice(None) , slice(None) ] # ranges to capture for read 1 and read 2
         if umiLength==0:
             # Barcode only
             if barcodeStart!=0:
@@ -352,6 +356,16 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
             if not( umiStart==0 or barcodeStart==0 ):
                 raise NotImplementedError('Complicated slice where we need to capture around a region')
             self.sequenceCapture[barcodeRead] =     slice( barcodeLength+umiLength, None)
+
+        if random_primer_read!=None:
+            if self.sequenceCapture[random_primer_read].stop is not None:
+                raise NotImplementedError()
+            self.sequenceCapture[random_primer_read] = slice(
+                    self.sequenceCapture[random_primer_read].start,
+                    -random_primer_length,
+                    self.sequenceCapture[random_primer_read].step
+            )
+            self.random_primer_slice = slice(-random_primer_length,None,None)
 
     def __repr__(self):
         return f'{self.longName} bc: {self.barcodeStart}:{self.barcodeLength}, umi: {self.umiStart}:{self.umiLength} {self.description}'
@@ -376,6 +390,9 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
         if barcodeIdentifier is None:
             raise NonMultiplexable(f'bc:{rawBarcode}_not_matching_{self.barcodeFileAlias}')
 
+        random_primer = None
+        if self.random_primer_read!=None:
+            random_primer = records[self.random_primer_read].sequence[self.random_primer_slice]
         if self.umiLength!=0:
             umi = records[self.umiRead].sequence[self.umiStart:self.umiStart+self.umiLength]
             umiQual = records[self.umiRead].qual[self.umiStart:self.umiStart+self.umiLength]
@@ -406,7 +423,11 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
                         'BC':barcode
             })
             #tr.addTagByTag('hd', hammingDistance, isPhred=False)
-
+            if random_primer is not None:
+                tr.addTagByTag('rP',
+                    random_primer,
+                    isPhred=False,
+                    make_safe=False)
 
             tr.addTagByTag('QT', barcodeQual, isPhred=True)
 
