@@ -424,7 +424,7 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
             })
             #tr.addTagByTag('hd', hammingDistance, isPhred=False)
             if random_primer is not None:
-                tr.addTagByTag('rP',
+                tr.addTagByTag('rS',
                     random_primer,
                     isPhred=False,
                     make_safe=False)
