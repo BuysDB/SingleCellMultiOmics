@@ -22,6 +22,12 @@ import imageio
 import random
 import itertools
 
+def empty_tensor_dict():
+    d =  {'insert':0, 'deleted':0,'match':0, 'mismatch':0, 'clip':0, 'A':0, 'T':0, 'C':0, 'G':0}
+    for baseA,baseB in itertools.product('ACTG',repeat=2):
+        d[f'{baseA}>{baseB}'] = 0
+    return d
+
 class TensorStackMolecule(singlecellmultiomics.molecule.Molecule):
 
     def __init__(self,
@@ -212,19 +218,13 @@ else:
                 else:
                     non_variant_enough_cov.append(column.pos)
 
-
         print('Calculating conversion tensor')
-        #list(itertools.product('ACTG',repeat=2))
-        #for baseA,baseB in itertools.product('ACTG')
-
-        conversions = collections.defaultdict(lambda:{'insert':0, 'deleted':0,'match':0, 'mismatch':0, 'clip':0, 'A':0, 'T':0, 'C':0, 'G':0})
+        conversions = collections.defaultdict(empty_tensor_dict)
         for ii,read in enumerate(alignments_positive.fetch(contig)):
 
             last_ref_pos = None
             clipped=0
             for query_pos, ref_pos, ref_base in read.get_aligned_pairs(with_seq=True):
-
-
 
                 if ref_pos is None: # clip or skip
                     if last_ref_pos is not None: # otherwise we don't know our starting coordinate
