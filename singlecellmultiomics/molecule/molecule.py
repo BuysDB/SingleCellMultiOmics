@@ -46,10 +46,13 @@ def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2, max
                 if other_start!=hstart:
                     continue
 
+                if hseq.count('N')>max_N_distance:
+                    continue
+
                 if 'N' in other_seq:
                     continue
 
-                if hamming_distance(hseq,other_seq)<=max_N_distance:
+                if hamming_distance(hseq,other_seq)==0:
                     rp[other_start, other_seq].append(fragment)
     return rp
 
