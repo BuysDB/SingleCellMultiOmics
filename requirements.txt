@@ -6,3 +6,5 @@ pysamiterators>=1.6
 matplotlib
 more-itertools
 tabulate
+wheel
+setuptools>=40.8.0
