@@ -294,7 +294,7 @@ class Molecule():
 
                             # Update MQ:
                             features[row_index][MQ_INDEX + 1+features_per_block*block_index] += read.mapping_quality
-                            features[row_index][0] = ref_pos
+
             # Normalize all and return
 
             for block_index in range(5): #ACGTN
