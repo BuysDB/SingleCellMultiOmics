@@ -127,6 +127,8 @@ class Molecule():
                 # This happens when a consensus can not be obtained
                 pass
 
+
+
     def get_consensus_read(self, target_file, read_name,consensus=None,phred_scores=None):
         """get pysam.AlignedSegment containing aggregated molecule information
 
@@ -240,7 +242,13 @@ class Molecule():
 
         return read
 
-    def get_base_calling_feature_matrix(self):
+    def get_base_calling_feature_matrix(self, return_ref_info=False):
+        """
+        Obtain feature matrix for base calling
+
+        Args:
+            return_ref_info (bool) : return both X and array with feature information
+        """
         with np.errstate(divide='ignore', invalid='ignore'):
             RT_INDEX = 0
             PHRED_INDEX = 1
@@ -250,7 +258,10 @@ class Molecule():
             MQ_INDEX = 5
             FS_INDEX = 6
             features = np.zeros( (self.spanEnd - self.spanStart, 36) )
-            #ref_bases={}
+
+            if return_ref_info:
+                ref_bases = {}
+
             features_per_block = 7
             for rt_id,fragments in self.get_rt_reactions().items():
                 # we need to keep track what positions where covered by this RT reaction
@@ -295,6 +306,9 @@ class Molecule():
                             # Update MQ:
                             features[row_index][MQ_INDEX + 1+features_per_block*block_index] += read.mapping_quality
 
+                            if return_ref_info:
+                                ref_bases[ref_pos] = ref_base.upper()
+
             # Normalize all and return
 
             for block_index in range(5): #ACGTN
@@ -302,6 +316,13 @@ class Molecule():
                     features[:,index + 1+features_per_block*block_index] /=  features[:,RC_INDEX + 1+features_per_block*block_index]
             #np.nan_to_num( features, nan=-1, copy=False )
             features[np.isnan(features)] = -1
+
+            if return_ref_info:
+                ref_info = [
+                    (self.chromosome, ref_pos, ref_bases.get(ref_pos,'N'))
+                    for ref_pos in range(self.spanStart, self.spanEnd)]
+                return  features, ref_info
+
             return features
 
     def has_valid_span(self):
