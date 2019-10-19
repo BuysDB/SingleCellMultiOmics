@@ -16,8 +16,10 @@ import pysamiterators
 
 
 @functools.lru_cache(maxsize=1000)
-def might_be_variant(chrom,pos, variants):
+def might_be_variant(chrom,pos, variants, ref_base=None):
     """Returns True if a variant exists at the given coordinate"""
+    if ref_base=='N':
+        return False
     for record in  variants.fetch(chrom,pos,pos+1):
         return True
     return False
@@ -346,7 +348,7 @@ class Molecule():
         features, feature_info = self.get_base_calling_feature_matrix(True)
         # check which bases should not be used
         use_indices = [
-            not might_be_variant_function(chrom,pos, mask_variants)
+            not might_be_variant_function(chrom,pos, mask_variants, base)
             for chrom, pos, base in feature_info ]
 
         X_molecule = features[use_indices]
