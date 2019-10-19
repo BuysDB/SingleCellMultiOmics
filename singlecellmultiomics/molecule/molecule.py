@@ -755,14 +755,14 @@ class Molecule():
         """
         return molecule_to_random_primer_dict(self)
 
-    def get_rt_reaction_fragment_sizes(self):
+    def get_rt_reaction_fragment_sizes(self, max_N_distance=1):
 
         """Obtain all RT reaction fragment sizes
         Returns:
             rt_sizes (list of ints)
         """
 
-        rt_reactions = molecule_to_random_primer_dict(self)
+        rt_reactions = molecule_to_random_primer_dict(self,max_N_distance=max_N_distance)
         amount_of_rt_reactions = len(rt_reactions)
 
         #this obtains the maximum fragment size:
@@ -770,8 +770,15 @@ class Molecule():
 
         #Obtain the fragment sizes of all RT reactions:
         rt_sizes = []
-        for (rt_end,hexamer), fragment in rt_reactions.items():
-            rt_chrom, rt_start, rt_end = pysamiterators.iterators.getListSpanningCoordinates(itertools.chain.from_iterable(fragment))
+        for (rt_end,hexamer), fragments in rt_reactions.items():
+
+            if rt_end is None:
+                continue
+
+            rt_chrom, rt_start, rt_end = pysamiterators.iterators.getListSpanningCoordinates(
+                 itertools.chain.from_iterable([fragment for fragment in fragments if fragment is not None and fragment.get_random_primer_hash()[0] is not None] )
+                )
+
             rt_sizes.append([rt_end-rt_start])
         return rt_sizes
 
