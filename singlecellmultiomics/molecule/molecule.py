@@ -9,10 +9,18 @@ from singlecellmultiomics.utils import style_str
 from more_itertools import consecutive_groups
 import textwrap
 import  singlecellmultiomics.alleleTools
-
+import functools
 import typing
 import pysam
 import pysamiterators
+
+
+@functools.lru_cache(maxsize=1000)
+def might_be_variant(chrom,pos, variants):
+    """Returns True if a variant exists at the given coordinate"""
+    for record in  variants.fetch(chrom,pos,pos+1):
+        return True
+    return False
 
 def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2, max_N_distance=0): #1: read1 2: read2
     rp = collections.defaultdict(list)
@@ -328,6 +336,22 @@ class Molecule():
                 return  features, ref_info
 
             return features
+
+    def get_base_calling_training_data(self,mask_variants,might_be_variant_function=None):
+        if might_be_variant_function is None:
+            might_be_variant_function = might_be_variant
+        features, feature_info = self.get_base_calling_feature_matrix(True)
+        # check which bases should not be used
+        use_indices = [
+            not might_be_variant_function(chrom,pos, mask_variants)
+            for chrom, pos, base in feature_info ]
+
+        X_molecule = features[use_indices]
+        y_molecule = [
+            base for use,(chrom, pos, base) in
+            zip(use_indices,feature_info) if use
+            ]
+        return X_molecule, y_molecule
 
     def has_valid_span(self):
         """Check if the span of the molecule is determined
