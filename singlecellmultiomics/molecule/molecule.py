@@ -264,13 +264,20 @@ class Molecule():
 
         return read
 
-    def get_base_calling_feature_matrix(self, return_ref_info=False):
+    def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None):
         """
         Obtain feature matrix for base calling
 
         Args:
             return_ref_info (bool) : return both X and array with feature information
+            start (int) : start of range, genomic position
+            end (int) : end of range (inclusive), genomic position
         """
+        if start is None:
+            start = self.spanStart
+        if end is None:
+            end = self.spanEnd
+
         with np.errstate(divide='ignore', invalid='ignore'):
             RT_INDEX = 0
             PHRED_INDEX = 1
@@ -282,27 +289,28 @@ class Molecule():
             STRAND_INDEX = 7
             COLUMN_OFFSET = 0
             features_per_block = 8
-            features = np.zeros( (self.spanEnd - self.spanStart, features_per_block*5 + 1) )
+            features = np.zeros( (end - start + 1, features_per_block*5 + 1) )
 
             if return_ref_info:
                 ref_bases = {}
-
 
             for rt_id,fragments in self.get_rt_reactions().items():
                 # we need to keep track what positions where covered by this RT reaction
                 RT_reaction_coverage = set() # (pos, base_call)
                 for fragment in fragments:
                     for read in fragment:
-                        if read is None:
+                        # Skip reads outside range
+                        if read is None or read.reference_start > (end+1) or read.reference_end < start:
                             continue
                         for cycle, q_pos, ref_pos, ref_base in  pysamiterators.ReadCycleIterator(read, matches_only=True,with_seq=True):
-                            query_base = read.seq[q_pos]
-                            #ref_bases[(self.chromosome, ref_pos)] = ref_base
-                            # Base index block:
-                            block_index = 'ACTGN'.index(query_base)
-                            row_index = ref_pos-self.spanStart
+
+                            row_index = ref_pos-start
                             if row_index<0 or row_index>=features.shape[0]:
                                 continue
+
+                            query_base = read.seq[q_pos]
+                            # Base index block:
+                            block_index = 'ACTGN'.index(query_base)
 
                             # Update rt_reactions
                             features[row_index][RT_INDEX + COLUMN_OFFSET +features_per_block*block_index] += 1
@@ -348,10 +356,11 @@ class Molecule():
             if return_ref_info:
                 ref_info = [
                     (self.chromosome, ref_pos, ref_bases.get(ref_pos,'N'))
-                    for ref_pos in range(self.spanStart, self.spanEnd)]
+                    for ref_pos in range(start, end+1)]
                 return  features, ref_info
 
             return features
+
 
     def get_base_calling_training_data(self,mask_variants=None,might_be_variant_function=None):
         if mask_variants is not None and  might_be_variant_function is None:
