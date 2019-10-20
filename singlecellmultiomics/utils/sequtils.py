@@ -1,13 +1,16 @@
 import math
 
 def phred_to_prob(phred):
-    """Convert a phred score (ASCII) to a numeric probability
-
+    """Convert a phred score (ASCII) or integer to a numeric probability
+    Args:
+        phred (str/int) : score to convert
     returns:
         probability(float)
     """
 
     try:
+        if type(phred)==int:
+            return math.pow(10,-(phred)/10 )
         return math.pow(10,-(ord(phred)-33)/10 )
     except ValueError:
         return 1
