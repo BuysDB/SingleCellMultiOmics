@@ -245,6 +245,13 @@ class Molecule():
         ])
 
     def deduplicate_to_single(self, target_bam, read_name, classifier):
+        """
+        Deduplicate all associated reads to a single pseudoread
+        Args:
+            target_bam (pysam.AlignmentFile) : file to associate the read with
+            read_name (str) : name of the pseudoread
+            classifier (sklearn classifier) : classifier for consensus prediction
+        """
         # Set all associated reads to duplicate
         for read in self.iter_reads():
             read.is_duplicate = True
