@@ -401,10 +401,60 @@ class Molecule():
             return features
 
 
+    def get_base_calling_feature_matrix_spaced(self,return_ref_info=False):
+        """
+        Obtain a base-calling feature matrix for all reference aligned bases.
+
+        Returns:
+            X : feature matrix
+            y : reference bases
+            CIGAR : alignment of feature matrix to reference
+
+        """
+
+        X = None
+        if return_ref_info:
+            y = []
+        CIGAR = []
+        prev_end = None
+        alignment_start = None
+        alignment_end = None
+        for start,end in self.get_aligned_blocks():
+            if return_ref_info:
+                x,y_ = self.get_base_calling_feature_matrix(
+                        return_ref_info=return_ref_info, start=start, end=end)
+                y+=y_
+            else:
+                x = self.get_base_calling_feature_matrix(
+                        return_ref_info=return_ref_info, start=start, end=end)
+
+            if X is None:
+                X = x
+            else:
+                X = np.append(X,x,axis=0)
+
+            if prev_end is not None:
+                CIGAR.append(f'{start-prev_end-1}N')
+            CIGAR.append(f'{(end-start+1)}M' )
+            prev_end = end
+
+            if alignment_start is None:
+                alignment_start = start
+                alignment_end = end
+            else:
+                alignment_start=min(alignment_start,start)
+                alignment_end=max(alignment_end,end)
+
+        if return_ref_info:
+            return X,y,CIGAR,alignment_start, alignment_end
+        else:
+            return X,CIGAR,alignment_start, alignment_end
+
     def get_base_calling_training_data(self,mask_variants=None,might_be_variant_function=None):
         if mask_variants is not None and  might_be_variant_function is None:
             might_be_variant_function = might_be_variant
-        features, feature_info = self.get_base_calling_feature_matrix(True)
+
+        features, feature_info, _CIGAR, _alignment_start, _alignment_end  = self.get_base_calling_feature_matrix_spaced(True)
         # check which bases should not be used
         use_indices = [
             mask_variants is None or
