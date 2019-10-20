@@ -22,8 +22,8 @@ class MethylationContextHistogram(StatisticHistogram):
 
         tags = dict( read.tags )
         for tag in 'zhx':
-            self.context_obs[tag] += tags.get(f's{tag}')
-            self.context_obs[tag.upper()] += tags.get(f's{tag.upper()}')
+            self.context_obs[tag] += tags.get(f's{tag}',0)
+            self.context_obs[tag.upper()] += tags.get(f's{tag.upper()}',0)
 
     def __repr__(self):
         return f'Methylation status.'
