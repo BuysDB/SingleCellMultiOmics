@@ -179,6 +179,17 @@ elif args.method=='vasa' or args.method=='cs':
 else:
     raise ValueError("Supply a valid method")
 
+#### This decides what molecules we will traverse
+molecule_iterator = MoleculeIterator(
+    alignments=input_bam,
+    queryNameFlagger=queryNameFlagger,
+    moleculeClass=moleculeClass,
+    fragmentClass=fragmentClass,
+    molecule_class_args=molecule_class_args,
+    fragment_class_args=fragment_class_args,
+    yield_invalid=yield_invalid,
+    contig=args.contig
+)
 # We needed to check if every argument is properly placed. If so; the jobs can be sent to the cluster
 if args.cluster:
     if args.contig is None:
