@@ -268,7 +268,7 @@ with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_
 
         # Calculate molecule consensus
         if args.consensus:
-            consensus_read = molecule.deduplicate_to_single(
+            consensus_read = molecule.deduplicate_to_single_CIGAR_spaced(
                     out_bam_temp,
                     f'consensus_{i}',
                     consensus_model)
