@@ -45,8 +45,11 @@ tr.add_argument('-introns', type=str, help='Intron GTF file, use exonGTF_to_intr
 
 cg = argparser.add_argument_group('molecule consensus specific settings')
 cg.add_argument('--consensus', action='store_true', help='Calculate molecule consensus read, this feature is _VERY_ experimental')
-cg.add_argument('-consensus_model', type=str, help='Name of or path to consensus classifier', default='nla_140bp_pe_juan_1M.pickle')
+cg.add_argument('-consensus_mask_variants', type=str, help='variants to mask during training (VCF file)')
+cg.add_argument('-consensus_model', type=str, help='Name of or path to consensus classifier', default=None)
+cg.add_argument('-consensus_n_train', type=int, help='Amount of bases used for training', default=500_000)
 cg.add_argument('--no_source_reads', action='store_true', help='Do not write original reads, only consensus ')
+
 args = argparser.parse_args()
 
 if not args.o.endswith('.bam'):
@@ -61,15 +64,6 @@ if args.ref is None:
 
 if args.ref is not None:
     reference = pysamiterators.iterators.CachedFasta( pysam.FastaFile(args.ref) )
-
-if args.consensus:
-    # Load from path if available:
-    if os.path.exists(args.consensus_model):
-        model_path = args.consensus_model
-    else:
-        model_path = pkg_resources.resource_filename('singlecellmultiomics',f'molecule/consensus_model/{args.consensus_model}')
-    with open(model_path, 'rb') as f:
-        consensus_model = pickle.load(f)
 
 ##### Define fragment and molecule class arguments and instances: ####
 
@@ -190,6 +184,31 @@ molecule_iterator = MoleculeIterator(
     yield_invalid=yield_invalid,
     contig=args.contig
 )
+#####
+
+if args.consensus:
+    # Load from path if available:
+    consensus_model_path=None
+    if args.consensus_model is not None:
+        if os.path.exists(args.consensus_model):
+            model_path = args.consensus_model
+        else:
+            model_path = pkg_resources.resource_filename('singlecellmultiomics',f'molecule/consensus_model/{args.consensus_model}')
+        with open(model_path, 'rb') as f:
+            consensus_model = pickle.load(f)
+    elif args.consensus_mask_variants is not None:
+        mask_variants = pysam.VariantFile(args.consensus_mask_variants)
+        print("Fitting consensus model, this may take a long time")
+        consensus_model = singlecellmultiomics.molecule.train_consensus_model(
+                    molecule_iterator,
+                    mask_variants=mask_variants,
+                    n_train=args.consensus_n_train)
+        # Write the consensus model to disk
+        consensus_model_path = os.path.abspath( os.path.dirname(args.o) )+ '/consensus_model.pickle.gz'
+        print(f'Writing consensus model to {consensus_model_path}')
+        with open(consensus_model_path,'wb') as f:
+            pickle.dump(consensus_model,f)
+
 # We needed to check if every argument is properly placed. If so; the jobs can be sent to the cluster
 if args.cluster:
     if args.contig is None:
@@ -201,6 +220,8 @@ if args.cluster:
                 continue
             temp_bam_path = f'{temp_prefix}_{chrom}.bam'
             arguments = " ".join([x for x in sys.argv if not x==args.o and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
+            if consensus_model_path is not None:
+                arguments+= f' -consensus_model {consensus_model_path}'
             job = f'SCMULTIOMICS_{str(uuid.uuid4())}'
             os.system( f'submission.py --silent' + f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"' )
             hold_merge.append(job)
@@ -223,20 +244,12 @@ out_bam_temp_path_rg = f'{out_bam_path}.unsorted.rg'
 #Copy the header
 input_header = input_bam.header.copy()
 
+print(f'Started writing to {out_bam_temp_path}')
 with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_bam_temp:
 
     read_groups = set() # Store unique read groups in this set
     for i,molecule in enumerate(
-            MoleculeIterator(
-                alignments=input_bam,
-                queryNameFlagger=queryNameFlagger,
-                moleculeClass=moleculeClass,
-                fragmentClass=fragmentClass,
-                molecule_class_args=molecule_class_args,
-                fragment_class_args=fragment_class_args,
-                yield_invalid=yield_invalid,
-                contig=args.contig
-            )
+            molecule_iterator
         ):
 
         # Stop when enough molecules are processed
