@@ -245,8 +245,8 @@ class Molecule():
             read.is_duplicate = True
 
         features = self.get_base_calling_feature_matrix()
-        predicted_sequence = classifier.predict(features[:,1:])
-        predicted_sequence[ features[:, [ x*7+1 for x in range(4) ] ].sum(1)==0 ] ='N'
+        predicted_sequence = classifier.predict(features)
+        predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
         phred_scores = np.rint(
                 -10*np.log10( np.clip(1-classifier.predict_proba(features).max(1), 0.000000001, 0.999999999 )
             )).astype('B')
@@ -275,6 +275,7 @@ class Molecule():
             MQ_INDEX = 5
             FS_INDEX = 6
             STRAND_INDEX = 7
+            COLUMN_OFFSET = 0
             features_per_block = 8
             features = np.zeros( (self.spanEnd - self.spanStart, features_per_block*5 + 1) )
 
@@ -299,34 +300,34 @@ class Molecule():
                                 continue
 
                             # Update rt_reactions
-                            features[row_index][RT_INDEX + 1+features_per_block*block_index] += 1
+                            features[row_index][RT_INDEX + COLUMN_OFFSET +features_per_block*block_index] += 1
 
                             # Update total phred score
-                            features[row_index][PHRED_INDEX + 1+features_per_block*block_index] += read.query_qualities[q_pos]
+                            features[row_index][PHRED_INDEX + COLUMN_OFFSET +features_per_block*block_index] += read.query_qualities[q_pos]
 
                             # Update total reads
                             if not (ref_pos,query_base) in RT_reaction_coverage:
-                                features[row_index][RC_INDEX + 1+features_per_block*block_index] += 1
+                                features[row_index][RC_INDEX + COLUMN_OFFSET +features_per_block*block_index] += 1
                             RT_reaction_coverage.add( (ref_pos,query_base) )
 
                             # Update primer mp
                             if fragment.safe_span:
-                                features[row_index][ALIGNED_WP_INDEX + 1+features_per_block*block_index] +=  (ref_pos<fragment.span[1] or ref_pos>fragment.span[2] )
+                                features[row_index][ALIGNED_WP_INDEX + COLUMN_OFFSET +features_per_block*block_index] +=  (ref_pos<fragment.span[1] or ref_pos>fragment.span[2] )
                             else:
-                                features[row_index][ALIGNED_WP_INDEX + 1+features_per_block*block_index] +=  (ref_pos<fragment.span[1] or ref_pos>fragment.span[2] )
+                                features[row_index][ALIGNED_WP_INDEX + COLUMN_OFFSET +features_per_block*block_index] +=  (ref_pos<fragment.span[1] or ref_pos>fragment.span[2] )
                                 #fragment_sizes[key].append( abs( fragment.span[1] - fragment.span[2] ) )
 
                             # Update fragment sizes:
-                            features[row_index][FS_INDEX + 1+features_per_block*block_index] += abs( fragment.span[1] - fragment.span[2] )
+                            features[row_index][FS_INDEX + COLUMN_OFFSET +features_per_block*block_index] += abs( fragment.span[1] - fragment.span[2] )
 
                             # Update cycle
-                            features[row_index][CYCLE_INDEX + 1+features_per_block*block_index] += cycle
+                            features[row_index][CYCLE_INDEX + COLUMN_OFFSET +features_per_block*block_index] += cycle
 
                             # Update MQ:
-                            features[row_index][MQ_INDEX + 1+features_per_block*block_index] += read.mapping_quality
+                            features[row_index][MQ_INDEX + COLUMN_OFFSET +features_per_block*block_index] += read.mapping_quality
 
                             # update strand:
-                            features[row_index][STRAND_INDEX + 1+features_per_block*block_index] += read.is_reverse
+                            features[row_index][STRAND_INDEX + COLUMN_OFFSET +features_per_block*block_index] += read.is_reverse
 
                             if return_ref_info:
                                 ref_bases[ref_pos] = ref_base.upper()
@@ -335,7 +336,7 @@ class Molecule():
 
             for block_index in range(5): #ACGTN
                 for index in (PHRED_INDEX, ALIGNED_WP_INDEX, CYCLE_INDEX, MQ_INDEX, FS_INDEX, STRAND_INDEX  ):
-                    features[:,index + 1+features_per_block*block_index] /=  features[:,RC_INDEX + 1+features_per_block*block_index]
+                    features[:,index + COLUMN_OFFSET +features_per_block*block_index] /=  features[:,RC_INDEX + COLUMN_OFFSET +features_per_block*block_index]
             #np.nan_to_num( features, nan=-1, copy=False )
             features[np.isnan(features)] = -1
 
