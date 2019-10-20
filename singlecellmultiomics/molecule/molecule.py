@@ -342,12 +342,13 @@ class Molecule():
 
             return features
 
-    def get_base_calling_training_data(self,mask_variants,might_be_variant_function=None):
-        if might_be_variant_function is None:
+    def get_base_calling_training_data(self,mask_variants=None,might_be_variant_function=None):
+        if mask_variants is not None and  might_be_variant_function is None:
             might_be_variant_function = might_be_variant
         features, feature_info = self.get_base_calling_feature_matrix(True)
         # check which bases should not be used
         use_indices = [
+            mask_variants is None or 
             not might_be_variant_function(chrom,pos, mask_variants, base)
             for chrom, pos, base in feature_info ]
 
