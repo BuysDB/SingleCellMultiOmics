@@ -5,15 +5,21 @@ def get_consensus_training_data(molecule_iterator, mask_variants=None, n_train=1
     X = None
     y = []
 
+    last_end = None
     for i,molecule in enumerate( molecule_iterator ):
+        # Never train the same genomic location twice
+        if last_end is not None and molecule.spanStart<last_end:
+            continue
         x,_y = molecule.get_base_calling_training_data(mask_variants)
         if X is None:
             X = np.empty((0,x.shape[1]))
             print(f"Creating feature matrix with {x.shape[1]} dimensions and {n_train} training base-calls")
         y+=_y
         X = np.append(X,x,axis=0)
+        last_end = molecule.spanEnd
         if len(X)>=n_train:
             break
+    print(f'Finished, last genomic coordinate: {molecule.chromosome} {molecule.spanEnd}')
     return X,y
 
 def train_consensus_model(molecule_iterator, mask_variants=None, classifier=None, n_train=100_000):
