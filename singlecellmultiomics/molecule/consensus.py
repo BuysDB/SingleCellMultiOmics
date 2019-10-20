@@ -19,9 +19,11 @@ def get_consensus_training_data(molecule_iterator, mask_variants=None, n_train=1
 def train_consensus_model(molecule_iterator, mask_variants=None, classifier=None, n_train=100_000):
     if classifier is None: # default to random forest
         classifier = sklearn.ensemble.RandomForestClassifier(
-                n_jobs=8,
+                n_jobs=-1,
                 n_estimators=100,
-                oob_score=True
+                oob_score=True,
+                max_depth=7,
+                min_samples_leaf=5
                 )
     X,y = get_consensus_training_data(molecule_iterator, mask_variants=mask_variants, n_train=n_train)
     classifier.fit(X,y)
