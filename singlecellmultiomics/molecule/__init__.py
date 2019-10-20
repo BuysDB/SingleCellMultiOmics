@@ -5,3 +5,4 @@ from .featureannotatedmolecule import *
 from .nlaIII import *
 from .rna import *
 from .iterator import *
+from .consensus import *
