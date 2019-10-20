@@ -91,8 +91,9 @@ setup(
 
 
         ],
+
   install_requires=[
-       'pysam','numpy','pandas','colorama','pysamiterators','more-itertools','matplotlib','tabulate'
+       'pysam','numpy','pandas','colorama','pysamiterators','more-itertools','matplotlib','tabulate','wheel','setuptools','scikit-learn','seaborn'
    ],
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],
