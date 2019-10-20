@@ -29,4 +29,5 @@ def train_consensus_model(molecule_iterator, mask_variants=None, classifier=None
     classifier.fit(X,y)
     if type(classifier)==sklearn.ensemble.forest.RandomForestClassifier:
         print(f"Model out of bag accuracy: {classifier.oob_score_}")
+    classifier.n_jobs = 1 # fix amount of jobs to one, otherwise apply will be very slow
     return classifier
