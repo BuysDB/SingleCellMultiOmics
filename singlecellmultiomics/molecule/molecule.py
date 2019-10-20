@@ -146,7 +146,7 @@ class Molecule():
 
 
 
-    def get_consensus_read(self, target_file, read_name,consensus=None,phred_scores=None):
+    def get_consensus_read(self, target_file, read_name,consensus=None,phred_scores=None, cigarstring=None, start=None):
         """get pysam.AlignedSegment containing aggregated molecule information
 
         Args:
@@ -156,6 +156,8 @@ class Molecule():
         Returns:
             read(pysam.AlignedSegment)
         """
+        if start is None:
+            start = self.spanStart
         if consensus is None:
             try: # Obtain the consensus sequence
                 consensus = self.get_consensus()
@@ -178,11 +180,14 @@ class Molecule():
         # Construct consensus - read
         cread = pysam.AlignedSegment(header=target_file.header)
         cread.reference_name = self.chromosome
-        cread.reference_start = self.spanStart
+        cread.reference_start = start
         cread.query_name = read_name
         cread.query_sequence = sequence
         cread.query_qualities = phred_score_array
-        cread.cigarstring  = f'{len(sequence)}M'
+        if cigarstring is not None:
+            cread.cigarstring  = cigarstring
+        else:
+            cread.cigarstring  = f'{len(sequence)}M'
         cread.mapping_quality = self.get_max_mapping_qual()
         cread.is_reverse = self.strand
 
