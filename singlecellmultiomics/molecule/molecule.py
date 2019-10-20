@@ -271,6 +271,38 @@ class Molecule():
 
         return read
 
+    def deduplicate_to_single_CIGAR_spaced(self, target_bam, read_name, classifier):
+        """
+        Deduplicate all associated reads to a single pseudoread. Spaces uncovered locations with N in CIGAR
+        Args:
+            target_bam (pysam.AlignmentFile) : file to associate the read with
+            read_name (str) : name of the pseudoread
+            classifier (sklearn classifier) : classifier for consensus prediction
+        """
+        # Set all associated reads to duplicate
+        for read in self.iter_reads():
+            read.is_duplicate = True
+
+        features, CIGAR, alignment_start, alignment_end = self.get_base_calling_feature_matrix_spaced()
+        predicted_sequence = classifier.predict(features)
+        predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
+        phred_scores = np.rint(
+                -10*np.log10( np.clip(1-classifier.predict_proba(features).max(1),
+                                      0.000000001,
+                                      0.999999999 )
+            )).astype('B')
+
+        read = self.get_consensus_read(
+                    read_name=read_name,
+                    target_file = target_bam,
+                    consensus=''.join(predicted_sequence),
+                    phred_scores=phred_scores,
+                    cigarstring=''.join(CIGAR),
+                    start = alignment_start
+        )
+        return read
+
+
     def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None):
         """
         Obtain feature matrix for base calling
