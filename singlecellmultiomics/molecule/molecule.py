@@ -274,12 +274,14 @@ class Molecule():
             CYCLE_INDEX = 4
             MQ_INDEX = 5
             FS_INDEX = 6
-            features = np.zeros( (self.spanEnd - self.spanStart, 36) )
+            STRAND_INDEX = 7
+            features_per_block = 8
+            features = np.zeros( (self.spanEnd - self.spanStart, features_per_block*5 + 1) )
 
             if return_ref_info:
                 ref_bases = {}
 
-            features_per_block = 7
+
             for rt_id,fragments in self.get_rt_reactions().items():
                 # we need to keep track what positions where covered by this RT reaction
                 RT_reaction_coverage = set() # (pos, base_call)
@@ -323,13 +325,16 @@ class Molecule():
                             # Update MQ:
                             features[row_index][MQ_INDEX + 1+features_per_block*block_index] += read.mapping_quality
 
+                            # update strand:
+                            features[row_index][STRAND_INDEX + 1+features_per_block*block_index] += read.is_reverse
+
                             if return_ref_info:
                                 ref_bases[ref_pos] = ref_base.upper()
 
             # Normalize all and return
 
             for block_index in range(5): #ACGTN
-                for index in (PHRED_INDEX, ALIGNED_WP_INDEX, CYCLE_INDEX, MQ_INDEX, FS_INDEX  ):
+                for index in (PHRED_INDEX, ALIGNED_WP_INDEX, CYCLE_INDEX, MQ_INDEX, FS_INDEX, STRAND_INDEX  ):
                     features[:,index + 1+features_per_block*block_index] /=  features[:,RC_INDEX + 1+features_per_block*block_index]
             #np.nan_to_num( features, nan=-1, copy=False )
             features[np.isnan(features)] = -1
@@ -348,7 +353,7 @@ class Molecule():
         features, feature_info = self.get_base_calling_feature_matrix(True)
         # check which bases should not be used
         use_indices = [
-            mask_variants is None or 
+            mask_variants is None or
             not might_be_variant_function(chrom,pos, mask_variants, base)
             for chrom, pos, base in feature_info ]
 
