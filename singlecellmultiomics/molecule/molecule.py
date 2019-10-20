@@ -248,8 +248,8 @@ class Molecule():
         predicted_sequence = classifier.predict(features[:,1:])
         predicted_sequence[ features[:, [ x*7+1 for x in range(4) ] ].sum(1)==0 ] ='N'
         phred_scores = np.rint(
-                -10*np.log10( 1-classifier.predict_proba(features[:,1:]).max(1) )
-            ).astype('B')
+                -10*np.log10( np.clip(1-classifier.predict_proba(features).max(1), 0.000000001, 0.999999999 )
+            )).astype('B')
 
         read = self.get_consensus_read(
                     read_name=read_name,
