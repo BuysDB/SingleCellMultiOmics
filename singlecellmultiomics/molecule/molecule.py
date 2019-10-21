@@ -146,7 +146,7 @@ class Molecule():
 
 
 
-    def get_consensus_read(self, target_file, read_name,consensus=None,phred_scores=None, cigarstring=None, start=None):
+    def get_consensus_read(self, target_file, read_name,consensus=None,phred_scores=None, cigarstring=None, start=None, supplementary=False):
         """get pysam.AlignedSegment containing aggregated molecule information
 
         Args:
@@ -184,6 +184,7 @@ class Molecule():
         cread.query_name = read_name
         cread.query_sequence = sequence
         cread.query_qualities = phred_score_array
+        cread.is_supplementary = supplementary
         if cigarstring is not None:
             cread.cigarstring  = cigarstring
         else:
