@@ -55,6 +55,10 @@ args = argparser.parse_args()
 if not args.o.endswith('.bam'):
     raise ValueError("Supply an output which ends in .bam, for example -o output.bam")
 
+if os.path.exists(args.o):
+    print(f"Removing existing file {args.o}")
+    os.remove(args.o)
+
 input_bam =  pysam.AlignmentFile(args.bamin, "rb")
 
 # autodetect reference:
