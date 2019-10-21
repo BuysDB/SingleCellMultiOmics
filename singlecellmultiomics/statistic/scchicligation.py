@@ -84,5 +84,4 @@ class ScCHICLigation():
 
 
     def to_csv(self, path):
-
-        pd.DataFrame(self.per_cell_ta_obs).to_csv(path.replace('.csv','TA_obs_per_cell.csv'))
+        pd.DataFrame(self.per_cell_ta_obs).sort_index().to_csv(path.replace('.csv','TA_obs_per_cell.csv'))
