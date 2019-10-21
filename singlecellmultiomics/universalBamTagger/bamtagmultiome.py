@@ -272,7 +272,7 @@ with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_
                     out_bam_temp,
                     f'consensus_{i}',
                     consensus_model)
-            for read in consensus_reads:
+            for consensus_read in consensus_reads:
                 consensus_read.set_tag('RG', molecule[0].get_read_group() )
                 consensus_read.set_tag('mi', i)
                 out_bam_temp.write(consensus_read)
