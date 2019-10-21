@@ -65,7 +65,7 @@ def find_ranges(iterable):
     for group in consecutive_groups(iterable):
         group = list(group)
         if len(group) == 1:
-            yield group[0]
+            yield group[0], group[0] # modification to always return tuples
         else:
             yield group[0], group[-1]
 
