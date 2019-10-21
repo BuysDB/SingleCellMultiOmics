@@ -272,19 +272,25 @@ class Molecule():
 
         return read
 
-    def deduplicate_to_single_CIGAR_spaced(self, target_bam, read_name, classifier):
+    def deduplicate_to_single_CIGAR_spaced(self, target_bam, read_name, classifier, max_N_span = 300 ):
+        def deduplicate_to_single_CIGAR_spaced(self, target_bam, read_name, classifier, max_N_span = 300 ):
         """
-        Deduplicate all associated reads to a single pseudoread. Spaces uncovered locations with N in CIGAR
+        Deduplicate all associated reads to a single pseudoread, when the span is larger than max_N_span
+        the read is split up in multi-segments. Uncovered locations are spaced using N's in the CIGAR.
+
         Args:
             target_bam (pysam.AlignmentFile) : file to associate the read with
             read_name (str) : name of the pseudoread
             classifier (sklearn classifier) : classifier for consensus prediction
+        Returns:
+            reads : ( list [ pysam.AlignedSegment ] )
         """
         # Set all associated reads to duplicate
         for read in self.iter_reads():
             read.is_duplicate = True
 
         features, CIGAR, alignment_start, alignment_end = self.get_base_calling_feature_matrix_spaced()
+
         predicted_sequence = classifier.predict(features)
         predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
         phred_scores = np.rint(
@@ -293,15 +299,54 @@ class Molecule():
                                       0.999999999 )
             )).astype('B')
 
-        read = self.get_consensus_read(
+        reads = []
+
+        query_index_start = 0
+        query_index_end = 0
+        reference_position = alignment_start # pointer to current position
+        reference_start = alignment_start # pointer to alignment start of current read
+        supplementary = False
+        partial_CIGAR = []
+        for operation, amount in CIGAR:
+            if operation=='M': # Consume query and reference
+                query_index_end+=amount
+                reference_position+=amount
+                partial_CIGAR.append(f'{amount}{operation}')
+
+            if operation=='N':
+                # Consume reference:
+                reference_position+=amount
+                if amount>max_N_span: # Split up in supplementary alignment
+                    # Eject previous
+                    reads.append( self.get_consensus_read(
+                                read_name=read_name,
+                                target_file = target_bam,
+                                consensus=''.join(predicted_sequence[query_index_start:query_index_end]),
+                                phred_scores=phred_scores[query_index_start:query_index_end],
+                                cigarstring=''.join(partial_CIGAR),
+                                start = reference_start,
+                                supplementary=supplementary
+                    ))
+                    supplementary= True
+                    # Start new:
+                    query_index_start = query_index_end
+                    reference_start = reference_position
+                    partial_CIGAR = []
+                else:
+                    partial_CIGAR.append(f'{amount}{operation}')
+
+
+        reads.append( self.get_consensus_read(
                     read_name=read_name,
                     target_file = target_bam,
-                    consensus=''.join(predicted_sequence),
-                    phred_scores=phred_scores,
-                    cigarstring=''.join(CIGAR),
-                    start = alignment_start
-        )
-        return read
+                    consensus=''.join(predicted_sequence[query_index_start:query_index_end]),
+                    phred_scores=phred_scores[query_index_start:query_index_end],
+                    cigarstring=''.join(partial_CIGAR),
+                    start = reference_start,
+                    supplementary=supplementary
+
+        ))
+        return reads
 
 
     def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None):
@@ -409,7 +454,7 @@ class Molecule():
         Returns:
             X : feature matrix
             y : reference bases
-            CIGAR : alignment of feature matrix to reference
+            CIGAR : alignment of feature matrix to reference tuples (operation, count)
 
         """
 
@@ -435,8 +480,8 @@ class Molecule():
                 X = np.append(X,x,axis=0)
 
             if prev_end is not None:
-                CIGAR.append(f'{start-prev_end-1}N')
-            CIGAR.append(f'{(end-start+1)}M' )
+                CIGAR.append( ('N', start-prev_end-1) )
+            CIGAR.append( ( 'M', (end-start+1) ) )
             prev_end = end
 
             if alignment_start is None:
