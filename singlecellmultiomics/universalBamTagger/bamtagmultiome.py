@@ -268,13 +268,14 @@ with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_
 
         # Calculate molecule consensus
         if args.consensus:
-            consensus_read = molecule.deduplicate_to_single_CIGAR_spaced(
+            consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
                     out_bam_temp,
                     f'consensus_{i}',
                     consensus_model)
-            consensus_read.set_tag('RG', molecule[0].get_read_group() )
-            consensus_read.set_tag('mi', i)
-            out_bam_temp.write(consensus_read)
+            for read in consensus_reads:
+                consensus_read.set_tag('RG', molecule[0].get_read_group() )
+                consensus_read.set_tag('mi', i)
+                out_bam_temp.write(consensus_read)
         # Write the reads to the output file
         if not args.no_source_reads:
             molecule.write_pysam( out_bam_temp )
