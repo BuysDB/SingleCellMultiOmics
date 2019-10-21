@@ -273,7 +273,6 @@ class Molecule():
         return read
 
     def deduplicate_to_single_CIGAR_spaced(self, target_bam, read_name, classifier, max_N_span = 300 ):
-        def deduplicate_to_single_CIGAR_spaced(self, target_bam, read_name, classifier, max_N_span = 300 ):
         """
         Deduplicate all associated reads to a single pseudoread, when the span is larger than max_N_span
         the read is split up in multi-segments. Uncovered locations are spaced using N's in the CIGAR.
