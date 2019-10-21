@@ -204,7 +204,7 @@ class TestMolecule(unittest.TestCase):
     def test_molecule_pooling_nlaIIIoptim_umi_mismatch(self):
         self._pool_test(1,1)
 
-    def test_rt_reaction_counting(self):
+    def test_rt_reaction_counting_HAMMING_1(self):
         # This is a dictionary containing molecules and the amount of rt reactions for location chr1:164834865
 
         f= pysam.AlignmentFile('./data/mini_nla_test.bam')
@@ -234,15 +234,48 @@ class TestMolecule(unittest.TestCase):
         for molecule in it:
             site = molecule.get_cut_site()
             if site is not None and site[1]==164834865:
-                obtained_rt_count[molecule.get_sample()]  = len( molecule.get_rt_reaction_fragment_sizes() )
+                obtained_rt_count[molecule.get_sample()]  = len( molecule.get_rt_reaction_fragment_sizes(max_N_distance=1) )
 
         # Validate:
         for sample, truth in hand_curated_truth.items():
             self.assertEqual( obtained_rt_count.get(sample,0),truth.get('rt_count',-1) )
 
 
-        #def test_rt_reaction_sizes(self):
+    def test_rt_reaction_counting_HAMMING_0(self):
+        # This is a dictionary containing molecules and the amount of rt reactions for location chr1:164834865
 
+        f= pysam.AlignmentFile('./data/mini_nla_test.bam')
+        it = singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.Molecule,
+            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+            fragment_class_args={'umi_hamming_distance':1}
+
+        )
+
+        hand_curated_truth = {
+            # hd: 0:
+            # hard example with N in random primer and N in UMI:
+            'APKS2-P8-2-2_52':{'rt_count':3},
+
+            # Simple examples:
+            'APKS2-P18-1-1_318':{'rt_count':1},
+            'APKS2-P18-1-1_369':{'rt_count':2},
+            'APKS2-P18-2-1_66':{'rt_count':1},
+            'APKS2-P18-2-1_76':{'rt_count':1},
+            'APKS2-P18-2-1_76':{'rt_count':1},
+        }
+
+
+        obtained_rt_count = {}
+        for molecule in it:
+            site = molecule.get_cut_site()
+            if site is not None and site[1]==164834865:
+                obtained_rt_count[molecule.get_sample()]  = len( molecule.get_rt_reaction_fragment_sizes(max_N_distance=0) )
+
+        # Validate:
+        for sample, truth in hand_curated_truth.items():
+            self.assertEqual( obtained_rt_count.get(sample,0),truth.get('rt_count',-1) )
 
 
     def test_feature_molecule(self):
