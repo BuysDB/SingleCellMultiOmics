@@ -344,10 +344,12 @@ class Molecule():
                     cigarstring=''.join(partial_CIGAR),
                     start = reference_start,
                     supplementary=supplementary
-
         ))
-        return reads
 
+        # Write NH tag (the amount of records with the same query read):
+        for read in reads:
+            read.set_tag('NH', len(reads))
+        return reads
 
     def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None):
         """
