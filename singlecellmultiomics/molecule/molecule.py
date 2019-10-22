@@ -262,11 +262,15 @@ class Molecule():
 
     def deduplicate_to_single(self, target_bam, read_name, classifier):
         """
-        Deduplicate all associated reads to a single pseudoread
+        Deduplicate all reads associated to this molecule to a single pseudoread
+
         Args:
             target_bam (pysam.AlignmentFile) : file to associate the read with
             read_name (str) : name of the pseudoread
             classifier (sklearn classifier) : classifier for consensus prediction
+
+        Returns:
+            read (pysam.AlignedSegment) : Pseudo-read containing aggregated information
         """
         # Set all associated reads to duplicate
         for read in self.iter_reads():
@@ -284,7 +288,7 @@ class Molecule():
                     target_file = target_bam,
                     consensus=''.join(predicted_sequence),
                     phred_scores=phred_scores)
-
+        read.is_read1 = True
         return read
 
     def deduplicate_to_single_CIGAR_spaced(self, target_bam, read_name, classifier, max_N_span = 300 ):
@@ -297,7 +301,7 @@ class Molecule():
             read_name (str) : name of the pseudoread
             classifier (sklearn classifier) : classifier for consensus prediction
         Returns:
-            reads : ( list [ pysam.AlignedSegment ] )
+            reads( list [ pysam.AlignedSegment ] )
         """
         # Set all associated reads to duplicate
         for read in self.iter_reads():
@@ -332,7 +336,7 @@ class Molecule():
                 reference_position+=amount
                 if amount>max_N_span: # Split up in supplementary alignment
                     # Eject previous
-                    reads.append( self.get_consensus_read(
+                    consensus_read = self.get_consensus_read(
                                 read_name=read_name,
                                 target_file = target_bam,
                                 consensus=''.join(predicted_sequence[query_index_start:query_index_end]),
@@ -340,7 +344,11 @@ class Molecule():
                                 cigarstring=''.join(partial_CIGAR),
                                 start = reference_start,
                                 supplementary=supplementary
-                    ))
+                    )
+                    reads.append( consensus_read )
+                    if not supplementary:
+                        consensus_read.is_read1 = True
+
                     supplementary= True
                     # Start new:
                     query_index_start = query_index_end
@@ -359,6 +367,10 @@ class Molecule():
                     start = reference_start,
                     supplementary=supplementary
         ))
+
+        # Write last index tag to last read ..
+        if supplementary:
+            reads[-1].is_read2 = True
 
         # Write NH tag (the amount of records with the same query read):
         for read in reads:
@@ -558,7 +570,16 @@ class Molecule():
             return '+'
 
     def write_tags(self):
-        """ Write BAM tags to all reads associated to this molecule """
+        """ Write BAM tags to all reads associated to this molecule
+
+        This function sets the following tags:
+            - mI : most common umi
+            - DA : allele
+            - af : amount of associated fragments
+            - rt : rt_reaction_index
+            - rd : rt_duplicate_index
+
+        """
         self.is_valid(set_rejection_reasons=True)
         if  self.umi is not None:
             self.set_meta('mI', self.umi)
@@ -576,8 +597,9 @@ class Molecule():
 
     def set_rejection_reason(self,reason):
         """ Add rejection reason to all fragments associated to this molecule
+
         Args:
-            reason (str)
+            reason (str) : rejection reason to set
         """
         for fragment in self:
             fragment.set_rejection_reason(reason)
@@ -939,7 +961,7 @@ class Molecule():
             position (int) : genomic location of location to test
 
         Returns:
-            can_be_yielded (bool)
+            can_be_yielded (bool) : True when the molecule is far enough away from the supplied location to be ejected from a buffer.
         """
 
         if chromosome is None:
@@ -1159,6 +1181,10 @@ class Molecule():
         return np.mean(qualities)
 
     def get_allele(self, allele_resolver):
+        """Obtain the allele(s) this molecule maps to
+
+        returns alleles(set( str )) : Set of strings containing associated alleles
+        """
         alleles = set()
         try:
             for (chrom,pos),base in self.get_consensus(base_obs = self.get_base_observation_dict_NOREF()).items():
@@ -1316,8 +1342,9 @@ class Molecule():
 
         return matches, mismatches
 
-    def get_consensus(self, base_obs=None):
+    def get_consensus(self, base_obs=None, classifier=None):
         """Get dictionary containing consensus calls in respect to reference
+        By default mayority voting is used to determine the consensus base. If a classifier is supplied the classifier is used to determine the consensus base.
 
         Args:
             base_obs (collections.defaultdict(collections.Counter)) :
