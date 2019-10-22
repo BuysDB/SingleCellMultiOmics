@@ -49,3 +49,25 @@ def split_nth(seq,separator,n):
         pos = seq.index(separator,pos+1)
 
     return seq[:pos],seq[pos+1:]
+
+def create_MD_tag(reference_seq,query_seq):
+    """Create MD tag
+    Args:
+        reference_seq (str) : reference sequence of alignment
+        query_seq (str) : query bases of alignment
+    Returns:
+        md_tag(str) : md description of the alignment
+    """
+    no_change = 0
+    md = []
+    for ref_base, query_base in zip(reference_seq,query_seq):
+        if ref_base.upper()==query_base:
+            no_change+=1
+        else:
+            if no_change>0:
+                md.append(str(no_change))
+            md.append(ref_base)
+            no_change=0
+    if no_change>0:
+        md.append(str(no_change))
+    return ''.join( md )
