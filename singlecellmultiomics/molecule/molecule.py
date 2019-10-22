@@ -1246,7 +1246,7 @@ class Molecule():
                 start, end = pysamiterators.iterators.getPairGenomicLocations(
                 R1=R1,
                 R2=R2,
-                allow_unsafe=(R1 is None))
+                allow_unsafe=(R1 is None or fragment.unsafe_trimmed))
             except ValueError as e:
                 ignored+=1
                 continue
