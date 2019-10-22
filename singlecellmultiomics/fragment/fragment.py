@@ -64,9 +64,11 @@ class Fragment():
         self.mapping_quality = 0
         self.match_hash=None
         self.safe_span = None # wether the span of the fragment could be determined
+        self.unsafe_trimmed = False # wether primers have been trimmed off
         self.random_primer_sequence = None
         # Span:\
         self.span=[None,None,None]
+
 
         self.umi=None
 
@@ -77,6 +79,7 @@ class Fragment():
                 continue
             if read.has_tag('rS'):
                 self.random_primer_sequence = read.get_tag('rS')
+                self.unsafe_trimmed= True
             if not read.is_unmapped:
                 self.is_mapped = True
             if read.mapping_quality>0:
@@ -493,6 +496,7 @@ class Fragment():
         strand:{self.get_strand_repr()}
         has R1: {"yes" if self.has_R1() else "no"}
         has R2: {"yes" if self.has_R2() else "no"}
+        randomer trimmed: {"yes" if self.unsafe_trimmed else "no"}
         """ + '\n\t'.join([f'{key}:{str(value)}' for key,value in self.meta.items()])
 
     def get_html(self, chromosome=None, span_start=None, span_end=None, show_read1=None, show_read2=None):
