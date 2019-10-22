@@ -30,9 +30,12 @@ argparser.add_argument('-ref',  type=str, default=None, help="Path to reference 
 argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
 argparser.add_argument('-head',  type=int)
 argparser.add_argument('-contig',  type=str, help='Contig to only process')
-argparser.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
-argparser.add_argument('-allele_samples',  type=str, help="Comma separated samples to extract from the VCF file. For example B6,SPRET" )
-argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
+
+allele_info = argparser.add_argument_group('Allele information')
+allele_info.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
+allele_info.add_argument('-allele_samples',  type=str, help="Comma separated samples to extract from the VCF file. For example B6,SPRET" )
+allele_info.add_argument('--not_phased', action='store_true', help="The variants in the supplied VCF file are not phased" )
+allele_info.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
 cluster.add_argument('--write_rejects', action='store_true', help='Write rejected reads to output file')
@@ -93,7 +96,7 @@ if args.alleles is not None:
     molecule_class_args['allele_resolver'] = \
         singlecellmultiomics.alleleTools.AlleleResolver(args.alleles,
                                                 select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
-                                                lazyLoad=True )
+                                                lazyLoad=True, phased=(not args.not_phased ))
 
 ### Transcriptome configuration ###
 if args.method in ('nla_transcriptome', 'cs', 'vasa'):
