@@ -19,6 +19,7 @@ class AlleleResolver:
 
     def __init__(self, vcffile=None,
         chrom=None,
+        phased=True,
         uglyMode=False,
         lazyLoad=False,
         select_samples=None,
@@ -31,6 +32,8 @@ class AlleleResolver:
 
             chrom (str):  contig/chromosome to prepare variants for
 
+            phased(bool) : the variants in the vcf file are phased (every sample is one haplotype)
+
             uglyMode (bool) : the vcf file is invalid (not indexed) and has to be loaded to memory
 
             lazyLoad (bool) : the vcf file is valid and indexed and does not need to be loaded to memory
@@ -40,7 +43,7 @@ class AlleleResolver:
             use_cache (bool) : When this flag is true a cache file is generated containing usable SNPs for every chromosome in gzipped format
 
         """
-
+        self.phased = phased
         self.verbose = False
         self.locationToAllele = collections.defaultdict(  lambda: collections.defaultdict(  lambda: collections.defaultdict(set) )) #chrom -> pos-> base -> sample(s)
         self.select_samples = select_samples
@@ -50,13 +53,7 @@ class AlleleResolver:
         if vcffile is None:
             return
         self.vcffile=self.clean_vcf_name(vcffile)
-
-
-
-
         self.use_cache = use_cache
-
-
 
         try:
             with  pysam.VariantFile(vcffile) as f:
@@ -177,30 +174,40 @@ class AlleleResolver:
                 used = False
                 bad = False
                 bases_to_alleles = collections.defaultdict(set) # base -> samples
-                samples_assigned = set()
-                most_assigned_base = 0
-                for sample, sampleData in rec.samples.items():
-                    if self.select_samples is not None and not sample in self.select_samples:
-                        continue
-                    for base in sampleData.alleles:
-                        if base is None:
-                            unTrusted.append( (rec.chrom, rec.pos ) )
-                            continue
-                        if len(base)==1:
-                            bases_to_alleles[base].add(sample)
-                            used=True
-                            samples_assigned.add(sample)
-                        else: # This location cannot be trusted:
-                            bad = True
-                # We can prune this site if all samples are associated with the same base
-                if self.select_samples is not None and used:
-                    if len(samples_assigned)!=len(self.select_samples):
-                        # The site is not informative
-                        bad=True
-                if len(bases_to_alleles)<2:
-                    bad=True
-                    # The site is not informative
 
+                if  phased: # variants are phased, assign a random allele
+                    samples_assigned = set()
+                    most_assigned_base = 0
+                    for sample, sampleData in rec.samples.items():
+
+                        if self.select_samples is not None and not sample in self.select_samples:
+                            continue
+                        for base in sampleData.alleles:
+                            if base is None:
+                                unTrusted.append( (rec.chrom, rec.pos ) )
+                                continue
+                            if len(base)==1:
+                                bases_to_alleles[base].add(sample)
+                                used=True
+                                samples_assigned.add(sample)
+                            else: # This location cannot be trusted:
+                                bad = True
+                    # We can prune this site if all samples are associated with the same base
+                    if self.select_samples is not None and used:
+                        if len(samples_assigned)!=len(self.select_samples):
+                            # The site is not informative
+                            bad=True
+                    if len(bases_to_alleles)<2:
+                        bad=True
+                        # The site is not informative
+                else: # not phased
+                    if not all(len(allele)==1 for allele in rec.alleles): # only select SNVs
+                        bad=True
+                    else:
+                        bad=False
+                        for allele,base in zip('UVWXYZ', rec.alleles):
+                            bases_to_alleles[base].add(allele)
+                            used=True
                 if used and not bad:
                     self.locationToAllele[rec.chrom][ rec.pos-1] = bases_to_alleles
                     added+=1
