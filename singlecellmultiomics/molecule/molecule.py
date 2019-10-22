@@ -245,6 +245,21 @@ class Molecule():
             self.get_feature_window(window_size=window_size)
         ])
 
+    def get_tag_counter(self):
+        """
+        Obtain a dictionary with tag -> value -> frequency
+
+        Returns:
+            tag_obs (collections.defaultdict(collections.Counter)):
+                { tag(str) : { value(int/str): frequency:(int) }
+
+
+        """
+        tags_obs = collections.defaultdict(collections.Counter)
+        for tag, value in itertools.chain(*[r.tags for r in self.iter_reads()]) :
+            tags_obs[tag][value] += 1
+        return tag_obs
+
     def deduplicate_to_single(self, target_bam, read_name, classifier):
         """
         Deduplicate all associated reads to a single pseudoread
