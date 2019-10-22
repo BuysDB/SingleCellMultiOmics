@@ -1180,19 +1180,44 @@ class Molecule():
             raise IndexError("There are no observations if the supplied base/location combination")
         return np.mean(qualities)
 
-    def get_allele(self, allele_resolver):
+    def get_allele(self, allele_resolver=None, return_allele_informative_base_dict=False):
         """Obtain the allele(s) this molecule maps to
 
-        returns alleles(set( str )) : Set of strings containing associated alleles
+        Args:
+            allele_resolver(singlecellmultiomics.alleleTools.AlleleResolver)  : resolver used
+            return_allele_informative_base_dict(bool) : return dictionary containing the bases used for allele determination
+            defaultdict(list,
+            {'allele1': [('chr18', 410937, 'T'),
+              ('chr18', 410943, 'G'),
+              ('chr18', 410996, 'G'),
+              ('chr18', 411068, 'A')]})
+
+        Returns:
+            alleles(set( str )) : Set of strings containing associated alleles
         """
+
+        if allele_resolver is None:
+            if self.allele_resolver is not None:
+                allele_resolver = self.allele_resolver
+            else:
+                raise ValueError("Supply allele resolver or set it to molecule.allele_resolver")
+
         alleles = set()
+        if return_allele_informative_base_dict:
+            aibd = collections.defaultdict(list)
         try:
             for (chrom,pos),base in self.get_consensus(base_obs = self.get_base_observation_dict_NOREF()).items():
                 c = allele_resolver.getAllelesAt(chrom,pos,base)
                 if c is not None and len(c)==1:
                     alleles.update(c)
+                    if return_allele_informative_base_dict:
+                        aibd[list(c)[0]].append((chrom,pos,base))
+
         except Exception as e:
             raise
+
+        if return_allele_informative_base_dict:
+            return aibd
         return alleles
 
     def get_base_observation_dict_NOREF(self):
@@ -1367,7 +1392,6 @@ class Molecule():
                 consensus[location] = votes[0][0]
 
         return consensus
-
 
 
     def check_variants(self, variants, exclude_other_calls=True ): #when enabled other calls (non ref non alt will be set None)
