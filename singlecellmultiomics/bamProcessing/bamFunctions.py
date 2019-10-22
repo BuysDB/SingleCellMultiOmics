@@ -15,11 +15,19 @@ def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=F
 
 
 def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False):
-    """ Sort and index a bam file """
-    cmd = f"""samtools sort {unsorted_path} > {sorted_path}; samtools index {sorted_path};"""
+    """ Sort and index a bam file
+    Args:
+        unsorted_path (str) : path to unsorted bam file
+        sorted_path (str) : write sorted file here
+        remove_unsorted (bool) : remove the unsorted file
+
+    Raises:
+        SamtoolsError when sorting or indexing fails
+    """
+    pysam.sort("-o", sorted_path, unsorted_path)
+    pysam.index(sorted_path)
     if remove_unsorted:
-        cmd = cmd +f"rm {unsorted_path};"
-    os.system(cmd)
+        os.remove(unsorted_path)
 
 
 def add_readgroups_to_header( origin_bam_path, readgroups_in, target_bam_path=None ):
