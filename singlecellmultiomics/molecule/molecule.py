@@ -578,7 +578,7 @@ class Molecule():
             - af : amount of associated fragments
             - rt : rt_reaction_index
             - rd : rt_duplicate_index
-
+            - ap : phasing information (if allele_resolver is set)
         """
         self.is_valid(set_rejection_reasons=True)
         if  self.umi is not None:
@@ -594,6 +594,9 @@ class Molecule():
             for rt_duplicate_index,frag in enumerate(frags):
                 frag.set_meta('rt', rt_reaction_index)
                 frag.set_meta('rd', rt_duplicate_index)
+
+        if self.allele_resolver is not None:
+            self.write_allele_phasing_information_tag()
 
     def set_rejection_reason(self,reason):
         """ Add rejection reason to all fragments associated to this molecule
@@ -1219,6 +1222,30 @@ class Molecule():
         if return_allele_informative_base_dict:
             return aibd
         return alleles
+
+    def write_allele_phasing_information_tag(self,allele_resolver=None,tag='ap'):
+        """
+        Write allele phasing information to ap tag
+
+        For every associated read a tag wil be written containing:
+        chromosome,postion,base,allele_name|chromosome,postion,base,allele_name|...
+        for all variants found by the AlleleResolver
+        """
+
+        haplotype = self.get_allele(
+                return_allele_informative_base_dict=True,
+                allele_resolver=allele_resolver)
+
+        phased_locations = [
+                    (allele,chromosome, position, base)
+                    for allele, bps in haplotype.items()
+                    for chromosome, position, base in bps   ]
+
+        phase_str = '|'.join( [f'{chromosome},{position},{base},{allele}' for allele,chromosome, position, base in phased_locations] )
+
+        for read in self.iter_reads:
+            read.set_tag(tag,phase_str)
+
 
     def get_base_observation_dict_NOREF(self):
         '''
