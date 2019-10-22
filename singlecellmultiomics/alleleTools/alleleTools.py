@@ -24,13 +24,6 @@ class AlleleResolver:
         select_samples=None,
         use_cache = False # When this flag is true a cache file is generated containing usable SNPs for every chromosome in gzipped format
         ):
-
-
-
-        self.select_samples = select_samples
-        self.vcffile=self.clean_vcf_name(vcffile)
-        self.lazyLoad = lazyLoad
-        self.verbose = False
         """Initialise AlleleResolver
 
         Args:
@@ -44,10 +37,27 @@ class AlleleResolver:
 
             select_samples (list) : Use only these samples from the VCF file
 
+            use_cache (bool) : When this flag is true a cache file is generated containing usable SNPs for every chromosome in gzipped format
+
         """
+
+        self.verbose = False
+        self.locationToAllele = collections.defaultdict(  lambda: collections.defaultdict(  lambda: collections.defaultdict(set) )) #chrom -> pos-> base -> sample(s)
+        self.select_samples = select_samples
+
+        self.lazyLoad = lazyLoad
+
+        if vcffile is None:
+            return
+        self.vcffile=self.clean_vcf_name(vcffile)
+
+
 
 
         self.use_cache = use_cache
+
+
+
         try:
             with  pysam.VariantFile(vcffile) as f:
                 pass
@@ -64,9 +74,7 @@ class AlleleResolver:
                 raise NotImplementedError("Sample selection is not implemented for non proper VCF")
             lazyLoad = False
         #self.locationToAllele = collections.defaultdict( lambda: collections.defaultdict(set) ) #(chrom, pos)-> base -> sample(s)
-        self.locationToAllele = collections.defaultdict(  lambda: collections.defaultdict(  lambda: collections.defaultdict(set) )) #chrom -> pos-> base -> sample(s)
-        if vcffile is None:
-            return
+
         if uglyMode:
             foundIt = False # If the target chromosome was found
             with open(vcffile,'r') as f:
