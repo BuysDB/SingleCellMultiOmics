@@ -6,13 +6,13 @@ import collections
 import itertools
 import numpy as np
 from singlecellmultiomics.utils import style_str
-from more_itertools import consecutive_groups
 import textwrap
 import  singlecellmultiomics.alleleTools
 import functools
 import typing
 import pysam
 import pysamiterators
+from singlecellmultiomics.utils import find_ranges, create_MD_tag
 
 
 @functools.lru_cache(maxsize=1000)
@@ -57,17 +57,6 @@ def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2, max
                 if hamming_distance(hseq,other_seq)==0:
                     rp[other_start, other_seq].append(fragment)
     return rp
-
-
-# https://stackoverflow.com/questions/2154249/identify-groups-of-continuous-numbers-in-a-list
-def find_ranges(iterable):
-    """Yield range of consecutive numbers."""
-    for group in consecutive_groups(iterable):
-        group = list(group)
-        if len(group) == 1:
-            yield group[0], group[0] # modification to always return tuples
-        else:
-            yield group[0], group[-1]
 
 class Molecule():
     """Molecule class, contains one or more associated fragments
@@ -146,7 +135,15 @@ class Molecule():
 
 
 
-    def get_consensus_read(self, target_file, read_name,consensus=None,phred_scores=None, cigarstring=None, start=None, supplementary=False):
+    def get_consensus_read(self, target_file,
+            read_name,consensus=None,
+            phred_scores=None,
+            cigarstring=None,
+            mdstring=None,
+            start=None,
+            supplementary=False
+
+            ):
         """get pysam.AlignedSegment containing aggregated molecule information
 
         Args:
@@ -191,6 +188,8 @@ class Molecule():
             cread.cigarstring  = f'{len(sequence)}M'
         cread.mapping_quality = self.get_max_mapping_qual()
         cread.is_reverse = self.strand
+        if mdstring is not None:
+            cread.set_tag('MD',mdstring)
 
         cread.set_tag('SM', self.sample)
         #if self.is_valid():
@@ -260,7 +259,7 @@ class Molecule():
             tags_obs[tag][value] += 1
         return tag_obs
 
-    def deduplicate_to_single(self, target_bam, read_name, classifier):
+    def deduplicate_to_single(self, target_bam, read_name, classifier,reference=None):
         """
         Deduplicate all reads associated to this molecule to a single pseudoread
 
@@ -276,7 +275,7 @@ class Molecule():
         for read in self.iter_reads():
             read.is_duplicate = True
 
-        features = self.get_base_calling_feature_matrix()
+        features = self.get_base_calling_feature_matrix(reference=reference)
         predicted_sequence = classifier.predict(features)
         predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
         phred_scores = np.rint(
@@ -291,7 +290,7 @@ class Molecule():
         read.is_read1 = True
         return read
 
-    def deduplicate_to_single_CIGAR_spaced(self, target_bam, read_name, classifier, max_N_span = 300 ):
+    def deduplicate_to_single_CIGAR_spaced(self, target_bam, read_name, classifier, max_N_span = 300,reference=None ):
         """
         Deduplicate all associated reads to a single pseudoread, when the span is larger than max_N_span
         the read is split up in multi-segments. Uncovered locations are spaced using N's in the CIGAR.
@@ -307,10 +306,15 @@ class Molecule():
         for read in self.iter_reads():
             read.is_duplicate = True
 
-        features, CIGAR, alignment_start, alignment_end = self.get_base_calling_feature_matrix_spaced()
+        features, reference_bases, CIGAR, alignment_start, alignment_end = self.get_base_calling_feature_matrix_spaced(
+                True,
+                reference=reference)
 
-        predicted_sequence = classifier.predict(features)
+        predicted_sequence =  classifier.predict(features)
+        reference_sequence = ''.join([base for chrom, pos, base  in reference_bases])
         predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
+        predicted_sequence = ''.join( predicted_sequence )
+
         phred_scores = np.rint(
                 -10*np.log10( np.clip(1-classifier.predict_proba(features).max(1),
                                       0.000000001,
@@ -325,6 +329,8 @@ class Molecule():
         reference_start = alignment_start # pointer to alignment start of current read
         supplementary = False
         partial_CIGAR = []
+        partial_MD = []
+
         for operation, amount in CIGAR:
             if operation=='M': # Consume query and reference
                 query_index_end+=amount
@@ -336,12 +342,18 @@ class Molecule():
                 reference_position+=amount
                 if amount>max_N_span: # Split up in supplementary alignment
                     # Eject previous
+                    #reference_seq =
+
                     consensus_read = self.get_consensus_read(
                                 read_name=read_name,
                                 target_file = target_bam,
-                                consensus=''.join(predicted_sequence[query_index_start:query_index_end]),
+                                consensus=predicted_sequence[query_index_start:query_index_end],
                                 phred_scores=phred_scores[query_index_start:query_index_end],
                                 cigarstring=''.join(partial_CIGAR),
+                                mdstring = create_MD_tag(
+                                    reference_sequence[query_index_start:query_index_end],
+                                    predicted_sequence[query_index_start:query_index_end]
+                                ),
                                 start = reference_start,
                                 supplementary=supplementary
                     )
@@ -364,6 +376,11 @@ class Molecule():
                     consensus=''.join(predicted_sequence[query_index_start:query_index_end]),
                     phred_scores=phred_scores[query_index_start:query_index_end],
                     cigarstring=''.join(partial_CIGAR),
+                    mdstring = create_MD_tag(
+                                        reference_sequence[query_index_start:query_index_end],
+                                        predicted_sequence[query_index_start:query_index_end]
+
+                                ),
                     start = reference_start,
                     supplementary=supplementary
         ))
@@ -377,7 +394,7 @@ class Molecule():
             read.set_tag('NH', len(reads))
         return reads
 
-    def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None):
+    def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None, reference=None):
         """
         Obtain feature matrix for base calling
 
@@ -385,6 +402,7 @@ class Molecule():
             return_ref_info (bool) : return both X and array with feature information
             start (int) : start of range, genomic position
             end (int) : end of range (inclusive), genomic position
+            reference(pysam.FastaFile) : reference to fetch reference bases from, if not supplied the MD tag is used
         """
         if start is None:
             start = self.spanStart
@@ -415,7 +433,7 @@ class Molecule():
                         # Skip reads outside range
                         if read is None or read.reference_start > (end+1) or read.reference_end < start:
                             continue
-                        for cycle, q_pos, ref_pos, ref_base in  pysamiterators.ReadCycleIterator(read, matches_only=True,with_seq=True):
+                        for cycle, q_pos, ref_pos, ref_base in  pysamiterators.ReadCycleIterator(read, matches_only=True,with_seq=True, reference=reference):
 
                             row_index = ref_pos-start
                             if row_index<0 or row_index>=features.shape[0]:
@@ -475,7 +493,7 @@ class Molecule():
             return features
 
 
-    def get_base_calling_feature_matrix_spaced(self,return_ref_info=False):
+    def get_base_calling_feature_matrix_spaced(self,return_ref_info=False, reference=None):
         """
         Obtain a base-calling feature matrix for all reference aligned bases.
 
@@ -483,7 +501,7 @@ class Molecule():
             X : feature matrix
             y : reference bases
             CIGAR : alignment of feature matrix to reference tuples (operation, count)
-
+            reference(pysam.FastaFile) : reference to fetch reference bases from, if not supplied the MD tag is used
         """
 
         X = None
@@ -496,12 +514,14 @@ class Molecule():
         for start,end in self.get_aligned_blocks():
             if return_ref_info:
                 x,y_ = self.get_base_calling_feature_matrix(
-                        return_ref_info=return_ref_info, start=start, end=end)
+                        return_ref_info=return_ref_info, start=start, end=end,
+                        reference=reference
+                        )
                 y+=y_
             else:
                 x = self.get_base_calling_feature_matrix(
-                        return_ref_info=return_ref_info, start=start, end=end)
-
+                        return_ref_info=return_ref_info, start=start, end=end,reference=reference
+                        )
             if X is None:
                 X = x
             else:
@@ -524,11 +544,11 @@ class Molecule():
         else:
             return X,CIGAR,alignment_start, alignment_end
 
-    def get_base_calling_training_data(self,mask_variants=None,might_be_variant_function=None):
+    def get_base_calling_training_data(self,mask_variants=None,might_be_variant_function=None,reference=None):
         if mask_variants is not None and  might_be_variant_function is None:
             might_be_variant_function = might_be_variant
 
-        features, feature_info, _CIGAR, _alignment_start, _alignment_end  = self.get_base_calling_feature_matrix_spaced(True)
+        features, feature_info, _CIGAR, _alignment_start, _alignment_end  = self.get_base_calling_feature_matrix_spaced(True,reference=reference)
         # check which bases should not be used
         use_indices = [
             mask_variants is None or
