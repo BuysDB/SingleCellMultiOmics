@@ -124,7 +124,7 @@ class TestMolecule(unittest.TestCase):
                 #print(molecule.get_sample())
                 if  molecule.get_sample()=='APKS3-P19-1-1_91':
                     break
-        print(molecule.get_match_mismatch_frequency())
+        #print(molecule.get_match_mismatch_frequency())
         self.assertEqual( (583, 13), molecule.get_match_mismatch_frequency() )
 
     def test_get_consensus_gc_ratio(self):
@@ -166,7 +166,6 @@ class TestMolecule(unittest.TestCase):
                         if read is not None and read.is_duplicate:
                             is_dup = True
                     if not is_dup:
-                        print(fragment)
                         total_frag_count+=1
         self.assertEqual(total_frag_count,13)
 
@@ -300,6 +299,26 @@ class TestMolecule(unittest.TestCase):
                 hit_count+=1
         self.assertEqual(hit_count,2)
 
+    def test_classification_consensus(self):
+        """This only tests if no error is raised"""
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f, pysam.AlignmentFile('./data/consensus_write_test.bam','wb',header=f.header) as target_bam:
+            molecule_iterator =  singlecellmultiomics.molecule.MoleculeIterator(
+                alignments=f,
+                moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
+                fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+            )
+
+            classifier = singlecellmultiomics.molecule.train_consensus_model(
+                        molecule_iterator,
+                        mask_variants=None,
+                        n_train=100)
+
+
+            for molecule in molecule_iterator:
+                reads = molecule.deduplicate_to_single_CIGAR_spaced(target_bam,
+                read_name, classifier,reference=reference)
+
+                read = molecule.deduplicate_to_single(target_bam)
 
 
 if __name__ == '__main__':
