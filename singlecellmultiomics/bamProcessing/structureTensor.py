@@ -238,7 +238,7 @@ else:
                     if query_base!='N':
                         conversions[(contig,ref_pos)][query_base] += 1
                         if ref_base!='N':
-                            conversions[(contig,ref_pos)][f'{ref_base.ref_base.upper()}>{query_base}'] += 1
+                            conversions[(contig,ref_pos)][f'{ref_base.upper()}>{query_base}'] += 1
                     if query_base == ref_base.upper():
                         conversions[(contig,ref_pos)]['match'] += 1
                     else:
