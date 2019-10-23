@@ -1272,7 +1272,10 @@ class Molecule():
                         aibd[list(c)[0]].append((chrom,pos,base))
 
         except Exception as e:
-            raise
+            if return_allele_informative_base_dict:
+                return dict()
+            else:
+                return {}
 
         if return_allele_informative_base_dict:
             return aibd
