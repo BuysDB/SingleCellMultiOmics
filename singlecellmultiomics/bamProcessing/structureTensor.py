@@ -225,7 +225,6 @@ else:
             last_ref_pos = None
             clipped=0
             for query_pos, ref_pos, ref_base in read.get_aligned_pairs(with_seq=True):
-
                 if ref_pos is None: # clip or skip
                     if last_ref_pos is not None: # otherwise we don't know our starting coordinate
                         conversions[(contig,last_ref_pos)]['insert'] += 1
@@ -244,6 +243,8 @@ else:
                     else:
                         conversions[(contig,ref_pos)]['mismatch'] += 1
 
+                if ref_base is not None and ref_pos is not None:
+                    conversions[(contig,ref_pos)]['ref_base'] = ref_base
                 if ref_pos is not None and clipped>0:
                     conversions[(contig,ref_pos)]['clip'] = 1
                     clipped=0
