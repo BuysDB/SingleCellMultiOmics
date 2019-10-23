@@ -30,12 +30,10 @@ argparser.add_argument('-ref',  type=str, default=None, help="Path to reference 
 argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
 argparser.add_argument('-head',  type=int)
 argparser.add_argument('-contig',  type=str, help='Contig to only process')
-
-allele_info = argparser.add_argument_group('Allele information')
-allele_info.add_argument('-alleles',  type=str, help="Allele file (VCF)" )
-allele_info.add_argument('-allele_samples',  type=str, help="Comma separated samples to extract from the VCF file. For example B6,SPRET" )
-allele_info.add_argument('--not_phased', action='store_true', help="The variants in the supplied VCF file are not phased" )
-allele_info.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
+argparser.add_argument('-alleles',  type=str, help="Phased allele file (VCF)" )
+argparser.add_argument('-allele_samples',  type=str, help="Comma separated samples to extract from the VCF file. For example B6,SPRET" )
+argparser.add_argument('-unphased_alleles',  type=str, help="Unphased allele file (VCF)" )
+argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
 cluster.add_argument('--write_rejects', action='store_true', help='Write rejected reads to output file')
@@ -92,11 +90,31 @@ yield_invalid= None # if invalid reads should be written
 if args.write_rejects:
     yield_invalid = True
 
+
 if args.alleles is not None:
     molecule_class_args['allele_resolver'] = \
         singlecellmultiomics.alleleTools.AlleleResolver(args.alleles,
                                                 select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
-                                                lazyLoad=True, phased=(not args.not_phased ))
+                                                lazyLoad=True )
+    if args.unphased_alleles is not None:
+        raise NotImplementedError("Cannot process both unphased and phased alleles")
+
+if args.unphased_alleles is not None:
+    allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver()
+    for i,variant in enumerate( pysam.VariantFile(args.unphased_alleles).fetch(args.contig) ):
+        if not 'PASS' in list(variant.filter):
+            continue
+        if not all(len(allele)==1 for allele in variant.alleles) or len( variant.alleles)!=2:
+            continue
+        if sum([ len(set(variant.samples[sample].alleles))==2 for sample in variant.samples])<2:
+            # Not heterozygous
+            continue
+
+        allele_resolver.locationToAllele[variant.chrom][variant.pos-1] ={
+            variant.alleles[0]:{'U'},
+            variant.alleles[1]:{'V'}}
+
+    molecule_class_args['allele_resolver'] = allele_resolver
 
 ### Transcriptome configuration ###
 if args.method in ('nla_transcriptome', 'cs', 'vasa'):
@@ -255,9 +273,7 @@ print(f'Started writing to {out_bam_temp_path}')
 with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_bam_temp:
 
     read_groups = set() # Store unique read groups in this set
-    for i,molecule in enumerate(
-            molecule_iterator
-        ):
+    for i,molecule in enumerate(molecule_iterator):
 
         # Stop when enough molecules are processed
         if args.head is not None and (i-1)>=args.head:
@@ -278,9 +294,7 @@ with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_
             consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
                     out_bam_temp,
                     f'consensus_{i}',
-                    consensus_model,
-                    reference=reference
-                    )
+                    consensus_model)
             for consensus_read in consensus_reads:
                 consensus_read.set_tag('RG', molecule[0].get_read_group() )
                 consensus_read.set_tag('mi', i)
