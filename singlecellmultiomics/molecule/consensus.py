@@ -1,7 +1,7 @@
 import sklearn.ensemble
 import numpy as np
 
-def get_consensus_training_data(molecule_iterator, mask_variants=None, n_train=100_000):
+def get_consensus_training_data(molecule_iterator, mask_variants=None, n_train=100_000, **feature_matrix_args):
     X = None
     y = []
 
@@ -10,7 +10,7 @@ def get_consensus_training_data(molecule_iterator, mask_variants=None, n_train=1
         # Never train the same genomic location twice
         if last_end is not None and molecule.spanStart<last_end:
             continue
-        x,_y = molecule.get_base_calling_training_data(mask_variants)
+        x,_y = molecule.get_base_calling_training_data(mask_variants, **feature_matrix_args)
         if X is None:
             X = np.empty((0,x.shape[1]))
             print(f"Creating feature matrix with {x.shape[1]} dimensions and {n_train} training base-calls")
@@ -22,7 +22,7 @@ def get_consensus_training_data(molecule_iterator, mask_variants=None, n_train=1
     print(f'Finished, last genomic coordinate: {molecule.chromosome} {molecule.spanEnd}')
     return X,y
 
-def train_consensus_model(molecule_iterator, mask_variants=None, classifier=None, n_train=100_000):
+def train_consensus_model(molecule_iterator, mask_variants=None, classifier=None, n_train=100_000, **feature_matrix_args):
     if classifier is None: # default to random forest
         classifier = sklearn.ensemble.RandomForestClassifier(
                 n_jobs=-1,
@@ -31,7 +31,7 @@ def train_consensus_model(molecule_iterator, mask_variants=None, classifier=None
                 max_depth=7,
                 min_samples_leaf=5
                 )
-    X,y = get_consensus_training_data(molecule_iterator, mask_variants=mask_variants, n_train=n_train)
+    X,y = get_consensus_training_data(molecule_iterator, mask_variants=mask_variants, n_train=n_train, **feature_matrix_args)
     classifier.fit(X,y)
     if type(classifier)==sklearn.ensemble.forest.RandomForestClassifier:
         print(f"Model out of bag accuracy: {classifier.oob_score_}")

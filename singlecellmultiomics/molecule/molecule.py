@@ -394,7 +394,7 @@ class Molecule():
             read.set_tag('NH', len(reads))
         return reads
 
-    def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None, reference=None):
+    def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None, reference=None, NUC_RADIUS = 1, USE_RT=True):
         """
         Obtain feature matrix for base calling
 
@@ -493,7 +493,7 @@ class Molecule():
             return features
 
 
-    def get_base_calling_feature_matrix_spaced(self,return_ref_info=False, reference=None):
+    def get_base_calling_feature_matrix_spaced(self,return_ref_info=False, reference=None, **feature_matrix_args):
         """
         Obtain a base-calling feature matrix for all reference aligned bases.
 
@@ -515,12 +515,12 @@ class Molecule():
             if return_ref_info:
                 x,y_ = self.get_base_calling_feature_matrix(
                         return_ref_info=return_ref_info, start=start, end=end,
-                        reference=reference
+                        reference=reference, **feature_matrix_args
                         )
                 y+=y_
             else:
                 x = self.get_base_calling_feature_matrix(
-                        return_ref_info=return_ref_info, start=start, end=end,reference=reference
+                        return_ref_info=return_ref_info, start=start, end=end,reference=reference, **feature_matrix_args
                         )
             if X is None:
                 X = x
@@ -544,11 +544,11 @@ class Molecule():
         else:
             return X,CIGAR,alignment_start, alignment_end
 
-    def get_base_calling_training_data(self,mask_variants=None,might_be_variant_function=None,reference=None):
+    def get_base_calling_training_data(self,mask_variants=None,might_be_variant_function=None,reference=None, **feature_matrix_args):
         if mask_variants is not None and  might_be_variant_function is None:
             might_be_variant_function = might_be_variant
 
-        features, feature_info, _CIGAR, _alignment_start, _alignment_end  = self.get_base_calling_feature_matrix_spaced(True,reference=reference)
+        features, feature_info, _CIGAR, _alignment_start, _alignment_end  = self.get_base_calling_feature_matrix_spaced(True,reference=reference, **feature_matrix_args)
         # check which bases should not be used
         use_indices = [
             mask_variants is None or
