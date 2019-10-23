@@ -403,6 +403,7 @@ class Molecule():
             start (int) : start of range, genomic position
             end (int) : end of range (inclusive), genomic position
             reference(pysam.FastaFile) : reference to fetch reference bases from, if not supplied the MD tag is used
+            NUC_RADIUS(int) : generate kmer features target nucleotide
         """
         if start is None:
             start = self.spanStart
@@ -410,17 +411,26 @@ class Molecule():
             end = self.spanEnd
 
         with np.errstate(divide='ignore', invalid='ignore'):
-            RT_INDEX = 0
+            BASE_COUNT = 5
+            RT_INDEX = 7 if USE_RT else None
+            STRAND_INDEX = 0
             PHRED_INDEX = 1
             RC_INDEX = 2
             ALIGNED_WP_INDEX = 3
             CYCLE_INDEX = 4
             MQ_INDEX = 5
             FS_INDEX = 6
-            STRAND_INDEX = 7
+
             COLUMN_OFFSET = 0
-            features_per_block = 8
-            features = np.zeros( (end - start + 1, features_per_block*5 + 1) )
+            features_per_block = 8 - (not USE_RT)
+
+            origin_start = start
+            origin_end = end
+
+            end += NUC_RADIUS
+            start -= NUC_RADIUS
+
+            features = np.zeros( (end - start + 1, (features_per_block*BASE_COUNT) + COLUMN_OFFSET ) )
 
             if return_ref_info:
                 ref_bases = {}
@@ -444,7 +454,8 @@ class Molecule():
                             block_index = 'ACTGN'.index(query_base)
 
                             # Update rt_reactions
-                            features[row_index][RT_INDEX + COLUMN_OFFSET +features_per_block*block_index] += 1
+                            if USE_RT:
+                                features[row_index][RT_INDEX + COLUMN_OFFSET +features_per_block*block_index] += 1
 
                             # Update total phred score
                             features[row_index][PHRED_INDEX + COLUMN_OFFSET +features_per_block*block_index] += read.query_qualities[q_pos]
@@ -474,22 +485,37 @@ class Molecule():
                             features[row_index][STRAND_INDEX + COLUMN_OFFSET +features_per_block*block_index] += read.is_reverse
 
                             if return_ref_info:
+                                row_index_in_output = ref_pos-origin_start
+                                if row_index_in_output<0 or row_index_in_output>=origin_end-origin_start+1:
+                                    continue
+
                                 ref_bases[ref_pos] = ref_base.upper()
 
             # Normalize all and return
 
-            for block_index in range(5): #ACGTN
+            for block_index in range(BASE_COUNT): #ACGTN
                 for index in (PHRED_INDEX, ALIGNED_WP_INDEX, CYCLE_INDEX, MQ_INDEX, FS_INDEX, STRAND_INDEX  ):
                     features[:,index + COLUMN_OFFSET +features_per_block*block_index] /=  features[:,RC_INDEX + COLUMN_OFFSET +features_per_block*block_index]
             #np.nan_to_num( features, nan=-1, copy=False )
             features[np.isnan(features)] = -1
 
+            if NUC_RADIUS>0:
+                # duplicate columns in shifted manner
+                x = features
+                features = np.zeros( (x.shape[0]-NUC_RADIUS*2, x.shape[1]*(1+NUC_RADIUS*2)) )
+                for offset in range(0,NUC_RADIUS*2+1):
+                    slice_start = offset
+                    slice_end = -(NUC_RADIUS*2)  + offset
+                    if slice_end == 0:
+                        features[:,features_per_block*BASE_COUNT*offset:features_per_block*BASE_COUNT*(offset+1)] = x[slice_start:,:]
+                    else:
+                        features[:,features_per_block*BASE_COUNT*offset:features_per_block*BASE_COUNT*(offset+1)] = x[slice_start:slice_end,:]
+
             if return_ref_info:
                 ref_info = [
                     (self.chromosome, ref_pos, ref_bases.get(ref_pos,'N'))
-                    for ref_pos in range(start, end+1)]
+                    for ref_pos in range(origin_start, origin_end+1)]
                 return  features, ref_info
-
             return features
 
 
