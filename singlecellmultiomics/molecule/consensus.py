@@ -32,6 +32,10 @@ def train_consensus_model(molecule_iterator, mask_variants=None, classifier=None
                 min_samples_leaf=5
                 )
     X,y = get_consensus_training_data(molecule_iterator, mask_variants=mask_variants, n_train=n_train, **feature_matrix_args)
+    y = np.array(y)
+    # remove unkown ref bases from set
+    X = np.array(X)[y!='N']
+    y = y[y!='N']
     classifier.fit(X,y)
     if type(classifier)==sklearn.ensemble.forest.RandomForestClassifier:
         print(f"Model out of bag accuracy: {classifier.oob_score_}")
