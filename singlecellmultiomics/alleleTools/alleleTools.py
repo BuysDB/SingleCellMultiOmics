@@ -181,7 +181,7 @@ class AlleleResolver:
                 bad = False
                 bases_to_alleles = collections.defaultdict(set) # base -> samples
 
-                if  phased: # variants are phased, assign a random allele
+                if self.phased: # variants are phased, assign a random allele
                     samples_assigned = set()
                     most_assigned_base = 0
                     for sample, sampleData in rec.samples.items():
@@ -218,7 +218,7 @@ class AlleleResolver:
                 if not bad and ignore_conversions is not None: # prune conversions which are banned
                     bad = any( ( (variant.ref, base)
                             in ignore_conversions for base in bases_to_alleles ))
-                
+
                 if used and not bad:
                     self.locationToAllele[rec.chrom][ rec.pos-1] = bases_to_alleles
                     added+=1

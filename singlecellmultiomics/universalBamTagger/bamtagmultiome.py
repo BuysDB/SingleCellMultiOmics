@@ -245,7 +245,7 @@ if args.cluster:
 # Load unphased variants to memory
 unphased_allele_resolver= None
 if args.unphased_alleles is not None:
-    unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver()
+    unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver(phased=False)
     for i,variant in enumerate( pysam.VariantFile(args.unphased_alleles).fetch(args.contig) ):
         if not 'PASS' in list(variant.filter):
             continue
