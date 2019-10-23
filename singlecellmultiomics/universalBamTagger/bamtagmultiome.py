@@ -196,10 +196,10 @@ molecule_iterator = MoleculeIterator(
     contig=args.contig
 )
 #####
-
+consensus_model_path=None
 if args.consensus:
     # Load from path if available:
-    consensus_model_path=None
+
     if args.consensus_model is not None:
         if os.path.exists(args.consensus_model):
             model_path = args.consensus_model
