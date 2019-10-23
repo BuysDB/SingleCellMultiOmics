@@ -20,6 +20,7 @@ if __name__=='__main__':
     argparser.add_argument('alignmentfile',  type=str)
     argparser.add_argument('featureTags',  type=str)
     argparser.add_argument('-head',  type=int, help='Run the algorithm only on the first N reads to check if the result looks like what you expect.')
+    argparser.add_argument('-e',  action='store_true', help='Skip reads where any attribute is missing')
     argparser.add_argument('--dedup', action='store_true', help='Count only the first occurence of a molecule. Requires RC tag to be set. Reads without RC tag will be ignored!')
     argparser.add_argument('--showtags',action='store_true', help='Show a list of commonly used tags, and tags present in your bam file' )
     args = argparser.parse_args()
@@ -89,11 +90,13 @@ if __name__=='__main__':
             for i,read in enumerate(f):
                 if args.dedup and read.is_duplicate:
                     continue
-                line = '%s\n' % '\t'.join([
-                    #str(read.reference_name) if tag=='chrom' else (str(read.get_tag(tag) if read.has_tag(tag) else 'None'))
+                values = [
                     str(singlecellmultiomics.modularDemultiplexer.metaFromRead(read,tag))
                     for tag in featureTags
-                ])
+                ]
+                if args.e and any( (v is None for v in values )):
+                    continue
+                line = '%s\n' % '\t'.join(values)
                 if args.o is None:
                     print(line,end="")
                 else:
