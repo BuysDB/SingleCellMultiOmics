@@ -9,14 +9,11 @@ import pandas as pd
 import singlecellmultiomics
 import singlecellmultiomics.modularDemultiplexer
 TagDefinitions = singlecellmultiomics.modularDemultiplexer.TagDefinitions
-
-
 if __name__=='__main__':
     argparser = argparse.ArgumentParser(
      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
      description='Tabulate a bam file to a file where every line corresponds to the features of a single read')
     argparser.add_argument('-o',  type=str, help="output csv path", required=False)
-    #argparser.add_argument('-featureTags',  type=str, default=None, help='These define the columns of your output matrix. For example if you want sample (SM) allele (DA) and restriction site (DS) use SM,DA,DS. If you want a column containing the chromosome mapped to use "chrom" as feature. All pysam attributes of the read can be used. (reference_name, reference_start, reference_end, ..)')
     argparser.add_argument('alignmentfile',  type=str)
     argparser.add_argument('featureTags',  type=str)
     argparser.add_argument('-head',  type=int, help='Run the algorithm only on the first N reads to check if the result looks like what you expect.')
@@ -63,8 +60,7 @@ if __name__=='__main__':
         for tag,t in TagDefinitions.items():
             print(f'{colorama.Style.BRIGHT}{tag}{colorama.Style.RESET_ALL}\t{t.humanName}\t{colorama.Style.DIM}{"PHRED" if t.isPhred else ""}{colorama.Style.RESET_ALL}')
         exit()
-    #if args.o is None:
-        #raise ValueError('Supply an output file')
+
     if args.alignmentfile is None:
         raise ValueError('Supply alignment (BAM) files')
 
@@ -82,10 +78,8 @@ if __name__=='__main__':
         tf = open(args.o,'w')
         # Write header:
         tf.write( '\t'.join([tagToHumanName(t, TagDefinitions) for t in featureTags])+'\n' )
-
     wrote=0
     try:
-
         with pysam.AlignmentFile(args.alignmentfile, ignore_truncation=True  ) as f:
             for i,read in enumerate(f):
                 if args.dedup and read.is_duplicate:
