@@ -394,7 +394,7 @@ class Molecule():
             read.set_tag('NH', len(reads))
         return reads
 
-    def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None, reference=None, NUC_RADIUS = 1, USE_RT=True):
+    def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None, reference=None, NUC_RADIUS = 1, USE_RT=True, select_read_groups=None):
         """
         Obtain feature matrix for base calling
 
@@ -404,6 +404,8 @@ class Molecule():
             end (int) : end of range (inclusive), genomic position
             reference(pysam.FastaFile) : reference to fetch reference bases from, if not supplied the MD tag is used
             NUC_RADIUS(int) : generate kmer features target nucleotide
+            USE_RT(bool) : use RT reaction features
+            select_read_groups(set) : only use reads from these read groups to generate features
         """
         if start is None:
             start = self.spanStart
@@ -440,6 +442,11 @@ class Molecule():
                 RT_reaction_coverage = set() # (pos, base_call)
                 for fragment in fragments:
                     for read in fragment:
+                        if select_read_groups is not None:
+                            if not read.has_tag('RG'):
+                                raise ValueError("Not all reads in the BAM file have a read group defined.")
+                            if not read.get_tag('RG') in select_read_groups:
+                                continue
                         # Skip reads outside range
                         if read is None or read.reference_start > (end+1) or read.reference_end < start:
                             continue
