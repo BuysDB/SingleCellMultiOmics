@@ -1298,7 +1298,7 @@ class Molecule():
 
         phase_str = '|'.join( [f'{chromosome},{position},{base},{allele}' for allele,chromosome, position, base in phased_locations] )
 
-        for read in self.iter_reads:
+        for read in self.iter_reads():
             read.set_tag(tag,phase_str)
 
 
