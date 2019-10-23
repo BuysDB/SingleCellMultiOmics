@@ -23,7 +23,10 @@ class AlleleResolver:
         uglyMode=False,
         lazyLoad=False,
         select_samples=None,
-        use_cache = False # When this flag is true a cache file is generated containing usable SNPs for every chromosome in gzipped format
+        use_cache = False,
+        ignore_conversions = None
+
+         # When this flag is true a cache file is generated containing usable SNPs for every chromosome in gzipped format
         ):
         """Initialise AlleleResolver
 
@@ -42,7 +45,10 @@ class AlleleResolver:
 
             use_cache (bool) : When this flag is true a cache file is generated containing usable SNPs for every chromosome in gzipped format
 
+            ignore_conversions(set) : conversions to ignore {(ref, alt), ..} , for example set( ('C','T'), ('G','A') )
+
         """
+        self.ignore_conversions = ignore_conversions
         self.phased = phased
         self.verbose = False
         self.locationToAllele = collections.defaultdict(  lambda: collections.defaultdict(  lambda: collections.defaultdict(set) )) #chrom -> pos-> base -> sample(s)
@@ -208,6 +214,11 @@ class AlleleResolver:
                         for allele,base in zip('UVWXYZ', rec.alleles):
                             bases_to_alleles[base].add(allele)
                             used=True
+
+                if not bad and ignore_conversions is not None: # prune conversions which are banned
+                    bad = any( ( (variant.ref, base)
+                            in ignore_conversions for base in bases_to_alleles ))
+                
                 if used and not bad:
                     self.locationToAllele[rec.chrom][ rec.pos-1] = bases_to_alleles
                     added+=1
