@@ -215,9 +215,9 @@ class AlleleResolver:
                             bases_to_alleles[base].add(allele)
                             used=True
 
-                if not bad and ignore_conversions is not None: # prune conversions which are banned
+                if not bad and self.ignore_conversions is not None: # prune conversions which are banned
                     bad = any( ( (variant.ref, base)
-                            in ignore_conversions for base in bases_to_alleles ))
+                            in self.ignore_conversions for base in bases_to_alleles ))
 
                 if used and not bad:
                     self.locationToAllele[rec.chrom][ rec.pos-1] = bases_to_alleles
