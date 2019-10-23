@@ -220,6 +220,8 @@ else:
 
         print('Calculating conversion tensor')
         conversions = collections.defaultdict(empty_tensor_dict)
+
+        reference_bases = {}
         for ii,read in enumerate(alignments_positive.fetch(contig)):
 
             last_ref_pos = None
@@ -245,7 +247,7 @@ else:
                         conversions[(contig,ref_pos)]['mismatch'] += 1
 
                 if ref_base is not None and ref_pos is not None:
-                    conversions[(contig,ref_pos)]['ref_base'] = ref_base
+                    reference_bases[(contig,ref_pos)] = ref_base
                 if ref_pos is not None and clipped>0:
                     conversions[(contig,ref_pos)]['clip'] = 1
                     clipped=0
@@ -257,9 +259,11 @@ else:
                 break
 
         df = pd.DataFrame(conversions).fillna(0).T
+
         df['het2']= [df.loc[index, ['A','T','C','G']].T.nsmallest(2).sum() for index in df.index]
         df['het3']= [df.loc[index, ['A','T','C','G']].T.nsmallest(3).sum() for index in df.index]
 
+        pd.DataFrame( {'ref':reference_bases} ).to_csv(f'{args.o}/{contig}.reference_bases.pickle.gz')
         df.to_pickle(f'{args.o}/{contig}.pickle.gz')
         df.to_csv(f'{args.o}/{contig}.feature_matrix.csv')
 
