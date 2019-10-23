@@ -100,11 +100,10 @@ if args.alleles is not None:
         singlecellmultiomics.alleleTools.AlleleResolver(args.alleles,
                                                 select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
                                                 lazyLoad=True )
-    if args.unphased_alleles is not None:
-        raise NotImplementedError("Cannot process both unphased and phased alleles")
 
+unphased_allele_resolver= None
 if args.unphased_alleles is not None:
-    allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver()
+    unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver()
     for i,variant in enumerate( pysam.VariantFile(args.unphased_alleles).fetch(args.contig) ):
         if not 'PASS' in list(variant.filter):
             continue
@@ -114,11 +113,11 @@ if args.unphased_alleles is not None:
             # Not heterozygous
             continue
 
-        allele_resolver.locationToAllele[variant.chrom][variant.pos-1] ={
+        unphased_allele_resolver.locationToAllele[variant.chrom][variant.pos-1] ={
             variant.alleles[0]:{'U'},
             variant.alleles[1]:{'V'}}
 
-    molecule_class_args['allele_resolver'] = allele_resolver
+
 
 ### Transcriptome configuration ###
 if args.method in ('nla_transcriptome', 'cs', 'vasa'):
@@ -289,6 +288,9 @@ with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_
         # Write tag values
         molecule.write_tags()
 
+        if unphased_allele_resolver is not None: # write unphased allele tag:
+            molecule.write_allele_phasing_information_tag( unphased_allele_resolver, 'ua')
+            
         # Update read groups
         for fragment in molecule:
             read_groups.add(fragment.get_read_group())
@@ -305,6 +307,7 @@ with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_
                 out_bam_temp.write(consensus_read)
         # Write the reads to the output file
         if not args.no_source_reads:
+
             molecule.write_pysam( out_bam_temp )
 
 # Add readgroups to the bam file
