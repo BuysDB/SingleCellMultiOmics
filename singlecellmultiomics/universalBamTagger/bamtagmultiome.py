@@ -101,23 +101,6 @@ if args.alleles is not None:
                                                 select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
                                                 lazyLoad=True )
 
-unphased_allele_resolver= None
-if args.unphased_alleles is not None:
-    unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver()
-    for i,variant in enumerate( pysam.VariantFile(args.unphased_alleles).fetch(args.contig) ):
-        if not 'PASS' in list(variant.filter):
-            continue
-        if not all(len(allele)==1 for allele in variant.alleles) or len( variant.alleles)!=2:
-            continue
-        if sum([ len(set(variant.samples[sample].alleles))==2 for sample in variant.samples])<2:
-            # Not heterozygous
-            continue
-
-        unphased_allele_resolver.locationToAllele[variant.chrom][variant.pos-1] ={
-            variant.alleles[0]:{'U'},
-            variant.alleles[1]:{'V'}}
-
-
 
 ### Transcriptome configuration ###
 if args.method in ('nla_transcriptome', 'cs', 'vasa'):
@@ -259,6 +242,22 @@ if args.cluster:
         exit()
 
 #####
+# Load unphased variants to memory
+unphased_allele_resolver= None
+if args.unphased_alleles is not None:
+    unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver()
+    for i,variant in enumerate( pysam.VariantFile(args.unphased_alleles).fetch(args.contig) ):
+        if not 'PASS' in list(variant.filter):
+            continue
+        if not all(len(allele)==1 for allele in variant.alleles) or len( variant.alleles)!=2:
+            continue
+        if sum([ len(set(variant.samples[sample].alleles))==2 for sample in variant.samples])<2:
+            # Not heterozygous
+            continue
+
+        unphased_allele_resolver.locationToAllele[variant.chrom][variant.pos-1] ={
+            variant.alleles[0]:{'U'},
+            variant.alleles[1]:{'V'}}
 
 out_bam_path = args.o
 
@@ -290,7 +289,7 @@ with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_
 
         if unphased_allele_resolver is not None: # write unphased allele tag:
             molecule.write_allele_phasing_information_tag( unphased_allele_resolver, 'ua')
-            
+
         # Update read groups
         for fragment in molecule:
             read_groups.add(fragment.get_read_group())
