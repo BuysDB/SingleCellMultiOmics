@@ -458,19 +458,21 @@ class Molecule():
 
                             query_base = read.seq[q_pos]
                             # Base index block:
-                            block_index = 'ACTGN'.index(query_base)
+                            block_index = 'ACGTN'.index(query_base)
 
                             # Update rt_reactions
                             if USE_RT:
-                                features[row_index][RT_INDEX + COLUMN_OFFSET +features_per_block*block_index] += 1
+                                if not (ref_pos,query_base) in RT_reaction_coverage:
+                                    features[row_index][RT_INDEX + COLUMN_OFFSET +features_per_block*block_index] += 1
+                                RT_reaction_coverage.add( (ref_pos,query_base) )
 
                             # Update total phred score
                             features[row_index][PHRED_INDEX + COLUMN_OFFSET +features_per_block*block_index] += read.query_qualities[q_pos]
 
                             # Update total reads
-                            if not (ref_pos,query_base) in RT_reaction_coverage:
-                                features[row_index][RC_INDEX + COLUMN_OFFSET +features_per_block*block_index] += 1
-                            RT_reaction_coverage.add( (ref_pos,query_base) )
+
+                            features[row_index][RC_INDEX + COLUMN_OFFSET +features_per_block*block_index] += 1
+
 
                             # Update primer mp
                             if fragment.safe_span:
