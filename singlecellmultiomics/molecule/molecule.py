@@ -274,6 +274,9 @@ class Molecule():
             # Store total amount of RT reactions:
             read.set_tag('TR',len(self.get_rt_reactions()))
 
+            if self.allele is not None:
+                read.set_tag('DA', self.allele)
+
         if self.allele_resolver is not None:
             self.write_allele_phasing_information_tag(self.allele_resolver,reads=reads )
 
