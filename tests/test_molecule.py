@@ -320,6 +320,7 @@ class TestMolecule(unittest.TestCase):
 
                 read = molecule.deduplicate_to_single(target_bam)
 
+                consensus = molecule.get_consensus(classifier)
 
 if __name__ == '__main__':
     unittest.main()
