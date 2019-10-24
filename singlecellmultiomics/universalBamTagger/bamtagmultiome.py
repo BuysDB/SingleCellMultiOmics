@@ -298,7 +298,7 @@ with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_
         if args.consensus:
             consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
                     out_bam_temp,
-                    f'consensus_{i}',
+                    f'consensus_{molecule.get_a_reference_id()}_{i}',
                     consensus_model)
             for consensus_read in consensus_reads:
                 consensus_read.set_tag('RG', molecule[0].get_read_group() )

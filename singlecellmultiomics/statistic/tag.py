@@ -39,7 +39,6 @@ class TagHistogram(StatisticHistogram):
             else:
                 self.histogram["Overlapping with exon"]+=1
 
-
         if read.has_tag('XS'):
             if read.get_tag('XS')=='Unassigned_NoFeatures':
                 self.histogram["Not assigned to gene/intron"]+=1

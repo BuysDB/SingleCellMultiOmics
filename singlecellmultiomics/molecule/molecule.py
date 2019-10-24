@@ -133,7 +133,11 @@ class Molecule():
                 # This happens when a consensus can not be obtained
                 pass
 
-
+    def get_a_reference_id(self):
+        for read in self.iter_reads():
+            if not read.is_unmapped:
+                return read.reference_id
+        return -1
 
     def get_consensus_read(self, target_file,
             read_name,consensus=None,

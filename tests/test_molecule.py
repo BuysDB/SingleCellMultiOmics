@@ -50,6 +50,19 @@ class TestMolecule(unittest.TestCase):
             for molecule in it:
                 str(molecule)
 
+    def test_NLA_Molecule_ref_id(self):
+        """Test if the molecule representation function is stable"""
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            it = singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
+            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+            )
+            for molecule in it:
+                self.assertEqual( molecule.get_a_reference_id(),0)
+
+
+
     def test_NLA_molecule_iterator_stability(self):
         """Test if the simplest molecule iterator works"""
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
