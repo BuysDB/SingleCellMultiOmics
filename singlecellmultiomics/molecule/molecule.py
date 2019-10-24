@@ -412,6 +412,7 @@ class Molecule():
         # Write NH tag (the amount of records with the same query read):
         for read in reads:
             read.set_tag('NH', len(reads))
+
         return reads
 
     def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None, reference=None, NUC_RADIUS = 1, USE_RT=True, select_read_groups=None):
@@ -547,7 +548,7 @@ class Molecule():
                 return  features, ref_info
             return features
 
-
+    @functools.lru_cache(maxsize=4)
     def get_base_calling_feature_matrix_spaced(self,return_ref_info=False, reference=None, **feature_matrix_args):
         """
         Obtain a base-calling feature matrix for all reference aligned bases.
