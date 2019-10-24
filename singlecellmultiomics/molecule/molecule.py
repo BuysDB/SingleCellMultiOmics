@@ -191,14 +191,7 @@ class Molecule():
         if mdstring is not None:
             cread.set_tag('MD',mdstring)
 
-        cread.set_tag('SM', self.sample)
-        #if self.is_valid():
-        #    cread.set_tag('DS', molecule.get_cut_site()[1])
-        if self.umi is not None:
-            cread.set_tag('RX',self.umi)
-            bc = list(self.get_barcode_sequences())[0]
-            cread.set_tag('BC',bc)
-            cread.set_tag('MI',bc+self.umi)
+        self.write_tags_to_psuedoreads( (cread,) )
 
         return cread
 
@@ -258,6 +251,33 @@ class Molecule():
         for tag, value in itertools.chain(*[r.tags for r in self.iter_reads()]) :
             tags_obs[tag][value] += 1
         return tag_obs
+
+    def write_tags_to_psuedoreads(self,reads):
+        """
+        Write molecule information to the supplied reads as BAM tags
+        """
+        # write methylation tags to new reads if applicable:
+        if self.methylation_call_dict is not None:
+            self.set_methylation_call_tags(self.methylation_call_dict, reads=reads)
+
+        for read in reads:
+            read.set_tag('SM', self.sample)
+            if hasattr(self, 'get_cut_site'):
+                read.set_tag('DS', self.get_cut_site()[1])
+
+            if self.umi is not None:
+                read.set_tag('RX',self.umi)
+                bc = list(self.get_barcode_sequences())[0]
+                read.set_tag('BC',bc)
+                read.set_tag('MI',bc+self.umi)
+
+            # Store total amount of RT reactions:
+            read.set_tag('TR',len(self.get_rt_reactions()))
+
+        if self.allele_resolver is not None:
+            self.write_allele_phasing_information_tag(self.allele_resolver,reads=reads )
+
+
 
     def deduplicate_to_single(self, target_bam, read_name, classifier,reference=None):
         """
