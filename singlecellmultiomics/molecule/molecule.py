@@ -1477,7 +1477,7 @@ class Molecule():
 
         return matches, mismatches
 
-    def get_consensus(self, base_obs=None, classifier=None):
+    def get_consensus(self, base_obs=None, classifier=None, store_consensus=True, reuse_cached_consensus=True):
         """Get dictionary containing consensus calls in respect to reference.
         By default mayority voting is used to determine the consensus base. If a classifier is supplied the classifier is used to determine the consensus base.
 
@@ -1486,6 +1486,7 @@ class Molecule():
                 { genome_location (tuple) : base (string) : obs (int) }
 
             classifier : fitted classifier to use for consensus calling. When no classifier is provided the consensus is determined by majority voting
+            store_consensus (bool) : Store the generated consensus for re-use
 
         Returns:
             consensus (dict)  :  {location : base}
@@ -1493,18 +1494,29 @@ class Molecule():
         consensus = {} # postion -> base , key is not set when not decided
 
         if classifier is not None:
+
+            if reuse_cached_consensus and hasattr( self, 'classifier_consensus' ) and self.classifier_consensus is not None:
+                return self.classifier_consensus
+
+            features,reference_bases,CIGAR,alignment_start, alignment_end = self.get_base_calling_feature_matrix_spaced(True)
+
             predicted_sequence =  classifier.predict(features)
             reference_sequence = ''.join([base for chrom, pos, base  in reference_bases])
             predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
-            """
+
             phred_scores = np.rint(
                     -10*np.log10( np.clip(1-classifier.predict_proba(features).max(1),
                                           0.000000001,
                                           0.999999999 )
                 )).astype('B')
-            """
-            return { (chrom,pos):consensus_base for (chrom, pos, ref_base),consensus_base  in zip( reference_bases,predicted_sequence)  }
 
+
+            consensus = { (chrom,pos):consensus_base for (chrom, pos, ref_base),consensus_base  in zip( reference_bases,predicted_sequence)  }
+
+            if store_consensus:
+                self.classifier_consensus = consensus
+                self.classifier_phred_scores = phred_scores
+            return consensus
 
 
         if base_obs is None:
@@ -1518,6 +1530,9 @@ class Molecule():
             votes = obs.most_common()
             if len(votes)==1 or votes[1][1]<votes[0][1]:
                 consensus[location] = votes[0][0]
+
+        if store_consensus:
+            self.majority_consensus = consensus
 
         return consensus
 
