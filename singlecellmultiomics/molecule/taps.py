@@ -137,7 +137,7 @@ class TAPSMolecule(Molecule):
         self.methylation_call_dict = None
         self.classifier = classifier
         try:
-            self.obtain_methylation_calls()
+            self.obtain_methylation_calls(classifier=self.classifier)
         except ValueError:
             pass
 
