@@ -99,7 +99,9 @@ if args.alleles is not None:
     molecule_class_args['allele_resolver'] = \
         singlecellmultiomics.alleleTools.AlleleResolver(args.alleles,
                                                 select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
-                                                lazyLoad=True )
+                                                lazyLoad=True,
+                                                ignore_conversions=ignore_conversions
+                                                 )
 
 
 ### Transcriptome configuration ###
@@ -245,7 +247,7 @@ if args.cluster:
 # Load unphased variants to memory
 unphased_allele_resolver= None
 if args.unphased_alleles is not None:
-    unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver(phased=False)
+    unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver(phased=False,ignore_conversions=ignore_conversions)
     for i,variant in enumerate( pysam.VariantFile(args.unphased_alleles).fetch(args.contig) ):
         if not 'PASS' in list(variant.filter):
             continue
