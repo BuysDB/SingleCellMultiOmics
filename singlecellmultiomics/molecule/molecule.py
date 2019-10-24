@@ -1454,17 +1454,35 @@ class Molecule():
         return matches, mismatches
 
     def get_consensus(self, base_obs=None, classifier=None):
-        """Get dictionary containing consensus calls in respect to reference
+        """Get dictionary containing consensus calls in respect to reference.
         By default mayority voting is used to determine the consensus base. If a classifier is supplied the classifier is used to determine the consensus base.
 
         Args:
             base_obs (collections.defaultdict(collections.Counter)) :
                 { genome_location (tuple) : base (string) : obs (int) }
 
+            classifier : fitted classifier to use for consensus calling. When no classifier is provided the consensus is determined by majority voting
+
         Returns:
             consensus (dict)  :  {location : base}
         """
         consensus = {} # postion -> base , key is not set when not decided
+
+        if classifier is not None:
+            predicted_sequence =  classifier.predict(features)
+            reference_sequence = ''.join([base for chrom, pos, base  in reference_bases])
+            predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
+            """
+            phred_scores = np.rint(
+                    -10*np.log10( np.clip(1-classifier.predict_proba(features).max(1),
+                                          0.000000001,
+                                          0.999999999 )
+                )).astype('B')
+            """
+            return { (chrom,pos):consensus_base for (chrom, pos, ref_base),consensus_base  in zip( reference_bases,predicted_sequence)  }
+
+
+
         if base_obs is None:
             try:
                 base_obs, ref_bases = self.get_base_observation_dict(return_refbases=True)
