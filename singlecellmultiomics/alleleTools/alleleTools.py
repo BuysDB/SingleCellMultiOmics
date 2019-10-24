@@ -176,53 +176,55 @@ class AlleleResolver:
         if self.verbose:
             print(f'Reading variants for {chrom} ', end='')
         with pysam.VariantFile(vcffile) as v:
-            for rec in v.fetch(chrom):
-                used = False
-                bad = False
-                bases_to_alleles = collections.defaultdict(set) # base -> samples
+            try:
+                for rec in v.fetch(chrom):
+                    used = False
+                    bad = False
+                    bases_to_alleles = collections.defaultdict(set) # base -> samples
 
-                if self.phased: # variants are phased, assign a random allele
-                    samples_assigned = set()
-                    most_assigned_base = 0
-                    for sample, sampleData in rec.samples.items():
+                    if self.phased: # variants are phased, assign a random allele
+                        samples_assigned = set()
+                        most_assigned_base = 0
+                        for sample, sampleData in rec.samples.items():
 
-                        if self.select_samples is not None and not sample in self.select_samples:
-                            continue
-                        for base in sampleData.alleles:
-                            if base is None:
-                                unTrusted.append( (rec.chrom, rec.pos ) )
+                            if self.select_samples is not None and not sample in self.select_samples:
                                 continue
-                            if len(base)==1:
-                                bases_to_alleles[base].add(sample)
-                                used=True
-                                samples_assigned.add(sample)
-                            else: # This location cannot be trusted:
-                                bad = True
-                    # We can prune this site if all samples are associated with the same base
-                    if self.select_samples is not None and used:
-                        if len(samples_assigned)!=len(self.select_samples):
-                            # The site is not informative
+                            for base in sampleData.alleles:
+                                if base is None:
+                                    unTrusted.append( (rec.chrom, rec.pos ) )
+                                    continue
+                                if len(base)==1:
+                                    bases_to_alleles[base].add(sample)
+                                    used=True
+                                    samples_assigned.add(sample)
+                                else: # This location cannot be trusted:
+                                    bad = True
+                        # We can prune this site if all samples are associated with the same base
+                        if self.select_samples is not None and used:
+                            if len(samples_assigned)!=len(self.select_samples):
+                                # The site is not informative
+                                bad=True
+                        if len(bases_to_alleles)<2:
                             bad=True
-                    if len(bases_to_alleles)<2:
-                        bad=True
-                        # The site is not informative
-                else: # not phased
-                    if not all(len(allele)==1 for allele in rec.alleles): # only select SNVs
-                        bad=True
-                    else:
-                        bad=False
-                        for allele,base in zip('UVWXYZ', rec.alleles):
-                            bases_to_alleles[base].add(allele)
-                            used=True
+                            # The site is not informative
+                    else: # not phased
+                        if not all(len(allele)==1 for allele in rec.alleles): # only select SNVs
+                            bad=True
+                        else:
+                            bad=False
+                            for allele,base in zip('UVWXYZ', rec.alleles):
+                                bases_to_alleles[base].add(allele)
+                                used=True
 
-                if not bad and self.ignore_conversions is not None: # prune conversions which are banned
-                    bad = any( ( (variant.ref, base)
-                            in self.ignore_conversions for base in bases_to_alleles ))
+                    if not bad and self.ignore_conversions is not None: # prune conversions which are banned
+                        bad = any( ( (rec.ref, base)
+                                in self.ignore_conversions for base in bases_to_alleles ))
 
-                if used and not bad:
-                    self.locationToAllele[rec.chrom][ rec.pos-1] = bases_to_alleles
-                    added+=1
-
+                    if used and not bad:
+                        self.locationToAllele[rec.chrom][ rec.pos-1] = bases_to_alleles
+                        added+=1
+            except Exception as e: #
+                print(e)
 
 
         #for t in unTrusted:

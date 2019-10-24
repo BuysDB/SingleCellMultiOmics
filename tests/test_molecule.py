@@ -330,9 +330,10 @@ class TestMolecule(unittest.TestCase):
             for molecule in molecule_iterator:
                 reads = molecule.deduplicate_to_single_CIGAR_spaced(target_bam,
                 read_name, classifier,reference=reference)
-
+                
                 read = molecule.deduplicate_to_single(target_bam)
 
+                consensus = molecule.get_consensus(classifier)
 
 if __name__ == '__main__':
     unittest.main()

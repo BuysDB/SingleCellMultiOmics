@@ -195,14 +195,7 @@ class Molecule():
         if mdstring is not None:
             cread.set_tag('MD',mdstring)
 
-        cread.set_tag('SM', self.sample)
-        #if self.is_valid():
-        #    cread.set_tag('DS', molecule.get_cut_site()[1])
-        if self.umi is not None:
-            cread.set_tag('RX',self.umi)
-            bc = list(self.get_barcode_sequences())[0]
-            cread.set_tag('BC',bc)
-            cread.set_tag('MI',bc+self.umi)
+        self.write_tags_to_psuedoreads( (cread,) )
 
         return cread
 
@@ -262,6 +255,36 @@ class Molecule():
         for tag, value in itertools.chain(*[r.tags for r in self.iter_reads()]) :
             tags_obs[tag][value] += 1
         return tag_obs
+
+    def write_tags_to_psuedoreads(self,reads):
+        """
+        Write molecule information to the supplied reads as BAM tags
+        """
+        # write methylation tags to new reads if applicable:
+        if self.methylation_call_dict is not None:
+            self.set_methylation_call_tags(self.methylation_call_dict, reads=reads)
+
+        for read in reads:
+            read.set_tag('SM', self.sample)
+            if hasattr(self, 'get_cut_site'):
+                read.set_tag('DS', self.get_cut_site()[1])
+
+            if self.umi is not None:
+                read.set_tag('RX',self.umi)
+                bc = list(self.get_barcode_sequences())[0]
+                read.set_tag('BC',bc)
+                read.set_tag('MI',bc+self.umi)
+
+            # Store total amount of RT reactions:
+            read.set_tag('TR',len(self.get_rt_reactions()))
+
+            if self.allele is not None:
+                read.set_tag('DA', self.allele)
+
+        if self.allele_resolver is not None:
+            self.write_allele_phasing_information_tag(self.allele_resolver,reads=reads )
+
+
 
     def deduplicate_to_single(self, target_bam, read_name, classifier,reference=None):
         """
@@ -396,6 +419,7 @@ class Molecule():
         # Write NH tag (the amount of records with the same query read):
         for read in reads:
             read.set_tag('NH', len(reads))
+
         return reads
 
     def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None, reference=None, NUC_RADIUS = 1, USE_RT=True, select_read_groups=None):
@@ -531,7 +555,7 @@ class Molecule():
                 return  features, ref_info
             return features
 
-
+    @functools.lru_cache(maxsize=4)
     def get_base_calling_feature_matrix_spaced(self,return_ref_info=False, reference=None, **feature_matrix_args):
         """
         Obtain a base-calling feature matrix for all reference aligned bases.
@@ -1096,6 +1120,7 @@ class Molecule():
                               total_unmethylated_CHH_tag='sh',
                               total_methylated_CHG_tag='sX',
                               total_unmethylated_CHG_tag='sx',
+                              reads = None
                              ):
         """Set methylation call tags given a methylation dictionary
 
@@ -1113,6 +1138,7 @@ class Molecule():
 
             total_unmethylated_tag (str) : tag to write total unmethylated bases
 
+            reads (iterable) : reads to write the tags to, when not supplied, the tags are written to all associated reads
         Returns:
             can_be_yielded (bool)
         """
@@ -1124,58 +1150,57 @@ class Molecule():
                 d.get('context','.') for d in self.methylation_call_dict.values() )
                 )
         # Contruct XM strings
-        for fragment in self:
-            for read in fragment:
-                if read is None:
-                    continue
-                read.set_tag(
-                    # Write the methylation tag to the read
-                    bismark_call_tag,
-                    ''.join([
-                        call_dict.get(
-                            (read.reference_name,rpos),{} ).get('context','.')  # Obtain all aligned positions from the call dict
-                        for qpos, rpos in read.get_aligned_pairs(matches_only=True) # iterate all positions in the alignment
-                        if qpos is not None and rpos is not None]) # make sure to ignore non matching positions ? is this neccesary?
-                )
+        if reads is None:
+            reads = self.iter_reads()
+        for read in reads:
+            read.set_tag(
+                # Write the methylation tag to the read
+                bismark_call_tag,
+                ''.join([
+                    call_dict.get(
+                        (read.reference_name,rpos),{} ).get('context','.')  # Obtain all aligned positions from the call dict
+                    for qpos, rpos in read.get_aligned_pairs(matches_only=True) # iterate all positions in the alignment
+                    if qpos is not None and rpos is not None]) # make sure to ignore non matching positions ? is this neccesary?
+            )
 
 
 
-                # Set total methylated bases
-                read.set_tag(
-                    total_methylated_tag,
-                    molecule_XM['Z']+molecule_XM['X']+molecule_XM['H'] )
+            # Set total methylated bases
+            read.set_tag(
+                total_methylated_tag,
+                molecule_XM['Z']+molecule_XM['X']+molecule_XM['H'] )
 
-                # Set total unmethylated bases
-                read.set_tag(
-                    total_unmethylated_tag,
-                    molecule_XM['z']+molecule_XM['x']+molecule_XM['h'] )
+            # Set total unmethylated bases
+            read.set_tag(
+                total_unmethylated_tag,
+                molecule_XM['z']+molecule_XM['x']+molecule_XM['h'] )
 
-                # Set total CPG methylated and unmethylated:
-                read.set_tag(
-                    total_methylated_CPG_tag,
-                    molecule_XM['Z'])
+            # Set total CPG methylated and unmethylated:
+            read.set_tag(
+                total_methylated_CPG_tag,
+                molecule_XM['Z'])
 
-                read.set_tag(
-                    total_unmethylated_CPG_tag,
-                    molecule_XM['z'])
+            read.set_tag(
+                total_unmethylated_CPG_tag,
+                molecule_XM['z'])
 
-                # Set total CHG methylated and unmethylated:
-                read.set_tag(
-                    total_methylated_CHG_tag,
-                    molecule_XM['X'])
+            # Set total CHG methylated and unmethylated:
+            read.set_tag(
+                total_methylated_CHG_tag,
+                molecule_XM['X'])
 
-                read.set_tag(
-                    total_unmethylated_CHG_tag,
-                    molecule_XM['x'])
+            read.set_tag(
+                total_unmethylated_CHG_tag,
+                molecule_XM['x'])
 
-                # Set total CHH methylated and unmethylated:
-                read.set_tag(
-                    total_methylated_CHH_tag,
-                    molecule_XM['H'])
+            # Set total CHH methylated and unmethylated:
+            read.set_tag(
+                total_methylated_CHH_tag,
+                molecule_XM['H'])
 
-                read.set_tag(
-                    total_unmethylated_CHH_tag,
-                    molecule_XM['h'])
+            read.set_tag(
+                total_unmethylated_CHH_tag,
+                molecule_XM['h'])
 
     def set_meta(self,tag,value):
         """Set meta information to all fragments
@@ -1285,7 +1310,7 @@ class Molecule():
             return aibd
         return alleles
 
-    def write_allele_phasing_information_tag(self,allele_resolver=None,tag='ap'):
+    def write_allele_phasing_information_tag(self,allele_resolver=None,tag='ap', reads=None):
         """
         Write allele phasing information to ap tag
 
@@ -1293,6 +1318,8 @@ class Molecule():
         chromosome,postion,base,allele_name|chromosome,postion,base,allele_name|...
         for all variants found by the AlleleResolver
         """
+        if reads is None:
+            reads = self.iter_reads()
 
         haplotype = self.get_allele(
                 return_allele_informative_base_dict=True,
@@ -1306,7 +1333,7 @@ class Molecule():
         phase_str = '|'.join( [f'{chromosome},{position},{base},{allele}' for allele,chromosome, position, base in phased_locations] )
 
         if len(phase_str)>0:
-            for read in self.iter_reads():
+            for read in reads:
                 read.set_tag(tag,phase_str)
 
 
@@ -1457,18 +1484,48 @@ class Molecule():
 
         return matches, mismatches
 
-    def get_consensus(self, base_obs=None, classifier=None):
-        """Get dictionary containing consensus calls in respect to reference
+    def get_consensus(self, base_obs=None, classifier=None, store_consensus=True, reuse_cached_consensus=True):
+        """Get dictionary containing consensus calls in respect to reference.
         By default mayority voting is used to determine the consensus base. If a classifier is supplied the classifier is used to determine the consensus base.
 
         Args:
             base_obs (collections.defaultdict(collections.Counter)) :
                 { genome_location (tuple) : base (string) : obs (int) }
 
+            classifier : fitted classifier to use for consensus calling. When no classifier is provided the consensus is determined by majority voting
+            store_consensus (bool) : Store the generated consensus for re-use
+
         Returns:
             consensus (dict)  :  {location : base}
         """
         consensus = {} # postion -> base , key is not set when not decided
+
+        if classifier is not None:
+
+            if reuse_cached_consensus and hasattr( self, 'classifier_consensus' ) and self.classifier_consensus is not None:
+                return self.classifier_consensus
+
+            features,reference_bases,CIGAR,alignment_start, alignment_end = self.get_base_calling_feature_matrix_spaced(True)
+
+            predicted_sequence =  classifier.predict(features)
+            reference_sequence = ''.join([base for chrom, pos, base  in reference_bases])
+            predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
+
+            phred_scores = np.rint(
+                    -10*np.log10( np.clip(1-classifier.predict_proba(features).max(1),
+                                          0.000000001,
+                                          0.999999999 )
+                )).astype('B')
+
+
+            consensus = { (chrom,pos):consensus_base for (chrom, pos, ref_base),consensus_base  in zip( reference_bases,predicted_sequence)  }
+
+            if store_consensus:
+                self.classifier_consensus = consensus
+                self.classifier_phred_scores = phred_scores
+            return consensus
+
+
         if base_obs is None:
             try:
                 base_obs, ref_bases = self.get_base_observation_dict(return_refbases=True)
@@ -1480,6 +1537,9 @@ class Molecule():
             votes = obs.most_common()
             if len(votes)==1 or votes[1][1]<votes[0][1]:
                 consensus[location] = votes[0][0]
+
+        if store_consensus:
+            self.majority_consensus = consensus
 
         return consensus
 

@@ -93,13 +93,15 @@ if args.write_rejects:
 
 ignore_conversions = None
 if args.method=='nla_taps' or args.method=='chic_taps':
-    ignore_conversions = set( ('C','A'), ('G','T') )
+    ignore_conversions = set( [ ('C','A'), ('G','T') ])
 
 if args.alleles is not None:
     molecule_class_args['allele_resolver'] = \
         singlecellmultiomics.alleleTools.AlleleResolver(args.alleles,
                                                 select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
-                                                lazyLoad=True )
+                                                lazyLoad=True,
+                                                ignore_conversions=ignore_conversions
+                                                 )
 
 
 ### Transcriptome configuration ###
@@ -245,20 +247,22 @@ if args.cluster:
 # Load unphased variants to memory
 unphased_allele_resolver= None
 if args.unphased_alleles is not None:
-    unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver(phased=False)
-    for i,variant in enumerate( pysam.VariantFile(args.unphased_alleles).fetch(args.contig) ):
-        if not 'PASS' in list(variant.filter):
-            continue
-        if not all(len(allele)==1 for allele in variant.alleles) or len( variant.alleles)!=2:
-            continue
-        if sum([ len(set(variant.samples[sample].alleles))==2 for sample in variant.samples])<2:
-            # Not heterozygous
-            continue
+    unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver(phased=False,ignore_conversions=ignore_conversions)
+    try:
+        for i,variant in enumerate( pysam.VariantFile(args.unphased_alleles).fetch(args.contig) ):
+            if not 'PASS' in list(variant.filter):
+                continue
+            if not all(len(allele)==1 for allele in variant.alleles) or len( variant.alleles)!=2:
+                continue
+            if sum([ len(set(variant.samples[sample].alleles))==2 for sample in variant.samples])<2:
+                # Not heterozygous
+                continue
 
-        unphased_allele_resolver.locationToAllele[variant.chrom][variant.pos-1] ={
-            variant.alleles[0]:{'U'},
-            variant.alleles[1]:{'V'}}
-
+            unphased_allele_resolver.locationToAllele[variant.chrom][variant.pos-1] ={
+                variant.alleles[0]:{'U'},
+                variant.alleles[1]:{'V'}}
+    except Exception as e: #todo catch this more nicely
+        print(e)
 out_bam_path = args.o
 
 # Temp bam file to write tagged records to. This file does not have read groups yet,
@@ -304,6 +308,7 @@ with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_
                 consensus_read.set_tag('RG', molecule[0].get_read_group() )
                 consensus_read.set_tag('mi', i)
                 out_bam_temp.write(consensus_read)
+
         # Write the reads to the output file
         if not args.no_source_reads:
 
