@@ -119,7 +119,15 @@ class TAPS():
 
 
 class TAPSMolecule(Molecule):
-    def __init__(self, fragments=None, taps=None,  **kwargs):
+    def __init__(self, fragments=None, taps=None, classifier=None,  **kwargs):
+        """ TAPSMolecule
+
+        Args:
+            fragments(list) :  list of fragments to associate with the Molecule
+            taps(singlecellmultiomics.molecule.TAPS) : TAPS class which performs the methylation calling
+            classifier : fitted sklearn classifier, when supplied this classifier is used to obtain a consensus from which the methylation calls are generated.
+
+        """
         Molecule.__init__(self, fragments=fragments, **kwargs)
         if taps is None:
             raise ValueError("""Supply initialised TAPS class
@@ -127,6 +135,7 @@ class TAPSMolecule(Molecule):
             """)
         self.taps = taps #initialised TAPS class
         self.methylation_call_dict = None
+        self.classifier = classifier
         try:
             self.obtain_methylation_calls()
         except ValueError:
@@ -156,9 +165,10 @@ class TAPSMolecule(Molecule):
 
 
 
-    def obtain_methylation_calls(self):
+    def obtain_methylation_calls(self, classifier=None):
         """ This methods returns a methylation call dictionary
-
+            Args:
+                classifier : classifier used for consensus determination
             returns:
                 mcalls(dict) : (chrom,pos) : {'consensus': consensusBase, 'reference': referenceBase, 'call': call}
         """
@@ -171,7 +181,7 @@ class TAPSMolecule(Molecule):
 
         # Obtain consensus:
         try:
-            consensus = self.get_consensus()
+            consensus = self.get_consensus(classifier=classifier)
         except ValueError:
             raise ValueError('Cannot obtain a safe consensus for this molecule')
 
