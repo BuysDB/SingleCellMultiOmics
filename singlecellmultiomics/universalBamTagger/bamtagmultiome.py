@@ -93,7 +93,7 @@ if args.write_rejects:
 
 ignore_conversions = None
 if args.method=='nla_taps' or args.method=='chic_taps':
-    ignore_conversions = set( ('C','A'), ('G','T') )
+    ignore_conversions = set( [ ('C','A'), ('G','T') ])
 
 if args.alleles is not None:
     molecule_class_args['allele_resolver'] = \
