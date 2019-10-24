@@ -248,19 +248,21 @@ if args.cluster:
 unphased_allele_resolver= None
 if args.unphased_alleles is not None:
     unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver(phased=False,ignore_conversions=ignore_conversions)
-    for i,variant in enumerate( pysam.VariantFile(args.unphased_alleles).fetch(args.contig) ):
-        if not 'PASS' in list(variant.filter):
-            continue
-        if not all(len(allele)==1 for allele in variant.alleles) or len( variant.alleles)!=2:
-            continue
-        if sum([ len(set(variant.samples[sample].alleles))==2 for sample in variant.samples])<2:
-            # Not heterozygous
-            continue
+    try:
+        for i,variant in enumerate( pysam.VariantFile(args.unphased_alleles).fetch(args.contig) ):
+            if not 'PASS' in list(variant.filter):
+                continue
+            if not all(len(allele)==1 for allele in variant.alleles) or len( variant.alleles)!=2:
+                continue
+            if sum([ len(set(variant.samples[sample].alleles))==2 for sample in variant.samples])<2:
+                # Not heterozygous
+                continue
 
-        unphased_allele_resolver.locationToAllele[variant.chrom][variant.pos-1] ={
-            variant.alleles[0]:{'U'},
-            variant.alleles[1]:{'V'}}
-
+            unphased_allele_resolver.locationToAllele[variant.chrom][variant.pos-1] ={
+                variant.alleles[0]:{'U'},
+                variant.alleles[1]:{'V'}}
+    except Exception as e: #todo catch this more nicely
+        print(e)
 out_bam_path = args.o
 
 # Temp bam file to write tagged records to. This file does not have read groups yet,
