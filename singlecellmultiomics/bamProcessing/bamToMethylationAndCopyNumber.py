@@ -21,7 +21,7 @@ args = argparser.parse_args()
 
 chromosomes = [f'chr{x}' for x in range(1,23)] + ['chrX']
 
-output_alias = args.alignmentfile + '.table.bs_{bin_size}'
+output_alias = args.alignmentfile + '.table.bs_{args.bin_size}'
 
 fragment_abundance = collections.defaultdict( collections.Counter) # cell -> (allele, chromosome,   bin) -> umi_count
 methylation_pos = collections.defaultdict( collections.Counter) # cell -> (context, chromosome, bin) -> methylation
