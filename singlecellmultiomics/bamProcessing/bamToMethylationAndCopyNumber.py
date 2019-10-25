@@ -13,8 +13,8 @@ argparser = argparse.ArgumentParser(
 
 argparser.add_argument('alignmentfile',  type=str)
 argparser.add_argument('-head',  type=int, default=None)
-argparser.add_argument('--bin_size',  type=int,default=250_000)
-argparser.add_argument('--min_mq',  type=int,default=30, help='Minimum mapping quality')
+argparser.add_argument('-bin_size',  type=int,default=250_000)
+argparser.add_argument('-min_mq',  type=int,default=30, help='Minimum mapping quality')
 argparser.add_argument('--met',  action='store_true')
 argparser.add_argument('--cnv',  action='store_true')
 args = argparser.parse_args()
