@@ -70,6 +70,7 @@ setup(
         # Bam processing:
         'singlecellmultiomics/bamProcessing/bamTabulator.py',
         'singlecellmultiomics/bamProcessing/bamToCountTable.py',
+        'singlecellmultiomics/bamProcessing/bamToMethylationAndCopyNumber.py',
         'singlecellmultiomics/bamProcessing/bamMappingRate.py',
         'singlecellmultiomics/bamProcessing/bamFilter.py',
         'singlecellmultiomics/bamProcessing/bamPlotRTstats.py',
