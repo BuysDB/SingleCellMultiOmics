@@ -221,6 +221,8 @@ if args.consensus:
         print(f'Writing consensus model to {consensus_model_path}')
         with open(consensus_model_path,'wb') as f:
             pickle.dump(consensus_model,f)
+    else:
+        raise NotImplementedError("Please supply variants which should be masked (-consensus_mask_variants)")
 
 # We needed to check if every argument is properly placed. If so; the jobs can be sent to the cluster
 if args.cluster:
