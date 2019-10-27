@@ -132,6 +132,7 @@ class Molecule():
             except ValueError as e:
                 # This happens when a consensus can not be obtained
                 pass
+        self.methylation_call_dict = None
 
     def get_a_reference_id(self):
         for read in self.iter_reads():
