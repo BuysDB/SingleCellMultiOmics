@@ -13,7 +13,7 @@ import typing
 import pysam
 import pysamiterators
 from singlecellmultiomics.utils import find_ranges, create_MD_tag
-
+import pandas as pd
 
 @functools.lru_cache(maxsize=1000)
 def might_be_variant(chrom,pos, variants, ref_base=None):
@@ -340,7 +340,7 @@ class Molecule():
 
         predicted_sequence =  classifier.predict(features)
         reference_sequence = ''.join([base for chrom, pos, base  in reference_bases])
-        predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
+        #predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
         predicted_sequence = ''.join( predicted_sequence )
 
         phred_scores = np.rint(
@@ -423,6 +423,56 @@ class Molecule():
 
         return reads
 
+
+    def  base_calling_matrix_to_df(x, ref_info=None, NUC_RADIUS = 1, USE_RT=True):
+        """
+        Convert numpy base calling feature matrix to pandas dataframe with annotated columns
+
+        Args:
+            x(np.array) : feature matrix
+            ref_info(list) : reference position annotations (will be used as index)
+            NUC_RADIUS(int) : generate kmer features target nucleotide
+            USE_RT(bool) : use RT reaction features
+
+        Returns:
+            df (pd.DataFrame)
+        """
+        df = pd.DataFrame(x)
+        # annotate the columns
+        BASE_COUNT = 5
+        RT_INDEX = 7 if USE_RT else None
+        STRAND_INDEX = 0
+        PHRED_INDEX = 1
+        RC_INDEX = 2
+        MATE_INDEX = 3
+        CYCLE_INDEX = 4
+        MQ_INDEX = 5
+        FS_INDEX = 6
+        COLUMN_OFFSET = 0
+        features_per_block = 8 - (not USE_RT)
+
+        block_header = ["?"] * features_per_block
+        block_header[STRAND_INDEX] = 'strand'
+        block_header[PHRED_INDEX] = 'phred'
+        block_header[RC_INDEX] = 'read_count'
+        block_header[MATE_INDEX] = 'mate'
+        block_header[CYCLE_INDEX] = 'cycle'
+        block_header[MQ_INDEX] = 'mq'
+        block_header[FS_INDEX] = 'fragment_size'
+        block_header[RT_INDEX] = 'rt_reactions'
+        k_header = []
+        for k in range(NUC_RADIUS*2 +1):
+            for base in 'ACGTN':
+                k_header+=[(k, b, base) for b in block_header]
+
+        try:
+            df.columns=pd.MultiIndex.from_tuples( k_header )
+        except ValueError:  # the dataframe is a concateenation of multiple molecules
+            pass
+        if ref_info is not None:
+            df.index = pd.MultiIndex.from_tuples( ref_info)
+        return df
+
     def get_base_calling_feature_matrix(self, return_ref_info=False, start=None, end=None, reference=None, NUC_RADIUS = 1, USE_RT=True, select_read_groups=None):
         """
         Obtain feature matrix for base calling
@@ -447,7 +497,7 @@ class Molecule():
             STRAND_INDEX = 0
             PHRED_INDEX = 1
             RC_INDEX = 2
-            ALIGNED_WP_INDEX = 3
+            MATE_INDEX = 3
             CYCLE_INDEX = 4
             MQ_INDEX = 5
             FS_INDEX = 6
@@ -503,12 +553,8 @@ class Molecule():
                             features[row_index][RC_INDEX + COLUMN_OFFSET +features_per_block*block_index] += 1
 
 
-                            # Update primer mp
-                            if fragment.safe_span:
-                                features[row_index][ALIGNED_WP_INDEX + COLUMN_OFFSET +features_per_block*block_index] +=  (ref_pos<fragment.span[1] or ref_pos>fragment.span[2] )
-                            else:
-                                features[row_index][ALIGNED_WP_INDEX + COLUMN_OFFSET +features_per_block*block_index] +=  (ref_pos<fragment.span[1] or ref_pos>fragment.span[2] )
-                                #fragment_sizes[key].append( abs( fragment.span[1] - fragment.span[2] ) )
+                            # Update mate index
+                            features[row_index][MATE_INDEX + COLUMN_OFFSET +features_per_block*block_index] += read.is_reverse
 
                             # Update fragment sizes:
                             features[row_index][FS_INDEX + COLUMN_OFFSET +features_per_block*block_index] += abs( fragment.span[1] - fragment.span[2] )
@@ -532,7 +578,7 @@ class Molecule():
             # Normalize all and return
 
             for block_index in range(BASE_COUNT): #ACGTN
-                for index in (PHRED_INDEX, ALIGNED_WP_INDEX, CYCLE_INDEX, MQ_INDEX, FS_INDEX, STRAND_INDEX  ):
+                for index in (PHRED_INDEX, MATE_INDEX, CYCLE_INDEX, MQ_INDEX, FS_INDEX, STRAND_INDEX  ):
                     features[:,index + COLUMN_OFFSET +features_per_block*block_index] /=  features[:,RC_INDEX + COLUMN_OFFSET +features_per_block*block_index]
             #np.nan_to_num( features, nan=-1, copy=False )
             features[np.isnan(features)] = -1
