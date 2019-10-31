@@ -1,7 +1,17 @@
 import os
 import pysam
+import time
+import contextlib
 
 def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=False):
+    """Extract path to reference from bam file
+
+    Args:
+        pysam_AlignmentFile (pysam.AlignmentFile)
+        ignore_missing(bool) : Check if the file exists, if not return None
+    Returns:
+        path : path to bam file (if exists or ignore_missing is supplied) or None
+    """
     try:
         for x in pysam_AlignmentFile.header.as_dict()['PG']:
             if  x.get('ID')!='bwa':
@@ -12,6 +22,20 @@ def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=F
     except Exception as e:
         pass
 
+@contextlib.contextmanager
+def sorted_bam_file( write_path,origin_bam):
+    """ Get writing handle of a sorted bam file
+    Args:
+        write_path (str) : write to a  bam file at this path
+        origin_bam (pysam.AlignmentFile ) : bam file to copy header for
+    """
+    unsorted_path = f'{write_path}.unsorted'
+    header = origin_bam.header.copy()
+    with pysam.AlignmentFile(unsorted_path, "wb", header=header) as unsorted_alignments:
+        yield unsorted_alignments
+    # Write, sort and index
+    time.sleep(1)
+    sort_and_index(unsorted_path,  write_path, remove_unsorted=True)
 
 
 def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False):
