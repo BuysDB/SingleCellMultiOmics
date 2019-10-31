@@ -305,7 +305,7 @@ class Molecule():
 
         features = self.get_base_calling_feature_matrix(reference=reference)
         predicted_sequence = classifier.predict(features)
-        predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
+        #predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
         phred_scores = np.rint(
                 -10*np.log10( np.clip(1-classifier.predict_proba(features).max(1), 0.000000001, 0.999999999 )
             )).astype('B')
@@ -424,7 +424,7 @@ class Molecule():
         return reads
 
 
-    def  base_calling_matrix_to_df(x, ref_info=None, NUC_RADIUS = 1, USE_RT=True):
+    def base_calling_matrix_to_df(self,x, ref_info=None, NUC_RADIUS = 1, USE_RT=True):
         """
         Convert numpy base calling feature matrix to pandas dataframe with annotated columns
 
@@ -1556,7 +1556,6 @@ class Molecule():
 
             predicted_sequence =  classifier.predict(features)
             reference_sequence = ''.join([base for chrom, pos, base  in reference_bases])
-            predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
 
             phred_scores = np.rint(
                     -10*np.log10( np.clip(1-classifier.predict_proba(features).max(1),
