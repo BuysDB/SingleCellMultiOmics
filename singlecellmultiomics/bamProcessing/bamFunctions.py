@@ -30,18 +30,20 @@ def sorted_bam_file( write_path,origin_bam=None, header=None):
         origin_bam (pysam.AlignmentFile ) : bam file to copy header for or
         header (dict) : header for the bam file to write
     """
-    unsorted_path = f'{write_path}.unsorted'
-    if header is not None:
-        pass
-    elif origin_bam is not None:
-        header = origin_bam.header.copy()
-    else:
-        raise ValueError("Supply a header or origin_bam object")
-    with pysam.AlignmentFile(unsorted_path, "wb", header=header) as unsorted_alignments:
-        yield unsorted_alignments
-    # Write, sort and index
-    time.sleep(1)
-    sort_and_index(unsorted_path,  write_path, remove_unsorted=True)
+    try:
+        unsorted_path = f'{write_path}.unsorted'
+        if header is not None:
+            pass
+        elif origin_bam is not None:
+            header = origin_bam.header.copy()
+        else:
+            raise ValueError("Supply a header or origin_bam object")
+        with pysam.AlignmentFile(unsorted_path, "wb", header=header) as unsorted_alignments:
+            yield unsorted_alignments
+    finally:
+        # Write, sort and index
+        time.sleep(1) # it makes me so sad this is required.
+        sort_and_index(unsorted_path,  write_path, remove_unsorted=True)
 
 
 def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False):
