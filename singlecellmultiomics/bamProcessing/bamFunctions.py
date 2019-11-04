@@ -46,6 +46,31 @@ def sorted_bam_file( write_path,origin_bam=None, header=None):
         sort_and_index(unsorted_path,  write_path, remove_unsorted=True)
 
 
+def write_program_tag(input_header,
+    program_name,
+    command_line,
+    description,
+    version
+    ):
+    """Write Program Tag to bam file header
+    Args:
+        input_header  (dict): header to write PG tag to
+        program_name (str) : value to write to PN tag
+        command_line (str) : value to write to CL tag
+        version (str) : value to write to VN tag
+        description (str) : value to write to DS tag
+    """
+    if not 'PG' in input_header:
+        input_header['PG'] = []
+
+    input_header['PG'].append({
+        'PN' : program_name,
+        'CL' : command_line,
+        'VN' : version,
+        'DS' : description
+    })
+
+
 def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False):
     """ Sort and index a bam file
     Args:
