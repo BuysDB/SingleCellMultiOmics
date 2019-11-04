@@ -23,14 +23,20 @@ def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=F
         pass
 
 @contextlib.contextmanager
-def sorted_bam_file( write_path,origin_bam):
+def sorted_bam_file( write_path,origin_bam=None, header=None):
     """ Get writing handle of a sorted bam file
     Args:
         write_path (str) : write to a  bam file at this path
-        origin_bam (pysam.AlignmentFile ) : bam file to copy header for
+        origin_bam (pysam.AlignmentFile ) : bam file to copy header for or
+        header (dict) : header for the bam file to write
     """
     unsorted_path = f'{write_path}.unsorted'
-    header = origin_bam.header.copy()
+    if header is not None:
+        pass
+    elif origin_bam is not None:
+        header = origin_bam.header.copy()
+    else:
+        raise ValueError("Supply a header or origin_bam object")
     with pysam.AlignmentFile(unsorted_path, "wb", header=header) as unsorted_alignments:
         yield unsorted_alignments
     # Write, sort and index
