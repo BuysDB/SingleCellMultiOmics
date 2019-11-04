@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 import pysam
 from singlecellmultiomics.molecule import MoleculeIterator
+import singlecellmultiomics
 import singlecellmultiomics.molecule
 import singlecellmultiomics.fragment
-from singlecellmultiomics.bamProcessing.bamFunctions import sort_and_index, get_reference_from_pysam_alignmentFile, add_readgroups_to_header
+from singlecellmultiomics.bamProcessing.bamFunctions import sort_and_index, get_reference_from_pysam_alignmentFile, add_readgroups_to_header, write_program_tag
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads  import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
@@ -17,6 +18,7 @@ import colorama
 import sklearn
 import pkg_resources
 import pickle
+from datetime import datetime
 
 argparser = argparse.ArgumentParser(
  formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -275,7 +277,15 @@ out_bam_temp_path = f'{out_bam_path}.unsorted'
 out_bam_temp_path_rg = f'{out_bam_path}.unsorted.rg'
 
 #Copy the header
-input_header = input_bam.header.copy()
+input_header = input_bam.header.as_dict()
+
+# Write provenance information to BAM header
+write_program_tag(input_header,
+    program_name='bamtagmultiome',
+    command_line = " ".join(sys.argv),
+    version = singlecellmultiomics.__version__,
+    description = f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}'
+    )
 
 print(f'Started writing to {out_bam_temp_path}')
 with pysam.AlignmentFile(out_bam_temp_path, "wb", header = input_header) as out_bam_temp:
