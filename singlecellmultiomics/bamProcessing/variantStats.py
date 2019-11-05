@@ -21,6 +21,7 @@ argparser.add_argument('bamfiles', nargs='+')
 argparser.add_argument('-ssnv', help="sSNV bed file", type=str, required=True)
 argparser.add_argument('-gsnv', help="gSNV bed file", type=str, required=True)
 argparser.add_argument('-reference', help="reference fasta file", type=str, required=True)
+argparser.add_argument('-head', type=int)
 args=  argparser.parse_args()
 WINDOW_RADIUS = 250
 
@@ -42,8 +43,14 @@ cell_obs = collections.defaultdict(lambda: collections.defaultdict( collections.
 statistics = collections.defaultdict(lambda: collections.defaultdict( collections.Counter) )
 # (chrom, ssnvpos) [sample] [ ('SNV', snv state )] []
 
+haplotype_scores = {} # needs to be recalculated to merge the information of all bam files
+cell_call_data =collections.defaultdict(dict) #location->cell->haplotype
+
 for pathi,path in enumerate(args.bamfiles):
     print(path)
+
+
+
     with pysam.AlignmentFile(path) as alignments:
 
         hits = 0
@@ -88,7 +95,7 @@ for pathi,path in enumerate(args.bamfiles):
                             statistics[(chromosome, ssnv_position)]['molecules'][1] +=1
                             # Obtain amount of soft clips per bp
 
-                            for operation, per_bp in molecule.get_cigar_stats().items():
+                            for operation, per_bp in molecule.get_alignment_stats().items():
                                 statistics[(chromosome, ssnv_position)][operation][per_bp] +=1
 
                             try:
@@ -120,6 +127,7 @@ for pathi,path in enumerate(args.bamfiles):
                 # Obtain the reference bases for both the sSNV and gSNV
 
                 chrom, pos = chromosome, ssnv_position #
+                obs_for_cells = cell_obs[(chrom, pos)]
 
                 sSNV_ref_base = reference.fetch(chrom,pos,pos+1)
                 gSNV_ref_base = reference.fetch(chrom,probed_variants[(chrom, pos)],probed_variants[(chrom, pos)]+1)
@@ -291,7 +299,8 @@ for pathi,path in enumerate(args.bamfiles):
                     for m,ssnv_state, gsnv_state in window_molecules:
                         m.write_tags()
                         m.write_pysam(out)
-                                
+                if args.head is not None and variant_index>=(args.head-1):
+                    break
 
 
 lambda_free_dict = {}
@@ -302,6 +311,7 @@ for key, stats in statistics.items():
         'mean_ins_pbp' : meanOfCounter(stats['inserts_per_bp']),
         'mean_del_pbp' : meanOfCounter(stats['deletions_per_bp']),
         'mean_matches_pbp' : meanOfCounter(stats['matches_per_bp']),
+        'mean_alt_mapping_per_read' : meanOfCounter(stats['alt_per_read']),
 
         'ssnv_ref_phred' : meanOfCounter(stats['ssnv_ref_phred']),
         'ssnv_alt_phred' : meanOfCounter(stats['ssnv_alt_phred']),
@@ -322,7 +332,7 @@ for key, stats in statistics.items():
     }
 
 
-haplotype_scores = {}
+haplotype_scores = {} # needs to be recalculated to merge the information of all bam files
 cell_call_data =collections.defaultdict(dict) #location->cell->haplotype
 
 for (chrom, pos), obs_for_cells in cell_obs.items():
@@ -439,7 +449,6 @@ for (chrom, pos), obs_for_cells in cell_obs.items():
         print(haplotype_scores[(chrom,pos)])
 
         # Create the cell call dictionary:
-
         for cell, cell_data in obs_for_cells.items():
             for ssnv,gsnv in cell_data:
                 if ssnv is None:
@@ -458,10 +467,12 @@ for (chrom, pos), obs_for_cells in cell_obs.items():
                     cell_call_data[(chrom, pos)][cell] = 0 # reference
                     continue
 
-cell_call_df = pd.DataFrame(cell_call_data)
-site_stats.to_pickle('cell_calls.pickle.gz')
-site_stats.to_csv('cell_calls.csv')
-
+print('Writing final site table')
 site_stats = pd.DataFrame( lambda_free_dict ).T.join(pd.DataFrame(haplotype_scores).T)
 site_stats.to_pickle('site_stats.pickle.gz')
 site_stats.to_csv('site_stats.csv')
+
+print('Writing final cell table')
+cell_call_df = pd.DataFrame(cell_call_data)
+cell_call_df.to_pickle('cell_calls.pickle.gz')
+cell_call_df.to_csv('cell_calls.csv')
