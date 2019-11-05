@@ -1274,7 +1274,7 @@ class Molecule():
         return self.fragments[index]
 
     def get_cigar_stats(self):
-        """Get dictionary containing mean amount clip/insert/deletion/matches per aligned bp
+        """Get dictionary containing mean amount clip/insert/deletion/matches per base
 
         Returns:
             cigar_stats(dict): dictionary {
@@ -1311,7 +1311,7 @@ class Molecule():
                 'deletions_per_bp' : deletions_per_bp,
                 'matches_per_bp' : matches_per_bp
                 }
-        
+
     def get_mean_base_quality(self, chromosome, position, base=None, not_base=None):
         """Get the mean phred score at the supplied coordinate and base-call
 

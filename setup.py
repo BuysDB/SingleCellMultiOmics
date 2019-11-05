@@ -79,6 +79,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamDuprate.py',
         'singlecellmultiomics/bamProcessing/bamToRNACounts.py',
         'singlecellmultiomics/bamProcessing/structureTensor.py',
+        'singlecellmultiomics/bamProcessing/variantStats.py',
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py',
         'singlecellmultiomics/libraryDetection/archivestats.py',
