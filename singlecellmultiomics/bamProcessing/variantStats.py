@@ -52,10 +52,10 @@ for pathi,path in enumerate(args.bamfiles):
             for variant_index, ((chromosome, ssnv_position),potential_gsnv_position) in enumerate(probed_variants.items()):
                 sSNV_ref_base = reference.fetch(chromosome,ssnv_position,ssnv_position+1)
                 gSNV_ref_base = reference.fetch(chromosome,potential_gsnv_position,potential_gsnv_position+1)
-    
+                window_molecules=[]
                 errors = collections.Counter()
                 print((chromosome, ssnv_position))
-                for i,molecule in enumerate(
+                for molecule_id,molecule in enumerate(
                         singlecellmultiomics.molecule.MoleculeIterator(alignments,
                                 fragment_class_args={
                                     'umi_hamming_distance':1,
@@ -231,8 +231,8 @@ for pathi,path in enumerate(args.bamfiles):
                     print(valid_tuples)
                     print(haplotype_scores[(chrom,pos)])
 
-                    # Create the cell call dictionary:
 
+                    # Create the cell call dictionary
                     for cell, cell_data in obs_for_cells.items():
                         for ssnv,gsnv in cell_data:
                             if ssnv is None:
@@ -252,7 +252,20 @@ for pathi,path in enumerate(args.bamfiles):
                                 continue
 
                     # Annotate every molecule...
+
                     for m,ssnv_state, gsnv_state in window_molecules:
+                        m.set_meta('mi',molecule_id)
+                        if gsnv_state is None:
+                            m.set_meta('gv','?')
+                        else:
+                            m.set_meta('gv',gsnv_state)
+
+                        if ssnv_state is None:
+                            m.set_meta('sv','?')
+                        else:
+                            m.set_meta('sv',ssnv_state)
+
+
                         if ssnv_state is None:
                             m.set_meta('VD','NO_SNV_OVERLAP')
                             continue
@@ -273,10 +286,12 @@ for pathi,path in enumerate(args.bamfiles):
 
                         m.set_meta('VD','REJECTED')
 
+
                     # write
                     for m,ssnv_state, gsnv_state in window_molecules:
                         m.write_tags()
                         m.write_pysam(out)
+                                
 
 
 lambda_free_dict = {}
