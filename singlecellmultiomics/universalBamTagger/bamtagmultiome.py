@@ -230,7 +230,7 @@ if args.consensus:
 if args.cluster:
     if args.contig is None:
         # Create jobs for all chromosomes:
-        temp_prefix = os.path.abspath( os.path.dirname(args.o) )+ '/' + str(uuid.uuid4())
+        temp_prefix = os.path.abspath( os.path.dirname(args.o) )+ '/SCMO_' + str(uuid.uuid4())
         hold_merge=[]
         for chrom in input_bam.references:
             if chrom.startswith('KN') or chrom.startswith('KZ')  or chrom.startswith('JH') or chrom.startswith('GL') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom  or chrom.endswith('_alt') or "HLA-" in chrom:
