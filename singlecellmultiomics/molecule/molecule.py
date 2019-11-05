@@ -1273,7 +1273,45 @@ class Molecule():
         """
         return self.fragments[index]
 
+    def get_cigar_stats(self):
+        """Get dictionary containing mean amount clip/insert/deletion/matches per aligned bp
 
+        Returns:
+            cigar_stats(dict): dictionary {
+                clips_per_bp(int),
+                deletions_per_bp(int),
+                matches_per_bp(int),
+                inserts_per_bp(int)
+                }
+        """
+        clips = 0
+        matches = 0
+        inserts = 0
+        deletions = 0
+        totalbases =0
+        for read in self.iter_reads():
+            totalbases+=read.query_length
+            for operation, amount in read.cigartuples:
+                if operation==4:
+                    clips+=amount
+                elif operation==2:
+                    deletions+=amount
+                elif operation==0:
+                    matches+=amount
+                elif operation==1:
+                    inserts+=amount
+
+        clips_per_bp = clips/totalbases
+        inserts_per_bp = inserts/totalbases
+        deletions_per_bp = deletions/totalbases
+        matches_per_bp = matches/totalbases
+        return {
+                'clips_per_bp' : clips_per_bp,
+                'inserts_per_bp' : inserts_per_bp,
+                'deletions_per_bp' : deletions_per_bp,
+                'matches_per_bp' : matches_per_bp
+                }
+        
     def get_mean_base_quality(self, chromosome, position, base=None, not_base=None):
         """Get the mean phred score at the supplied coordinate and base-call
 
