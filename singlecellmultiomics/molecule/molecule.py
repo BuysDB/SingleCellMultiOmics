@@ -1273,7 +1273,7 @@ class Molecule():
         """
         return self.fragments[index]
 
-    def get_cigar_stats(self):
+    def get_alignment_stats(self):
         """Get dictionary containing mean amount clip/insert/deletion/matches per base
 
         Returns:
@@ -1281,7 +1281,9 @@ class Molecule():
                 clips_per_bp(int),
                 deletions_per_bp(int),
                 matches_per_bp(int),
-                inserts_per_bp(int)
+                inserts_per_bp(int),
+                alternative_hits_per_read(int),
+
                 }
         """
         clips = 0
@@ -1289,8 +1291,11 @@ class Molecule():
         inserts = 0
         deletions = 0
         totalbases =0
+        total_reads = 0
+        total_alts = 0
         for read in self.iter_reads():
             totalbases+=read.query_length
+            total_reads+=1
             for operation, amount in read.cigartuples:
                 if operation==4:
                     clips+=amount
@@ -1300,16 +1305,24 @@ class Molecule():
                     matches+=amount
                 elif operation==1:
                     inserts+=amount
+            if read.has_tag('XA'):
+                total_alts+= len( read.get_tag('XA').split(';') )
+
 
         clips_per_bp = clips/totalbases
         inserts_per_bp = inserts/totalbases
         deletions_per_bp = deletions/totalbases
         matches_per_bp = matches/totalbases
+
+        alt_per_read= total_alts/total_reads
+
+        
         return {
                 'clips_per_bp' : clips_per_bp,
                 'inserts_per_bp' : inserts_per_bp,
                 'deletions_per_bp' : deletions_per_bp,
-                'matches_per_bp' : matches_per_bp
+                'matches_per_bp' : matches_per_bp,
+                'alt_per_read' : alt_per_read
                 }
 
     def get_mean_base_quality(self, chromosome, position, base=None, not_base=None):
