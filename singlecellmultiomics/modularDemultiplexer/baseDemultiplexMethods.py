@@ -118,8 +118,30 @@ class TaggedRecord():
         try:
             instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber, indexSequence = illuminaHeaderSplitRegex.split(fastqRecord.header.strip())
         except:
-            instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber = illuminaHeaderSplitRegex.split(fastqRecord.header.strip().replace('::',''))
-            indexSequence="N"
+            try:
+                instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber = illuminaHeaderSplitRegex.split(fastqRecord.header.strip().replace('::',''))
+                indexSequence="N"
+            except:
+                instrument='UNK'
+                runNumber='UNK'
+                flowCellId='UNK'
+                indexSequence='N'
+                lane='UNK'
+                tile='UNK'
+                clusterXpos='-1'
+                clusterYpos='-1'
+                readPairNumber='0'
+                isFiltered='0'
+                controlNumber='0'
+
+                # 3-DEC: @Cluster_s_1_1101_2
+                if fastqRecord.header.count('_') == 4:
+                    _cluster_, _s_, lane, tile, readPairNumber =  fastqRecord.header.split('_')
+                    assert( _s_ == 's') # check  that this s thingy is at the right place
+                else:
+                    raise
+
+
             #NS500413:32:H14TKBGXX:2:11101:16448:1664 1:N:0::
         """ This is the nice and safe way:
         self.addTagByTag( 'Is',instrument, isPhred=False)
