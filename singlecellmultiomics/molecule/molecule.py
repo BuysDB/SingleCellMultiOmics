@@ -1274,42 +1274,39 @@ class Molecule():
         return self.fragments[index]
 
 
-    def get_mean_base_quality(self, chromosome, position, base):
+    def get_mean_base_quality(self, chromosome, position, base=None, not_base=None):
         """Get the mean phred score at the supplied coordinate and base-call
 
         Args:
             chromosome (str)
             position (int)
-            base (str)
+            base (str) : select only reads with this base
+            not_base(str) : select only reads without this base
 
         Returns:
             mean_phred_score (float)
         """
+        assert( base is not None or not_base is not None ), "Supply base or not_base"
+
+
         qualities = []
-        for fragment in self:
-            if fragment.span[0]!=chromosome:
-                continue
-            R1 = fragment.get_R1()
-            R2 = fragment.get_R2()
-            try:
-                start, end = pysamiterators.iterators.getPairGenomicLocations(
-                R1=R1,
-                R2=R2,
-                R1PrimerLength=fragment.R1_primer_length,
-                R2PrimerLength=fragment.R2_primer_length,
-                allow_unsafe=(R1 is None))
-            except ValueError as e:
+        for read in self.iter_reads():
+
+            if read is None or read.reference_name != chromosome:
                 continue
 
-            for read in (R1,R2):
-                if read is None:
+            for query_pos, ref_pos in read.get_aligned_pairs(
+                 with_seq=False, matches_only=True):
+
+                if query_pos is None or ref_pos != position :
                     continue
-                for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(
-                    read,with_seq=False):
-                    if query_pos is None or ref_pos != position or read.seq[query_pos]!=base:
-                        continue
 
-                    qualities.append( ord( read.qual[query_pos] ) )
+                if not_base is not None  and read.seq[query_pos]==not_base:
+                    continue
+                if base is not None and read.seq[query_pos]!=base:
+                    continue
+
+                qualities.append( ord( read.qual[query_pos] ) )
         if len(qualities)==0:
             raise IndexError("There are no observations if the supplied base/location combination")
         return np.mean(qualities)
