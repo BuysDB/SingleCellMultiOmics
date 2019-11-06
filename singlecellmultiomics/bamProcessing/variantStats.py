@@ -26,7 +26,7 @@ argparser.add_argument('-head', type=int)
 args=  argparser.parse_args()
 WINDOW_RADIUS = 250
 
-
+paths = args.bamfiles
 
 def obtain_variant_statistics(
     alignment_file_paths,
@@ -315,7 +315,6 @@ statistics = collections.defaultdict(lambda: collections.defaultdict( collection
 cell_call_data =collections.defaultdict(dict) #location->cell->haplotype
 haplotype_scores = {}
 
-paths = ['/media/sf_H_DRIVE/data/nla/all.bam']
 
 with sorted_bam_file('evidence.bam', origin_bam=pysam.AlignmentFile(paths[0]) ) as out:
     for variant_index, ((chromosome, ssnv_position),potential_gsnv_position) in enumerate(probed_variants.items()):
