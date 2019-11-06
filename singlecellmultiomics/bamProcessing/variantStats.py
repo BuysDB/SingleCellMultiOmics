@@ -78,6 +78,8 @@ for pathi,path in enumerate(args.bamfiles):
                                contig=chromosome
                               )):
 
+                    ssnv_state=None
+                    gsnv_state=None
                     try:
                         consensus = molecule.get_consensus()
                         ssnv_state = consensus.get((chromosome, ssnv_position))
