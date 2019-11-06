@@ -57,15 +57,13 @@ if __name__=='__main__':
 
 	outputArgs.add_argument('-o', help="Output (cell) file directory, when not supplied the current directory/raw_demultiplexed is used", type=str, default='./raw_demultiplexed')
 	outputArgs.add_argument('--scsepf', help="Every cell gets a separate FQ file", action='store_true' )
+	outputArgs.add_argument('-nextcmd', help="Execute this command when the demultiplexing is finished. When cluster submission is used this command is executed after all jobs are finished", type=str, default=None)
 
 
 	bcArgs = argparser.add_argument_group('Barcode', '')
 	bcArgs.add_argument('-hd', help="Hamming distance barcode expansion; accept cells with barcodes N distances away from the provided barcodes. Collisions are dealt with automatically. ", type=int, default=0)
 	bcArgs.add_argument('--lbi', help="List barcodes being used for cell demultiplexing", action='store_true')
-
 	bcArgs.add_argument('-barcodeDir', default=pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/'), help="Directory from which to obtain the barcodes, when nothing is supplied the package resources are used")
-
-
 
 	indexArgs = argparser.add_argument_group('Sequencing indices', '')
 	indexArgs.add_argument('--li', help="List sequencing indices.", action='store_true')
@@ -205,10 +203,12 @@ if __name__=='__main__':
 					print( 'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job_name} "%s  -g {group_id} -use {",".join([x.shortName for x in selectedStrategies])}"\n' % ('%s %s'  % ( arguments, " ".join(files_to_submit)) ))
 				group_id+=1
 
+
+			final_jobs = []
 			if not submit_in_chunks:
 				job_name=f'DMX_{library}'
 				print( 'submission.py' + f' -y --py36 -time 50 -t 1 -m 8 -N {job_name} "%s -use {",".join([x.shortName for x in selectedStrategies])}"\n' % ('%s %s'  % ( arguments, " ".join(filesForLib)) ))
-
+				final_jobs.append(job_name)
 			else:
 				# we need a job which glues everything back together
 				#f'{args.o}/{library}/{prefix}demultiplexed
@@ -220,8 +220,16 @@ if __name__=='__main__':
 					f'cat {args.o}/{library}/*_TEMP_rejectsR2.fastq.gz  > {args.o}/{library}/rejectsR2.fastq.gz && rm {args.o}/{library}/*_TEMP_rejectsR2.fastq.gz',
 					f'cat {args.o}/{library}/*_TEMP_demultiplexing.log  > {args.o}/{library}/demultiplexing.log && rm {args.o}/{library}/*_TEMP_demultiplexing.log'
 				]
-				for cmd in cmds:
-					print( 'submission.py' + f' -y --py36 -time 4 -t 1 -m 2 -N "glue_{library}" "{cmd}" -hold {",".join(submitted_jobs)}' )
+
+
+				for i,cmd in enumerate(cmds):
+					job_name=f'glue_{library}_{i}'
+					print( 'submission.py' + f' -y --silent --py36 -time 4 -t 1 -m 2 -N "glue_{library}" "{cmd}" -hold {",".join(submitted_jobs)}' )
+					final_jobs.append(job_name)
+
+			# Execute last command if applicable
+			if args.nextcmd is not None:
+				print( 'submission.py' + f' -y --silent -time 1 -t 1 -m 1 -N "NEXT_{library}" "{cmd}" -hold {",".join(final_jobs)}' )
 
 		if args.y:
 
@@ -230,7 +238,7 @@ if __name__=='__main__':
 				try:
 					os.makedirs(targetDir)
 				except FileExistsError:
-					continue 
+					continue
 
 			prefix = '' if args.g is None else f'{args.g}_TEMP_'
 			handle = FastqHandle(f'{args.o}/{library}/{prefix}demultiplexed' , True, single_cell=args.scsepf, maxHandles=args.fh)
