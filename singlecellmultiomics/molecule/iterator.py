@@ -163,7 +163,7 @@ class MoleculeIterator():
                             m.__finalise__()
 
                     for i,j in enumerate(to_pop):
-                        yield self.molecules.pop(i-j)
+                        yield self.molecules.pop(j-i)
                 else:
                     for cell, cell_molecules in self.molecules_per_cell.items():
                         to_pop=[]
@@ -174,7 +174,7 @@ class MoleculeIterator():
                                 self.yielded_fragments+=len(m)
                                 m.__finalise__()
                         for i,j in enumerate(to_pop):
-                            yield self.molecules_per_cell[cell].pop(i-j)
+                            yield self.molecules_per_cell[cell].pop(j-i)
 
 
         # Yield remains
