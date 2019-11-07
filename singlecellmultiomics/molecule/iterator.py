@@ -119,7 +119,9 @@ class MoleculeIterator():
 
             if not fragment.is_valid() :
                 if self.yield_invalid:
-                    yield self.moleculeClass(fragment, **self.molecule_class_args )
+                    m = self.moleculeClass(fragment, **self.molecule_class_args )
+                    m.__finalise__()
+                    yield m
                 continue
 
             added = False
@@ -159,7 +161,9 @@ class MoleculeIterator():
                             self.yielded_fragments+=len(m)
 
                     for i,j in enumerate(to_pop):
-                        yield self.molecules.pop(i-j)
+                        m = self.molecules.pop(i-j)
+                        m.__finalise__()
+                        yield m
                 else:
                     for hash_group, molecules in self.molecules_per_cell.items():
 
@@ -171,14 +175,19 @@ class MoleculeIterator():
                                 self.yielded_fragments+=len(m)
 
                         for i,j in enumerate(to_pop):
-                            yield self.molecules_per_cell[hash_group].pop(i-j)
+                            m = self.molecules_per_cell[hash_group].pop(i-j)
+                            m.__finalise__()
+                            yield m
 
         # Yield remains
         if self.pooling_method==0:
+            for m in self.molecules:
+                m.__finalise__()
             yield from iter(self.molecules)
         else:
 
             for hash_group,molecules in self.molecules_per_cell.items():
                 for i,m in enumerate(molecules):
+                    m.__finalise__()
                     yield m
         self._clear_cache()
