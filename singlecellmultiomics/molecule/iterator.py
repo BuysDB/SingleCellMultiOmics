@@ -6,12 +6,12 @@ import collections
 import pysam
 
 class MoleculeIterator():
-
     def __init__(self, alignments, moleculeClass=Molecule,
         fragmentClass=Fragment,
         check_eject_every=10_000, #bigger sizes are very speed benificial
-        # because the relative amount of molecules which can be ejected will be much higher
-        molecule_class_args={},
+
+        molecule_class_args={},# because the relative amount of molecules
+                               # which can be ejected will be much higher
         fragment_class_args={},
         perform_qflag=True,
         pooling_method=1,
@@ -36,7 +36,7 @@ class MoleculeIterator():
             perform_qflag (bool):  Make sure the sample/umi etc tags are copied
                 from the read name into bam tags
 
-            pooling_method(int) : 0: no  pooling, 1: only compare molecules with the same sample id.
+            pooling_method(int) : 0: no  pooling, 1: only compare molecules with the same sample id and hash
 
             yield_invalid (bool) : When true all fragments which are invalid will be yielded as a molecule
 
@@ -73,7 +73,7 @@ class MoleculeIterator():
         if self.pooling_method==0:
             self.molecules=[]
         elif self.pooling_method==1:
-            self.molecules_per_cell =collections.defaultdict(list)
+            self.molecules_per_cell =collections.defaultdict(list)#{hash:[], :}
         else:
             raise NotImplementedError()
 
@@ -119,9 +119,7 @@ class MoleculeIterator():
 
             if not fragment.is_valid() :
                 if self.yield_invalid:
-                    m = self.moleculeClass(fragment, **self.molecule_class_args )
-                    m.__finalise__()
-                    yield m
+                    yield self.moleculeClass(fragment, **self.molecule_class_args )
                 continue
 
             added = False
@@ -131,7 +129,7 @@ class MoleculeIterator():
                         added = True
                         break
             elif self.pooling_method==1:
-                for molecule in self.molecules_per_cell[fragment.sample]:
+                for molecule in self.molecules_per_cell[fragment.match_hash]:
                     if molecule.add_fragment(fragment,use_hash=True):
                         added = True
                         break
@@ -140,7 +138,7 @@ class MoleculeIterator():
                 if self.pooling_method==0:
                     self.molecules.append(self.moleculeClass(fragment, **self.molecule_class_args ))
                 else:
-                    self.molecules_per_cell[fragment.sample].append(
+                    self.molecules_per_cell[fragment.match_hash].append(
                         self.moleculeClass(fragment, **self.molecule_class_args )
                     )
 
@@ -159,33 +157,28 @@ class MoleculeIterator():
                             to_pop.append(i)
                             self.waiting_fragments-=len(m)
                             self.yielded_fragments+=len(m)
-                            # Prepare the molecule to be ejected
-                            m.__finalise__()
 
                     for i,j in enumerate(to_pop):
-                        yield self.molecules.pop(j-i)
+                        yield self.molecules.pop(i-j)
                 else:
-                    for cell, cell_molecules in self.molecules_per_cell.items():
+                    for hash_group, molecules in self.molecules_per_cell.items():
+
                         to_pop=[]
-                        for i,m in enumerate(cell_molecules):
+                        for i,m in enumerate(molecules):
                             if m.can_be_yielded(current_chrom,current_position):
                                 to_pop.append(i)
                                 self.waiting_fragments-=len(m)
                                 self.yielded_fragments+=len(m)
-                                m.__finalise__()
-                        for i,j in enumerate(to_pop):
-                            yield self.molecules_per_cell[cell].pop(j-i)
 
+                        for i,j in enumerate(to_pop):
+                            yield self.molecules_per_cell[hash_group].pop(i-j)
 
         # Yield remains
         if self.pooling_method==0:
-            for m in self.molecules:
-                m.__finalise__()
             yield from iter(self.molecules)
         else:
-            for cell, cell_molecules in self.molecules_per_cell.items():
-                for i,m in enumerate(cell_molecules):
-                    # Prepare the molecule to be ejected
-                    m.__finalise__()
+
+            for hash_group,molecules in self.molecules_per_cell.items():
+                for i,m in enumerate(molecules):
                     yield m
         self._clear_cache()
