@@ -6,3 +6,4 @@ from .nlaIII import *
 from .rna import *
 from .iterator import *
 from .consensus import *
+from .fourthiouridine import *
