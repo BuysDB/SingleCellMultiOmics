@@ -157,6 +157,8 @@ class MoleculeIterator():
                             to_pop.append(i)
                             self.waiting_fragments-=len(m)
                             self.yielded_fragments+=len(m)
+                            # Prepare the molecule to be ejected
+                            m.__finalise__()
 
                     for i,j in enumerate(to_pop):
                         yield self.molecules.pop(i-j)
@@ -179,5 +181,7 @@ class MoleculeIterator():
         else:
             for cell, cell_molecules in self.molecules_per_cell.items():
                 for i,m in enumerate(cell_molecules):
+                    # Prepare the molecule to be ejected
+                    m.__finalise__()
                     yield m
         self._clear_cache()

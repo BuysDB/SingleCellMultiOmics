@@ -136,6 +136,9 @@ class TAPSMolecule(Molecule):
         self.taps = taps #initialised TAPS class
         self.methylation_call_dict = None
         self.classifier = classifier
+
+    def __finalise__(self):
+        super().__finalise__()
         try:
             self.obtain_methylation_calls(classifier=self.classifier)
         except ValueError:

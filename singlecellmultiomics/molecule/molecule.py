@@ -120,9 +120,15 @@ class Molecule():
             else:
                 self.add_fragment(fragments)
 
-        # Obtain allele if available
+
         self.allele_resolver = allele_resolver
         self.allele = None
+
+        self.methylation_call_dict = None
+
+    def __finalise__(self):
+        """This function is called when all associated fragments have been gathered"""
+        # Obtain allele if available
         if self.allele_resolver is not None:
             try:
                 hits = self.get_allele(allele_resolver)
@@ -132,8 +138,7 @@ class Molecule():
             except ValueError as e:
                 # This happens when a consensus can not be obtained
                 pass
-        self.methylation_call_dict = None
-
+    
     def get_a_reference_id(self):
         for read in self.iter_reads():
             if not read.is_unmapped:
@@ -1316,7 +1321,7 @@ class Molecule():
 
         alt_per_read= total_alts/total_reads
 
-        
+
         return {
                 'clips_per_bp' : clips_per_bp,
                 'inserts_per_bp' : inserts_per_bp,
