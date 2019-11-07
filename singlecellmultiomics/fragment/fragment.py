@@ -574,6 +574,61 @@ class SingleEndTranscript(Fragment):
     def __init__(self,reads, **kwargs):
         Fragment.__init__(self, reads, **kwargs)
 
+
+class FeatureCountsSingleEndFragment(Fragment):
+    """ Class for fragments annotated with featureCounts
+
+    Extracts annotated gene from the XT tag.
+    Deduplicates using XT tag and UMI
+    Reads without XT tag are flagged as invalid
+    
+    """
+
+    def __init__(self,
+        reads,
+        R1_primer_length=4,
+        R2_primer_length=6,
+        assignment_radius=100_000,
+        umi_hamming_distance=1,
+        invert_strand=False
+        ):
+
+        Fragment.__init__(self,
+            reads,
+            assignment_radius=assignment_radius,
+            R1_primer_length=R1_primer_length,
+            R2_primer_length=R2_primer_length,
+            umi_hamming_distance=umi_hamming_distance )
+
+        self.strand = None
+        self.gene  = None
+        self.identify_gene()
+
+        if self.is_valid():
+            self.match_hash = (self.strand, self.gene, self.sample)
+        else:
+            self.match_hash = None
+
+    def __eq__(self, other):
+        # Make sure fragments map to the same strand, cheap comparisons
+        if self.match_hash!=other.match_hash:
+            return False
+
+        # Make sure UMI's are similar enough, more expensive hamming distance calculation
+        return self.umi_eq(other)
+
+    def is_valid(self):
+        return self.gene is not None
+
+    def identify_gene(self):
+        self.valid = False
+        for read in self.reads:
+            if read is not None and read.has_tag('XT'):
+                self.gene = read.get_tag('XT')
+                self.valid = True
+                return self.gene
+
+
 class FragmentWithoutUMI(Fragment):
     """
     Use this class when no UMI information is available
