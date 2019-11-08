@@ -23,6 +23,9 @@ argparser.add_argument('-ssnv', help="sSNV bed file", type=str, required=True)
 argparser.add_argument('-gsnv', help="gSNV bed file", type=str, required=True)
 argparser.add_argument('-reference', help="reference fasta file", type=str, required=True)
 argparser.add_argument('-head', type=int)
+argparser.add_argument('-min_read_obs', type=int, default=2)
+
+
 args=  argparser.parse_args()
 WINDOW_RADIUS = 250
 
@@ -34,7 +37,7 @@ def obtain_variant_statistics(
     reference,
     chromosome,
     ssnv_position,gsnv_position,haplotype_scores,
-    WINDOW_RADIUS, out
+    WINDOW_RADIUS, out , min_read_obs
 
     ):
 
@@ -238,7 +241,10 @@ def obtain_variant_statistics(
 
         # Create the cell call dictionary
         for cell, cell_data in obs_for_cells.items():
-            for ssnv,gsnv in cell_data:
+            for (ssnv,gsnv), tuple_observation_count in cell_data.most_common():
+                if tuple_observation_count<min_read_obs:
+                    continue
+
                 if ssnv is None:
                     continue
 
@@ -330,7 +336,7 @@ with sorted_bam_file('evidence.bam', origin_bam=pysam.AlignmentFile(paths[0]) ) 
             gsnv_position = potential_gsnv_position,
             WINDOW_RADIUS=WINDOW_RADIUS,
             haplotype_scores=haplotype_scores,
-            out=out
+            out=out,min_read_obs=args.min_read_obs
         )
 
         if args.head and (variant_index>args.head-1):
