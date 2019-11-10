@@ -23,12 +23,18 @@ def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=F
         pass
 
 @contextlib.contextmanager
-def sorted_bam_file( write_path,origin_bam=None, header=None):
+def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None):
     """ Get writing handle of a sorted bam file
     Args:
         write_path (str) : write to a  bam file at this path
         origin_bam (pysam.AlignmentFile ) : bam file to copy header for or
         header (dict) : header for the bam file to write
+        read_groups(set/dict) : set or dictionary which contains read groups. The dictionary should have the format { read_group_id (str)
+                { 'ID': ID, 'LB':library,
+                'PL':platform,
+                'SM':sampleLib,
+                'PU':readGroup }
+
     """
     try:
         unsorted_path = f'{write_path}.unsorted'
@@ -41,8 +47,11 @@ def sorted_bam_file( write_path,origin_bam=None, header=None):
         with pysam.AlignmentFile(unsorted_path, "wb", header=header) as unsorted_alignments:
             yield unsorted_alignments
     finally:
-        # Write, sort and index
         time.sleep(1) # it makes me so sad this is required.
+        if read_groups is not None:
+            add_readgroups_to_header( unsorted_path, read_groups )
+
+        # Write, sort and index
         sort_and_index(unsorted_path,  write_path, remove_unsorted=True)
 
 
