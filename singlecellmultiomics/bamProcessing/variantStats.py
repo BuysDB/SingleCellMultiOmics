@@ -37,7 +37,7 @@ def obtain_variant_statistics(
     reference,
     chromosome,
     ssnv_position,gsnv_position,haplotype_scores,
-    WINDOW_RADIUS, out , min_read_obs
+    WINDOW_RADIUS, out , min_read_obs,read_groups
 
     ):
 
@@ -300,6 +300,10 @@ def obtain_variant_statistics(
             m.write_tags()
             m.write_pysam(out)
 
+            # Update read groups
+            for fragment in m:
+                read_groups.add(fragment.get_read_group())
+
 
 # Load probed variants
 probed_variants = {}
@@ -322,7 +326,9 @@ cell_call_data =collections.defaultdict(dict) #location->cell->haplotype
 haplotype_scores = {}
 
 
-with sorted_bam_file('evidence.bam', origin_bam=pysam.AlignmentFile(paths[0]) ) as out:
+read_groups = set() # Store unique read groups in this set
+with sorted_bam_file('evidence.bam', origin_bam=pysam.AlignmentFile(paths[0]), read_groups=read_groups ) as out:
+
     for variant_index, ((chromosome, ssnv_position),potential_gsnv_position) in enumerate(probed_variants.items()):
 
         obtain_variant_statistics(
@@ -336,7 +342,8 @@ with sorted_bam_file('evidence.bam', origin_bam=pysam.AlignmentFile(paths[0]) ) 
             gsnv_position = potential_gsnv_position,
             WINDOW_RADIUS=WINDOW_RADIUS,
             haplotype_scores=haplotype_scores,
-            out=out,min_read_obs=args.min_read_obs
+            out=out,min_read_obs=args.min_read_obs,
+            read_groups=read_groups
         )
 
         if args.head and (variant_index>args.head-1):
