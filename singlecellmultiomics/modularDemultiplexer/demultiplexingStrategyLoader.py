@@ -188,7 +188,7 @@ class DemultiplexingStrategyLoader:
                 break
         # write yields to log file if applicable:
         if log_handle is not None:
-            log_handle.write(f'processed {processedReadPairs} read pairs\n')
+            log_handle.write(f'processed {processedReadPairs+1} read pairs\n')
             log_handle.write(f'Reads obtained per protocol\n')
             log_handle.write(f'Strategy\tReads\n')
             for strategy, used_reads in strategyYields.items():
