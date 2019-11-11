@@ -247,7 +247,9 @@ if __name__=='__main__':
 
 			log_location = os.path.abspath(f'{args.o}/{library}/{prefix}demultiplexing.log');
 			log_handle = open(log_location,'w')
+			log_handle.write(" ".join(sys.argv) + '\n')
 			log_handle.write(f'Demultiplexing operation started, writing to {args.o}/{library}\n')
+
 
 			processedReadPairsForThisLib = 0
 			for lane, readPairs in libraries[library].items():
@@ -258,6 +260,7 @@ if __name__=='__main__':
 
 				for readPairIdx,_ in enumerate(readPairs[readPair]):
 					files = [ readPairs[readPair][readPairIdx] for readPair in readPairs ]
+					log_handle.write(f"processing input files:\t{','.join(files)}\n")
 					processedReadPairs,strategyYields = dmx.demultiplex( files ,
 						strategies=selectedStrategies,
 						targetFile=handle,
@@ -265,6 +268,8 @@ if __name__=='__main__':
 						log_handle=log_handle,
 					library=library, maxReadPairs=None if args.n is None else (args.n-processedReadPairsForThisLib))
 					processedReadPairsForThisLib += processedReadPairs
+					log_handle.write(f"done, processed:\t{processedReadPairsForThisLib} reads\n")
+
 					if args.n and processedReadPairsForThisLib>=args.n:
 						break
 			handle.close()
