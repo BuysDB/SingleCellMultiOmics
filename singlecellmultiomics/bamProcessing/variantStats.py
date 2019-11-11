@@ -31,6 +31,7 @@ WINDOW_RADIUS = 250
 
 paths = args.bamfiles
 
+
 def obtain_variant_statistics(
     alignment_file_paths,
     cell_obs, statistics,cell_call_data,
@@ -47,6 +48,7 @@ def obtain_variant_statistics(
 
     window_molecules = []
 
+    cell_read_obs = collections.defaultdict( collections.Counter ) # sample -> tuple -> amount of reads
     for pathi,path in enumerate(alignment_file_paths):
         with pysam.AlignmentFile(path) as alignments:
 
@@ -77,14 +79,18 @@ def obtain_variant_statistics(
                 # Extract the gSNV and sSNV:
                 ssnv_state = consensus.get((chromosome, ssnv_position))
                 gsnv_state = consensus.get((chromosome, gsnv_position) )
+
+                # Store all used molecules in the window for inspection:
                 window_molecules.append((molecule,ssnv_state,gsnv_state))
 
-                # If both are none there is no information we can use.
+                # If both the ssnv and gsnv are none there is no information we can use.
                 if ssnv_state is None and gsnv_state is None:
                     continue
 
                 # Store the observation
+                # the amount of reads of evidence is len(molecule)
                 cell_obs[(chromosome, ssnv_position)][molecule.get_sample()][(ssnv_state,gsnv_state)] += 1
+                cell_read_obs[molecule.get_sample()][(ssnv_state,gsnv_state)] += len(molecule)
 
                 # Store statistics
                 statistics[(chromosome, ssnv_position)]['max_mapping_quality'][ molecule.get_max_mapping_qual() ] +=1
@@ -94,6 +100,7 @@ def obtain_variant_statistics(
                 statistics[(chromosome, ssnv_position)]['reads'][ len(molecule) ] +=1
                 statistics[(chromosome, ssnv_position)]['molecules'][1] +=1
 
+                # Store alignment statistics:
                 for operation, per_bp in molecule.get_alignment_stats().items():
                     statistics[(chromosome, ssnv_position)][operation][per_bp] +=1
 
@@ -113,11 +120,11 @@ def obtain_variant_statistics(
                     pass
 
                 try:
-                    statistics[(chromosome, ssnv_position)]['gsnv_alt_phred'][ molecule.get_mean_base_quality(chromosome, gsnv_position, not_base= gSNV_ref_base)]+=1
+                    statistics[(chromosome, ssnv_position)]['gsnv_any_alt_phred'][ molecule.get_mean_base_quality(chromosome, gsnv_position, not_base= gSNV_ref_base)]+=1
                 except:
                     pass
 
-    # After finishing iteration over all molecules assign haplotypes
+    # After finishing iteration over all molecules assign genotypes
     chrom, pos = chromosome, ssnv_position #
     obs_for_cells = cell_obs[(chrom, pos)]
 
@@ -136,7 +143,7 @@ def obtain_variant_statistics(
         for ssnv,gsnv in cell_data:
             genotype_obs[(ssnv,gsnv)]+=1
 
-            gSNV_obs[gsnv] +=1 # Only count these when the germline variant is detected
+            gSNV_obs[gsnv] +=1
             sSNV_obs[ssnv] += 1
 
             if ssnv is not None and gsnv is not None:
@@ -152,54 +159,127 @@ def obtain_variant_statistics(
     if len(complete_genotype_obs)<=2:
         print(f'not enough genotype observations for a variant call (<=2)')
 
-    if len(complete_genotype_obs)>2:
-        # Determine the sSNV alt:
-        sSNV_alt_base=None
-        for basecall, obs in sSNV_obs_phased.most_common():
-            if basecall!=sSNV_ref_base:
-                sSNV_alt_base = basecall
-                break
+    ### Conbase algorithm : ###
+    #
+    # determine if there is an alternative base in the first place
+    # a fraction of the reads in a cell need to vote for a tuple,
+    # this fraction is stored in the alpha parameter , or a minimum amount of reads, stored in the beta parameter
+    # determine tp*, the alleles we expect observe
+    # ϴ τ α γ κ λ ν ξ ρ ϕ
+    α = 0.2 # minimum relative abundance of sSNV voting reads in single sample
+    β = 10 # minimum amount of sSSNV reads in cell, or in total if α is exceeded
+    γ = 0.9 # minimum amount of votes for sSNV
+    ε = 2 #minimum amount of cells voting for sSNV
+    ω = 0.9 # gsnv majority
 
-        gSNV_alt_base=None
-        for basecall, obs in gSNV_obs_phased.most_common():
-            if basecall!=gSNV_ref_base:
-                gSNV_alt_base = basecall
-                break
+    sSNV_votes = collections.Counter() # { sSNV_alt_base : votes }
+    total_samples_which_voted = 0
+    for sample, observed_tuples in cell_read_obs.items():
+        # First we create a Counter just counting the amount of evidence per base for this sample :
+        evidence_total_reads = collections.Counter()
+        total_reads = 0
+        for (sSNV_state,gSNV_state),reads in observed_tuples.most_common():
+            if sSNV_state is None:
+                continue
+            evidence_total_reads[sSNV_state] += reads
+            total_reads += reads
 
-        if sSNV_alt_base is None or gSNV_alt_base is None:
-            # No phased alt base found ...
+        ref_sSNV_reads = evidence_total_reads[sSNV_ref_base] # this is the amount of reads which contain evidence for the reference base
+        votes_for_this_sample = set() # the alternative bases this sample votes for
+        for sSNV_state, sSNV_supporting_reads in evidence_total_reads.most_common():
+            # The reference base does not vote.
+            if sSNV_state == sSNV_ref_base or sSNV_state is None:
+                continue
+
+            # check if at least alpha reads vote for the sSNV
+            alpha_value = sSNV_supporting_reads/ref_sSNV_reads
+
+            vote = (1 if
+                    (alpha_value >= α and (sSNV_supporting_reads+ref_sSNV_reads) >= β ) or \
+                    (alpha_value < α and ref_sSNV_reads >= β )
+                    else 0
+                )
+
+            if vote:
+                votes_for_this_sample.add(sSNV_state)
+                sSNV_votes[sSNV_state] += 1
+                total_samples_which_voted += 1
+
+    # done voting.
+    # the most probable variant base is at least 90% voted for (lambda parameter)
+    # and at least ε cells need to vote for it
+    statistics[(chromosome, ssnv_position)]['total_samples_voted'] =  total_samples_which_voted
+    if total_samples_which_voted < ε:
+        # We don't have enough votes
+        return
+
+    sSNV_alt_base, sSNV_alt_obs = sSNV_votes.most_common()[0]
+    statistics[(chromosome, ssnv_position)]['sSNV_alt_vote_ratio'] =  (sSNV_alt_obs / total_samples_which_voted)
+    if (sSNV_alt_obs / total_samples_which_voted) < γ:
+        # The ratio of votes is below threshold
+        return
+
+    print(f'sSNV alt is {sSNV_alt_base}')
+
+    ### Here the "Stats" part of Conbase ends ###
+    #############################################
+
+    # Now we determined the sSNV alt base,
+    # now determine the linked gSNV
+    gSNV_alt_base=None # Lazy not defined before
+    for basecall, obs in gSNV_obs_phased.most_common():
+        if basecall!=gSNV_ref_base:
+            gSNV_alt_base = basecall
+            break
+
+    if sSNV_alt_base is None or gSNV_alt_base is None:
+        # No phased alt base found ...
+        return
+
+    # Determine the phase (most common genotypes)
+    sSNV_phase = None
+    wt_allele_gSNV= None
+    sSNV_phased_votes = sum( (obs
+        for (sSNV_state, gSNV_state), obs
+        in complete_genotype_obs.most_common()
+        if sSNV_state == sSNV_alt_base
+        ))
+
+    for (sSNV_state, gSNV_state), obs in complete_genotype_obs.most_common():
+        if sSNV_state == sSNV_alt_base:
+            sSNV_phase = (sSNV_state, gSNV_state)
+            phased_gSNV = gSNV_state
+            if gSNV_state==gSNV_ref_base:
+                # the reference allele is alt
+                wt_allele_gSNV = gSNV_alt_base
+                snv_allele_gSNV = gSNV_ref_base
+            else:
+                wt_allele_gSNV = gSNV_ref_base
+                snv_allele_gSNV = gSNV_alt_base
+                # the reference allele is ref
+            break
+
+
+        # Verify that at least ω votes are cast for the currently selected allele :
+        if (sSNV_phased_votes / obs) < ω:
             return
 
-        # Determine the phase (most common genotypes)
-        print(f'sSNV alt is {sSNV_alt_base}')
-        sSNV_phase = None
-        wt_allele_gSNV= None
-        for (sSNV_state, gSNV_state), obs in complete_genotype_obs.most_common():
-            if sSNV_state == sSNV_alt_base:
-                sSNV_phase = (sSNV_state, gSNV_state)
-                phased_gSNV = gSNV_state
-                if gSNV_state==gSNV_ref_base:
-                    # the reference allele is alt
-                    wt_allele_gSNV = gSNV_alt_base
-                    snv_allele_gSNV = gSNV_ref_base
-                else:
-                    wt_allele_gSNV = gSNV_ref_base
-                    snv_allele_gSNV = gSNV_alt_base
-                    # the reference allele is ref
+        # The valid tuples are thus:
+        uninformative_allele = (sSNV_ref_base, wt_allele_gSNV)
+        informative_allele_wt = (sSNV_ref_base, snv_allele_gSNV)
 
-                break
-
-        # The valid tuples are:
         valid_tuples = [ sSNV_phase,  # mutated
-                        (sSNV_ref_base, snv_allele_gSNV), #wt
-                        (sSNV_ref_base, wt_allele_gSNV)]
+                        informative_allele_wt, #wt
+                        uninformative_allele
 
-        # Count how often we found valid and invalid haplotypes
+
+        # As we have umi's we just have a threshold for the least amount of reads
+        # we want to observe for a molecule to be taken into account
+        # Count how often we found valid and invalid genotypes
         valid = 0
         invalid = 0
         valid_var = 0
         invalid_var = 0
-
         for (ssnv,gsnv), tuple_obs in complete_genotype_obs.most_common():
             if ssnv == sSNV_alt_base: # variant:
                 if (ssnv,gsnv) in valid_tuples:
@@ -226,7 +306,6 @@ def obtain_variant_statistics(
             'gSNV_allelic_bias':gSNV_obs[gSNV_ref_base]/(gSNV_obs[gSNV_ref_base]+gSNV_obs[gSNV_alt_base])
         }
 
-
         print(f'Germline variant obs: {gSNV_ref_base} {gSNV_alt_base}')
         print(f'sSNV obs: {sSNV_ref_base} {sSNV_alt_base}')
         if sSNV_phase is not None:
@@ -240,25 +319,47 @@ def obtain_variant_statistics(
             print(f' {name}\t{obs}')
 
         # Create the cell call dictionary
-        for cell, cell_data in obs_for_cells.items():
-            for (ssnv,gsnv), tuple_observation_count in cell_data.most_common():
-                if tuple_observation_count<min_read_obs:
-                    continue
 
-                if ssnv is None:
+        for cell, observed_tuples in cell_read_obs.items():
+            total_reads = 0
+            phased_variant_support_reads = 0
+            unphased_variant_support_reads = 0
+            variant_neg_support_reads = 0
+            uninformative_reads = 0
+            conflict_reads = 0
+            for  (sSNV_state,gSNV_state),reads in observed_tuples:
+                if sSNV_state is None:
                     continue
+                total_reads+=reads
+                if sSNV_state == sSNV_alt_base:
+                    if gSNV_state == wt_allele_gSNV:
+                        conflict_reads += reads
+                    elif gSNV_state == snv_allele_gSNV:
+                        phased_variant_support_reads += reads # reads containing the sSNV and gSNV as expected
+                    elif gSNV_state is None:
+                        unphased_variant_support_reads += reads  # reads containing sSNV but not overlapping with gSNV
 
-                if gsnv is not None and not (ssnv,gsnv) in valid_tuples:
-                    cell_call_data[(chrom, pos)][cell] =  -1 # invalid
-                    continue
+                elif sSNV_state == sSNV_ref_base:
+                    if gSNV_state == snv_allele_gSNV:
+                        variant_neg_support_reads += reads # reads on informative allele where we found evidence of the sSNV not being present
 
-                if ssnv == sSNV_alt_base:
-                    cell_call_data[(chrom, pos)][cell] = 1 # alternative
-                    continue
 
-                if ssnv == sSNV_ref_base and gsnv==phased_gSNV:
-                    cell_call_data[(chrom, pos)][cell] = 0 # reference
-                    continue
+            if conflict_reads/(total_reads) > 0.2:
+                cell_call_data[(chrom, pos)][cell] =  -1 # invalid
+
+            if (unphased_variant_support_reads+phased_variant_support_reads)/total_reads > 0.1:
+                cell_call_data[(chrom, pos)][cell] = 1
+                if unphased_variant_support_reads+phased_variant_support_reads>=3:
+                    cell_call_data[(chrom, pos)][cell] = 10
+
+            if (phased_variant_support_reads)/total_reads > 0.1:
+                cell_call_data[(chrom, pos)][cell] = 2
+                if phased_variant_support_reads>=3:
+                    cell_call_data[(chrom, pos)][cell] = 20
+
+            if variant_neg_support_reads/total_reads > 0.1:
+                cell_call_data[(chrom, pos)][cell] += 0.1 # 0.1 for ref allele obs
+
 
         # Annotate every molecule...
 
