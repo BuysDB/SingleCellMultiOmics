@@ -30,7 +30,9 @@ class CustomAssingmentQueryNameFlagger(DigestFlagger):
         self.origin_colons = 7 # amount of ':' in original read name
         # Verify if all of the assignments are 2 letters:
         if not all( (len(b)==2 for b in block_assignments) ):
-            raise ValueError(f'Tag {b} is not two letters long')
+            for b in block_assignments:
+                if len(b)!=2:
+                    raise ValueError(f'Tag {b} is not two letters long')
 
         DigestFlagger.__init__(self, **kwargs )
 
