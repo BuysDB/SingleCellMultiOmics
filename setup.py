@@ -49,7 +49,6 @@ setup(
         'singlecellmultiomics.tagtools',
         'singlecellmultiomics.universalBamTagger',
         'singlecellmultiomics.utils',
-        'singlecellmultiomics.variantCalling',
         'singlecellmultiomics.modularDemultiplexer.demultiplexModules'
         ],
 
