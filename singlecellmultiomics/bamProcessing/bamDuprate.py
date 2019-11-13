@@ -24,7 +24,7 @@ if __name__=='__main__':
     read_count = 0
     f = pysam.AlignmentFile(args.alignmentfile)
 
-    for read in f:
+    for i,read in enumerate(f):
         read_count+=1
         if read.is_duplicate:
             pass
