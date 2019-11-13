@@ -326,11 +326,17 @@ class TestMolecule(unittest.TestCase):
                         mask_variants=None,
                         n_train=100)
 
+            molecule_iterator =  singlecellmultiomics.molecule.MoleculeIterator(
+                alignments=f,
+                moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
+                fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+            )
 
-            for molecule in molecule_iterator:
+            for i,molecule in enumerate(molecule_iterator):
+                read_name=f'consensus_{i}'
                 reads = molecule.deduplicate_to_single_CIGAR_spaced(target_bam,
-                read_name, classifier,reference=reference)
-                
+                read_name, classifier,reference=None)
+
                 read = molecule.deduplicate_to_single(target_bam)
 
                 consensus = molecule.get_consensus(classifier)
