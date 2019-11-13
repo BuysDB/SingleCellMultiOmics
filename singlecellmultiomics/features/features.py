@@ -3,6 +3,7 @@
 import numpy as np
 import gzip, itertools, re
 import functools
+import pysam
 
 def get_gene_id_to_gene_name_conversion_table(annotation_path_exons,
                                             featureTypes=['gene_name']):
@@ -35,7 +36,7 @@ def get_gene_id_to_gene_name_conversion_table(annotation_path_exons,
                     for feature in featureTypes])
 
     return conversion_table
-    
+
 class FeatureContainer:
 
     def __init__(self):
