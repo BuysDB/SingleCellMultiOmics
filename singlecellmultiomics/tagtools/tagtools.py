@@ -181,7 +181,7 @@ class ReadCycleIterator():
         self.reference = reference
 
     def __repr__(self):
-        return(f'{read}, {self.len} cycles starting at {self.start}' )
+        return(f'{self.read}, {self.len} cycles starting at {self.start}' )
 
     def __iter__(self):
         if self.reference is None:
