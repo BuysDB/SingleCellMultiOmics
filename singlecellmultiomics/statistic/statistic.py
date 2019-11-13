@@ -45,7 +45,7 @@ class StatisticHistogram(Statistic):
         self.histogram = collections.Counter()
 
     def __repr__(self):
-        return f'Mean {pyutils.meanOfCounter(self.histogram)}, SD:{pyutils.varianceOfCounter(histogram)}'
+        return f'Mean {pyutils.meanOfCounter(self.histogram)}, SD:{pyutils.varianceOfCounter(self.histogram)}'
 
     def __iter__(self):
         return iter(self.histogram.most_common())
