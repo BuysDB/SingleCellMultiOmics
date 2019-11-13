@@ -238,7 +238,7 @@ class Molecule():
             self.has_valid_span(),
             self.get_umi_error_rate(),
             self.get_consensus_gc_ratio(),
-            len(get_raw_barcode_sequences),
+            len(self.get_raw_barcode_sequences()),
             self.get_safely_aligned_length(),
             self.get_max_mapping_qual(),
             (self.alleles is None),
