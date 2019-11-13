@@ -34,13 +34,13 @@ class SequencingLibraryLister():
 
         if args.replace:
             try:
-                if verbose:
+                if self.verbose:
                     print("Library name replacement:" )
                     for k in args.replace:
                         origin, replace = k.split(',')
                         print( formatColor("  -> [DIM]looking for[RESET] '%s' [DIM]replace with:[RESET]'%s'" % (origin, replace)))
             except Exception as e:
-                if verbose:
+                if self.verbose:
                     print(e)
         self.libraries = {}
         mergeReport = False
