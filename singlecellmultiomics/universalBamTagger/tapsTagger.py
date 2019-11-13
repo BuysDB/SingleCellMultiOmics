@@ -15,7 +15,7 @@ import uuid
 import singlecellmultiomics.bamProcessing.bamFunctions as bf
 import singlecellmultiomics.features
 import colorama
-
+import numpy as np
 
 class Fraction:
     def __init__(self):
