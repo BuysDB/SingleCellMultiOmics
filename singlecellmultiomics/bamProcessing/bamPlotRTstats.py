@@ -105,34 +105,17 @@ if __name__=='__main__':
             site = first_read.get_tag('DS')
             strand = first_read.get_tag('RS')
             library = first_read.get_tag('LY')
-            if gc_capture:
-                sequence = reference.fetch(frag_chrom, frag_start, frag_end)
-                gc = sequence.count('C')+ sequence.count('G')
-                length = len(sequence)
+            #if gc_capture:
+            #    sequence = reference.fetch(frag_chrom, frag_start, frag_end)
+            #    gc = sequence.count('C')+ sequence.count('G')
+        #        length = len(sequence)
             used +=1
 
-            if False:
-                if strand=='+':
 
-                    c = np.searchsorted( ref_sites, site, side='left') #+ means goes left
-                    cut_start =  ref_sites[c-1]
-                    cut_end  =  site
-
-                else:
-
-                    c = np.searchsorted( ref_sites, site, side='left')
-                    cut_start =  site
-                    try:
-                        cut_end  =  ref_sites[c+1]
-                    except Exception as e:
-                        cut_end = ref_sites[c] # this happens at the last site at the chromosome
-
-                fragment_size = abs(cut_start-cut_end)
-                fragment_distribution[fragment_size]+=1
-            if gc_capture:
-                gc_distribution[gc/length] += 1
-                gc_frag_distribution[fragment_size][gc/length] += 1
-                fragment_distribution_raw[len(molecule)][fragment_size]+=1
+            #if gc_capture:
+            #    gc_distribution[gc/length] += 1
+            #    gc_frag_distribution[fragment_size][gc/length] += 1
+            #    fragment_distribution_raw[len(molecule)][fragment_size]+=1
 
             if len(rt_sizes)==0:
                 mean_rt_size = 0
