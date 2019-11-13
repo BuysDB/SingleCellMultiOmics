@@ -119,10 +119,6 @@ highlight=set()
 
 
             html_str+=f'{"RD1 " if read.is_read1 else "RD2 "}: ' + ''.join(visBases)+f' cycle:{firstCycle}:{cycle}  {it.start} {it.len}'
-            if False:
-                if read.is_read2 and randomPrimer:
-                    h = tagtools.getRandomPrimerHash(read,  randomPrimer)
-                    html_str += ' '+ cstr( f'RT:{h[0]}:{h[1]}', 'blue')
 
             html_str += ' '+ cstr( f'SEQ:{read.get_tag("Is")}:{read.get_tag("Fc")}:{read.get_tag("La")}:{read.get_tag("Ti")}', 'brown')+ cstr( f' MD:{read.get_tag("MD")}', 'black')
 
