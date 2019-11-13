@@ -128,8 +128,8 @@ class TAPSFlagger(DigestFlagger ):
 
             if len(methylationBlocks)>0:
                 read.set_tag('XM',''.join(methylationBlocks))
-                read.set_tag('XR',max(set(readCoversionString), key = readConversionString.count))
-                read.set_tag('XG',max(set(genomeConversionString), key = genomeConversionString.count))
+                #read.set_tag('XR',max(set(readCoversionString), key = readConversionString.count))
+                #read.set_tag('XG',max(set(genomeConversionString), key = genomeConversionString.count))
 
             if len(modified_contexts):
                 read.set_tag('Cm',','.join(list(sorted(modified_contexts))))
