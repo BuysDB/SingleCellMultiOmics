@@ -28,10 +28,10 @@ if __name__=='__main__':
         raise ValueError('Supply a quality feature for every sequence feature')
 
 
-    TagDefinitions = baseDemultiplexMethods.TagDefinitions
+    TagDefinitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
     for reads in FastqIterator(*args.fastqfiles):
         for readIndex, record in enumerate(reads):
-            tr = baseDemultiplexMethods.TaggedRecord(TagDefinitions)
+            tr = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TaggedRecord(TagDefinitions)
             tr.fromTaggedFastq(record)
             sequence = ''.join((record.sequence if tag=='SEQ' else tr.tags.get(tag) for tag in seqfeatures))
             qualities = ''.join((record.qual if tag=='QUAL' else tr.tags.get(tag) for tag in qualityfeatures))
