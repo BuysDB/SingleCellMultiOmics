@@ -131,14 +131,14 @@ class Molecule():
         # Obtain allele if available
         if self.allele_resolver is not None:
             try:
-                hits = self.get_allele(allele_resolver)
+                hits = self.get_allele(self.allele_resolver)
                 # Only store when we have a unique single hit:
                 if len(hits)==1:
                     self.allele = list(hits)[0]
             except ValueError as e:
                 # This happens when a consensus can not be obtained
                 pass
-    
+
     def get_a_reference_id(self):
         for read in self.iter_reads():
             if not read.is_unmapped:
