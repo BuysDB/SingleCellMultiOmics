@@ -117,7 +117,7 @@ def getUniqueRandomPrimers(readIter,primerLength=6):
     randomPrimers = set()
     for read in readIter:
         if read.is_read2:
-            randomPrimers.add( getRandomPrimerHash(R2, primerLength=primerLength) )
+            randomPrimers.add( getRandomPrimerHash(read, primerLength=primerLength) )
     return randomPrimers
 
 # Obtain from how many sources the reads are derived
