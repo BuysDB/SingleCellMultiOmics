@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import pysam
 import singlecellmultiomics.molecule
 import singlecellmultiomics.fragment
@@ -270,7 +271,7 @@ def obtain_variant_statistics(
 
         valid_tuples = [ sSNV_phase,  # mutated
                         informative_allele_wt, #wt
-                        uninformative_allele
+                        uninformative_allele ]
 
 
         # As we have umi's we just have a threshold for the least amount of reads
