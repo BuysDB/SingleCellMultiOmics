@@ -311,13 +311,13 @@ def run_multiome_tagging(args):
             # Calculate molecule consensus
             if args.consensus:
                 consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
-                        out_bam_temp,
+                        out,
                         f'consensus_{molecule.get_a_reference_id()}_{i}',
                         consensus_model)
                 for consensus_read in consensus_reads:
                     consensus_read.set_tag('RG', molecule[0].get_read_group() )
                     consensus_read.set_tag('mi', i)
-                    out_bam_temp.write(consensus_read)
+                    out.write(consensus_read)
 
             # Write the reads to the output file
             if not args.no_source_reads:
