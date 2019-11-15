@@ -272,6 +272,12 @@ class Fragment():
             self.set_meta('fe',self.span[1])
             self.set_meta('fs',self.span[2])
 
+        # Set qcfail bit when the fragment is not valid
+        if not self.is_valid():
+            for read in self:
+                if read is not None:
+                    read.is_qcfail = True
+
     def write_pysam(self, pysam_handle):
         """Write all associated reads to the target file
 
@@ -581,7 +587,7 @@ class FeatureCountsSingleEndFragment(Fragment):
     Extracts annotated gene from the XT tag.
     Deduplicates using XT tag and UMI
     Reads without XT tag are flagged as invalid
-    
+
     """
 
     def __init__(self,
