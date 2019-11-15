@@ -14,10 +14,17 @@ class TestMultiomeTaggingNLA(unittest.TestCase):
 
     def test_write_to_read_grouped_sorted(self):
         write_path = './data/write_test_rg.bam'
-        tm.run_multiome_tagging_cmd(f'./data/mini_nla_test.bam -method nla -o {write_path}'.split(' '))
+        tm.run_multiome_tagging_cmd(f'./data/mini_nla_test.bam -method nla -o {write_path} --write_rejects'.split(' '))
 
         with pysam.AlignmentFile(write_path) as f:
             self.assertTrue( 1==len([x for x in f.header['PG'] if 'bamtagmultiome' in x.get('PN','')]) )
+
+            i =0
+            # Test if the file has reads.
+            for read in f:
+                if read.is_read1:
+                    i+=1
+            self.assertEqual(i, 293)
 
 
 if __name__ == '__main__':
