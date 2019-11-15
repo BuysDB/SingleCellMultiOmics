@@ -111,7 +111,7 @@ if __name__=='__main__':
         ]
 
         taggedFilesLookup = [
-
+            f'{library}/tagged.bam'
             f'{library}/tagged/marked_duplicates.bam',
             f'{library}/tagged/resorted.featureCounts.bam',
             f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam',
@@ -119,7 +119,7 @@ if __name__=='__main__':
             f'{library}/tagged/sorted.bam'
         ]
         if args.tagged_bam:
-            taggedFilesLookup = [library+'/'+args.tagged_bam] + taggedFilesLookup 
+            taggedFilesLookup = [library+'/'+args.tagged_bam] + taggedFilesLookup
 
 
         if 'cluster' in library:
