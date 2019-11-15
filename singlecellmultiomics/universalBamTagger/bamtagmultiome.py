@@ -294,7 +294,7 @@ def run_multiome_tagging(args):
                 break
 
             # set unique molecule identifier
-            molecule.set_meta('mi', i)
+            molecule.set_meta('mi', f'{molecule.get_a_reference_id()}_{i}')
 
             # Write tag values
             molecule.write_tags()
