@@ -33,7 +33,7 @@ with pysam.AlignmentFile(args.alignmentfile) as alignments:
     wrote = 0
     for chromosome in chromosomes:
         for i,read in enumerate(alignments.fetch(chromosome)):
-            if read.is_duplicate:
+            if read.is_duplicate or read.is_qcfail:
                 continue
             if read.mapping_quality<args.min_mq or not read.has_tag('DS'):
                 continue
