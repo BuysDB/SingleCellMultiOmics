@@ -39,7 +39,7 @@ argparser.add_argument('-unphased_alleles',  type=str, help="Unphased allele fil
 argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
-cluster.add_argument('--write_rejects', action='store_true', help='Write rejected reads to output file')
+cluster.add_argument('--no_rejects', action='store_true', help='Write rejected reads to output file')
 cluster.add_argument('-mem',  default=40, type=int, help='Memory requested per job')
 cluster.add_argument('-time',  default=52, type=int, help='Time requested per job')
 
@@ -91,10 +91,10 @@ def run_multiome_tagging(args):
     }
 
     fragment_class_args = {}
-    yield_invalid= None # if invalid reads should be written
+    yield_invalid= True # if invalid reads should be written
 
-    if args.write_rejects:
-        yield_invalid = True
+    if args.no_rejects:
+        yield_invalid = False
 
 
     ignore_conversions = None
@@ -129,8 +129,6 @@ def run_multiome_tagging(args):
                                        identifierFields=['transcript_id'],
                                        store_all=True, contig=args.contig,head=None)
         print("All features loaded")
-
-        rejected_reads = [] # Store all rejected, potential transcript reads
 
         # Add more molecule class arguments
         molecule_class_args.update({
