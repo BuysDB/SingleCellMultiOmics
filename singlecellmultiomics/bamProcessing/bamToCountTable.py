@@ -105,7 +105,7 @@ def read_should_be_counted(read, args):
     """
 
 # Read is empty
-    if read is None:
+    if read is None or read.is_qcfail:
         return False
 
     # Mapping quality below threshold
