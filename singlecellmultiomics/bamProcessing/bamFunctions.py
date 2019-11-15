@@ -53,7 +53,7 @@ def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None):
 
         # Write, sort and index
         sort_and_index(unsorted_path,  write_path, remove_unsorted=True)
-
+        time.sleep(1) # Another sleep which seems sometimes required
 
 def write_program_tag(input_header,
     program_name,
