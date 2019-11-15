@@ -54,11 +54,18 @@ cg.add_argument('-consensus_model', type=str, help='Name of or path to consensus
 cg.add_argument('-consensus_n_train', type=int, help='Amount of bases used for training', default=500_000)
 cg.add_argument('--no_source_reads', action='store_true', help='Do not write original reads, only consensus ')
 
+def is_main_chromosome(chrom):
+    if chrom.startswith('KN') or chrom.startswith('KZ')  or chrom.startswith('JH') or chrom.startswith('GL') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom  or chrom.endswith('_alt') or "HLA-" in chrom:
+        return False
+    return True
+
 def run_multiome_tagging_cmd(commandline):
     args = argparser.parse_args(commandline)
     run_multiome_tagging(args)
 
 def run_multiome_tagging(args):
+    MISC_ALT_CONTIGS_SCMO = 'MISC_ALT_CONTIGS_SCMO'
+
     if not args.o.endswith('.bam'):
         raise ValueError("Supply an output which ends in .bam, for example -o output.bam")
 
@@ -191,16 +198,36 @@ def run_multiome_tagging(args):
         raise ValueError("Supply a valid method")
 
     #### This decides what molecules we will traverse
-    molecule_iterator = MoleculeIterator(
-        alignments=input_bam,
-        queryNameFlagger=queryNameFlagger,
-        moleculeClass=moleculeClass,
-        fragmentClass=fragmentClass,
-        molecule_class_args=molecule_class_args,
-        fragment_class_args=fragment_class_args,
-        yield_invalid=yield_invalid,
-        contig=args.contig
-    )
+    if args.contig==MISC_ALT_CONTIGS_SCMO:
+        contig = None
+    else:
+        contig = args.contig
+
+    molecule_iterator_args = {
+        'alignments':input_bam,
+        'queryNameFlagger':queryNameFlagger,
+        'moleculeClass':moleculeClass,
+        'fragmentClass':fragmentClass,
+        'molecule_class_args':molecule_class_args,
+        'fragment_class_args':fragment_class_args,
+        'yield_invalid':yield_invalid,
+        'contig':contig
+    }
+
+    if args.contig==MISC_ALT_CONTIGS_SCMO:
+        # When MISC_ALT_CONTIGS_SCMO is set as argument, all molecules with reads
+        # mapping to a contig returning True from the is_main_chromosome function are used
+
+        def Misc_contig_molecule_generator(molecule_iterator_args):
+            for reference in input_bam.references:
+                if not is_main_chromosome(reference):
+                    molecule_iterator_args['contig'] = reference
+                    yield from MoleculeIterator(**molecule_iterator_args)
+
+        molecule_iterator = Misc_contig_molecule_generator(molecule_iterator_args)
+    else:
+        molecule_iterator = MoleculeIterator(**molecule_iterator_args)
+
     #####
     consensus_model_path=None
     if args.consensus:
@@ -234,8 +261,13 @@ def run_multiome_tagging(args):
             # Create jobs for all chromosomes:
             temp_prefix = os.path.abspath( os.path.dirname(args.o) )+ '/SCMO_' + str(uuid.uuid4())
             hold_merge=[]
-            for chrom in input_bam.references:
-                if chrom.startswith('KN') or chrom.startswith('KZ')  or chrom.startswith('JH') or chrom.startswith('GL') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom  or chrom.endswith('_alt') or "HLA-" in chrom:
+
+            found_alts = 0
+            for chrom in list(input_bam.references)+[MISC_ALT_CONTIGS_SCMO]:
+                if not is_main_chromosome(chrom):
+                    found_alts+=1
+                    continue
+                if chrom==MISC_ALT_CONTIGS_SCMO and found_alts==0:
                     continue
                 temp_bam_path = f'{temp_prefix}_{chrom}.bam'
                 arguments = " ".join([x for x in sys.argv if not x==args.o and x!='-o'])  + f" -contig {chrom} -o {temp_bam_path}"
