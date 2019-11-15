@@ -274,3 +274,4 @@ if __name__=='__main__':
 						break
 			handle.close()
 			rejectHandle.close()
+			log_handle.write(f'Demultiplexing finished\n')
