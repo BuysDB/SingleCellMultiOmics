@@ -2,6 +2,7 @@ import os
 import pysam
 import time
 import contextlib
+from shutil import which
 
 def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=False):
     """Extract path to reference from bam file
@@ -44,16 +45,15 @@ def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None):
             header = origin_bam.header.copy()
         else:
             raise ValueError("Supply a header or origin_bam object")
-        with pysam.AlignmentFile(unsorted_path, "wb", header=header) as unsorted_alignments:
-            yield unsorted_alignments
+        unsorted_alignments = pysam.AlignmentFile(unsorted_path, "wb", header=header)
+        yield unsorted_alignments
     finally:
-        time.sleep(1) # it makes me so sad this is required.
+        unsorted_alignments.close()
         if read_groups is not None:
             add_readgroups_to_header( unsorted_path, read_groups )
 
         # Write, sort and index
         sort_and_index(unsorted_path,  write_path, remove_unsorted=True)
-        time.sleep(1) # Another sleep which seems sometimes required
 
 def write_program_tag(input_header,
     program_name,
@@ -96,7 +96,7 @@ def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False):
         os.remove(unsorted_path)
 
 
-def add_readgroups_to_header( origin_bam_path, readgroups_in, target_bam_path=None ):
+def add_readgroups_to_header( origin_bam_path, readgroups_in, target_bam_path=None, header_write_mode='auto' ):
     """ Add the readgroups in the set readgroups to the header of origin_bam_path.
 
     This function first loads the header of the origin to memory.
@@ -142,26 +142,46 @@ def add_readgroups_to_header( origin_bam_path, readgroups_in, target_bam_path=No
     else:
         raise ValueError("supply a set or dict for readgroups_in")
 
-
-    with pysam.AlignmentFile(origin_bam_path, "rb") as origin:
-        header = origin.header.copy()
-
-        # Write the new header to this sam file:
-        headerSamFilePath = origin_bam_path.replace('.bam','')+'.header.sam'
-
-        hCopy = header.to_dict()
-        hCopy['RG'] = list(readGroupsDict.values())
-
-        # Write the sam file with the complete header:
-        with pysam.AlignmentFile(headerSamFilePath,'w',header=hCopy):
-            pass
-
-
     # Write the re-headered bam file to this path
     complete_temp_path = origin_bam_path.replace('.bam','')+'.rehead.bam'
 
-    # Concatenate and remove origin
-    rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {origin_bam_path}; }} | samtools view -b > {complete_temp_path} ;
-            mv {complete_temp_path } {target_bam_path};rm {headerSamFilePath};
-            """
-    os.system(rehead_cmd)
+
+    # When header_write_mode is auto, when samtools is available, samtools will be used, otherwise pysam
+    if header_write_mode=='auto':
+        if which('samtools') is None:
+            header_write_mode='pysam'
+        else:
+            header_write_mode='samtools'
+
+    if header_write_mode=='pysam':
+        with pysam.AlignmentFile(origin_bam_path, "rb") as origin:
+            header = origin.header.copy()
+            hCopy = header.to_dict()
+            hCopy['RG'] = list(readGroupsDict.values())
+            with pysam.AlignmentFile(complete_temp_path, "wb", header=hCopy) as out:
+                for read in origin:
+                    out.write(read)
+
+        os.rename(complete_temp_path,target_bam_path)
+
+    elif header_write_mode=='samtools':
+        with pysam.AlignmentFile(origin_bam_path, "rb") as origin:
+            header = origin.header.copy()
+
+            # Write the new header to this sam file:
+            headerSamFilePath = origin_bam_path.replace('.bam','')+'.header.sam'
+
+            hCopy = header.to_dict()
+            hCopy['RG'] = list(readGroupsDict.values())
+
+            # Write the sam file with the complete header:
+            with pysam.AlignmentFile(headerSamFilePath,'w',header=hCopy):
+                pass
+
+        # Concatenate and remove origin
+        rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {origin_bam_path}; }} | samtools view -b > {complete_temp_path} ;
+                mv {complete_temp_path } {target_bam_path};rm {headerSamFilePath};
+                """
+        os.system(rehead_cmd)
+    else:
+        raise ValueError('header_write_mode should be either, auto, pysam or samtools')
