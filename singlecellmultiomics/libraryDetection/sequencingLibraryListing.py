@@ -71,6 +71,9 @@ class SequencingLibraryLister():
                 if not library in self.libraries:
                     self.libraries[library] = {lane: {}}
 
+                if not lane in self.libraries[library]:
+                    self.libraries[library][lane] = {}
+
                 if not r1ORr2 in self.libraries[library][lane]:
                     self.libraries[library][lane][r1ORr2] = []
 
