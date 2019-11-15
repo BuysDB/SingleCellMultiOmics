@@ -77,8 +77,7 @@ class TestSorted(unittest.TestCase):
             self.assertTrue( 1==len([x for x in f.header['PG'] if 'test_bam_util_test2' in x.get('PN','')]) )
 
         try:
-            #os.remove(write_path)
-            pass
+            os.remove(write_path)
         except Exception as e:
             pass
 
