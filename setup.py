@@ -59,6 +59,7 @@ setup(
 
         # Fasta
         'singlecellmultiomics/fastaProcessing/fastaMaskVariants.py',
+        'singlecellmultiomics/fastaProcessing/createDigestReads.py',
 
         # Tagging
         'singlecellmultiomics/universalBamTagger/universalBamTagger.py',
