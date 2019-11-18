@@ -51,6 +51,10 @@ tags = [
     SamTag('QM', 'molecularIdentifierQuality',isPhred=True),
     SamTag('DS', 'siteCoordinate'),
     SamTag('DA', 'allele'),
+    SamTag('ap', 'phasedAllelicSNVs'),
+    SamTag('au', 'phasednUnknownAllelicOriginSNVs'),
+    SamTag('TR', 'totalRTreactions'),
+
     SamTag('RZ', 'recognizedSequence'),
     SamTag('RS', 'recognizedStrand'),
     SamTag('LI', 'ligationMotif'),
@@ -125,6 +129,8 @@ tags = [
 
     SamTag('rS', 'randomPrimerStart'),
     SamTag('rP', 'randomPrimerSequence'),
+    SamTag('TR', 'totalRTreactions'),
+
 
     SamTag('AI', 'AssignedIntrons'),
     SamTag('AE', 'AssingedExons'),
