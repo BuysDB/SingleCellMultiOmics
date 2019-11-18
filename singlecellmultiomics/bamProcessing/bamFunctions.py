@@ -23,6 +23,26 @@ def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=F
     except Exception as e:
         pass
 
+
+def get_reference_path_from_bam(bam, ignore_missing=False ):
+        """Extract path to reference from bam file
+
+        Args:
+            bam(str) or pysam.AlignmentFile : path to bam file
+            ignore_missing(bool) : Check if the file exists, if not return None
+        Returns:
+            path : path to bam file (if exists or ignore_missing is supplied) or None
+        """
+        if type(bam) is str:
+            with pysam.AlignmentFile(bam) as pysam_AlignmentFile_handle:
+                return  get_reference_from_pysam_alignmentFile( pysam_AlignmentFile_handle, ignore_missing=ignore_missing)
+        elif type(bam) is pysam.AlignmentFile:
+            return  get_reference_from_pysam_alignmentFile(bam, ignore_missing=ignore_missing)
+
+        else:
+            raise ValueError('Supply either a path to a bam file or pysam.AlignmentFile object')
+
+
 @contextlib.contextmanager
 def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None):
     """ Get writing handle of a sorted bam file
