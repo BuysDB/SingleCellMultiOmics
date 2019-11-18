@@ -33,7 +33,10 @@ with gzip.open(f'simulated_nlaIII_single_{r1_read_length}.fastq.gz','wt') as out
         frag_locations = np.diff( [m.start() for m in re.finditer('CATG', seq)])
         # Generate fragments:
         for start, end_excluding_catg in more_itertools.windowed(  (m.start() for m in re.finditer('CATG', seq)), 2 ):
+            if end_excluding_catg is None:
+                continue
             end = end_excluding_catg+4
+
 
             forward_read = seq[start:end][:r1_read_length]
             if len(forward_read)>=minlen:
