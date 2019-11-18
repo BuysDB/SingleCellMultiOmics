@@ -5,7 +5,7 @@ import contextlib
 from shutil import which
 
 def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=False):
-    """Extract path to reference from bam file
+    """Extract path to reference from pysam handle
 
     Args:
         pysam_AlignmentFile (pysam.AlignmentFile)
@@ -114,6 +114,74 @@ def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False):
     pysam.index(sorted_path)
     if remove_unsorted:
         os.remove(unsorted_path)
+
+def GATK_indel_realign( origin_bam, target_bam,
+    contig, region_start, region_end,
+    known_variants_vcf_path,
+    #realignerTargetCreatorArgs=None,
+    #indelRealignerArgs=None,
+    gatk_path = 'GenomeAnalysisTK.jar',
+    interval_path=None,
+    java_cmd = 'java -jar -Xmx8G -Djava.io.tmpdir=./gatk_tmp',
+    reference = None,
+    interval_write_path=None
+     ):
+    """
+    Re-align a specified region in a bam file using GenomeAnalysisTK
+
+    origin_bam (str) :  path to extract region from to re-align
+    target_bam(str) : path to write re-aligned reads to
+    contig (str) : contig of selected region
+    region_start (int) : start coordinate of region to re align (1 based)
+    region_end (int) :end coordiante of  selected region (1 based)
+    known_variants_vcf_path (str) : path to vcf containing reference variants
+    interval_path (str) : Use this intervals to perform realignment, when not specified intervals are generated using RealignerTargetCreator
+    interval_write_path (str) : when interval_path is not supplied, write the interval file here
+    java_cmd (str) : Command to open java
+    gatk_path (str) : path to GenomeAnalysisTK.jar
+    reference (str) : path to reference Fasta file
+    """
+    if not os.path.exists('./gatk_tmp'):
+        try:
+            os.path.makedirs('./gatk_tmp')
+        except Exception as e:
+            pass
+
+
+    # Detect reference from bam file
+    if reference  is None:
+        reference = get_reference_path_from_bam(origin_bam)
+    if reference is None:
+        raise ValueError('Supply a path to a reference Fasta file (reference)')
+
+    if interval_path is None:
+        if interval_write_path is None:
+            interval_write_path = f"{target_bam.replace('.bam','')}.intervals"
+
+        target_creator_cmd = f'{java_cmd} {gatk_path} \
+        -T RealignerTargetCreator \
+        -R {reference} \
+        -L {contig}:{region_start}-{region_end} \
+        -known {known_variants_vcf_path} \
+        -I {origin_bam} \
+        -o {interval_path}'
+
+        # Create the intervals file
+        os.system(target_creator_cmd)
+        interval_path = interval_write_path
+
+    # Perform realignment
+    realign_cmd = f'{java_cmd} {gatk_path} \
+    -T IndelRealigner \
+    -R {reference} \
+    -targetIntervals {interval_path} \
+    -known {known_variants_vcf_path} \
+    -L {contig}:{region_start}-{region_end} \
+    -I {origin_bam} \
+    -o {target_bam}'
+    os.system(realign_cmd)
+    return target_bam
+
 
 
 def add_readgroups_to_header( origin_bam_path, readgroups_in, target_bam_path=None, header_write_mode='auto' ):
