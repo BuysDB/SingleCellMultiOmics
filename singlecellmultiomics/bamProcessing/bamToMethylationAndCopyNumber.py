@@ -29,7 +29,7 @@ output_alias = args.alignmentfile + f'.table.bs_{args.bin_size}'
 def obtain_approximate_reference_cut_position(site, contig,alt_spans):
     #contig, cut_start, strand = molecule.get_cut_site()
     alt_contig, alt_start, alt_end =  alt_spans[contig]
-    return contig, cut_start + alt_start
+    return contig, site + alt_start
 
 # Load alternative contigs if available:
 alt_path = f'{args.ref}.64.alt'
