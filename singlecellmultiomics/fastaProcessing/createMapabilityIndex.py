@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
     with BlockZip(outtab,'w') as stats, BlockZip(outtabsafe,'w') as safe:
         for (contig,pos,strand), measured in sites.items():
-            stats.write(contig, pos, strand, '{measured["correct"]}\t{measured["lost"]}\t{measured["wrong_gain"]}\n')
+            stats.write(contig, pos, strand, f'{measured["correct"]}\t{measured["lost"]}\t{measured["wrong_gain"]}\n')
 
             if measured['wrong_gain']==0 and measured['lost']==0 and measured['correct']==1:
                 safe.write(contig, pos, strand,'ok')
