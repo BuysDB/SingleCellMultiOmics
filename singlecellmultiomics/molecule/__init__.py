@@ -4,17 +4,17 @@ Submodules
 ==========
 
 .. autosummary::
-    :toctree: _autosummary
+   :toctree: _autosummary
 
-    molecule
-    taps
-    chic
-    featureannotatedmolecule
-    nlaIII
-    rna
-    iterator
-    consensus
-    fourthiouridine
+   molecule
+   taps
+   chic
+   featureannotatedmolecule
+   nlaIII
+   rna
+   iterator
+   consensus
+   fourthiouridine
 
 """
 
