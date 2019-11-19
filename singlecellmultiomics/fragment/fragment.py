@@ -10,6 +10,42 @@ class Fragment():
     Fragment
 
     This class holds 1 or more reads which are derived from the same cluster
+
+
+    Example:
+        Generate a Fragment with a single associated read::
+
+            from singlecellmultiomics.molecule import Molecule
+            from singlecellmultiomics.fragment import Fragment
+            import pysam
+
+            read = pysam.AlignedSegment()
+            read.reference_start = 30
+            read.query_name = 'R1'
+            read.mapping_quality = 30
+            read.set_tag('SM','CELL_1') # The sample to which the sample belongs is extracted from the SM tag
+            read.set_tag('RX','CAT') # The UMI is extracted from the RX tag
+            read.query_sequence = "CATGTATCCGGGCTTAA"
+            read.query_qualities = [30] * len(read.query_sequence)
+            read.cigarstring = f'{len(read.query_sequence)}M'
+
+            Fragment([read])
+        ``
+        Fragment:
+            sample:CELL_1
+            umi:CAT
+            span:None 30-47
+            strand:+
+            has R1: yes
+            has R2: no
+            randomer trimmed: no
+        ``
+
+    Warning:
+        Make sure the RX and SM tags of the read are set! If these are encoded
+        in the read name, use singlecellmultiomics.universalBamTagger.customreads
+        for conversion.
+
     """
 
     def __init__(self, reads, assignment_radius=3, umi_hamming_distance=1,
