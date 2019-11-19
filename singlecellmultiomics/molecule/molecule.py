@@ -1,6 +1,7 @@
 from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
 import singlecellmultiomics.universalBamTagger
+import singlecellmultiomics.bamProcessing
 from singlecellmultiomics.fragment import Fragment
 import collections
 import itertools
@@ -84,9 +85,12 @@ class Molecule():
         fragments : typing.Optional[typing.Iterable] = None,
         cache_size : int = 10_000,
         reference : typing.Union[pysam.FastaFile, pysamiterators.CachedFasta] = None,
-        min_max_mapping_quality :  typing.Optional[int] = None,# When all fragments have a mappin quality below this value the is_valid method will return False
+        min_max_mapping_quality :  typing.Optional[int] = None,# When all fragments have a mappin quality below this value the is_valid method will return False,
+        mapability_reader : typing.Optional[singlecellmultiomics.bamProcessing.MapabilityReader]  = None,
         allele_resolver : typing.Optional[singlecellmultiomics.alleleTools.AlleleResolver] = None ,
-        **kwargs):
+        **kwargs
+
+        ):
         """Initialise Molecule
 
         Parameters
@@ -97,6 +101,8 @@ class Molecule():
         min_max_mapping_quality :  When all fragments have a mappin quality below this value the is_valid method will return False
 
         allele_resolver :  alleleTools.AlleleResolver or None. Supply an allele resolver in order to assign an allele to the molecule
+
+        mapability_reader : singlecellmultiomics.bamProcessing.MapabilityReader, supply a mapability_reader to set mapping_quality of 0 to molecules mapping to locations which are not mapping uniquely during in-silico library generation.
 
         cache_size (int): radius of molecule assignment cache
         """
@@ -122,9 +128,10 @@ class Molecule():
 
 
         self.allele_resolver = allele_resolver
+        self.mapability_reader = mapability_reader
         self.allele = None
-
         self.methylation_call_dict = None
+        self.finalised = False
 
     def __finalise__(self):
         """This function is called when all associated fragments have been gathered"""
@@ -139,7 +146,36 @@ class Molecule():
                 # This happens when a consensus can not be obtained
                 pass
 
+        if self.mapability_reader is not None:
+            self.update_mapability()
+
+        self.finalised = True
+
+    def update_mapability(self):
+        """ Update mapability of this molecule.
+        mapping qualities are set to 0 if the mapability_reader returns False
+        for site_is_mapable"""
+
+        mapable = None
+        try:
+            mapable = self.mapability_reader.site_is_mapable(*self.get_cut_site())
+        except Exception as e:
+            pass
+
+        if mapable is False:
+            self.set_meta('mp','bad')
+            for read in self.iter_reads():
+                read.mapping_quality = 0
+        elif mapable is True:
+            self.set_meta('mp','unique')
+        else:
+            self.set_meta('mp','unknown')
+
+
     def get_a_reference_id(self):
+        """
+        Obtain a reference id for a random associated mapped read
+        """
         for read in self.iter_reads():
             if not read.is_unmapped:
                 return read.reference_id
