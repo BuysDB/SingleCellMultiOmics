@@ -28,7 +28,7 @@ argparser.add_argument('-min_read_obs', type=int, default=2)
 argparser.add_argument('--realign', action='store_true', help='Perform re-alignment using GATK')
 argparser.add_argument('-gatk3_path', type=str, default='GenomeAnalysisTK.jar')
 argparser.add_argument('-indelvcf', type=str)
-argparser.add_argument('-window_radius', type=int, 250)
+argparser.add_argument('-window_radius', type=int, default=250)
 args=  argparser.parse_args()
 
 if args.realign and args.indelvcf is None:
