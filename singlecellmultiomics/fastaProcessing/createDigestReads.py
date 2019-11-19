@@ -13,9 +13,9 @@ import os
 if self.__name__ == '__main__':
     argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""In silico digest genome""")
     argparser.add_argument('fasta', metavar='fastafile', type=str, help='Fasta file to digest')
-
     argparser.add_argument('-minlen', type=int, default=20, help='minimum read length')
     argparser.add_argument('-maxlen', type=int, default=69, help='maximum read length')
+    argparser.add_argument('-digest_sequence', type=str, default='CATG')
     argparser.add_argument('-head', type=int)
     argparser.add_argument('-contigs', type=str, default=None, help='Comma separated contigs to run analysis for, when None specified all contigs are used')
     args = argparser.parse_args()
@@ -30,11 +30,9 @@ if self.__name__ == '__main__':
 
     selected_contigs = None if args.contigs is None else set(args.contigs.split(','))
 
-    fastq_path = f'simulated_nlaIII_single_{r1_read_length}_{uuid.uuid4()}.fastq.gz'
+    fastq_path = f'simulated_{args.digest_sequence}_single_{r1_read_length}_{uuid.uuid4()}.fastq.gz'
 
-    outbam = f'simulated_nlaIII_single_{r1_read_length}.bam'
-
-
+    outbam = f'simulated_{args.digest_sequence}_single_{r1_read_length}.bam'
 
 
     with gzip.open(fastq_path,'wt') as out:
@@ -46,12 +44,12 @@ if self.__name__ == '__main__':
                 continue
             print(f'{contig}\t{contig_len}')
             seq = ref.fetch(contig).upper()
-            frag_locations = np.diff( [m.start() for m in re.finditer('CATG', seq)])
+            frag_locations = np.diff( [m.start() for m in re.finditer(args.digest_sequence, seq)])
             # Generate fragments:
-            for i,(start, end_excluding_catg) in enumerate(more_itertools.windowed(  (m.start() for m in re.finditer('CATG', seq)), 2 )):
+            for i,(start, end_excluding_catg) in enumerate(more_itertools.windowed(  (m.start() for m in re.finditer(args.digest_sequence, seq)), 2 )):
                 if end_excluding_catg is None or args.head is not None and i>=(args.head-1):
                     continue
-                end = end_excluding_catg+4
+                end = end_excluding_catg+ len(args.digest_sequence)
 
 
                 forward_read = seq[start:end][:r1_read_length]
@@ -68,7 +66,7 @@ if self.__name__ == '__main__':
             processed += contig_len
 
     # Map the fastq file:
-    os.system(f"bwa mem -t 4 {args.fasta} {fastq_path} | samtools view -b - > ./{outbam}.unsorted.bam; samtools sort -T ./temp_sort -@ 4 ./{outbam}.unsorted.bam > ./{outbam}.unfinished.bam & mv ./{outbam}.unfinished.bam ./{outbam} & samtools index {outbam} & rm {fastq_path}")
+    os.system(f"bwa mem -t 4 {args.fasta} {fastq_path} | samtools view -b - > ./{outbam}.unsorted.bam; samtools sort -T ./temp_sort -@ 4 ./{outbam}.unsorted.bam > ./{outbam}.unfinished.bam & mv ./{outbam}.unfinished.bam ./{outbam} & samtools index ./{outbam} & rm {fastq_path}")
 
     # Create site dictionary:
     sites = {}  #site-> wrongly_assinged_to, correctly_assigned, lost
@@ -108,8 +106,8 @@ if self.__name__ == '__main__':
             sites[key_mapped]['wrong_gain'] += 1
 
 
-    outtab = f'simulated_nlaIII_single_{r1_read_length}.mappability.stats.tsv'
-    outtabsafe = f'simulated_nlaIII_single_{r1_read_length}.mappability.safe.tsv'
+    outtab = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mappability.stats.tsv'
+    outtabsafe = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mappability.safe.tsv'
 
     with open(outtab,'w') as o, open(outtabsafe,'w') as of:
         for (contig,pos,strand), measured in sites.items():
