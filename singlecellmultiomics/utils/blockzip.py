@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 from Bio import bgzf
 
 class BlockZip():
@@ -20,10 +22,10 @@ class BlockZip():
             self.index_handle = open(self.index_path,'wt')
         elif self.mode=='r':
             if not os.path.exists(self.path):
-                raise ValueError(f'BGZIP index file missing at {self.path)}')
+                raise ValueError(f'BGZIP index file missing at {self.path}')
             self.bgzf_handle = bgzf.BgzfReader(self.path,'rt')
             if not os.path.exists(self.index_path):
-                raise ValueError(f'BGZIP index file missing at {self.index_path)}')
+                raise ValueError(f'BGZIP index file missing at {self.index_path}')
             self.index_handle = open(self.index_path,'rt')
 
             for line in self.index_handle:
