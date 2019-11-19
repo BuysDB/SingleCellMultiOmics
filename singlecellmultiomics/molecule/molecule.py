@@ -383,6 +383,7 @@ class Molecule():
             classifier (sklearn classifier) : classifier for consensus prediction
         Returns:
             reads( list [ pysam.AlignedSegment ] )
+
         """
         # Set all associated reads to duplicate
         for read in self.iter_reads():
@@ -792,7 +793,20 @@ class Molecule():
             fragment.set_rejection_reason(reason)
 
     def is_valid(self, set_rejection_reasons=False):
+        """Check if the molecule is valid
+        All of the following requirements should be met:
+        - no multimapping
+        - no low mapping mapping_quality (Change molecule.min_max_mapping_quality to set the threshold)
+        - molecule is associated with at least one valid fragment
 
+        Args:
+            set_rejection_reasons (bool) : When set to True, all reads get a
+            rejection reason (RR tag) written to them if the molecule is rejected.
+
+        Returns:
+            is_valid (bool) : True when all requirements are met, False otherwise
+
+        """
         if self.is_multimapped():
             if set_rejection_reasons:
                 self.set_rejection_reason('multimapping')
@@ -826,6 +840,7 @@ class Molecule():
             )
 
     def __len__(self):
+        """Obtain the amount of fragments associated to the molecule"""
         return len(self.fragments)
 
     def get_consensus_base_frequencies(self):

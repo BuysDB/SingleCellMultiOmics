@@ -109,9 +109,6 @@ class MoleculeIterator():
                     has R1: yes
                     has R2: no
                     randomer trimmed: no
-            """
-
-
     """
     def __init__(self, alignments, moleculeClass=Molecule,
         fragmentClass=Fragment,
