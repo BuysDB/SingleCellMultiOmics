@@ -5,6 +5,7 @@ import singlecellmultiomics.molecule
 import singlecellmultiomics.fragment
 import pysam
 import pysamiterators.iterators
+import os
 """
 These tests check if the Molecule module is working correctly
 """
@@ -38,7 +39,50 @@ class TestMolecule(unittest.TestCase):
             )
             for molecule in it:
                 str(molecule)
+    def test_iterable_molecule_iter(self):
 
+        from singlecellmultiomics.molecule import MoleculeIterator
+        from singlecellmultiomics.fragment import Fragment
+
+        with pysam.AlignmentFile('test.sam','w',reference_names=['chr1','chr2'],reference_lengths=[1000,1000]) as test_sam:
+            read_A = pysam.AlignedSegment(test_sam.header)
+            read_A.set_tag('SM','CELL_1')
+            read_A.set_tag('RX','CAT')
+            read_A.reference_name = 'chr1'
+            read_A.reference_start = 100
+            read_A.query_sequence = 'ATCGGG'
+            read_A.cigarstring = '6M'
+            read_A.mapping_quality = 60
+
+            read_B = pysam.AlignedSegment(test_sam.header)
+            read_B.set_tag('SM','CELL_1')
+            read_B.set_tag('RX','CAT')
+            read_B.reference_name = 'chr1'
+            read_B.reference_start = 100
+            read_B.query_sequence = 'ATCGG'
+            read_B.cigarstring = '5M'
+            read_B.mapping_quality = 60
+
+            read_C = pysam.AlignedSegment(test_sam.header)
+            read_C.set_tag('SM','CELL_2')
+            read_C.set_tag('RX','CAT')
+            read_C.reference_name = 'chr1'
+            read_C.reference_start = 100
+            read_C.query_sequence = 'ATCGG'
+            read_C.cigarstring = '5M'
+            read_C.mapping_quality = 60
+
+            reads = [  read_A,read_B,read_C ]
+            mi = MoleculeIterator( reads , yield_invalid=True)
+            molecules=[]
+            for molecule in mi:
+                molecules.append(molecule)
+
+            self.assertEqual(len(molecules),2)
+            self.assertEqual(max( (len(m) for m in molecules) ),2)
+            self.assertEqual(min( (len(m) for m in molecules) ),1)
+
+        os.remove('test.sam')
     def test_NLA_Molecule_repr_stability(self):
         """Test if the molecule representation function is stable"""
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
