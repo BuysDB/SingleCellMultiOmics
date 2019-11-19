@@ -7,39 +7,32 @@ import itertools
 
 class Fragment():
     """
-    Fragment
-
     This class holds 1 or more reads which are derived from the same cluster
-
 
     Example:
         Generate a Fragment with a single associated read::
 
-            from singlecellmultiomics.molecule import Molecule
-            from singlecellmultiomics.fragment import Fragment
-            import pysam
-
-            read = pysam.AlignedSegment()
-            read.reference_start = 30
-            read.query_name = 'R1'
-            read.mapping_quality = 30
-            read.set_tag('SM','CELL_1') # The sample to which the sample belongs is extracted from the SM tag
-            read.set_tag('RX','CAT') # The UMI is extracted from the RX tag
-            read.query_sequence = "CATGTATCCGGGCTTAA"
-            read.query_qualities = [30] * len(read.query_sequence)
-            read.cigarstring = f'{len(read.query_sequence)}M'
-
-            Fragment([read])
-        ``
-        Fragment:
-            sample:CELL_1
-            umi:CAT
-            span:None 30-47
-            strand:+
-            has R1: yes
-            has R2: no
-            randomer trimmed: no
-        ``
+            >>> from singlecellmultiomics.molecule import Molecule
+            >>> from singlecellmultiomics.fragment import Fragment
+            >>> import pysam
+            >>> read = pysam.AlignedSegment()
+            >>> read.reference_start = 30
+            >>> read.query_name = 'R1'
+            >>> read.mapping_quality = 30
+            >>> read.set_tag('SM','CELL_1') # The sample to which the sample belongs is extracted from the SM tag
+            >>> read.set_tag('RX','CAT') # The UMI is extracted from the RX tag
+            >>> read.query_sequence = "CATGTATCCGGGCTTAA"
+            >>> read.query_qualities = [30] * len(read.query_sequence)
+            >>> read.cigarstring = f'{len(read.query_sequence)}M'
+            >>> Fragment([read])
+            Fragment:
+                sample:CELL_1
+                umi:CAT
+                span:None 30-47
+                strand:+
+                has R1: yes
+                has R2: no
+                randomer trimmed: no
 
     Warning:
         Make sure the RX and SM tags of the read are set! If these are encoded
@@ -346,10 +339,10 @@ class Fragment():
         this assumes the random primer is on the end of R2 and has a length of 6BP
         When the rS tag is set, the value of this tag is used as random primer sequence
         Returns None,None when the random primer cannot be described
-        Returns
-        -------
-        reference_start : int or None
-        sequence : str or None
+
+        Returns:
+            reference_start (int) : Int or None
+            sequence (str) : Int or None
         """
         R2 = self.get_R2()
 
@@ -389,27 +382,55 @@ class Fragment():
                     read.set_tag(key,value)
 
     def get_R1(self):
+        """
+        Obtain the AlignedSegment of read 1 of the fragment
+
+        Returns:
+            R1 (pysam.AlignedSegment) : Read 1 of the fragment, returns None
+                                        when R1 is not mapped
+        """
         if len(self.reads)==0:
             raise IndexError('The fragment has no associated reads')
         return self.reads[0]
     def get_R2(self):
+        """
+        Obtain the AlignedSegment of read 2 of the fragment
+
+        Returns:
+            R1 (pysam.AlignedSegment) : Read 2 of the fragment, returns None
+                                        when R2 is not mapped
+        """
         if len(self.reads)<2:
             raise IndexError('The fragment has no associated R2')
         return self.reads[1]
 
     def has_R1(self):
+        """
+        Check if the fragment has an associated read 1
+
+        Returns:
+            has_r1 (bool)
+        """
         if len(self.reads)==0:
             return False
         return self.reads[0] is not None
 
     def has_R2(self):
+        """
+        Check if the fragment has an associated read 2
+
+        Returns:
+            has_r2 (bool)
+        """
         if len(self.reads)<2:
             return False
         return self.reads[1] is not None
 
 
     def update_span(self):
-
+        """
+        Update the span (the location the fragment maps to) stored in Fragment
+        """
 
         if self.mapping_dir!=(False,True):
             raise NotImplementedError("Sorry only FW RV is implemented")
@@ -455,6 +476,12 @@ class Fragment():
 
 
     def get_sample(self):
+        """ Obtain the sample name associated with the fragment
+        The sample name is extracted from the SM tag of any of the associated reads.
+
+        Returns:
+            sample name (str)
+        """
         return self.sample
 
 
@@ -468,23 +495,73 @@ class Fragment():
 
 
     def set_strand(self, strand):
+        """Set mapping strand
+
+        Args:
+            strand (bool) : False for Forward, True for reverse
+        """
         self.strand = strand
 
     def get_strand(self):
+        """Obtain strand
+
+        Returns:
+            strand (bool) : False for Forward, True for reverse
+        """
         return self.strand
 
     def update_umi(self):
+        """
+        Extract umi from 'RX' tag and store the UMI in the Fragment object
+        """
         for read in self.reads:
             if read is not None and read.has_tag('RX'):
                 self.umi=read.get_tag('RX')
 
     def get_umi(self):
+        """
+        Get the UMI sequence associated to this fragment
+
+        Returns:
+            umi(str)
+        """
         return self.umi
 
     def __iter__(self):
         return iter(self.reads)
 
     def umi_eq(self, other):
+        """
+        Hamming distance measurement to another Fragment or Molecule,
+
+        Returns :
+            is_close (bool) : returns True when the hamming distance between
+            the two objects <= umi_hamming_distance
+
+        Example:
+            >>> from singlecellmultiomics.molecule import Molecule
+            >>> from singlecellmultiomics.fragment import Fragment
+            >>> import pysam
+            >>> # Create reads (read_A, and read_B), they both belong to the same
+            >>> # cell and have 1 hamming distance between their UMI's
+            >>> read_A = pysam.AlignedSegment()
+            >>> read_A.set_tag('SM','CELL_1') # The sample to which the sample belongs is extracted from the SM tag
+            >>> read_A.set_tag('RX','CAT') # The UMI is extracted from the RX tag
+            >>> read_B = pysam.AlignedSegment()
+            >>> read_B.set_tag('SM','CELL_1') # The sample to which the sample belongs is extracted from the SM tag
+            >>> read_B.set_tag('RX','CAG') # The UMI is extracted from the RX tag
+
+            >>> # Create fragment objects for read_A and B:
+            >>> frag_A = Fragment([read_A],umi_hamming_distance=0)
+            >>> frag_B = Fragment([read_B],umi_hamming_distance=0)
+            >>> frag_A.umi_eq(frag_B) # This returns False, the distance is 1, which is higher than 0 (umi_hamming_distance)
+            False
+
+            >>> frag_A = Fragment([read_A],umi_hamming_distance=1)
+            >>> frag_B = Fragment([read_B],umi_hamming_distance=1)
+            >>> frag_A.umi_eq(frag_B) # This returns True, the distance is 1, which is the (umi_hamming_distance)
+            True
+        """
         if self.umi==other.umi:
             return True
         if self.umi_hamming_distance==0:
@@ -494,6 +571,91 @@ class Fragment():
 
     def __eq__(self, other): # other can also be a Molecule!
         # Make sure fragments map to the same strand, cheap comparisons
+        """
+        Check equivalence between two Fragments or Fragment and Molecule.
+
+
+        Args:
+            other (Fragment or Molecule) : object to compare against
+
+        Returns
+            is_eq (bool) : True when the other object is (likely) derived from the same molecule
+
+        Example:
+            >>> from singlecellmultiomics.molecule import Molecule
+            >>> from singlecellmultiomics.fragment import Fragment
+            >>> import pysam
+            >>> # Create sam file to write some reads to:
+            >>> test_sam = pysam.AlignmentFile('test.sam','w',reference_names=['chr1','chr2'],reference_lengths=[1000,1000])
+            >>> read_A = pysam.AlignedSegment(test_sam.header)
+            >>> read_A.set_tag('SM','CELL_1') # The sample to which the sample belongs is extracted from the SM tag
+            >>> read_A.set_tag('RX','CAT') # The UMI is extracted from the RX tag
+            >>> # By default the molecule assignment is done based on the mapping location of read 1:
+            >>> read_A.reference_name = 'chr1'
+            >>> read_A.reference_start = 100
+            >>> read_A.query_sequence = 'ATCGGG'
+            >>> read_A.cigarstring = '6M'
+
+            >>> read_B = pysam.AlignedSegment(test_sam.header)
+            >>> read_B.set_tag('SM','CELL_1')
+            >>> read_B.set_tag('RX','CAT')
+            >>> read_B.reference_start = 100
+            >>> read_B.query_sequence = 'ATCGG'
+            >>> read_B.cigarstring = '5M'
+
+            >>> frag_A = Fragment([read_A],umi_hamming_distance=0)
+            >>> frag_A
+                Fragment:
+                    sample:CELL_1
+                    umi:CAT
+                    span:chr1 100-106
+                    strand:+
+                    has R1: yes
+                    has R2: no
+                    randomer trimmed: no
+            >>> frag_B = Fragment([read_B],umi_hamming_distance=0)
+            >>> frag_A == frag_B
+            True
+            # Fragment A and fragment B belong to the same molecule,
+            # the UMI is identical, the starting position of R1 is identical and
+            # the sample name matches
+
+            # When we move one of the reads, the Fragments are not equivalent any more
+            >>> read_B.reference_start = 150
+            >>> frag_B = Fragment([read_B],umi_hamming_distance=0)
+            >>> frag_A == frag_B
+            False
+
+            # Except if the difference <= the assignment_radius
+            >>> read_B.reference_start = 150
+            >>> read_A.reference_start = 100
+            >>> frag_B = Fragment([read_B],assignment_radius=300)
+            >>> frag_A = Fragment([read_A],,assignment_radius=300)
+            >>> frag_A == frag_B
+            True
+
+            # When the UMI's are too far apart, the eq function returns False:
+            >>> read_B.reference_start = 100
+            >>> read_A.reference_start = 100
+            >>> read_A.set_tag('RX','GGG')
+            >>> frag_B = Fragment([read_B])
+            >>> frag_A = Fragment([read_A])
+            >>> frag_A == frag_B
+            False
+
+            # When the sample of the Fragments are not identical, the eq function
+            # returns False:
+            >>> read_B.reference_start = 100
+            >>> read_A.reference_start = 100
+            >>> read_A.set_tag('RX','AAA')
+            >>> read_B.set_tag('RX','AAA')
+            >>> read_B.set_tag('SM', 'CELL_2' )
+            >>> frag_B = Fragment([read_B])
+            >>> frag_A = Fragment([read_A])
+            >>> frag_A == frag_B
+            False
+
+        """
         if self.sample!=other.sample:
             return False
 
