@@ -37,7 +37,7 @@ argparser.add_argument('-alleles',  type=str, help="Phased allele file (VCF)" )
 argparser.add_argument('-allele_samples',  type=str, help="Comma separated samples to extract from the VCF file. For example B6,SPRET" )
 argparser.add_argument('-unphased_alleles',  type=str, help="Unphased allele file (VCF)" )
 
-argparser.add_argument('-mapfile',  type=str, help='Path to *.safe.tsv file, used to decide if molecules are uniquely mappable')
+argparser.add_argument('-mapfile',  type=str, help='Path to *.safe.bgzf file, used to decide if molecules are uniquely mappable, generate one using createMapabilityIndex.py ')
 
 argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
 cluster = argparser.add_argument_group('cluster execution')
