@@ -1,23 +1,3 @@
-"""Single Cell Multi Omics Molecule Module
-
-Submodules
-==========
-
-.. autosummary::
-   :toctree: _autosummary
-
-   molecule
-   taps
-   chic
-   featureannotatedmolecule
-   nlaIII
-   rna
-   iterator
-   consensus
-   fourthiouridine
-
-"""
-
 from .molecule import *
 from .taps import *
 from .chic import *
