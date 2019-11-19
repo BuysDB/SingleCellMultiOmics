@@ -3,6 +3,7 @@ import pysam
 import time
 import contextlib
 from shutil import which
+from singlecellmultiomics.utils import BlockZip
 
 def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=False):
     """Extract path to reference from pysam handle
@@ -114,6 +115,29 @@ def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False):
     pysam.index(sorted_path)
     if remove_unsorted:
         os.remove(unsorted_path)
+
+class MapabilityReader():
+
+    def __init__(self, mapability_safe_file_path):
+        self.mapability_safe_file_path = mapability_safe_file_path
+        self.handle =  BlockZip(mapability_safe_file_path, 'r')
+
+        # Todo: exit statements
+
+    def site_is_mapable(self, contig, ds, strand):
+        """ Obtain if a restriction site is mapable or not
+        Args:
+            contig (str) : contig of site to look up
+            ds (int) : zero based coordinate of site to look up
+            strand (bool) : strand of site to look up (False: FWD, True: REV)
+
+        Returns:
+            site_is_mapable (bool) : True when the site is uniquely mapable, False otherwise
+        """
+        if self.handle[contig,ds,strand]=='ok':
+            return True
+        return False
+
 
 def GATK_indel_realign( origin_bam, target_bam,
     contig, region_start, region_end,

@@ -27,14 +27,15 @@ argparser.add_argument('-head', type=int)
 argparser.add_argument('-min_read_obs', type=int, default=2)
 argparser.add_argument('--realign', action='store_true', help='Perform re-alignment using GATK')
 argparser.add_argument('-gatk3_path', type=str, default='GenomeAnalysisTK.jar')
-
-
-
+argparser.add_argument('-indelvcf', type=str)
+argparser.add_argument('-window_radius', type=int, default=250)
 args=  argparser.parse_args()
-WINDOW_RADIUS = 250
 
+if args.realign and args.indelvcf is None:
+    raise ValueError("supply -indelvcf")
+
+WINDOW_RADIUS = args.window_radius
 paths = args.bamfiles
-
 
 def obtain_variant_statistics(
     alignment_file_paths,
@@ -61,16 +62,16 @@ def obtain_variant_statistics(
 
         # Perform re-alignment:
         if args.realign:
-            target_bam = f'align_{chromosome}_{region_start}_{region_end}'
-            GATK_indel_realign( path, target_bam,
+            target_bam = f'align_{chromosome}_{region_start}_{region_end}.bam'
+            GATK_indel_realign( alignment_path, target_bam,
                 chromosome, region_start, region_end,
-                known_variants_vcf_path,
+                args.indelvcf,
                 gatk_path = args.gatk3_path,
                 interval_path=None,
                 java_cmd = 'java -jar -Xmx8G -Djava.io.tmpdir=./gatk_tmp',
                 reference = None,
                 interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}'
-                 ):
+                )
             alignment_path = target_bam
 
         with pysam.AlignmentFile(alignment_path) as alignments:
