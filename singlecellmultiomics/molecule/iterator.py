@@ -90,7 +90,6 @@ class MoleculeIterator():
                 has R1: yes
                 has R2: no
                 randomer trimmed: no
-
     	    Fragment:
                 sample:CELL_1
                 umi:CAT
@@ -99,7 +98,6 @@ class MoleculeIterator():
                 has R1: yes
                 has R2: no
                 randomer trimmed: no
-
         Molecule
                 with 1 assinged fragments
                 Allele :No allele assigned
