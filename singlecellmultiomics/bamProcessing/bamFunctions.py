@@ -3,6 +3,7 @@ import pysam
 import time
 import contextlib
 from shutil import which
+from singlecellmultiomics.utils import BlockZip
 
 def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=False):
     """Extract path to reference from pysam handle
@@ -116,22 +117,12 @@ def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False):
         os.remove(unsorted_path)
 
 class MapabilityReader():
-    def read_mapability_safe_file_line(self, line):
-        line_contig, line_pos, line_strand = line.strip().split()
-        return line_contig, int(line_pos), line_strand=='-'
 
     def __init__(self, mapability_safe_file_path):
         self.mapability_safe_file_path = mapability_safe_file_path
-        self.cache = {}
+        self.handle =  BlockZip(mapability_safe_file_path, 'r')
 
-    def read_contig_to_cache(self, contig):
-        # This is very inefficient and could really use an index of the file
-        self.cache = {contig:set()}
-        with open(self.mapability_safe_file_path) as f:
-            self.cache[contig] = set()
-            for line in f:
-                line_contig, line_pos, line_strand = self.read_mapability_safe_file_line(line)
-                self.cache[contig].add((line_pos, line_strand))
+        # Todo: exit statements
 
     def site_is_mapable(self, contig, ds, strand):
         """ Obtain if a restriction site is mapable or not
@@ -143,9 +134,10 @@ class MapabilityReader():
         Returns:
             site_is_mapable (bool) : True when the site is uniquely mapable, False otherwise
         """
-        if not contig in self.cache:
-            self.read_contig_to_cache(contig)
-        return (ds, strand) in self.cache[contig]
+        if self.handle[contig,ds,strand]=='ok':
+            return True
+        return False
+
 
 def GATK_indel_realign( origin_bam, target_bam,
     contig, region_start, region_end,

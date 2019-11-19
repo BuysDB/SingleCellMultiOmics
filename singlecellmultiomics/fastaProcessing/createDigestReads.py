@@ -9,6 +9,8 @@ import gzip
 import argparse
 import uuid
 import os
+from singlecellmultiomics.utils import BlockZip
+
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""In silico digest genome""")
@@ -66,8 +68,10 @@ if __name__ == '__main__':
             processed += contig_len
 
     # Map the fastq file:
-    os.system(f"bwa mem -t 4 {args.fasta} {fastq_path} | samtools view -b - > ./{outbam}.unsorted.bam; samtools sort -T ./temp_sort -@ 4 ./{outbam}.unsorted.bam > ./{outbam}.unfinished.bam & mv ./{outbam}.unfinished.bam ./{outbam} & samtools index ./{outbam} & rm {fastq_path}")
+    print("Now mapping ...")
+    os.system(f"bwa mem -t 4 {args.fasta} {fastq_path} | samtools view -b - > ./{outbam}.unsorted.bam; samtools sort -T ./temp_sort -@ 4 ./{outbam}.unsorted.bam > ./{outbam}.unfinished.bam ; mv ./{outbam}.unfinished.bam ./{outbam} ; samtools index ./{outbam} & rm {fastq_path}")
 
+    print("Creating site database ...")
     # Create site dictionary:
     sites = {}  #site-> wrongly_assinged_to, correctly_assigned, lost
 
@@ -105,12 +109,15 @@ if __name__ == '__main__':
                 sites[key_mapped] =  {'correct':0, 'wrong_gain':0, 'lost':0}
             sites[key_mapped]['wrong_gain'] += 1
 
-    outtab = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mappability.stats.tsv'
-    outtabsafe = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mappability.safe.tsv'
 
-    with open(outtab,'w') as o, open(outtabsafe,'w') as of:
+
+    print("Writing site statistics ...")
+    outtab = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mapability.stats.bgzf'
+    outtabsafe = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mapability.safe.bgzf'
+
+    with BlockZip(outtab,'w') as stats, BlockZip(outtabsafe,'w') as safe:
         for (contig,pos,strand), measured in sites.items():
-            o.write(f'{contig}\t{pos}\t{"+-"[strand]}\t{measured["correct"]}\t{measured["lost"]}\t{measured["wrong_gain"]}\n')
+            stats.write(contig, pos, strand, '{measured["correct"]}\t{measured["lost"]}\t{measured["wrong_gain"]}\n')
 
             if measured['wrong_gain']==0 and measured['lost']==0 and measured['correct']==1:
-                of.write(f'{contig}\t{pos}\t{"+-"[strand]}\n')
+                safe.write(contig, pos, strand,'ok')
