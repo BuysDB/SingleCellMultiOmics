@@ -115,6 +115,38 @@ def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False):
     if remove_unsorted:
         os.remove(unsorted_path)
 
+class MapabilityReader():
+    def read_mapability_safe_file_line(self, line):
+        line_contig, line_pos, line_strand = line.strip().split()
+        return line_contig, int(line_pos), line_strand=='-'
+
+    def __init__(self, mapability_safe_file_path):
+        self.mapability_safe_file_path = mapability_safe_file_path
+        self.cache = {}
+
+    def read_contig_to_cache(self, contig):
+        # This is very inefficient and could really use an index of the file
+        self.cache = {contig:set()}
+        with open(self.mapability_safe_file_path) as f:
+            self.cache[contig] = set()
+            for line in f:
+                line_contig, line_pos, line_strand = self.read_mapability_safe_file_line(line)
+                self.cache[contig].add((line_pos, line_strand))
+
+    def site_is_mapable(self, contig, ds, strand):
+        """ Obtain if a restriction site is mapable or not
+        Args:
+            contig (str) : contig of site to look up
+            ds (int) : zero based coordinate of site to look up
+            strand (bool) : strand of site to look up (False: FWD, True: REV)
+
+        Returns:
+            site_is_mapable (bool) : True when the site is uniquely mapable, False otherwise
+        """
+        if not contig in self.cache:
+            self.read_contig_to_cache(contig)
+        return (ds, strand) in self.cache[contig]
+
 def GATK_indel_realign( origin_bam, target_bam,
     contig, region_start, region_end,
     known_variants_vcf_path,
