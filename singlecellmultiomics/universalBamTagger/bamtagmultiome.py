@@ -5,7 +5,7 @@ from singlecellmultiomics.molecule import MoleculeIterator
 import singlecellmultiomics
 import singlecellmultiomics.molecule
 import singlecellmultiomics.fragment
-from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile,write_program_tag
+from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile,write_program_tag,MapabilityReader
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads  import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
@@ -36,6 +36,9 @@ argparser.add_argument('-contig',  type=str, help='Contig to only process')
 argparser.add_argument('-alleles',  type=str, help="Phased allele file (VCF)" )
 argparser.add_argument('-allele_samples',  type=str, help="Comma separated samples to extract from the VCF file. For example B6,SPRET" )
 argparser.add_argument('-unphased_alleles',  type=str, help="Unphased allele file (VCF)" )
+
+argparser.add_argument('-mapfile',  type=str, help='Path to *.safe.tsv file, used to decide if molecules are uniquely mappable')
+
 argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
@@ -115,6 +118,9 @@ def run_multiome_tagging(args):
                                                     lazyLoad=True,
                                                     ignore_conversions=ignore_conversions
                                                      )
+
+    if args.mapfile is not None:
+        molecule_class_args['mapability_reader'] = MapabilityReader(args.mapfile)
 
 
     ### Transcriptome configuration ###
