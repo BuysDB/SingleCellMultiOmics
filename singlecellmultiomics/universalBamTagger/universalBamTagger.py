@@ -135,7 +135,7 @@ def molecule_to_random_primer_dict(molecule, primer_length=6, primer_read=2): #1
     #    yield p
 
 
-class MoleculeIterator():
+class MoleculeIterator_OLD():
     """
     Iterate over molecules in a bam file
 
@@ -337,9 +337,9 @@ Yields
 list of molecules : list [ pysam.AlignedSegment ]
 [ (R1,R2), (R1,R2) ... ]
 """
-class TranscriptIterator(MoleculeIterator):
+class TranscriptIterator(MoleculeIterator_OLD):
     def __init__(self, look_around_radius=100, informative_read=2, assignment_radius=10,**kwargs):
-        MoleculeIterator.__init__(self,look_around_radius=look_around_radius,**kwargs)
+        MoleculeIterator_OLD.__init__(self,look_around_radius=look_around_radius,**kwargs)
         self.informative_read = informative_read
         self.assignment_radius = assignment_radius
 
