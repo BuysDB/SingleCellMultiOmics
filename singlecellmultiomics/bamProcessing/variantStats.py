@@ -10,7 +10,7 @@ import glob
 import pickle
 import pandas as pd
 from colorama import Fore, Style
-from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, sort_and_index, get_reference_from_pysam_alignmentFile, add_readgroups_to_header, write_program_tag
+from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, sort_and_index, get_reference_from_pysam_alignmentFile, add_readgroups_to_header, write_program_tag, GATK_indel_realign
 from singlecellmultiomics.pyutils import meanOfCounter
 import argparse
 
@@ -25,6 +25,9 @@ argparser.add_argument('-gsnv', help="gSNV bed file", type=str, required=True)
 argparser.add_argument('-reference', help="reference fasta file", type=str, required=True)
 argparser.add_argument('-head', type=int)
 argparser.add_argument('-min_read_obs', type=int, default=2)
+argparser.add_argument('--realign', action='store_true', help='Perform re-alignment using GATK')
+argparser.add_argument('-gatk3_path', type=str, default='GenomeAnalysisTK.jar')
+
 
 
 args=  argparser.parse_args()
@@ -39,8 +42,8 @@ def obtain_variant_statistics(
     reference,
     chromosome,
     ssnv_position,gsnv_position,haplotype_scores,
-    WINDOW_RADIUS, out , min_read_obs,read_groups
-
+    WINDOW_RADIUS, out , min_read_obs,read_groups,
+    args
     ):
 
 
@@ -50,8 +53,27 @@ def obtain_variant_statistics(
     window_molecules = []
 
     cell_read_obs = collections.defaultdict( collections.Counter ) # sample -> tuple -> amount of reads
-    for pathi,path in enumerate(alignment_file_paths):
-        with pysam.AlignmentFile(path) as alignments:
+
+    region_start = ssnv_position-WINDOW_RADIUS
+    region_end = ssnv_position+ WINDOW_RADIUS
+
+    for pathi, alignment_path in enumerate(alignment_file_paths):
+
+        # Perform re-alignment:
+        if args.realign:
+            target_bam = f'align_{chromosome}_{region_start}_{region_end}'
+            GATK_indel_realign( path, target_bam,
+                chromosome, region_start, region_end,
+                known_variants_vcf_path,
+                gatk_path = args.gatk3_path,
+                interval_path=None,
+                java_cmd = 'java -jar -Xmx8G -Djava.io.tmpdir=./gatk_tmp',
+                reference = None,
+                interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}'
+                 ):
+            alignment_path = target_bam
+
+        with pysam.AlignmentFile(alignment_path) as alignments:
 
             for molecule_id,molecule in enumerate(
                 singlecellmultiomics.molecule.MoleculeIterator(alignments,
@@ -445,7 +467,8 @@ with sorted_bam_file('evidence.bam', origin_bam=pysam.AlignmentFile(paths[0]), r
             WINDOW_RADIUS=WINDOW_RADIUS,
             haplotype_scores=haplotype_scores,
             out=out,min_read_obs=args.min_read_obs,
-            read_groups=read_groups
+            read_groups=read_groups,
+            args=args
         )
 
         if args.head and (variant_index>args.head-1):
