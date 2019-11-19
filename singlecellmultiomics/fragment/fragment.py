@@ -623,7 +623,6 @@ class Fragment():
         When we move one of the reads, the Fragments are not equivalent any more
 
         Example:
-            >>>#
             >>> read_B.reference_start = 150
             >>> frag_B = Fragment([read_B],umi_hamming_distance=0)
             >>> frag_A == frag_B
@@ -642,7 +641,6 @@ class Fragment():
          When the UMI's are too far apart, the eq function returns `False`
 
         Example:
-            >>>#
             >>> read_B.reference_start = 100
             >>> read_A.reference_start = 100
             >>> read_A.set_tag('RX','GGG')
