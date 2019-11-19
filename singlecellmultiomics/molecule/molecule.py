@@ -98,13 +98,14 @@ class Molecule():
         fragments :  list(singlecellmultiomics.fragment.Fragment)
             Fragment to assign to Molecule. More fragments can be added later
 
-        min_max_mapping_quality :  When all fragments have a mappin quality below this value the is_valid method will return False
+        min_max_mapping_quality :  When all fragments have a mapping quality below this value the is_valid method will return False
 
         allele_resolver :  alleleTools.AlleleResolver or None. Supply an allele resolver in order to assign an allele to the molecule
 
         mapability_reader : singlecellmultiomics.bamProcessing.MapabilityReader, supply a mapability_reader to set mapping_quality of 0 to molecules mapping to locations which are not mapping uniquely during in-silico library generation.
 
         cache_size (int): radius of molecule assignment cache
+
         """
 
         self.reference = reference
@@ -986,9 +987,7 @@ class Molecule():
 
     def update_umi(self):
         """Set UMI
-        Sets:
-            self.umi (str):
-                Returns the most common umi associated to the molecule
+        sets self.umi (str) sets the most common umi associated to the molecule
         """
         self.umi = self.umi_counter.most_common(1)[0][0]
 
