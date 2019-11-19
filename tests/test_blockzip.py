@@ -24,7 +24,12 @@ class Test_BlockZip(unittest.TestCase):
             self.assertEqual( f[ ('chr2',2101,True) ], 'yes' )
             self.assertEqual( f[ ('chr1',0,True) ], None)
 
+        # Test for missing index:
+        os.remove(zip_path+'.idx')
+        self.assertRaises(ValueError, BlockZip, './non_existing.bgzf','r')
+
         os.remove(zip_path)
+        self.assertRaises(ValueError, BlockZip, './non_existing.bgzf','r')
 
 
 if __name__ == '__main__':
