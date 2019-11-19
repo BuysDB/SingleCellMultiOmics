@@ -10,7 +10,7 @@ import argparse
 import uuid
 import os
 
-if self.__name__ == '__main__':
+if __name__ == '__main__':
     argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""In silico digest genome""")
     argparser.add_argument('fasta', metavar='fastafile', type=str, help='Fasta file to digest')
     argparser.add_argument('-minlen', type=int, default=20, help='minimum read length')
@@ -104,7 +104,6 @@ if self.__name__ == '__main__':
             if not key_mapped in sites:
                 sites[key_mapped] =  {'correct':0, 'wrong_gain':0, 'lost':0}
             sites[key_mapped]['wrong_gain'] += 1
-
 
     outtab = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mappability.stats.tsv'
     outtabsafe = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mappability.safe.tsv'
