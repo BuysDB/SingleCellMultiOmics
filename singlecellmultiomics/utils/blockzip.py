@@ -3,6 +3,12 @@ from Bio import bgzf
 class BlockZip():
 
     def __init__(self, path, mode='r'):
+        """
+        Store tabular information tied to genomic locations in a bgzipped file
+        Args:
+            path (str) : path to file
+            mode (str) : mode, r: read, w: write
+        """
         self.path = path
         self.index_path = f'{path}.idx'
         self.prev_contig = None
@@ -31,6 +37,16 @@ class BlockZip():
         self.index_handle.close()
 
     def write(self, contig, position, strand, data):
+        """
+        Write information for location contig/postion/strand
+        !! Write the contig data per contig, random mixing of contigs will
+        result in a corrupted file
+        Args:
+            contig(str)
+            postion(int)
+            strand(bool)
+            data(str)
+        """
         assert(self.mode=='w')
         if self.prev_contig is None or self.prev_contig!=contig:
             self.index_handle.write(f'{contig}\t{int(self.bgzf_handle.tell())}\n')
@@ -39,6 +55,7 @@ class BlockZip():
         self.prev_contig =  contig
 
     def __iter__(self):
+        "Get iterator going over all lines in the file"
         assert(self.mode=='r')
         yield from iter(self.bgzf_handle)
 
@@ -48,6 +65,16 @@ class BlockZip():
         return line_contig, int(line_pos), line_strand=='-', rest
 
     def __getitem__(self,contig_position_strand ):
+        """Obtain data at the supplied contig position and strand
+        Args:
+            contig_position_strand : tuple of (
+                contig(str)
+                postion(int)
+                strand(bool))
+        Returns:
+            result (str) : data stored for the genomic location, returns None
+            when no data is available
+        """
         contig, position, strand = contig_position_strand
         if not contig in self.cache and contig in self.index:
             self.read_contig_to_cache(contig)
