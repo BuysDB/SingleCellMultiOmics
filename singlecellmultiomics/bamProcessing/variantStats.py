@@ -62,7 +62,7 @@ def obtain_variant_statistics(
         # Perform re-alignment:
         if args.realign:
             target_bam = f'align_{chromosome}_{region_start}_{region_end}.bam'
-            GATK_indel_realign( path, target_bam,
+            GATK_indel_realign( alignment_path, target_bam,
                 chromosome, region_start, region_end,
                 known_variants_vcf_path,
                 gatk_path = args.gatk3_path,
