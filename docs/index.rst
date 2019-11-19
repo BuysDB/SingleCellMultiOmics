@@ -7,10 +7,10 @@ Welcome to SingleCellMultiOmics's documentation!
 ================================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :caption: Contents:
 
-
+   singlecellmultiomics/fragment/fragment/Fragment
 
 Indices and tables
 ==================
