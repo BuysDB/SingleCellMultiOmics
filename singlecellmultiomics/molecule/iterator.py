@@ -39,8 +39,10 @@ class MoleculeIterator():
         RZ:CAT
         Restriction site:('chr1', 164834865)
 
+
+    It is also possible to supply and iterator instead of a SAM/BAM file handle
     Example:
-        Using an iterator instead of a SAM/BAM file
+
         >>> from singlecellmultiomics.molecule import MoleculeIterator
         >>> from singlecellmultiomics.fragment import Fragment
         >>> import pysam
@@ -109,6 +111,9 @@ class MoleculeIterator():
                     has R1: yes
                     has R2: no
                     randomer trimmed: no
+
+    Warning:
+        Always make sure the reads being supplied to the MoleculeIterator sorted by genomic coordinate!
     """
     def __init__(self, alignments, moleculeClass=Molecule,
         fragmentClass=Fragment,
