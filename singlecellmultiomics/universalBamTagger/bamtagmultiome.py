@@ -67,6 +67,10 @@ def run_multiome_tagging_cmd(commandline):
     run_multiome_tagging(args)
 
 def run_multiome_tagging(args):
+    """
+    Run multiome tagging adds molecule information
+    """
+
     MISC_ALT_CONTIGS_SCMO = 'MISC_ALT_CONTIGS_SCMO'
 
     if not args.o.endswith('.bam'):

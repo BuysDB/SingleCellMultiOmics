@@ -620,15 +620,18 @@ class Fragment():
             # the UMI is identical, the starting position of R1 is identical and
             # the sample name matches
 
+        When we move one of the reads, the Fragments are not equivalent any more
+
         Example:
-            # When we move one of the reads, the Fragments are not equivalent any more
+            >>>#
             >>> read_B.reference_start = 150
             >>> frag_B = Fragment([read_B],umi_hamming_distance=0)
             >>> frag_A == frag_B
             False
 
+        Except if the difference <= the assignment_radius
+
         Example:
-            # Except if the difference <= the assignment_radius
             >>> read_B.reference_start = 150
             >>> read_A.reference_start = 100
             >>> frag_B = Fragment([read_B],assignment_radius=300)
@@ -636,8 +639,10 @@ class Fragment():
             >>> frag_A == frag_B
             True
 
+         When the UMI's are too far apart, the eq function returns `False`
+
         Example:
-            # When the UMI's are too far apart, the eq function returns False:
+            >>>#
             >>> read_B.reference_start = 100
             >>> read_A.reference_start = 100
             >>> read_A.set_tag('RX','GGG')
@@ -646,9 +651,9 @@ class Fragment():
             >>> frag_A == frag_B
             False
 
+        When the sample of the Fragments are not identical, the eq function returns `False`
+
         Example:
-            # When the sample of the Fragments are not identical, the eq function
-            # returns False:
             >>> read_B.reference_start = 100
             >>> read_A.reference_start = 100
             >>> read_A.set_tag('RX','AAA')

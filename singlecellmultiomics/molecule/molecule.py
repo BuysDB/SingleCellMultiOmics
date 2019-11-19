@@ -73,7 +73,8 @@ class Molecule():
 
         cache_size (int): radius of molecule assignment cache
 
-        reference (pysam.FastaFile) : reference file, used to obtain base contexts and correct aligned_pairs iteration when the MD tag is not correct
+        reference (pysam.FastaFile) : reference file, used to obtain base contexts
+            and correct aligned_pairs iteration when the MD tag is not correct
 
         strand (bool): mapping strand.
             True when strand is REVERSE
@@ -152,10 +153,20 @@ class Molecule():
 
         self.finalised = True
 
-    def update_mapability(self):
+    def update_mapability(self, set_mq_zero=False):
         """ Update mapability of this molecule.
         mapping qualities are set to 0 if the mapability_reader returns False
-        for site_is_mapable"""
+        for site_is_mapable
+
+        The mapability_reader can be set when initiating the molecule, or added later.
+
+        Args:
+            set_mq_zero(bool) : set mapping quality of associated reads to 0 when the
+            mappability reader returns a bad verdict
+
+        Tip:
+            Use `createMapabilityIndex.py` to create an index to feed to the mapability_reader
+        """
 
         mapable = None
         try:
@@ -165,8 +176,9 @@ class Molecule():
 
         if mapable is False:
             self.set_meta('mp','bad')
-            for read in self.iter_reads():
-                read.mapping_quality = 0
+            if set_mq_zero:
+                for read in self.iter_reads():
+                    read.mapping_quality = 0
         elif mapable is True:
             self.set_meta('mp','unique')
         else:
