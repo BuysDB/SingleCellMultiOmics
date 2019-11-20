@@ -10,7 +10,6 @@ Welcome to SingleCellMultiOmics's documentation!
    :maxdepth: 4
    :caption: Contents:
 
-   singlecellmultiomics/fragment/fragment/Fragment
 
 Indices and tables
 ==================

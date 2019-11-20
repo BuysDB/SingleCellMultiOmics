@@ -32,10 +32,6 @@ if __name__=='__main__':
     #chromosomes = [f'chr{x}' for x in range(1,23)] + ['chrX']
 
     output_alias = args.alignmentfile + f'.table.bs_{args.bin_size}'
-
-
-
-
     # Load alternative contigs if available:
     alt_path = f'{args.ref}.64.alt'
     alt_spans = None
@@ -81,7 +77,6 @@ if __name__=='__main__':
             allele='unk'
             if read.has_tag('DA'):
                 allele = read.get_tag('DA')
-
 
             if args.met:
                 for context in 'xhz':
