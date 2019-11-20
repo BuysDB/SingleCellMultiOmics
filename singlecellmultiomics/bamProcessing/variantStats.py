@@ -24,7 +24,7 @@ def obtain_variant_statistics(
     chromosome,
     ssnv_position,gsnv_position,haplotype_scores,
     WINDOW_RADIUS, out , min_read_obs,read_groups,
-    umi_hamming_distance=1,
+    umi_hamming_distance,
     args
     ):
     """
