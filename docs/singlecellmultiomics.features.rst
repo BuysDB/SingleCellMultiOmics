@@ -1,30 +1,16 @@
-singlecellmultiomics.features package
-=====================================
+singlecellmultiomics\.features package
+======================================
+
+.. automodule:: singlecellmultiomics.features
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Submodules
 ----------
 
-singlecellmultiomics.features.exonGTFtoIntronGTF module
--------------------------------------------------------
+.. toctree::
 
-.. automodule:: singlecellmultiomics.features.exonGTFtoIntronGTF
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   singlecellmultiomics.features.exonGTFtoIntronGTF
+   singlecellmultiomics.features.features
 
-singlecellmultiomics.features.features module
----------------------------------------------
-
-.. automodule:: singlecellmultiomics.features.features
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: singlecellmultiomics.features
-   :members:
-   :undoc-members:
-   :show-inheritance:

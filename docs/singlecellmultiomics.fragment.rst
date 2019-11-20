@@ -1,38 +1,17 @@
-singlecellmultiomics.fragment package
-=====================================
+singlecellmultiomics\.fragment package
+======================================
+
+.. automodule:: singlecellmultiomics.fragment
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Submodules
 ----------
 
-singlecellmultiomics.fragment.chic module
------------------------------------------
+.. toctree::
 
-.. automodule:: singlecellmultiomics.fragment.chic
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   singlecellmultiomics.fragment.chic
+   singlecellmultiomics.fragment.fragment
+   singlecellmultiomics.fragment.nlaIII
 
-singlecellmultiomics.fragment.fragment module
----------------------------------------------
-
-.. automodule:: singlecellmultiomics.fragment.fragment
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-singlecellmultiomics.fragment.nlaIII module
--------------------------------------------
-
-.. automodule:: singlecellmultiomics.fragment.nlaIII
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: singlecellmultiomics.fragment
-   :members:
-   :undoc-members:
-   :show-inheritance:

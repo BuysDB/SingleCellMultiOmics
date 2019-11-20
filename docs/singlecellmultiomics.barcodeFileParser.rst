@@ -1,22 +1,15 @@
-singlecellmultiomics.barcodeFileParser package
-==============================================
+singlecellmultiomics\.barcodeFileParser package
+===============================================
+
+.. automodule:: singlecellmultiomics.barcodeFileParser
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Submodules
 ----------
 
-singlecellmultiomics.barcodeFileParser.barcodeFileParser module
----------------------------------------------------------------
+.. toctree::
 
-.. automodule:: singlecellmultiomics.barcodeFileParser.barcodeFileParser
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   singlecellmultiomics.barcodeFileParser.barcodeFileParser
 
-
-Module contents
----------------
-
-.. automodule:: singlecellmultiomics.barcodeFileParser
-   :members:
-   :undoc-members:
-   :show-inheritance:

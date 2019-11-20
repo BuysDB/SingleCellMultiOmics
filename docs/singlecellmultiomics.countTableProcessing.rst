@@ -1,22 +1,15 @@
-singlecellmultiomics.countTableProcessing package
-=================================================
+singlecellmultiomics\.countTableProcessing package
+==================================================
+
+.. automodule:: singlecellmultiomics.countTableProcessing
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Submodules
 ----------
 
-singlecellmultiomics.countTableProcessing.downsampleDataFrame module
---------------------------------------------------------------------
+.. toctree::
 
-.. automodule:: singlecellmultiomics.countTableProcessing.downsampleDataFrame
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   singlecellmultiomics.countTableProcessing.downsampleDataFrame
 
-
-Module contents
----------------
-
-.. automodule:: singlecellmultiomics.countTableProcessing
-   :members:
-   :undoc-members:
-   :show-inheritance:

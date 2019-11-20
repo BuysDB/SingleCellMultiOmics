@@ -1,22 +1,15 @@
-singlecellmultiomics.tagtools package
-=====================================
+singlecellmultiomics\.tagtools package
+======================================
+
+.. automodule:: singlecellmultiomics.tagtools
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Submodules
 ----------
 
-singlecellmultiomics.tagtools.tagtools module
----------------------------------------------
+.. toctree::
 
-.. automodule:: singlecellmultiomics.tagtools.tagtools
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   singlecellmultiomics.tagtools.tagtools
 
-
-Module contents
----------------
-
-.. automodule:: singlecellmultiomics.tagtools
-   :members:
-   :undoc-members:
-   :show-inheritance:

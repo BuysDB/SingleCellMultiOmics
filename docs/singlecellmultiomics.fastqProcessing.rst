@@ -1,30 +1,16 @@
-singlecellmultiomics.fastqProcessing package
-============================================
+singlecellmultiomics\.fastqProcessing package
+=============================================
+
+.. automodule:: singlecellmultiomics.fastqProcessing
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Submodules
 ----------
 
-singlecellmultiomics.fastqProcessing.fastqHandle module
--------------------------------------------------------
+.. toctree::
 
-.. automodule:: singlecellmultiomics.fastqProcessing.fastqHandle
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   singlecellmultiomics.fastqProcessing.fastqHandle
+   singlecellmultiomics.fastqProcessing.fastqIterator
 
-singlecellmultiomics.fastqProcessing.fastqIterator module
----------------------------------------------------------
-
-.. automodule:: singlecellmultiomics.fastqProcessing.fastqIterator
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: singlecellmultiomics.fastqProcessing
-   :members:
-   :undoc-members:
-   :show-inheritance:

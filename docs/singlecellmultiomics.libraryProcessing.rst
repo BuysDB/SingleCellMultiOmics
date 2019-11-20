@@ -1,22 +1,15 @@
-singlecellmultiomics.libraryProcessing package
-==============================================
+singlecellmultiomics\.libraryProcessing package
+===============================================
+
+.. automodule:: singlecellmultiomics.libraryProcessing
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Submodules
 ----------
 
-singlecellmultiomics.libraryProcessing.libraryStatistics module
----------------------------------------------------------------
+.. toctree::
 
-.. automodule:: singlecellmultiomics.libraryProcessing.libraryStatistics
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   singlecellmultiomics.libraryProcessing.libraryStatistics
 
-
-Module contents
----------------
-
-.. automodule:: singlecellmultiomics.libraryProcessing
-   :members:
-   :undoc-members:
-   :show-inheritance:

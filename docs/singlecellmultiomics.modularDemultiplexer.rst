@@ -1,53 +1,25 @@
-singlecellmultiomics.modularDemultiplexer package
-=================================================
+singlecellmultiomics\.modularDemultiplexer package
+==================================================
+
+.. automodule:: singlecellmultiomics.modularDemultiplexer
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Subpackages
 -----------
 
 .. toctree::
 
-   singlecellmultiomics.modularDemultiplexer.demultiplexModules
+    singlecellmultiomics.modularDemultiplexer.demultiplexModules
 
 Submodules
 ----------
 
-singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods module
------------------------------------------------------------------------
+.. toctree::
 
-.. automodule:: singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
+   singlecellmultiomics.modularDemultiplexer.demultiplexedFastqConversion
+   singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader
+   singlecellmultiomics.modularDemultiplexer.demux
 
-singlecellmultiomics.modularDemultiplexer.demultiplexedFastqConversion module
------------------------------------------------------------------------------
-
-.. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexedFastqConversion
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader module
------------------------------------------------------------------------------
-
-.. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-singlecellmultiomics.modularDemultiplexer.demux module
-------------------------------------------------------
-
-.. automodule:: singlecellmultiomics.modularDemultiplexer.demux
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: singlecellmultiomics.modularDemultiplexer
-   :members:
-   :undoc-members:
-   :show-inheritance:

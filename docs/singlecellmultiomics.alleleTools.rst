@@ -1,22 +1,15 @@
-singlecellmultiomics.alleleTools package
-========================================
+singlecellmultiomics\.alleleTools package
+=========================================
+
+.. automodule:: singlecellmultiomics.alleleTools
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Submodules
 ----------
 
-singlecellmultiomics.alleleTools.alleleTools module
----------------------------------------------------
+.. toctree::
 
-.. automodule:: singlecellmultiomics.alleleTools.alleleTools
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   singlecellmultiomics.alleleTools.alleleTools
 
-
-Module contents
----------------
-
-.. automodule:: singlecellmultiomics.alleleTools
-   :members:
-   :undoc-members:
-   :show-inheritance:
