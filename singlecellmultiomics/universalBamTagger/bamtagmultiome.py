@@ -20,43 +20,6 @@ import pkg_resources
 import pickle
 from datetime import datetime
 
-
-argparser = argparse.ArgumentParser(
- formatter_class=argparse.ArgumentDefaultsHelpFormatter,
- description='Assign molecules, set sample tags, set alleles')
-argparser.add_argument('bamin',  type=str)
-argparser.add_argument('-o',  type=str, help="output bam file", required=True)
-argparser.add_argument('-method',  type=str, default=None, help="Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps")
-argparser.add_argument('-qflagger',  type=str, default=None, help="Query flagging algorithm")
-argparser.add_argument('-custom_flags',  type=str, default="MI,RX,BI,SM" )
-argparser.add_argument('-ref',  type=str, default=None, help="Path to reference fast (autodected if not supplied)")
-argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
-argparser.add_argument('-head',  type=int)
-argparser.add_argument('-contig',  type=str, help='Contig to only process')
-argparser.add_argument('-alleles',  type=str, help="Phased allele file (VCF)" )
-argparser.add_argument('-allele_samples',  type=str, help="Comma separated samples to extract from the VCF file. For example B6,SPRET" )
-argparser.add_argument('-unphased_alleles',  type=str, help="Unphased allele file (VCF)" )
-
-argparser.add_argument('-mapfile',  type=str, help='Path to *.safe.bgzf file, used to decide if molecules are uniquely mappable, generate one using createMapabilityIndex.py ')
-
-argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
-cluster = argparser.add_argument_group('cluster execution')
-cluster.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
-cluster.add_argument('--no_rejects', action='store_true', help='Write rejected reads to output file')
-cluster.add_argument('-mem',  default=40, type=int, help='Memory requested per job')
-cluster.add_argument('-time',  default=52, type=int, help='Time requested per job')
-
-tr = argparser.add_argument_group('transcriptome specific settings')
-tr.add_argument('-exons', type=str, help='Exon GTF file')
-tr.add_argument('-introns', type=str, help='Intron GTF file, use exonGTF_to_intronGTF.py to create this file')
-
-cg = argparser.add_argument_group('molecule consensus specific settings')
-cg.add_argument('--consensus', action='store_true', help='Calculate molecule consensus read, this feature is _VERY_ experimental')
-cg.add_argument('-consensus_mask_variants', type=str, help='variants to mask during training (VCF file)')
-cg.add_argument('-consensus_model', type=str, help='Name of or path to consensus classifier', default=None)
-cg.add_argument('-consensus_n_train', type=int, help='Amount of bases used for training', default=500_000)
-cg.add_argument('--no_source_reads', action='store_true', help='Do not write original reads, only consensus ')
-
 def is_main_chromosome(chrom):
     if chrom.startswith('KN') or chrom.startswith('KZ')  or chrom.startswith('JH') or chrom.startswith('GL') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom  or chrom.endswith('_alt') or "HLA-" in chrom:
         return False
@@ -69,6 +32,69 @@ def run_multiome_tagging_cmd(commandline):
 def run_multiome_tagging(args):
     """
     Run multiome tagging adds molecule information
+
+    Arguments:
+
+        bamin (str) : bam file to process
+
+        o(str) : path to output bam file
+
+        method(str): Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps
+
+        qflagger(str): Query flagging algorithm to use, this algorithm extracts UMI and sample information from your reads. When no query flagging algorithm is specified, the `singlecellmultiomics.universalBamTagger.universalBamTagger.QueryNameFlagger` is used
+
+        method(str) : Method name, what kind of molecules need to be extracted. Select from:
+            nla
+            qflag
+            chic
+            nla_transcriptome
+            vasa
+            cs
+            nla_taps
+            chic_taps
+
+
+        custom_flags(str): Arguments passed to the query name flagger, comma separated "MI,RX,BI,SM"
+
+        ref(str) : Path to reference fasta file, autodected from bam header when not supplied
+
+        umi_hamming_distance(int) : Max hamming distance on UMI's
+
+        head (int) : Amount of molecules to process
+
+        contig (str) : only process this contig
+
+        alleles (str) : path to allele VCF
+
+        allele_samples(str): Comma separated samples to extract from the VCF file. For example B6,SPRET
+
+        unphased_alleles(str) : Path to VCF containing unphased germline SNPs
+
+        mapfile (str) : 'Path to *.safe.bgzf file, used to decide if molecules are uniquely mappable, generate one using createMapabilityIndex.py
+
+        annotmethod (int) : Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base
+
+        cluster (bool) : Run contigs in separate cluster jobs
+
+        no_rejects(bool) : Do not write rejected reads
+
+        mem (int) : Amount of gigabytes to request for cluster jobs
+
+        time(int) : amount of wall clock hours to request for cluster jobs
+
+        exons(str): Path to exon annotation GTF file
+
+        introns(str): Path to intron annotation GTF file
+
+        consensus(bool) : Calculate molecule consensus read, this feature is _VERY_ experimental
+
+        consensus_model(str) : Path to consensus calling model, when none specified, this is learned based on the supplied bam file, ignoring sites supplied by -consensus_mask_variants
+
+        consensus_mask_variants(str): Path VCF file masked for training on consensus caller
+
+        consensus_n_train(int) : Amount of bases used for training the consensus model
+
+        no_source_reads(bool) :  Do not write original reads, only consensus
     """
 
     MISC_ALT_CONTIGS_SCMO = 'MISC_ALT_CONTIGS_SCMO'
@@ -364,6 +390,43 @@ def run_multiome_tagging(args):
                 molecule.write_pysam( out )
 
 if __name__=='__main__':
+
+
+    argparser = argparse.ArgumentParser(
+     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+     description='Assign molecules, set sample tags, set alleles')
+    argparser.add_argument('bamin',  type=str)
+    argparser.add_argument('-o',  type=str, help="output bam file", required=True)
+    argparser.add_argument('-method',  type=str, default=None, help="Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps")
+    argparser.add_argument('-qflagger',  type=str, default=None, help="Query flagging algorithm")
+    argparser.add_argument('-custom_flags',  type=str, default="MI,RX,BI,SM" )
+    argparser.add_argument('-ref',  type=str, default=None, help="Path to reference fast (autodected if not supplied)")
+    argparser.add_argument('-umi_hamming_distance',  type=int, default=1)
+    argparser.add_argument('-head',  type=int)
+    argparser.add_argument('-contig',  type=str, help='Contig to only process')
+    argparser.add_argument('-alleles',  type=str, help="Phased allele file (VCF)" )
+    argparser.add_argument('-allele_samples',  type=str, help="Comma separated samples to extract from the VCF file. For example B6,SPRET" )
+    argparser.add_argument('-unphased_alleles',  type=str, help="Unphased allele file (VCF)" )
+
+    argparser.add_argument('-mapfile',  type=str, help='Path to *.safe.bgzf file, used to decide if molecules are uniquely mappable, generate one using createMapabilityIndex.py ')
+
+    argparser.add_argument('-annotmethod',  type=int, default=1, help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base" )
+    cluster = argparser.add_argument_group('cluster execution')
+    cluster.add_argument('--cluster', action='store_true', help='split by chromosomes and submit the job on cluster')
+    cluster.add_argument('--no_rejects', action='store_true', help='Write rejected reads to output file')
+    cluster.add_argument('-mem',  default=40, type=int, help='Memory requested per job')
+    cluster.add_argument('-time',  default=52, type=int, help='Time requested per job')
+
+    tr = argparser.add_argument_group('transcriptome specific settings')
+    tr.add_argument('-exons', type=str, help='Exon GTF file')
+    tr.add_argument('-introns', type=str, help='Intron GTF file, use exonGTF_to_intronGTF.py to create this file')
+
+    cg = argparser.add_argument_group('molecule consensus specific settings')
+    cg.add_argument('--consensus', action='store_true', help='Calculate molecule consensus read, this feature is _VERY_ experimental')
+    cg.add_argument('-consensus_mask_variants', type=str, help='variants to mask during training (VCF file)')
+    cg.add_argument('-consensus_model', type=str, help='Name of or path to consensus classifier', default=None)
+    cg.add_argument('-consensus_n_train', type=int, help='Amount of bases used for training', default=500_000)
+    cg.add_argument('--no_source_reads', action='store_true', help='Do not write original reads, only consensus ')
 
     args = argparser.parse_args()
     run_multiome_tagging(args)

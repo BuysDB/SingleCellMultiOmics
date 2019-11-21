@@ -89,7 +89,6 @@ def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None, l
         >>> read_A.cigarstring = '5M'
         >>> read_A.query_qualities = [30] * len(read_A.query_sequence)
         >>> read_A.set_tag('RG','HVKCCBGXB.4.MYLIBRARY_1')
-
         >>> read_B = pysam.AlignedSegment(test_sam.header)
         >>> read_B.reference_name = 'chr1'
         >>> read_B.reference_start = 100
@@ -98,7 +97,6 @@ def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None, l
         >>> read_B.query_name= 'READ_B'
         >>> read_B.query_qualities = [30] * len(read_B.query_sequence)
         >>> read_B.set_tag('RG','HVKCCBGXB.4.MYLIBRARY_2')
-
         >>> read_groups = set(( 'HVKCCBGXB.4.MYLIBRARY_2','HVKCCBGXB.4.MYLIBRARY_1'))
         >>> with sorted_bam_file('out.bam', header=test_sam.header,read_groups=read_groups) as out:
         >>>     out.write(read_A)
@@ -222,15 +220,25 @@ def GATK_indel_realign( origin_bam, target_bam,
     Re-align a specified region in a bam file using GenomeAnalysisTK
 
     origin_bam (str) :  path to extract region from to re-align
+
     target_bam(str) : path to write re-aligned reads to
+
     contig (str) : contig of selected region
+
     region_start (int) : start coordinate of region to re align (1 based)
+
     region_end (int) :end coordiante of  selected region (1 based)
+
     known_variants_vcf_path (str) : path to vcf containing reference variants
+
     interval_path (str) : Use this intervals to perform realignment, when not specified intervals are generated using RealignerTargetCreator
+
     interval_write_path (str) : when interval_path is not supplied, write the interval file here
+
     java_cmd (str) : Command to open java
+
     gatk_path (str) : path to GenomeAnalysisTK.jar
+
     reference (str) : path to reference Fasta file
     """
     if not os.path.exists('./gatk_tmp'):
@@ -285,7 +293,6 @@ def add_readgroups_to_header( origin_bam_path, readgroups_in, target_bam_path=No
     concatenated to the original bam file.
 
     Args:
-
         origin_bam_path(str) : path to bam file to which to add readgroups to header
 
         readgroups_in(set/dict) : set or dictionary which contains read groups. The dictionary should have the format { read_group_id (str)
