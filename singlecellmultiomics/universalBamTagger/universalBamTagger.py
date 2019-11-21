@@ -45,9 +45,9 @@ if __name__ == "__main__" :
 
     argparser.add_argument('bamfiles', metavar='bamfile', type=str, nargs='+')
     argparser.add_argument('--local', action='store_true', help='Do not qsub sorting and indexing [deprecated]')
+    argparser.add_argument('-tmpprefix', metavar='PREFIX.nnnn.bam', help='When sorting, specify temp dir to prevent home directory filling up', default='~/')
     #argparser.add_argument('--noSort', action='store_true', help='Do not sort and index')
     #argparser.add_argument('--cluster', action='store_true', help='Do not qsub sorting and indexing')
-
 
     tagAlgs = argparser.add_argument_group('Tagging algorithms', '')
     tagAlgs.add_argument('--ftag', action='store_true', help='!DEPRECATED, this flag is now always used!')
@@ -58,7 +58,6 @@ if __name__ == "__main__" :
     tagAlgs.add_argument('--scar', action='store_true', help='Create R1 start, cigar sequence based DS tags')
     tagAlgs.add_argument('--taps', action='store_true', help='Add TAPS based methylation state ')
     tagAlgs.add_argument('-tag', type=str, default=None, help='Determine oversequencing based on a tag (for example XT to count RNA oversequencing for featureCounts counted transcripts. chrom for chromosome/contig count)')
-
 
     ### RNA options
     tagAlgs.add_argument('--rna', action='store_true', help='Assign RNA molecules, requires a intronic and exonic GTF file')
@@ -459,6 +458,7 @@ if __name__ == "__main__":
             pass
 
     ## Here we walk through the bamfiles and fetch
+    tmpprefix = f'{args.tmpprefix}'
 
     for bamFilePath in args.bamfiles:
 
@@ -559,7 +559,7 @@ if __name__ == "__main__":
             # Perform a reheading, sort and index
             rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {outPathTemp}; }} | samtools view -b > {outPathTempWithHeader} ;
             rm {outPathTemp};
-            samtools sort {outPathTempWithHeader} > {outPath}; samtools index {outPath};
+            samtools sort -T {tmpprefix} {outPathTempWithHeader} > {outPath}; samtools index {outPath};
             rm {outPathTempWithHeader};
             """
             print(f"Adding read groups to header and sorting.")
@@ -569,7 +569,7 @@ if __name__ == "__main__":
             if args.dedup:
                 rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {dedupOutPathTemp}; }} | samtools view -b > {dedupOutPathTempWithHeader} ;
                 rm {dedupOutPathTemp};
-                samtools sort {dedupOutPathTempWithHeader} > {dedupOutPath}; samtools index {dedupOutPath};
+                samtools sort -T {tmpprefix} {dedupOutPathTempWithHeader} > {dedupOutPath}; samtools index {dedupOutPath};
                 rm {dedupOutPathTempWithHeader};
                 """
                 print(f"Dedup file: adding read groups to header and sorting.")
@@ -578,7 +578,7 @@ if __name__ == "__main__":
         else:
             # we cannot assign readgroups...
             rehead_cmd = f"""
-            samtools sort {outPathTemp} > {outPath}; samtools index {outPath};
+            samtools sort -T {tmpprefix} {outPathTemp} > {outPath}; samtools index {outPath};
             rm {outPathTemp};
             """
             print(f"Adding read groups to header and sorting.")
@@ -586,7 +586,7 @@ if __name__ == "__main__":
 
             if args.dedup:
                 rehead_cmd = f"""
-                samtools sort {dedupOutPathTemp} > {dedupOutPath}; samtools index {dedupOutPath};
+                samtools sort -T {tmpprefix} {dedupOutPathTemp} > {dedupOutPath}; samtools index {dedupOutPath};
                 rm {dedupOutPathTemp};
                 """
                 print(f"Dedup file: adding read groups to header and sorting.")
