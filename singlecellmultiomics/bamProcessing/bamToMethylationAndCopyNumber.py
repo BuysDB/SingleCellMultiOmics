@@ -56,7 +56,7 @@ if __name__=='__main__':
         for read in alignments:
             if read.is_duplicate:
                 continue
-            if read.has_tag('mp') and read.get_tag('mp')!='ok':
+            if read.has_tag('mp') and read.get_tag('mp')!='unique':
                 continue
             if read.mapping_quality<args.min_mq or not read.has_tag('DS'):
                 continue
