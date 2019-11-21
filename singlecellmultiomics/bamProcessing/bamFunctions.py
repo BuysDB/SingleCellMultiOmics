@@ -4,7 +4,7 @@ import time
 import contextlib
 from shutil import which
 from singlecellmultiomics.utils import BlockZip
-import uuid4
+import uuid
 
 def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=False):
     """Extract path to reference from pysam handle
@@ -47,7 +47,8 @@ def get_reference_path_from_bam(bam, ignore_missing=False ):
 
 @contextlib.contextmanager
 def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None, local_temp_sort=True):
-    """ Get writing handle of a sorted bam file
+    """ Get writing handle to a sorted bam file
+
     Args:
         write_path (str) : write to a  bam file at this path
 
@@ -73,6 +74,45 @@ def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None, l
         >>>         for fragment in molecule:
         >>>             read_groups.add(fragment.get_read_group())
         test_output.bam will be written, with read groups defined, sorted and indexed.
+
+
+    Write some pysam reads to a sorted bam file
+    Example:
+        >>> import pysam
+        >>> from singlecellmultiomics.bamProcessing import sorted_bam_file
+        >>> test_sam = pysam.AlignmentFile('test.sam','w',reference_names=['chr1','chr2'],reference_lengths=[1000,1000])
+        >>> read_A = pysam.AlignedSegment(test_sam.header)
+        >>> read_A.reference_name = 'chr2'
+        >>> read_A.reference_start = 100
+        >>> read_A.query_sequence = 'TTGCA'
+        >>> read_A.query_name= 'READ_A'
+        >>> read_A.cigarstring = '5M'
+        >>> read_A.query_qualities = [30] * len(read_A.query_sequence)
+        >>> read_A.set_tag('RG','HVKCCBGXB.4.MYLIBRARY_1')
+
+        >>> read_B = pysam.AlignedSegment(test_sam.header)
+        >>> read_B.reference_name = 'chr1'
+        >>> read_B.reference_start = 100
+        >>> read_B.query_sequence = 'ATCGGG'
+        >>> read_B.cigarstring = '6M'
+        >>> read_B.query_name= 'READ_B'
+        >>> read_B.query_qualities = [30] * len(read_B.query_sequence)
+        >>> read_B.set_tag('RG','HVKCCBGXB.4.MYLIBRARY_2')
+
+        >>> read_groups = set(( 'HVKCCBGXB.4.MYLIBRARY_2','HVKCCBGXB.4.MYLIBRARY_1'))
+        >>> with sorted_bam_file('out.bam', header=test_sam.header,read_groups=read_groups) as out:
+        >>>     out.write(read_A)
+        >>>     out.write(read_B)
+        Results in the bam file:
+        @HD	VN:1.6	SO:coordinate
+        @SQ	SN:chr1	LN:1000
+        @SQ	SN:chr2	LN:1000
+        @RG	ID:HVKCCBGXB.4.MYLIBRARY_2	SM:MYLIBRARY_2	LB:MYLIBRARY	PU:HVKCCBGXB.4.MYLIBRARY_2	PL:ILLUMINA
+        @RG	ID:HVKCCBGXB.4.MYLIBRARY_1	SM:MYLIBRARY_1	LB:MYLIBRARY	PU:HVKCCBGXB.4.MYLIBRARY_1	PL:ILLUMINA
+        READ_B	0	chr1	101	0	6M	*	0	0	ATCGGG	??????	RG:Z:HVKCCBGXB.4.MYLIBRARY_2
+        READ_A	0	chr2	101	0	5M	*	0	0	TTGCA	?????	RG:Z:HVKCCBGXB.4.MYLIBRARY_1
+
+
     """
     try:
         unsorted_path = f'{write_path}.unsorted'
@@ -101,10 +141,15 @@ def write_program_tag(input_header,
     """Write Program Tag to bam file header
     Args:
         input_header  (dict): header to write PG tag to
+
         program_name (str) : value to write to PN tag
+
         command_line (str) : value to write to CL tag
+
         version (str) : value to write to VN tag
+
         description (str) : value to write to DS tag
+
     """
     if not 'PG' in input_header:
         input_header['PG'] = []
@@ -121,7 +166,9 @@ def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False, local_temp
     """ Sort and index a bam file
     Args:
         unsorted_path (str) : path to unsorted bam file
+
         sorted_path (str) : write sorted file here
+
         remove_unsorted (bool) : remove the unsorted file
 
         local_temp_sort(bool): create temporary files in target directory
@@ -130,7 +177,7 @@ def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False, local_temp
     """
     if local_temp_sort:
 
-        pysam.sort('-o', '-T', f'TMP.{uuid4.uuid4()}',sorted_path, unsorted_path,)
+        pysam.sort('-o',sorted_path, '-T', f'TMP.{uuid.uuid4()}', unsorted_path,)
     else:
         pysam.sort("-o", sorted_path, unsorted_path)
     pysam.index(sorted_path)
