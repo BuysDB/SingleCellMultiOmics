@@ -18,6 +18,11 @@ import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 import singlecellmultiomics.features
 import math
 import numpy as np
+import warnings
+
+
+warnings.warn("universalBamTagger is deprecated. Please switch to use bamtagmultiome.py ", DeprecationWarning)
+
 
 #Modules:
 from singlecellmultiomics.universalBamTagger.rna import RNA_Flagger
