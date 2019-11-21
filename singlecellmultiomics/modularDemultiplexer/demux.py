@@ -13,7 +13,6 @@ from singlecellmultiomics.fastqProcessing.fastqHandle import FastqHandle
 import singlecellmultiomics.barcodeFileParser.barcodeFileParser as barcodeFileParser
 import singlecellmultiomics.libraryDetection.sequencingLibraryListing as sequencingLibraryListing
 from singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader import DemultiplexingStrategyLoader
-import glob
 from colorama import init
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import NonMultiplexable
 import logging
@@ -38,7 +37,7 @@ if __name__=='__main__':
 										%sdemultiplex.py ./*.fastq.gz -submit demux.sh; sh demux.sh %s
 		"""% (Style.BRIGHT, Style.RESET_ALL, Style.BRIGHT, Style.RESET_ALL, Style.DIM, Style.RESET_ALL, Style.DIM, Style.RESET_ALL, Style.DIM, Style.RESET_ALL))
 
-	argparser.add_argument('fastqfiles', metavar='fastqfile', type=str, nargs='*', help='Input fastq files. For windows compatibility, if any of the file names contains a star the expression is evaluated as GLOB. Read names should be in illumina format or LIBRARY_R1.fastq.gz, LIBRARY_R2.fastq.gz, if one file is supplied and the name does not end on .fastq. or fastq.gz the file is interpreted as a list of files')
+	argparser.add_argument('fastqfiles', metavar='fastqfile', type=str, nargs='*', help='Input fastq files. Read names should be in illumina format or LIBRARY_R1.fastq.gz, LIBRARY_R2.fastq.gz, if one file is supplied and the name does not end on .fastq. or fastq.gz the file is interpreted as a list of files')
 	argparser.add_argument('--y', help="Perform the demultiplexing (Accept current parameters)", action='store_true' )
 	argparser.add_argument('-experimentName', '-e', help="Name of the experiment, set to uf to use the folder name", type=str, default='uf' )
 
@@ -96,7 +95,9 @@ if __name__=='__main__':
 
 
 	ignoreMethods = args.ignoreMethods.split(',')
-
+	if any( ('*' in fq_file for fq_file in args.fastqfiles) ):
+		raise ValueError("One or more of the fastq file paths contain a '*', these files cannot be interpreted, review your input files")
+	
 	if len(set(args.fastqfiles))!=len(args.fastqfiles):
 		print(f'{Fore.RED}{Style.BRIGHT}Some fastq files are supplied multiple times! Pruning those!{Style.RESET_ALL}')
 		args.fastqfiles = set(args.fastqfiles)
