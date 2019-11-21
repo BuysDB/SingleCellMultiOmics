@@ -1499,7 +1499,7 @@ class Molecule():
                 read.set_tag(tag,phase_str)
 
 
-    def get_base_observation_dict_NOREF(self):
+    def get_base_observation_dict_NOREF(self, allow_N=False):
         '''
         identical to get_base_observation_dict but does not obtain reference bases,
         has to be used when no MD tag is present
@@ -1539,7 +1539,7 @@ class Molecule():
                     if query_pos is None or ref_pos is None or ref_pos<start or ref_pos>end:
                         continue
                     query_base = read.seq[query_pos]
-                    if query_base=='N':
+                    if query_base=='N' and not allow_N:
                         continue
                     base_obs[(read.reference_name,ref_pos)][query_base]+=1
 
@@ -1548,13 +1548,14 @@ class Molecule():
 
         return base_obs
 
-    def get_base_observation_dict(self, return_refbases=False):
+    def get_base_observation_dict(self, return_refbases=False, allow_N=False):
         '''
         Obtain observed bases at reference aligned locations
 
         Args:
             return_refbases ( bool ):
                 return both observed bases and reference bases
+            allow_N (bool): Keep N base calls in observations
 
         Returns:
             { genome_location (tuple) : base (string) : obs (int) }
