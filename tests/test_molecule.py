@@ -29,6 +29,19 @@ class TestMolecule(unittest.TestCase):
             )
             pass
 
+    def test_every_fragment_as_molecule(self):
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            for i,m in enumerate(singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.Molecule,
+            fragmentClass=singlecellmultiomics.fragment.Fragment,
+            every_fragment_as_molecule=True
+            )):
+                pass
+            self.assertEqual(i,337)
+
+
+
     def test_Molecule_repr_stability(self):
         """Test if the molecule representation function is stable"""
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:

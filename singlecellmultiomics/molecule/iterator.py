@@ -124,6 +124,7 @@ class MoleculeIterator():
         pooling_method=1,
         yield_invalid=False,
         queryNameFlagger=None,
+        every_fragment_as_molecule=False,
         **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
@@ -149,6 +150,8 @@ class MoleculeIterator():
 
             queryNameFlagger(class) : class which contains the method digest(self, reads) which accepts pysam.AlignedSegments and adds at least the SM and RX tags
 
+            every_fragment_as_molecule(bool): When set to true all valid fragments are emitted as molecule with one associated fragment, this is a way to disable deduplication.
+
             **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
 
         Yields:
@@ -169,6 +172,7 @@ class MoleculeIterator():
         self.matePairIterator=None
         self.pooling_method=pooling_method
         self.yield_invalid = yield_invalid
+        self.every_fragment_as_molecule = every_fragment_as_molecule
         self._clear_cache()
 
     def _clear_cache(self):
@@ -204,9 +208,7 @@ class MoleculeIterator():
             qf = self.queryNameFlagger
 
         self._clear_cache()
-
         self.waiting_fragments = 0
-
         # prepare the source iterator which generates the read pairs:
         if type(self.alignments)==pysam.libcalignmentfile.AlignmentFile:
             self.matePairIterator = pysamiterators.iterators.MatePairIterator(
@@ -240,6 +242,12 @@ class MoleculeIterator():
                     m = self.moleculeClass(fragment, **self.molecule_class_args )
                     m.__finalise__()
                     yield m
+                continue
+
+            if self.every_fragment_as_molecule:
+                m = self.moleculeClass(fragment, **self.molecule_class_args )
+                m.__finalise__()
+                yield m
                 continue
 
             added = False

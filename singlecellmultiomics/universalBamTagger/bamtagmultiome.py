@@ -35,6 +35,7 @@ argparser.add_argument('-contig',  type=str, help='Contig to only process')
 argparser.add_argument('-alleles',  type=str, help="Phased allele file (VCF)" )
 argparser.add_argument('-allele_samples',  type=str, help="Comma separated samples to extract from the VCF file. For example B6,SPRET" )
 argparser.add_argument('-unphased_alleles',  type=str, help="Unphased allele file (VCF)" )
+argparser.add_argument('--every_fragment_as_molecule', action='store_true', help='Assign every fragment as a molecule, this effectively disables UMI deduplication')
 
 argparser.add_argument('-mapfile',  type=str, help='Path to *.safe.bgzf file, used to decide if molecules are uniquely mappable, generate one using createMapabilityIndex.py ')
 
@@ -136,6 +137,7 @@ def run_multiome_tagging(args):
     """
 
     MISC_ALT_CONTIGS_SCMO = 'MISC_ALT_CONTIGS_SCMO'
+    every_fragment_as_molecule = args.every_fragment_as_molecule
 
     if not args.o.endswith('.bam'):
         raise ValueError("Supply an output which ends in .bam, for example -o output.bam")
@@ -146,7 +148,6 @@ def run_multiome_tagging(args):
     if os.path.exists(args.o):
         print(f"Removing existing file {args.o}")
         os.remove(args.o)
-                    
 
     input_bam =  pysam.AlignmentFile(args.bamin, "rb")
 
@@ -289,7 +290,8 @@ def run_multiome_tagging(args):
         'molecule_class_args':molecule_class_args,
         'fragment_class_args':fragment_class_args,
         'yield_invalid':yield_invalid,
-        'contig':contig
+        'contig':contig,
+        'every_fragment_as_molecule':every_fragment_as_molecule
     }
 
     if args.contig==MISC_ALT_CONTIGS_SCMO:
