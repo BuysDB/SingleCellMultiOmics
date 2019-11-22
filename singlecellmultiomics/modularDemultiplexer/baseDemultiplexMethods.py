@@ -209,8 +209,8 @@ class TaggedRecord():
                 if required and not self.has_tag(tag):
                     raise NonMultiplexable('Tag was defined to be required')
 
-            if len(moleculeQuality)!=len(moleculeIdentifier):
-                raise ValueError('Could not reconstruct molecule identifier')
+            #if len(moleculeQuality)!=len(moleculeIdentifier):
+            #    raise ValueError('Could not reconstruct molecule identifier') @todo set this back when we recover QT
 
 
             correctedIndex =None if not self.has_tag('aA') else self.tags['aA']
@@ -451,7 +451,7 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
                     isPhred=False,
                     make_safe=False)
 
-            tr.addTagByTag('QT', barcodeQual, isPhred=True)
+            #tr.addTagByTag('QT', barcodeQual, isPhred=True)
 
             if len(barcode)!=len(barcodeQual):
                 raise ValueError()
