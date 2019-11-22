@@ -5,7 +5,7 @@ from singlecellmultiomics.molecule import MoleculeIterator
 import singlecellmultiomics
 import singlecellmultiomics.molecule
 import singlecellmultiomics.fragment
-from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile,write_program_tag,MapabilityReader
+from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile,write_program_tag,MapabilityReader,verify_and_fix_bam
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads  import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
@@ -140,9 +140,13 @@ def run_multiome_tagging(args):
     if not args.o.endswith('.bam'):
         raise ValueError("Supply an output which ends in .bam, for example -o output.bam")
 
+    # Verify wether the input file is indexed and sorted...
+    verify_and_fix_bam( args.bamin )
+
     if os.path.exists(args.o):
         print(f"Removing existing file {args.o}")
         os.remove(args.o)
+                    
 
     input_bam =  pysam.AlignmentFile(args.bamin, "rb")
 

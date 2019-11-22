@@ -5,6 +5,38 @@ import contextlib
 from shutil import which
 from singlecellmultiomics.utils import BlockZip
 import uuid
+import os
+
+def verify_and_fix_bam(bam_path):
+    """
+    Check if the bam file is not truncated and indexed.
+    If not, apply index
+
+    Args:
+        bam_path(str) : path to bam file
+
+    Raises:
+        ValueError : when the file is corrupted and a fix could not be applied
+    """
+    was_indexed = False
+    if not os.path.exists(bam_path):
+        raise ValueError(f"The bam file {bam_path} does not exist")
+
+    with pysam.AlignmentFile(bam_path, "rb") as alignments:
+        if alignments.check_truncation():
+            raise ValueError(f"The bam file {bam_path} is truncated")
+        if not alignments.check_index():
+            # Try to index the input file..
+            print(f"The bam file {bam_path} does not have an index, attempting an index build ..")
+            pysam.index(bam_path)
+            was_indexed=True
+
+    if was_indexed:
+        with pysam.AlignmentFile(bam_path, "rb") as alignments:
+            if not alignments.check_index():
+                raise ValueError(f'The file {bam_path} is not sorted or damaged in some way')
+
+
 
 def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=False):
     """Extract path to reference from pysam handle
