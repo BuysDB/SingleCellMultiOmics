@@ -18,20 +18,28 @@ def verify_and_fix_bam(bam_path):
     Raises:
         ValueError : when the file is corrupted and a fix could not be applied
     """
-    was_indexed = False
+    index_missing = False
     if not os.path.exists(bam_path):
         raise ValueError(f"The bam file {bam_path} does not exist")
 
     with pysam.AlignmentFile(bam_path, "rb") as alignments:
         if alignments.check_truncation():
             raise ValueError(f"The bam file {bam_path} is truncated")
-        if not alignments.check_index():
-            # Try to index the input file..
-            print(f"The bam file {bam_path} does not have an index, attempting an index build ..")
-            pysam.index(bam_path)
-            was_indexed=True
 
-    if was_indexed:
+        # This raises and error:
+        try:
+            if not alignments.check_index():
+                # Try to index the input file..
+                print(f"The bam file {bam_path} does not have an index, attempting an index build ..")
+                index_missing=True
+        except Exception as e:
+            index_missing=True
+
+        if index_missing:
+            pysam.index(bam_path)
+
+
+    if index_missing:
         with pysam.AlignmentFile(bam_path, "rb") as alignments:
             if not alignments.check_index():
                 raise ValueError(f'The file {bam_path} is not sorted or damaged in some way')

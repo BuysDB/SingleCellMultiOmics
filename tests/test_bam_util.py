@@ -5,14 +5,39 @@ import singlecellmultiomics.molecule
 import singlecellmultiomics.fragment
 import pysam
 import pysamiterators.iterators
-from singlecellmultiomics.bamProcessing import sorted_bam_file,write_program_tag
+from singlecellmultiomics.bamProcessing import sorted_bam_file,write_program_tag,verify_and_fix_bam
 import os
 import sys
+from shutil import copyfile
+
 """
 These tests check if the Molecule module is working correctly
 """
 
 class TestSorted(unittest.TestCase):
+
+    def test_verify_and_fix_bam_autoindex(self):
+        file_path_without_index = './data/temp_without_index.bam'
+        copyfile('./data/mini_nla_test.bam',file_path_without_index)
+        verify_and_fix_bam(file_path_without_index)
+        with pysam.AlignmentFile(file_path_without_index) as f:
+            i =0
+            # Test if the file has reads.
+            for read in f:
+                if read.is_read1:
+                    i+=1
+            self.assertEqual(i, 293)
+
+        try:
+            os.remove(file_path_without_index)
+        except Exception as e:
+            pass
+
+        try:
+            os.remove(file_path_without_index+'.bai')
+        except Exception as e:
+            pass
+
 
     def test_write_to_sorted(self):
         write_path = './data/write_test.bam'
