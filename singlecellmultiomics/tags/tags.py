@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
 class SamTag:
 
     def __init__(self, tag, humanName, isPhred=False, doNotWrite=False):
         self.tag = tag
         self.humanName = humanName
-        self.isPhred=isPhred
+        self.isPhred = isPhred
         self.doNotWrite = doNotWrite
-        if len(tag)!=2:
+        if len(tag) != 2:
             raise ValueError('Invalid tag length')
 
     def __repr__(self):
         return f'SAM TAG "{self.tag}", {self.humanName}{", is a phred score" if self.isPhred else ""} will {"not" if self.doNotWrite else ""} be written by default'
+
 
 tags = [
     SamTag('SM', 'sampleName'),
@@ -36,7 +38,7 @@ tags = [
     SamTag('aa', 'rawIlluminaIndexSequence'),
     SamTag('ah', 'hammingDistanceToIndex'),
     SamTag('BC', 'barcode'),
-    SamTag('CB', 'cellBarcode'), # Same as bc
+    SamTag('CB', 'cellBarcode'),  # Same as bc
     SamTag('QX', 'barcodeQual', isPhred=True),
     SamTag('bc', 'rawBarcode'),
     SamTag('hd', 'hammingDistanceRawBcAssignedBc'),
@@ -46,9 +48,9 @@ tags = [
     SamTag('uL', 'umiLength'),
     SamTag('RQ', 'umiQual', isPhred=True),
     SamTag('BX', 'umiCorrected'),
-    SamTag('BZ', 'umiCorrectedQuality',isPhred=True),
+    SamTag('BZ', 'umiCorrectedQuality', isPhred=True),
     SamTag('MI', 'molecularIdentifier'),
-    SamTag('QM', 'molecularIdentifierQuality',isPhred=True),
+    SamTag('QM', 'molecularIdentifierQuality', isPhred=True),
     SamTag('DS', 'siteCoordinate'),
     SamTag('DA', 'allele'),
     SamTag('ap', 'phasedAllelicSNVs'),
@@ -88,29 +90,29 @@ tags = [
     SamTag('fs', 'fragmentStartTag'),
     SamTag('Us', 'undigestedSiteCount'),
     SamTag('lh', 'ligationOverhangSequence'),
-    SamTag('lq', 'ligationOverhangQuality',isPhred = True),
+    SamTag('lq', 'ligationOverhangQuality', isPhred=True),
 
     SamTag('a1', 'Read1Clipped3primeBasesKmer'),
     SamTag('A2', 'Read2Clipped3primeBasesKmer'),
-    SamTag('aQ', 'Read1Clipped3primeBasesKmerQuality',isPhred = True),
-    SamTag('AQ', 'Read2Clipped3primeBasesKmerQuality',isPhred = True),
+    SamTag('aQ', 'Read1Clipped3primeBasesKmerQuality', isPhred=True),
+    SamTag('AQ', 'Read2Clipped3primeBasesKmerQuality', isPhred=True),
 
     SamTag('e1', 'Read1Clipped5primeBasesKmer'),
     SamTag('eQ', 'Read2Clipped5primeBasesKmer'),
     SamTag('eB', 'Read1Clipped5primeCycle'),
     SamTag('EB', 'Read2Clipped5primeCycle'),
-    SamTag('E2', 'Read1Clipped5primeBasesKmerQuality',isPhred = True),
-    SamTag('EQ', 'Read2Clipped5primeBasesKmerQuality',isPhred = True),
+    SamTag('E2', 'Read1Clipped5primeBasesKmerQuality', isPhred=True),
+    SamTag('EQ', 'Read2Clipped5primeBasesKmerQuality', isPhred=True),
 
     SamTag('ES', 'EnzymeSequence'),  # Christoph
-    SamTag('eq', 'EnzymeSequenceQualities', isPhred = True),
+    SamTag('eq', 'EnzymeSequenceQualities', isPhred=True),
     SamTag('IS', 'ispcrSequence'),
-    SamTag('is', 'ispcrSequenceQualities', isPhred = True),
+    SamTag('is', 'ispcrSequenceQualities', isPhred=True),
 
     SamTag('H0', 'HexamerSequenceR1'),  # anna
-    SamTag('H1', 'HexamerPhredScoreR1', isPhred = True),
+    SamTag('H1', 'HexamerPhredScoreR1', isPhred=True),
     SamTag('H2', 'HexamerSequenceR2'),
-    SamTag('H3', 'HexamerPhredScoreR2', isPhred = True),
+    SamTag('H3', 'HexamerPhredScoreR2', isPhred=True),
 
     SamTag('XM', 'perBaseMethylationStatus'),
     SamTag('Cm', 'modified3BPContexts'),

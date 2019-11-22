@@ -1,46 +1,52 @@
 from singlecellmultiomics.fragment import Fragment
 from singlecellmultiomics.utils.sequtils import hamming_distance
+
+
 class NLAIIIFragment(Fragment):
     def __init__(self,
-        reads,
-        R1_primer_length=4,
-        R2_primer_length=6,
-        assignment_radius=1_000,
-        umi_hamming_distance=1,
-        invert_strand=False
-        ):
+                 reads,
+                 R1_primer_length=4,
+                 R2_primer_length=6,
+                 assignment_radius=1_000,
+                 umi_hamming_distance=1,
+                 invert_strand=False
+                 ):
         self.invert_strand = invert_strand
         Fragment.__init__(self,
-            reads,
-            assignment_radius=assignment_radius,
-            R1_primer_length=R1_primer_length,
-            R2_primer_length=R2_primer_length,
-            umi_hamming_distance=umi_hamming_distance )
+                          reads,
+                          assignment_radius=assignment_radius,
+                          R1_primer_length=R1_primer_length,
+                          R2_primer_length=R2_primer_length,
+                          umi_hamming_distance=umi_hamming_distance)
         # set NLAIII cut site given reads
         self.strand = None
         self.site_location = None
         self.cut_site_strand = None
         self.identify_site()
         if self.is_valid():
-            self.match_hash = (self.strand, self.cut_site_strand,
-             self.site_location[0],self.site_location[1], self.sample)
+            self.match_hash = (
+                self.strand,
+                self.cut_site_strand,
+                self.site_location[0],
+                self.site_location[1],
+                self.sample)
         else:
             self.match_hash = None
 
-    def set_site(self, site_chrom, site_pos, site_strand=None ):
-        self.set_meta('DS',site_pos)
+    def set_site(self, site_chrom, site_pos, site_strand=None):
+        self.set_meta('DS', site_pos)
         if site_strand is not None:
             if self.invert_strand:
-                self.set_meta('RS',not site_strand)
+                self.set_meta('RS', not site_strand)
             else:
-                self.set_meta('RS',site_strand)
+                self.set_meta('RS', site_strand)
         self.set_strand(site_strand)
         self.site_location = (site_chrom, site_pos)
         self.cut_site_strand = site_strand
 
     def identify_site(self):
 
-        R1,R2 = self.reads
+        R1, R2 = self.reads
         """ Valid configs:
         CATG######## R1 ########## ^ ########## R2 ##########
         ############ R2 ########## ^ ########### R1 #####CATG  reverse case
@@ -57,43 +63,42 @@ class NLAIIIFragment(Fragment):
                 self.set_rejection_reason(R2, 'unmapped R2')
             return(None)
         """
-        if R1 is None or R1.is_unmapped :
+        if R1 is None or R1.is_unmapped:
             self.set_rejection_reason('unmapped R1')
             return None
 
-        if R1.seq[:4]=='CATG' and not R1.is_reverse:
-            rpos = ( R1.reference_name, R1.reference_start)
-            self.set_site(  site_strand=1, site_chrom=rpos[0], site_pos=rpos[1] )
-            self.set_recognized_sequence( 'CATG')
+        if R1.seq[:4] == 'CATG' and not R1.is_reverse:
+            rpos = (R1.reference_name, R1.reference_start)
+            self.set_site(site_strand=1, site_chrom=rpos[0], site_pos=rpos[1])
+            self.set_recognized_sequence('CATG')
             return(rpos)
-        elif R1.seq[-4:]=='CATG' and R1.is_reverse:
-            rpos = ( R1.reference_name, R1.reference_end-4)
-            self.set_site(  site_strand=0, site_chrom=rpos[0], site_pos=rpos[1] )
-            self.set_recognized_sequence( 'CATG')
+        elif R1.seq[-4:] == 'CATG' and R1.is_reverse:
+            rpos = (R1.reference_name, R1.reference_end - 4)
+            self.set_site(site_strand=0, site_chrom=rpos[0], site_pos=rpos[1])
+            self.set_recognized_sequence('CATG')
             return(rpos)
 
         # Sometimes the cycle is off
-        elif R1.seq[:3]=='ATG' and not R1.is_reverse:
-            rpos = ( R1.reference_name, R1.reference_start-1)
-            self.set_site(  site_strand=1, site_chrom=rpos[0], site_pos=rpos[1] )
-            self.set_recognized_sequence( 'ATG')
+        elif R1.seq[:3] == 'ATG' and not R1.is_reverse:
+            rpos = (R1.reference_name, R1.reference_start - 1)
+            self.set_site(site_strand=1, site_chrom=rpos[0], site_pos=rpos[1])
+            self.set_recognized_sequence('ATG')
             return(rpos)
-        elif R1.seq[-3:]=='CAT' and R1.is_reverse: # First base was trimmed or lost
-            rpos = ( R1.reference_name, R1.reference_end-3)
-            self.set_site(   site_strand=0, site_chrom=rpos[0], site_pos=rpos[1] )
-            self.set_recognized_sequence( 'CAT')
+        elif R1.seq[-3:] == 'CAT' and R1.is_reverse:  # First base was trimmed or lost
+            rpos = (R1.reference_name, R1.reference_end - 3)
+            self.set_site(site_strand=0, site_chrom=rpos[0], site_pos=rpos[1])
+            self.set_recognized_sequence('CAT')
             return(rpos)
 
         else:
-            if R1.seq[:4]=='CATG' and R1.is_reverse:
+            if R1.seq[:4] == 'CATG' and R1.is_reverse:
                 self.set_rejection_reason('found CATG R1 REV exp FWD')
 
-            elif R1.seq[-4:]=='CATG' and not R1.is_reverse:
-                self.set_rejection_reason( 'found CATG R1 FWD exp REV')
+            elif R1.seq[-4:] == 'CATG' and not R1.is_reverse:
+                self.set_rejection_reason('found CATG R1 FWD exp REV')
             else:
-                self.set_rejection_reason( 'no CATG')
+                self.set_rejection_reason('no CATG')
             return None
-
 
     def get_undigested_site_count(self, reference_handle):
         """
@@ -117,8 +122,8 @@ class NLAIIIFragment(Fragment):
 
         total = reference_handle.fetch(*self.span).count('CATG')
         # ignore 1 CATG if it was Detected:
-        if self.meta.get('RZ')=='CATG':
-            total-=1
+        if self.meta.get('RZ') == 'CATG':
+            total -= 1
         return total
 
     def is_valid(self):
@@ -128,12 +133,14 @@ class NLAIIIFragment(Fragment):
         return self.site_location
 
     def __repr__(self):
-        return Fragment.__repr__(self)+f'\n\tRestriction site:{self.get_site_location()}'
+        return Fragment.__repr__(
+            self) + f'\n\tRestriction site:{self.get_site_location()}'
 
     def __eq__(self, other):
         # Make sure fragments map to the same strand, cheap comparisons
-        if self.match_hash!=other.match_hash:
+        if self.match_hash != other.match_hash:
             return False
 
-        # Make sure UMI's are similar enough, more expensive hamming distance calculation
+        # Make sure UMI's are similar enough, more expensive hamming distance
+        # calculation
         return self.umi_eq(other)

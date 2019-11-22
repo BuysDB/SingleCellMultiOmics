@@ -7,9 +7,10 @@ from singlecellmultiomics.molecule.chic import AnnotatedCHICMolecule
 
 complement = str.maketrans('ATGC', 'TACG')
 
+
 class TAPS():
     # Methylated Cs get converted into T readout
-    def __init__(self, reference, reference_variants=None,**kwargs):
+    def __init__(self, reference, reference_variants=None, **kwargs):
         """
         Intialise the TAPS class
 
@@ -35,26 +36,31 @@ class TAPS():
         h unmethylated C in CHH context ( C[ACT][ACT] )
         H methylated C in CHH context ( C[ACT][ACT] )
         """
-        self.context_mapping={}
+        self.context_mapping = {}
         self.context_mapping[False] = {
-            'CGA':'z',
-            'CGT':'z',
-            'CGC':'z',
-            'CGG':'z',
-            'CAG':'x',
-            'CCG':'x',
-            'CTG':'x',
+            'CGA': 'z',
+            'CGT': 'z',
+            'CGC': 'z',
+            'CGG': 'z',
+            'CAG': 'x',
+            'CCG': 'x',
+            'CTG': 'x',
         }
 
-        self.context_mapping[True] = { context:letter.upper()
-                                      for context,letter in self.context_mapping[False].items() }
+        self.context_mapping[True] = {
+            context: letter.upper() for context,
+            letter in self.context_mapping[False].items()}
 
+        for x in list(itertools.product('ACT', repeat=2)):
+            self.context_mapping[True][''.join(['C'] + list(x))] = 'H'
+            self.context_mapping[False][''.join(['C'] + list(x))] = 'h'
 
-        for x in list( itertools.product('ACT',repeat=2) ):
-            self.context_mapping[True][ ''.join( ['C']+list(x)) ] =  'H'
-            self.context_mapping[False][ ''.join( ['C']+list(x)) ] =  'h'
-
-    def position_to_context(self,chromosome, position, observed_base='N', strand=0):
+    def position_to_context(
+            self,
+            chromosome,
+            position,
+            observed_base='N',
+            strand=0):
         """Extract bismark call letter from a chromosomal location given the observed base
 
         Args:
@@ -72,31 +78,33 @@ class TAPS():
             bismark_letter(str) : bismark call
         """
 
-
         qbase = observed_base.upper()
 
-        ref_base= self.reference.fetch(chromosome, position,position+1).upper()
+        ref_base = self.reference.fetch(
+            chromosome, position, position + 1).upper()
 
         # if a vcf file is supplied  we can extract the possible reference bases
         # @todo
 
-        context=None
+        context = None
         methylated = False
         rpos = position
-        if ref_base=='C' and strand==0:
-            context = self.reference.fetch(chromosome, rpos, rpos+3).upper()
+        if ref_base == 'C' and strand == 0:
+            context = self.reference.fetch(chromosome, rpos, rpos + 3).upper()
 
-            if qbase=='T':
-                methylated=True
-            methylationStateString = self.context_mapping[methylated].get(context,'uU'[methylated])
+            if qbase == 'T':
+                methylated = True
+            methylationStateString = self.context_mapping[methylated].get(context, 'uU'[
+                                                                          methylated])
 
-        elif ref_base=='G' and strand==1:
-            origin = self.reference.fetch(chromosome, rpos-2, rpos+1).upper()
+        elif ref_base == 'G' and strand == 1:
+            origin = self.reference.fetch(
+                chromosome, rpos - 2, rpos + 1).upper()
             context = origin.translate(complement)[::-1]
-            if qbase=='A':
-                methylated=True
+            if qbase == 'A':
+                methylated = True
 
-        return context,self.context_mapping[methylated].get(context,'.')
+        return context, self.context_mapping[methylated].get(context, '.')
 
     def molecule_to_context_call_dict(self, molecule):
         """Extract bismark call_string dictionary from a molecule
@@ -107,19 +115,19 @@ class TAPS():
         Returns:
             context_call_dict(dict) : {(chrom,pos):bismark call letter}
         """
-        call_dict = {} # (chrom,pos)-> "bismark" call_string
-        for (chrom,pos),base in molecule.get_consensus().items():
+        call_dict = {}  # (chrom,pos)-> "bismark" call_string
+        for (chrom, pos), base in molecule.get_consensus().items():
             context, letter = self.position_to_context(chromosome=molecule.chromosome,
-                                     position=pos,
-                                     observed_base=base,
-                                     strand=molecule.get_strand())
+                                                       position=pos,
+                                                       observed_base=base,
+                                                       strand=molecule.get_strand())
             if letter is not None:
-                call_dict[(chrom,pos)] = letter
+                call_dict[(chrom, pos)] = letter
         return call_dict
 
 
 class TAPSMolecule(Molecule):
-    def __init__(self, fragments=None, taps=None, classifier=None,  **kwargs):
+    def __init__(self, fragments=None, taps=None, classifier=None, **kwargs):
         """ TAPSMolecule
 
         Args:
@@ -133,7 +141,7 @@ class TAPSMolecule(Molecule):
             raise ValueError("""Supply initialised TAPS class
                 taps = singlecellmultiomics.molecule.TAPS( reference )
             """)
-        self.taps = taps #initialised TAPS class
+        self.taps = taps  # initialised TAPS class
         self.methylation_call_dict = None
         self.classifier = classifier
 
@@ -144,7 +152,7 @@ class TAPSMolecule(Molecule):
         except ValueError:
             pass
 
-    def is_valid(self,set_rejection_reasons=False):
+    def is_valid(self, set_rejection_reasons=False):
         if not super().is_valid(set_rejection_reasons=set_rejection_reasons):
             return False
 
@@ -166,8 +174,6 @@ class TAPSMolecule(Molecule):
 
         return True
 
-
-
     def obtain_methylation_calls(self, classifier=None):
         """ This methods returns a methylation call dictionary
             Args:
@@ -177,46 +183,52 @@ class TAPSMolecule(Molecule):
         """
 
         # Find all aligned positions and corresponding reference bases:
-        aligned_reference_positions = {} #(chrom,pos)->base
+        aligned_reference_positions = {}  # (chrom,pos)->base
         for read in self.iter_reads():
-            for read_pos, ref_pos, ref_base in read.get_aligned_pairs(with_seq=True, matches_only=True):
-                aligned_reference_positions[(read.reference_name,ref_pos)] = ref_base.upper()
+            for read_pos, ref_pos, ref_base in read.get_aligned_pairs(
+                    with_seq=True, matches_only=True):
+                aligned_reference_positions[(
+                    read.reference_name, ref_pos)] = ref_base.upper()
 
         # Obtain consensus:
         try:
             consensus = self.get_consensus(classifier=classifier)
         except ValueError:
-            raise ValueError('Cannot obtain a safe consensus for this molecule')
+            raise ValueError(
+                'Cannot obtain a safe consensus for this molecule')
 
-
-        # find all locations where a C/G was converted into A/T, now strand specific
+        # find all locations where a C/G was converted into A/T, now strand
+        # specific
         converted_bases = 0
         conversions = {}
         for location, reference_base in aligned_reference_positions.items():
-            if not location in consensus:
+            if location not in consensus:
                 continue
-            if (not self.strand and reference_base=='C' and consensus[location] in 'CT') or \
-                self.strand and reference_base=='G' and consensus[location] in 'AG':
-                conversions[location] = {'ref':reference_base, 'obs':consensus[location]}
+            if (not self.strand and reference_base == 'C' and consensus[location] in 'CT') or \
+                    self.strand and reference_base == 'G' and consensus[location] in 'AG':
+                conversions[location] = {
+                    'ref': reference_base, 'obs': consensus[location]}
                 if consensus[location] in 'TA':
-                    converted_bases+=1
+                    converted_bases += 1
 
         # obtain the context of the conversions:
-        conversion_contexts  ={
-                location:
-                {'consensus': consensus[location],
-                 'reference_base':conversions[location]['ref'],
-                 'context':self.taps.position_to_context(
-                        *location,
-                        observed_base = observations['obs'],
-                        strand = self.strand)[1]}
+        conversion_contexts = {
+            location:
+            {'consensus': consensus[location],
+             'reference_base': conversions[location]['ref'],
+             'context': self.taps.position_to_context(
+                *location,
+                observed_base=observations['obs'],
+                strand=self.strand)[1]}
             for location, observations in conversions.items()}
 
         # Write bismark tags:
         self.set_methylation_call_tags(conversion_contexts)
 
-class TAPSNlaIIIMolecule(NlaIIIMolecule,TAPSMolecule):
+
+class TAPSNlaIIIMolecule(NlaIIIMolecule, TAPSMolecule):
     """Molecule class for combined TAPS and NLAIII """
+
     def __init__(self, fragments=None, taps=None, **kwargs):
         NlaIIIMolecule.__init__(self, fragments, **kwargs)
         TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
@@ -225,28 +237,34 @@ class TAPSNlaIIIMolecule(NlaIIIMolecule,TAPSMolecule):
         NlaIIIMolecule.write_tags(self)
         TAPSMolecule.write_tags(self)
 
-    def is_valid(self,set_rejection_reasons=False):
-        return NlaIIIMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons) and \
-               TAPSMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons)
+    def is_valid(self, set_rejection_reasons=False):
+        return NlaIIIMolecule.is_valid(
+            self, set_rejection_reasons=set_rejection_reasons) and TAPSMolecule.is_valid(
+            self, set_rejection_reasons=set_rejection_reasons)
 
 
-class AnnotatedTAPSNlaIIIMolecule(AnnotatedNLAIIIMolecule,TAPSMolecule):
+class AnnotatedTAPSNlaIIIMolecule(AnnotatedNLAIIIMolecule, TAPSMolecule):
     """Molecule class for combined TAPS, NLAIII and transcriptome """
+
     def __init__(self, fragments=None, features=None, taps=None, **kwargs):
         assert features is not None, "Supply features!"
-        AnnotatedNLAIIIMolecule.__init__(self, fragments, features=features, **kwargs)
+        AnnotatedNLAIIIMolecule.__init__(
+            self, fragments, features=features, **kwargs)
         TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
 
     def write_tags(self):
         AnnotatedNLAIIIMolecule.write_tags(self)
         TAPSMolecule.write_tags(self)
 
-    def is_valid(self,set_rejection_reasons=False):
-        return AnnotatedNLAIIIMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons) and \
-               TAPSMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons)
+    def is_valid(self, set_rejection_reasons=False):
+        return AnnotatedNLAIIIMolecule.is_valid(
+            self, set_rejection_reasons=set_rejection_reasons) and TAPSMolecule.is_valid(
+            self, set_rejection_reasons=set_rejection_reasons)
 
-class TAPSCHICMolecule(CHICMolecule,TAPSMolecule):
+
+class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
     """Molecule class for combined TAPS and CHIC """
+
     def __init__(self, fragments=None, taps=None, **kwargs):
         CHICMolecule.__init__(self, fragments, **kwargs)
         TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
@@ -255,22 +273,26 @@ class TAPSCHICMolecule(CHICMolecule,TAPSMolecule):
         CHICMolecule.write_tags(self)
         TAPSMolecule.write_tags(self)
 
-    def is_valid(self,set_rejection_reasons=False):
-        return CHICMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons) and \
-               TAPSMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons)
+    def is_valid(self, set_rejection_reasons=False):
+        return CHICMolecule.is_valid(
+            self, set_rejection_reasons=set_rejection_reasons) and TAPSMolecule.is_valid(
+            self, set_rejection_reasons=set_rejection_reasons)
 
 
-class AnnotatedTAPSCHICMolecule(AnnotatedCHICMolecule,TAPSMolecule):
+class AnnotatedTAPSCHICMolecule(AnnotatedCHICMolecule, TAPSMolecule):
     """Molecule class for combined TAPS, CHIC and transcriptome """
+
     def __init__(self, fragments=None, features=None, taps=None, **kwargs):
         assert features is not None, "Supply features!"
-        AnnotatedCHICMolecule.__init__(self, fragments, features=features, **kwargs)
+        AnnotatedCHICMolecule.__init__(
+            self, fragments, features=features, **kwargs)
         TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
 
     def write_tags(self):
         AnnotatedCHICMolecule.write_tags(self)
         TAPSMolecule.write_tags(self)
 
-    def is_valid(self,set_rejection_reasons=False):
-        return AnnotatedCHICMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons) and \
-               TAPSMolecule.is_valid(self,set_rejection_reasons=set_rejection_reasons)
+    def is_valid(self, set_rejection_reasons=False):
+        return AnnotatedCHICMolecule.is_valid(
+            self, set_rejection_reasons=set_rejection_reasons) and TAPSMolecule.is_valid(
+            self, set_rejection_reasons=set_rejection_reasons)

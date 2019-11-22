@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from singlecellmultiomics.statistic import *
+import pandas as pd
+import matplotlib.pyplot as plt
 import os
 import sys
 import pysam
@@ -20,12 +23,6 @@ import matplotlib
 matplotlib.rcParams['figure.dpi'] = 160
 matplotlib.use('Agg')
 
-import matplotlib.pyplot as plt
-import pandas as pd
-from singlecellmultiomics.statistic import *
-
-
-
 
 def select_bam_file(lookup):
     for l in lookup:
@@ -33,9 +30,10 @@ def select_bam_file(lookup):
             return l
     return None
 
+
 def select_fastq_file(lookup):
     for paths in lookup:
-        if type(paths)==tuple:
+        if isinstance(paths, tuple):
             for path in paths:
                 if os.path.exists(path):
                     return paths
@@ -43,46 +41,57 @@ def select_fastq_file(lookup):
             return (paths,)
     return None
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
-     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-     description='Obtain statistics from your libraries')
-    argparser.add_argument('libraries',  type=str, nargs='*', help = "either a library structured folder, or the tagged BAM file")
-    argparser.add_argument('-t',  type=str, default = 'all-stats',
-    help = "type of staistics to produce. options are \
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description='Obtain statistics from your libraries')
+    argparser.add_argument(
+        'libraries',
+        type=str,
+        nargs='*',
+        help="either a library structured folder, or the tagged BAM file")
+    argparser.add_argument('-t', type=str, default='all-stats',
+                           help="type of staistics to produce. options are \
             'demult-stats', 'meth-stats', 'chic-stats' and 'all-stats'")
-    argparser.add_argument('-o',  type=str, help= "output file prefix")
-    argparser.add_argument('--plotsOnly',  action='store_true', help= "only make plots")
-    argparser.add_argument('-head',  type=int)
-    argparser.add_argument('-tagged_bam',  type=str, help='Alias of subpath to tagged bam file. For example /tagged/sorted.bam')
-    argparser.add_argument('--v',  action='store_true')
-    argparser.add_argument('--nort',  action='store_true')
+    argparser.add_argument('-o', type=str, help="output file prefix")
+    argparser.add_argument(
+        '--plotsOnly',
+        action='store_true',
+        help="only make plots")
+    argparser.add_argument('-head', type=int)
+    argparser.add_argument(
+        '-tagged_bam',
+        type=str,
+        help='Alias of subpath to tagged bam file. For example /tagged/sorted.bam')
+    argparser.add_argument('--v', action='store_true')
+    argparser.add_argument('--nort', action='store_true')
     args = argparser.parse_args()
 
     for library in args.libraries:
         library_name = library
         if library.endswith('.bam'):
             # the library is a bam file..
-            bamFile=os.path.abspath( library)
-            library= os.path.dirname(os.path.abspath( bamFile) )
-            library_name = os.path.basename( os.path.abspath( bamFile) )
+            bamFile = os.path.abspath(library)
+            library = os.path.dirname(os.path.abspath(bamFile))
+            library_name = os.path.basename(os.path.abspath(bamFile))
             print("Bam file was supplied:")
             print(bamFile)
         else:
-            bamFile=None
-        rc = ReadCount(args) # Is also mappability
+            bamFile = None
+        rc = ReadCount(args)  # Is also mappability
 
         statistics = [
-        rc,
-        FragmentSizeHistogram(args),
-        RejectionReasonHistogram(args),
-        MappingQualityHistogram(args),
-        OversequencingHistogram(args)
+            rc,
+            FragmentSizeHistogram(args),
+            RejectionReasonHistogram(args),
+            MappingQualityHistogram(args),
+            OversequencingHistogram(args)
         ]
         if(args.t in ['meth-stats', 'all-stats']):
             statistics.extend([
-            MethylationContextHistogram(args),
-            ConversionMatrix(args)
+                MethylationContextHistogram(args),
+                ConversionMatrix(args)
             ])
 
         if(args.t in ['chic-stats', 'all-stats']):
@@ -90,18 +99,20 @@ if __name__=='__main__':
 
         if(args.t in ['demult-stats', 'all-stats']):
             statistics.extend([
-            TrimmingStats(args),
-            AlleleHistogram(args),
-            DataTypeHistogram(args),
-            TagHistogram(args),
-            PlateStatistic(args)
+                TrimmingStats(args),
+                AlleleHistogram(args),
+                DataTypeHistogram(args),
+                TagHistogram(args),
+                PlateStatistic(args)
             ])
 
         demuxFastqFilesLookup = [
-            (f'{library}/demultiplexedR1.fastq.gz', f'{library}/demultiplexedR2.fastq.gz'),
-            (f'{library}/demultiplexedR1_val_1.fq.gz', f'{library}/demultiplexedR2_val_2.fq.gz'),
-            (f'{library}/demultiplexedR1_val_1.fq', f'{library}/demultiplexedR2_val_2.fq')
-        ]
+            (f'{library}/demultiplexedR1.fastq.gz',
+             f'{library}/demultiplexedR2.fastq.gz'),
+            (f'{library}/demultiplexedR1_val_1.fq.gz',
+             f'{library}/demultiplexedR2_val_2.fq.gz'),
+            (f'{library}/demultiplexedR1_val_1.fq',
+             f'{library}/demultiplexedR2_val_2.fq')]
 
         rejectFilesLookup = [
             (f'{library}/rejectsR1.fastq.gz', f'{library}/rejectsR2.fastq.gz'),
@@ -116,11 +127,10 @@ if __name__=='__main__':
             f'{library}/tagged/resorted.featureCounts.bam',
             f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam',
             f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.bam',
-            f'{library}/tagged/sorted.bam'
-        ]
+            f'{library}/tagged/sorted.bam']
         if args.tagged_bam:
-            taggedFilesLookup = [library+'/'+args.tagged_bam] + taggedFilesLookup
-
+            taggedFilesLookup = [
+                library + '/' + args.tagged_bam] + taggedFilesLookup
 
         if 'cluster' in library:
             continue
@@ -128,7 +138,6 @@ if __name__=='__main__':
         # Check if the bam file is present
         if bamFile is None:
             bamFile = select_bam_file(taggedFilesLookup)
-
 
         demuxFastqFiles = select_fastq_file(demuxFastqFilesLookup)
         rejectFastqFiles = select_fastq_file(rejectFilesLookup)
@@ -139,56 +148,57 @@ if __name__=='__main__':
         print(bamFile)
 
         demuxReads = None
-        rejectedReads=None
+        rejectedReads = None
         if demuxFastqFiles is not None:
             firstMate = demuxFastqFiles[0]
             print(f'\tDemuxed > {firstMate}')
             if firstMate.endswith('.gz'):
-                demuxReads = pyutils.wccountgz(firstMate)/4
+                demuxReads = pyutils.wccountgz(firstMate) / 4
             else:
-                demuxReads = pyutils.wccount(firstMate)/4
+                demuxReads = pyutils.wccount(firstMate) / 4
 
         if rejectFastqFiles is not None:
             firstMate = rejectFastqFiles[0]
             print(f'\tRejects > {firstMate}')
             if firstMate.endswith('.gz'):
-                rejectedReads = pyutils.wccountgz(firstMate)/4
+                rejectedReads = pyutils.wccountgz(firstMate) / 4
             else:
-                rejectedReads = pyutils.wccount(firstMate)/4
+                rejectedReads = pyutils.wccount(firstMate) / 4
 
         if demuxReads is not None:
             rc.setRawDemuxCount(demuxReads, paired=True)
 
             if rejectedReads is not None:
-                rc.setRawReadCount(rejectedReads+demuxReads, paired=True)
+                rc.setRawReadCount(rejectedReads + demuxReads, paired=True)
 
         if bamFile is not None and os.path.exists(bamFile):
             print(f'\tTagged > {bamFile}')
             with pysam.AlignmentFile(bamFile) as f:
-                for i,read in enumerate(f):
+                for i, read in enumerate(f):
                     for statistic in statistics:
                         statistic.processRead(read)
-                    if args.head is not None and i>=(args.head-1):
+                    if args.head is not None and i >= (args.head - 1):
                         break
         else:
-            print(f'Did not find a bam file at {bamFile}' )
+            print(f'Did not find a bam file at {bamFile}')
 
         statDict = {}
 
-        if os.path.exists(f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam'):
+        if os.path.exists(
+                f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam'):
             cmd = f'samtools view {bamFile} -F 4 -f 64 | cut -f 1 | sort | uniq | wc -l'
             out = subprocess.Popen(cmd,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT,
-                                 shell=True
-                                 ).communicate()[0]
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   shell=True
+                                   ).communicate()[0]
             read1mapped = int(out.partition(b' ')[0])
             cmd = f'samtools view {bamFile} -F 4 -f 128 | cut -f 1 | sort | uniq | wc -l'
             out = subprocess.Popen(cmd,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT,
-                                 shell=True
-                                 ).communicate()[0]
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   shell=True
+                                   ).communicate()[0]
             read2mapped = int(out.partition(b' ')[0])
 
             rc.totalMappedReads['R1'] = read1mapped
@@ -196,24 +206,22 @@ if __name__=='__main__':
             # Deduplicated reads have RC:i:1 set, -f 64 selects for R2
             cmd = f'samtools view {bamFile} -F 4 -f 64 | grep RC:i:1 | cut -f 1 | sort | uniq | wc -l'
             out = subprocess.Popen(cmd,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT,
-                                 shell=True
-                                 ).communicate()[0]
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   shell=True
+                                   ).communicate()[0]
             read1mappeddedup = int(out.partition(b' ')[0])
             # Deduplicated reads have RC:i:1 set, -f 128 selects for R2
             cmd = f'samtools view {bamFile} -F 4 -f 128 | grep RC:i:1 |  cut -f 1 | sort | uniq | wc -l'
             out = subprocess.Popen(cmd,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT,
-                                 shell=True
-                                 ).communicate()[0]
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT,
+                                   shell=True
+                                   ).communicate()[0]
             read2mappeddedup = int(out.partition(b' ')[0])
 
             rc.totalDedupReads['R1'] = read1mappeddedup
             rc.totalDedupReads['R2'] = read2mappeddedup
-
-
 
         for statistic in statistics:
             try:
@@ -235,16 +243,17 @@ if __name__=='__main__':
             table_dir = f'{args.o}/tables'
             statFile = f'{args.o}/statistics.pickle.gz'
 
-
-
         if not os.path.exists(plot_dir):
             os.makedirs(plot_dir)
         for statistic in statistics:
             if not hasattr(statistic, 'plot'):
-                print(f'Not making a plot for {statistic.__class__.__name__} as no plot method is defined')
+                print(
+                    f'Not making a plot for {statistic.__class__.__name__} as no plot method is defined')
                 continue
             try:
-                statistic.plot(f'{plot_dir}/{statistic.__class__.__name__}.png', title=library_name)
+                statistic.plot(
+                    f'{plot_dir}/{statistic.__class__.__name__}.png',
+                    title=library_name)
             except Exception as e:
                 if args.v:
                     import traceback
@@ -252,10 +261,10 @@ if __name__=='__main__':
 
         # Make tables:
         if not args.plotsOnly:
-            with gzip.open(statFile,'wb') as f:
-                    pickle.dump(statDict, f)
+            with gzip.open(statFile, 'wb') as f:
+                pickle.dump(statDict, f)
             if os.path.exists(statFile):
-                with gzip.open(statFile,'rb') as f:
+                with gzip.open(statFile, 'rb') as f:
                     try:
                         statDict.update(pickle.load(f))
                     except Exception as e:
@@ -265,16 +274,18 @@ if __name__=='__main__':
                 os.makedirs(table_dir)
             for statistic in statistics:
                 if not hasattr(statistic, 'to_csv'):
-                    print(f'Not making a table for {statistic.__class__.__name__} as to_csv method is not defined')
+                    print(
+                        f'Not making a table for {statistic.__class__.__name__} as to_csv method is not defined')
                     continue
                 try:
-                    statistic.to_csv(f'{table_dir}/{statistic.__class__.__name__}_{library_name}.csv')
+                    statistic.to_csv(
+                        f'{table_dir}/{statistic.__class__.__name__}_{library_name}.csv')
                 except Exception as e:
                     if args.v:
                         import traceback
                         traceback.print_exc()
 
-
         # Make RT reaction plot:
         if not args.nort:
-            os.system(f"bamPlotRTstats.py {bamFile} -head 2_000_000 --notstrict -o {plot_dir}/RT_")
+            os.system(
+                f"bamPlotRTstats.py {bamFile} -head 2_000_000 --notstrict -o {plot_dir}/RT_")

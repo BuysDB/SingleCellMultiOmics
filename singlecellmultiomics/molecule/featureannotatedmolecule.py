@@ -7,7 +7,13 @@ class FeatureAnnotatedMolecule(Molecule):
     """Molecule which is annotated with features (genes/exons/introns, .. )
     """
 
-    def __init__(self, fragment, features, stranded=None, auto_set_intron_exon_features=False, **kwargs):
+    def __init__(
+            self,
+            fragment,
+            features,
+            stranded=None,
+            auto_set_intron_exon_features=False,
+            **kwargs):
         """
             Args:
                 fragments (singlecellmultiomics.fragment.Fragment): Fragments to associate to the molecule
@@ -17,9 +23,9 @@ class FeatureAnnotatedMolecule(Molecule):
                 **kwargs: extra args
 
         """
-        Molecule.__init__(self,fragment,**kwargs)
+        Molecule.__init__(self, fragment, **kwargs)
         self.features = features
-        self.hits = collections.defaultdict(set) #feature -> hit_bases
+        self.hits = collections.defaultdict(set)  # feature -> hit_bases
         self.stranded = stranded
         self.is_annotated = False
 
@@ -27,15 +33,15 @@ class FeatureAnnotatedMolecule(Molecule):
         self.genes = set()
         self.introns = set()
         self.exons = set()
-        self.exon_hit_gene_names = set() # readable names
-        self.is_spliced=None
+        self.exon_hit_gene_names = set()  # readable names
+        self.is_spliced = None
 
         if auto_set_intron_exon_features:
             self.set_intron_exon_features()
 
     def set_spliced(self, is_spliced):
         """ Set wether the transcript is spliced, False has priority over True """
-        if self.is_spliced == True and not is_spliced:
+        if self.is_spliced and not is_spliced:
             # has already been set
             self.is_spliced = False
         else:
@@ -53,32 +59,34 @@ class FeatureAnnotatedMolecule(Molecule):
         intron_hits = collections.defaultdict(set)
 
         for hit, locations in self.hits.items():
-            if type(hit) is not tuple:
+            if not isinstance(hit, tuple):
                 continue
             meta = dict(list(hit))
-            if not 'gene_id' in meta:
+            if 'gene_id' not in meta:
                 continue
-            if meta.get('type')=='exon':
-                if not 'transcript_id' in meta:
+            if meta.get('type') == 'exon':
+                if 'transcript_id' not in meta:
                     continue
                 self.genes.add(meta['gene_id'])
                 self.exons.add(meta['exon_id'])
-                if not 'transcript_id' in meta:
-                    raise ValueError("Please use an Intron GTF file generated using -id 'transcript_id'")
-                exon_hits[(meta['gene_id'],meta['transcript_id'])].add(meta['exon_id'])
+                if 'transcript_id' not in meta:
+                    raise ValueError(
+                        "Please use an Intron GTF file generated using -id 'transcript_id'")
+                exon_hits[(meta['gene_id'], meta['transcript_id'])].add(
+                    meta['exon_id'])
                 if 'gene_name' in meta:
                     self.exon_hit_gene_names.add(meta['gene_name'])
-            elif meta.get('type')=='intron':
+            elif meta.get('type') == 'intron':
                 self.genes.add(meta['gene_id'])
                 self.introns.add(meta['gene_id'])
-
 
         # Find junctions and add all annotations to annotation sets
         debug = []
 
         for (gene, transcript), exons_overlapping in exon_hits.items():
-            # If two exons are detected from the same gene we detected a junction:
-            if len(exons_overlapping)>1:
+            # If two exons are detected from the same gene we detected a
+            # junction:
+            if len(exons_overlapping) > 1:
                 self.junctions.add(gene)
 
                 # We found two exons and an intron:
@@ -87,10 +95,13 @@ class FeatureAnnotatedMolecule(Molecule):
                 else:
                     self.set_spliced(True)
 
-            debug.append( f'{gene}_{transcript}:' + ','.join(list(exons_overlapping)) )
+            debug.append(
+                f'{gene}_{transcript}:' +
+                ','.join(
+                    list(exons_overlapping)))
 
         # Write exon dictionary:
-        self.set_meta('DB', ';'.join(debug) )
+        self.set_meta('DB', ';'.join(debug))
 
     def get_hit_df(self):
         """Obtain dataframe with hits
@@ -103,11 +114,14 @@ class FeatureAnnotatedMolecule(Molecule):
         d = {}
         tabulated_hits = []
         for hit, locations in self.hits.items():
-            if type(hit) is not tuple:
+            if not isinstance(hit, tuple):
                 continue
             meta = dict(list(hit))
             for location in locations:
-                location_dict = {'chromosome':location[0], 'start':location[1][0], 'end':location[1][1]}
+                location_dict = {
+                    'chromosome': location[0],
+                    'start': location[1][0],
+                    'end': location[1][1]}
                 location_dict.update(meta)
                 tabulated_hits.append(location_dict)
 
@@ -116,28 +130,30 @@ class FeatureAnnotatedMolecule(Molecule):
     def write_tags(self):
         Molecule.write_tags(self)
 
-        if len(self.exons)>0:
-            self.set_meta('EX',  ','.join(sorted([ str(x) for x in self.exons] )))
-        if len(self.introns)>0:
-            self.set_meta('IN',  ','.join(sorted([ str(x) for x in self.introns] )))
-        if len(self.genes)>0:
-            self.set_meta('GN',  ','.join(sorted([ str(x) for x in self.genes] )))
-        if  len(self.junctions)>0:
-            self.set_meta('JN',  ','.join(sorted([ str(x) for x in self.junctions] )))
+        if len(self.exons) > 0:
+            self.set_meta('EX', ','.join(sorted([str(x) for x in self.exons])))
+        if len(self.introns) > 0:
+            self.set_meta('IN', ','.join(
+                sorted([str(x) for x in self.introns])))
+        if len(self.genes) > 0:
+            self.set_meta('GN', ','.join(sorted([str(x) for x in self.genes])))
+        if len(self.junctions) > 0:
+            self.set_meta('JN', ','.join(
+                sorted([str(x) for x in self.junctions])))
             # Is transcriptome
-            self.set_meta('IT',1)
-        elif len(self.genes)>0:
+            self.set_meta('IT', 1)
+        elif len(self.genes) > 0:
             # Maps to gene but not junction
-            self.set_meta('IT',0.5)
+            self.set_meta('IT', 0.5)
         else:
             # Doesn't map to gene
-            self.set_meta('IT',0)
+            self.set_meta('IT', 0)
         if self.is_spliced is True:
-            self.set_meta('SP',True)
+            self.set_meta('SP', True)
         elif self.is_spliced is False:
-            self.set_meta('SP',False)
+            self.set_meta('SP', False)
         if len(self.exon_hit_gene_names):
-            self.set_meta('gn',';'.join(list(self.exon_hit_gene_names)))
+            self.set_meta('gn', ';'.join(list(self.exon_hit_gene_names)))
 
     def annotate(self, method=0):
         """
@@ -145,17 +161,21 @@ class FeatureAnnotatedMolecule(Molecule):
                 method (int) : 0, obtain blocks and then obtain features. 1, try to obtain features for every aligned base
 
         """
-        # When self.stranded is None, set to None strand. If self.stranded is True reverse the strand, otherwise copy the strand
-        strand = None if self.stranded is None else '+-'[( not self.strand if self.stranded else self.strand )]
+        # When self.stranded is None, set to None strand. If self.stranded is
+        # True reverse the strand, otherwise copy the strand
+        strand = None if self.stranded is None else '+-'[
+            (not self.strand if self.stranded else self.strand)]
         self.is_annotated = True
-        if method==0:
+        if method == 0:
 
             # Obtain all blocks:
             try:
-                for start,end in self.get_aligned_blocks():
-                    for hit in self.features.findFeaturesBetween(chromosome =self.chromosome, sampleStart=start, sampleEnd=end, strand=strand):
+                for start, end in self.get_aligned_blocks():
+                    for hit in self.features.findFeaturesBetween(
+                            chromosome=self.chromosome, sampleStart=start, sampleEnd=end, strand=strand):
                         hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
-                        self.hits[hit_ids].add((self.chromosome,(hit_start,hit_end)))
+                        self.hits[hit_ids].add(
+                            (self.chromosome, (hit_start, hit_end)))
 
             except TypeError:
                 # This happens when no reads map
@@ -163,7 +183,9 @@ class FeatureAnnotatedMolecule(Molecule):
         else:
 
             for read in self.iter_reads():
-                for q_pos, ref_pos in read.get_aligned_pairs(matches_only=True, with_seq=False):
-                    for hit in self.features.findFeaturesAt(chromosome=read.reference_name,lookupCoordinate=ref_pos,strand=strand):
+                for q_pos, ref_pos in read.get_aligned_pairs(
+                        matches_only=True, with_seq=False):
+                    for hit in self.features.findFeaturesAt(
+                            chromosome=read.reference_name, lookupCoordinate=ref_pos, strand=strand):
                         hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
-                        self.hits[hit_ids].add((read.reference_name,ref_pos))
+                        self.hits[hit_ids].add((read.reference_name, ref_pos))

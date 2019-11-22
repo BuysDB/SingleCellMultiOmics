@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-def style_str(s, color='black',weight=300):
+
+def style_str(s, color='black', weight=300):
     """
     Style the supplied string with HTML tags
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from matplotlib.ticker import MaxNLocator
+import matplotlib.pyplot as plt
 from .statistic import StatisticHistogram
 import singlecellmultiomics.pyutils as pyutils
 import collections
@@ -7,19 +9,19 @@ import collections
 import matplotlib
 matplotlib.rcParams['figure.dpi'] = 160
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
+
 
 class OversequencingHistogram(StatisticHistogram):
-    def __init__(self,args):
+    def __init__(self, args):
         StatisticHistogram.__init__(self, args)
         self.histogram = collections.Counter()
-    def processRead(self,read):
+
+    def processRead(self, read):
         if read.has_tag('RC'):
             overseq = read.get_tag('RC')
-            self.histogram[overseq]+=1
-            if overseq>1:
-                self.histogram[overseq-1]-=1
+            self.histogram[overseq] += 1
+            if overseq > 1:
+                self.histogram[overseq - 1] -= 1
 
             # Compatibility with picard --TAG_DUPLICATE_SET_MEMBERS
             """
@@ -27,17 +29,18 @@ class OversequencingHistogram(StatisticHistogram):
             """
         elif read.has_tag('PG'):
             if read.has_tag('DS') and not read.is_duplicate:
-                self.histogram[read.get_tag('DS')]+=1
+                self.histogram[read.get_tag('DS')] += 1
             else:
-                self.histogram[1]+=1
+                self.histogram[1] += 1
+
     def __repr__(self):
         return f'The average oversequencing is {pyutils.meanOfCounter(self.histogram)}, SD:{pyutils.varianceOfCounter(self.histogram)}'
 
     def plot(self, target_path, title=None):
         fig, ax = plt.subplots()
-        overseqRange = list(range(1,20))
+        overseqRange = list(range(1, 20))
 
-        ax.scatter( overseqRange, [self.histogram[x] for x in overseqRange])
+        ax.scatter(overseqRange, [self.histogram[x] for x in overseqRange])
         if title is not None:
             ax.set_title(title)
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -47,8 +50,8 @@ class OversequencingHistogram(StatisticHistogram):
         plt.savefig(target_path)
 
         ax = plt.gca()
-        ax.set_ylim(1,None)
+        ax.set_ylim(1, None)
         ax.set_yscale('log')
-        plt.savefig(target_path.replace('.png','.log.png'))
+        plt.savefig(target_path.replace('.png', '.log.png'))
 
         plt.close()

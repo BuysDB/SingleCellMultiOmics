@@ -7,6 +7,7 @@ from singlecellmultiomics.utils import BlockZip
 import uuid
 import os
 
+
 def verify_and_fix_bam(bam_path):
     """
     Check if the bam file is not truncated and indexed.
@@ -30,23 +31,24 @@ def verify_and_fix_bam(bam_path):
         try:
             if not alignments.check_index():
                 # Try to index the input file..
-                print(f"The bam file {bam_path} does not have an index, attempting an index build ..")
-                index_missing=True
+                print(
+                    f"The bam file {bam_path} does not have an index, attempting an index build ..")
+                index_missing = True
         except Exception as e:
-            index_missing=True
+            index_missing = True
 
         if index_missing:
             pysam.index(bam_path)
 
-
     if index_missing:
         with pysam.AlignmentFile(bam_path, "rb") as alignments:
             if not alignments.check_index():
-                raise ValueError(f'The file {bam_path} is not sorted or damaged in some way')
+                raise ValueError(
+                    f'The file {bam_path} is not sorted or damaged in some way')
 
 
-
-def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=False):
+def get_reference_from_pysam_alignmentFile(
+        pysam_AlignmentFile, ignore_missing=False):
     """Extract path to reference from pysam handle
 
     Args:
@@ -57,36 +59,45 @@ def get_reference_from_pysam_alignmentFile(pysam_AlignmentFile, ignore_missing=F
     """
     try:
         for x in pysam_AlignmentFile.header.as_dict()['PG']:
-            if  x.get('ID')!='bwa':
+            if x.get('ID') != 'bwa':
                 continue
             for argument in x.get('CL').split():
-                if (argument.endswith('.fa') or argument.endswith('.fasta') or argument.endswith('.fasta.gz') or argument.endswith('.fa.gz')) and (ignore_missing or os.path.exists(argument)):
+                if (argument.endswith('.fa') or argument.endswith('.fasta') or argument.endswith(
+                        '.fasta.gz') or argument.endswith('.fa.gz')) and (ignore_missing or os.path.exists(argument)):
                     return argument
     except Exception as e:
         pass
 
 
-def get_reference_path_from_bam(bam, ignore_missing=False ):
-        """Extract path to reference from bam file
+def get_reference_path_from_bam(bam, ignore_missing=False):
+    """Extract path to reference from bam file
 
-        Args:
-            bam(str) or pysam.AlignmentFile : path to bam file
-            ignore_missing(bool) : Check if the file exists, if not return None
-        Returns:
-            path : path to bam file (if exists or ignore_missing is supplied) or None
-        """
-        if type(bam) is str:
-            with pysam.AlignmentFile(bam) as pysam_AlignmentFile_handle:
-                return  get_reference_from_pysam_alignmentFile( pysam_AlignmentFile_handle, ignore_missing=ignore_missing)
-        elif type(bam) is pysam.AlignmentFile:
-            return  get_reference_from_pysam_alignmentFile(bam, ignore_missing=ignore_missing)
+    Args:
+        bam(str) or pysam.AlignmentFile : path to bam file
+        ignore_missing(bool) : Check if the file exists, if not return None
+    Returns:
+        path : path to bam file (if exists or ignore_missing is supplied) or None
+    """
+    if isinstance(bam, str):
+        with pysam.AlignmentFile(bam) as pysam_AlignmentFile_handle:
+            return get_reference_from_pysam_alignmentFile(
+                pysam_AlignmentFile_handle, ignore_missing=ignore_missing)
+    elif isinstance(bam, pysam.AlignmentFile):
+        return get_reference_from_pysam_alignmentFile(
+            bam, ignore_missing=ignore_missing)
 
-        else:
-            raise ValueError('Supply either a path to a bam file or pysam.AlignmentFile object')
+    else:
+        raise ValueError(
+            'Supply either a path to a bam file or pysam.AlignmentFile object')
 
 
 @contextlib.contextmanager
-def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None, local_temp_sort=True):
+def sorted_bam_file(
+        write_path,
+        origin_bam=None,
+        header=None,
+        read_groups=None,
+        local_temp_sort=True):
     """ Get writing handle to a sorted bam file
 
     Args:
@@ -157,9 +168,9 @@ def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None, l
         unsorted_path = f'{write_path}.unsorted'
 
         # Create output folder if it does not exists
-        if not os.path.exists( os.path.dirname(unsorted_path) ):
+        if not os.path.exists(os.path.dirname(unsorted_path)):
             try:
-                os.makedirs(os.path.dirname(unsorted_path),exist_ok=True)
+                os.makedirs(os.path.dirname(unsorted_path), exist_ok=True)
             except Exception as e:
                 raise
 
@@ -169,27 +180,34 @@ def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None, l
             header = origin_bam.header.copy()
         else:
             raise ValueError("Supply a header or origin_bam object")
-        unsorted_alignments = pysam.AlignmentFile(unsorted_path, "wb", header=header)
+        unsorted_alignments = pysam.AlignmentFile(
+            unsorted_path, "wb", header=header)
         yield unsorted_alignments
     except Exception:
         raise
     finally:
         if unsorted_path is None:
-            raise ValueError('Unsorted path is undefined, please verify that the origin bam file is valid.')
+            raise ValueError(
+                'Unsorted path is undefined, please verify that the origin bam file is valid.')
         else:
             unsorted_alignments.close()
         if read_groups is not None:
-            add_readgroups_to_header( unsorted_path, read_groups )
+            add_readgroups_to_header(unsorted_path, read_groups)
 
         # Write, sort and index
-        sort_and_index(unsorted_path,  write_path, remove_unsorted=True, local_temp_sort=local_temp_sort)
+        sort_and_index(
+            unsorted_path,
+            write_path,
+            remove_unsorted=True,
+            local_temp_sort=local_temp_sort)
+
 
 def write_program_tag(input_header,
-    program_name,
-    command_line,
-    description,
-    version
-    ):
+                      program_name,
+                      command_line,
+                      description,
+                      version
+                      ):
     """Write Program Tag to bam file header
     Args:
         input_header  (dict): header to write PG tag to
@@ -203,18 +221,22 @@ def write_program_tag(input_header,
         description (str) : value to write to DS tag
 
     """
-    if not 'PG' in input_header:
+    if 'PG' not in input_header:
         input_header['PG'] = []
 
     input_header['PG'].append({
-        'PN' : program_name,
-        'CL' : command_line,
-        'VN' : version,
-        'DS' : description
+        'PN': program_name,
+        'CL': command_line,
+        'VN': version,
+        'DS': description
     })
 
 
-def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False, local_temp_sort=True):
+def sort_and_index(
+        unsorted_path,
+        sorted_path,
+        remove_unsorted=False,
+        local_temp_sort=True):
     """ Sort and index a bam file
     Args:
         unsorted_path (str) : path to unsorted bam file
@@ -229,18 +251,25 @@ def sort_and_index(unsorted_path, sorted_path, remove_unsorted=False, local_temp
     """
     if local_temp_sort:
 
-        pysam.sort('-o',sorted_path, '-T', f'TMP.{uuid.uuid4()}', unsorted_path,)
+        pysam.sort(
+            '-o',
+            sorted_path,
+            '-T',
+            f'TMP.{uuid.uuid4()}',
+            unsorted_path,
+        )
     else:
         pysam.sort("-o", sorted_path, unsorted_path)
     pysam.index(sorted_path)
     if remove_unsorted:
         os.remove(unsorted_path)
 
+
 class MapabilityReader():
 
     def __init__(self, mapability_safe_file_path):
         self.mapability_safe_file_path = mapability_safe_file_path
-        self.handle =  BlockZip(mapability_safe_file_path, 'r')
+        self.handle = BlockZip(mapability_safe_file_path, 'r')
 
         # Todo: exit statements
 
@@ -254,22 +283,22 @@ class MapabilityReader():
         Returns:
             site_is_mapable (bool) : True when the site is uniquely mapable, False otherwise
         """
-        if self.handle[contig,ds,strand]=='ok':
+        if self.handle[contig, ds, strand] == 'ok':
             return True
         return False
 
 
-def GATK_indel_realign( origin_bam, target_bam,
-    contig, region_start, region_end,
-    known_variants_vcf_path,
-    #realignerTargetCreatorArgs=None,
-    #indelRealignerArgs=None,
-    gatk_path = 'GenomeAnalysisTK.jar',
-    interval_path=None,
-    java_cmd = 'java -jar -Xmx8G -Djava.io.tmpdir=./gatk_tmp',
-    reference = None,
-    interval_write_path=None
-     ):
+def GATK_indel_realign(origin_bam, target_bam,
+                       contig, region_start, region_end,
+                       known_variants_vcf_path,
+                       # realignerTargetCreatorArgs=None,
+                       # indelRealignerArgs=None,
+                       gatk_path='GenomeAnalysisTK.jar',
+                       interval_path=None,
+                       java_cmd='java -jar -Xmx8G -Djava.io.tmpdir=./gatk_tmp',
+                       reference=None,
+                       interval_write_path=None
+                       ):
     """
     Re-align a specified region in a bam file using GenomeAnalysisTK
 
@@ -301,9 +330,8 @@ def GATK_indel_realign( origin_bam, target_bam,
         except Exception as e:
             pass
 
-
     # Detect reference from bam file
-    if reference  is None:
+    if reference is None:
         reference = get_reference_path_from_bam(origin_bam)
     if reference is None:
         raise ValueError('Supply a path to a reference Fasta file (reference)')
@@ -337,8 +365,11 @@ def GATK_indel_realign( origin_bam, target_bam,
     return target_bam
 
 
-
-def add_readgroups_to_header( origin_bam_path, readgroups_in, target_bam_path=None, header_write_mode='auto' ):
+def add_readgroups_to_header(
+        origin_bam_path,
+        readgroups_in,
+        target_bam_path=None,
+        header_write_mode='auto'):
     """ Add the readgroups in the set readgroups to the header of origin_bam_path.
 
     This function first loads the header of the origin to memory.
@@ -363,38 +394,38 @@ def add_readgroups_to_header( origin_bam_path, readgroups_in, target_bam_path=No
         target_bam_path = origin_bam_path
 
     # Create a read group dictionary
-    if type(readgroups_in) is set:
-        readGroupsDict={}
+    if isinstance(readgroups_in, set):
+        readGroupsDict = {}
         for readGroup in readgroups_in:
-            flowCell,lane,sampleLib = readGroup.split('.')
+            flowCell, lane, sampleLib = readGroup.split('.')
             try:
-                library,_ = sampleLib.rsplit('_',1)
+                library, _ = sampleLib.rsplit('_', 1)
             except Exception as e:
                 # the library is not part of the sample name:
                 library = 'undefinedLibrary'
             readGroupsDict[readGroup] = {
-                    'ID':readGroup,
-                    'LB':library,
-                    'PL':'ILLUMINA',
-                    'SM':sampleLib,
-                    'PU':readGroup}
-    elif type(readgroups_in) is dict:
+                'ID': readGroup,
+                'LB': library,
+                'PL': 'ILLUMINA',
+                'SM': sampleLib,
+                'PU': readGroup}
+    elif isinstance(readgroups_in, dict):
         readGroupsDict = readgroups_in
     else:
         raise ValueError("supply a set or dict for readgroups_in")
 
     # Write the re-headered bam file to this path
-    complete_temp_path = origin_bam_path.replace('.bam','')+'.rehead.bam'
+    complete_temp_path = origin_bam_path.replace('.bam', '') + '.rehead.bam'
 
-
-    # When header_write_mode is auto, when samtools is available, samtools will be used, otherwise pysam
-    if header_write_mode=='auto':
+    # When header_write_mode is auto, when samtools is available, samtools
+    # will be used, otherwise pysam
+    if header_write_mode == 'auto':
         if which('samtools') is None:
-            header_write_mode='pysam'
+            header_write_mode = 'pysam'
         else:
-            header_write_mode='samtools'
+            header_write_mode = 'samtools'
 
-    if header_write_mode=='pysam':
+    if header_write_mode == 'pysam':
         with pysam.AlignmentFile(origin_bam_path, "rb") as origin:
             header = origin.header.copy()
             hCopy = header.to_dict()
@@ -403,20 +434,21 @@ def add_readgroups_to_header( origin_bam_path, readgroups_in, target_bam_path=No
                 for read in origin:
                     out.write(read)
 
-        os.rename(complete_temp_path,target_bam_path)
+        os.rename(complete_temp_path, target_bam_path)
 
-    elif header_write_mode=='samtools':
+    elif header_write_mode == 'samtools':
         with pysam.AlignmentFile(origin_bam_path, "rb") as origin:
             header = origin.header.copy()
 
             # Write the new header to this sam file:
-            headerSamFilePath = origin_bam_path.replace('.bam','')+'.header.sam'
+            headerSamFilePath = origin_bam_path.replace(
+                '.bam', '') + '.header.sam'
 
             hCopy = header.to_dict()
             hCopy['RG'] = list(readGroupsDict.values())
 
             # Write the sam file with the complete header:
-            with pysam.AlignmentFile(headerSamFilePath,'w',header=hCopy):
+            with pysam.AlignmentFile(headerSamFilePath, 'w', header=hCopy):
                 pass
 
         # Concatenate and remove origin
@@ -425,4 +457,5 @@ def add_readgroups_to_header( origin_bam_path, readgroups_in, target_bam_path=No
                 """
         os.system(rehead_cmd)
     else:
-        raise ValueError('header_write_mode should be either, auto, pysam or samtools')
+        raise ValueError(
+            'header_write_mode should be either, auto, pysam or samtools')

@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from singlecellmultiomics.statistic import PlateStatistic
+import singlecellmultiomics.modularDemultiplexer
+import math
+import string
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 import os
 import sys
 import pysam
@@ -15,25 +22,20 @@ import matplotlib
 import matplotlib.lines as mlines
 matplotlib.rcParams['figure.dpi'] = 160
 matplotlib.use('Agg')
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-import string
-import math
-import singlecellmultiomics.modularDemultiplexer
 TagDefinitions = singlecellmultiomics.modularDemultiplexer.TagDefinitions
 
 
-from singlecellmultiomics.statistic import PlateStatistic
-
-
-if __name__=='__main__':
+if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
-     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-     description='Visualize single cell statistics on a plate plot')
-    argparser.add_argument('-o',  type=str, help="output plot folder path, every library will be visualised as a separate plate", default='./plots/')
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description='Visualize single cell statistics on a plate plot')
+    argparser.add_argument(
+        '-o',
+        type=str,
+        help="output plot folder path, every library will be visualised as a separate plate",
+        default='./plots/')
 
-    argparser.add_argument('alignmentfiles',  type=str, nargs='*')
+    argparser.add_argument('alignmentfiles', type=str, nargs='*')
     args = argparser.parse_args()
 
     if not os.path.exists(args.o):
@@ -45,4 +47,4 @@ if __name__=='__main__':
             for read in f:
                 ps.processRead(read)
 
-    ps.plot(args.o+'/PS')
+    ps.plot(args.o + '/PS')

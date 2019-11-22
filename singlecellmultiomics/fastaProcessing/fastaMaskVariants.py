@@ -7,18 +7,32 @@ import itertools
 import gzip
 import pandas as pd
 
-if __name__=='__main__':
-    argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""Convert genome FASTA file to convert alternative bases to Ns""")
-    argparser.add_argument('fasta', metavar='fastafile', type=str, help='Fasta file to mask')
-    argparser.add_argument('vcf', metavar='vcffile', type=str, help='VCF file(s) to extract variants from')
-    argparser.add_argument('-o', type=str, default='./masked.fasta.gz', help='output file')
+if __name__ == '__main__':
+    argparser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="""Convert genome FASTA file to convert alternative bases to Ns""")
+    argparser.add_argument(
+        'fasta',
+        metavar='fastafile',
+        type=str,
+        help='Fasta file to mask')
+    argparser.add_argument(
+        'vcf',
+        metavar='vcffile',
+        type=str,
+        help='VCF file(s) to extract variants from')
+    argparser.add_argument(
+        '-o',
+        type=str,
+        default='./masked.fasta.gz',
+        help='output file')
     args = argparser.parse_args()
 
     try:
         faIn = pysam.FastaFile(args.fasta)
     except ValueError as e:
         print('FAI index missing. Now creating...')
-        os.system( f'samtools faidx {args.fasta}' )
+        os.system(f'samtools faidx {args.fasta}')
     except Exception as e:
         raise
 
@@ -27,31 +41,32 @@ if __name__=='__main__':
     except Exception as e:
         raise
 
-    outputHandle = gzip.open(args.o,'wb')
+    outputHandle = gzip.open(args.o, 'wb')
     referenceNames = faIn.references
-    referenceLengths = dict( zip(referenceNames, faIn.lengths))
+    referenceLengths = dict(zip(referenceNames, faIn.lengths))
 
-    #wholeGenome = {
+    # wholeGenome = {
     #    ref:faIn.fetch(ref) for ref in referenceNames
-    #}
+    # }
     warnedMissing = set()
-    totalMasked=0
+    totalMasked = 0
     variants = pysam.VariantFile(args.vcf)
     for chrom in referenceNames:
         try:
-            chrom_seq = bytearray(faIn.fetch(chrom),'ascii' )
+            chrom_seq = bytearray(faIn.fetch(chrom), 'ascii')
             for rec in variants.fetch(chrom):
-                if rec.start>=(referenceLengths[rec.chrom]):
-                    print(f"WARNING record {rec.chrom} {rec.pos} defines a variant outside the supplied fasta file!")
+                if rec.start >= (referenceLengths[rec.chrom]):
+                    print(
+                        f"WARNING record {rec.chrom} {rec.pos} defines a variant outside the supplied fasta file!")
                     continue
 
-                if len(rec.alleles)==1 and len(rec.alleles[0])==1:
-                    chrom_seq[rec.pos-1] = 78 #ord N
-                    totalMasked+=1
-                elif len(rec.alleles[0])==1 and len(rec.alleles[1])==1:
+                if len(rec.alleles) == 1 and len(rec.alleles[0]) == 1:
+                    chrom_seq[rec.pos - 1] = 78  # ord N
+                    totalMasked += 1
+                elif len(rec.alleles[0]) == 1 and len(rec.alleles[1]) == 1:
 
-                    chrom_seq[rec.pos-1] = 78 #ord N
-                    totalMasked+=1
+                    chrom_seq[rec.pos - 1] = 78  # ord N
+                    totalMasked += 1
 
         except ValueError:
             print(f"No variants for {chrom}")

@@ -18,11 +18,10 @@ class Statistic(object):
 
     """
 
-
     def __init__(self, args):
         self.args = args
 
-    def processRead(self,read):
+    def processRead(self, read):
         """
         Update the statistic with information from READ
 
@@ -39,8 +38,9 @@ class Statistic(object):
     def __repr__(self):
         return 'dummy'
 
+
 class StatisticHistogram(Statistic):
-    def __init__(self,args):
+    def __init__(self, args):
         Statistic.__init__(self, args)
         self.histogram = collections.Counter()
 
@@ -51,4 +51,4 @@ class StatisticHistogram(Statistic):
         return iter(self.histogram.most_common())
 
     def to_csv(self, path):
-        pd.DataFrame({__class__.__name__:self.histogram}).to_csv(path)
+        pd.DataFrame({__class__.__name__: self.histogram}).to_csv(path)

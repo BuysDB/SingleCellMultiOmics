@@ -3,6 +3,7 @@
 from Bio import bgzf
 import os
 
+
 class BlockZip():
 
     def __init__(self, path, mode='r'):
@@ -19,15 +20,16 @@ class BlockZip():
         self.index = {}
 
         if self.mode == 'w':
-            self.bgzf_handle = bgzf.BgzfWriter(self.path,'w')
-            self.index_handle = open(self.index_path,'wt')
-        elif self.mode=='r':
+            self.bgzf_handle = bgzf.BgzfWriter(self.path, 'w')
+            self.index_handle = open(self.index_path, 'wt')
+        elif self.mode == 'r':
             if not os.path.exists(self.path):
                 raise ValueError(f'BGZIP index file missing at {self.path}')
-            self.bgzf_handle = bgzf.BgzfReader(self.path,'rt')
+            self.bgzf_handle = bgzf.BgzfReader(self.path, 'rt')
             if not os.path.exists(self.index_path):
-                raise ValueError(f'BGZIP index file missing at {self.index_path}')
-            self.index_handle = open(self.index_path,'rt')
+                raise ValueError(
+                    f'BGZIP index file missing at {self.index_path}')
+            self.index_handle = open(self.index_path, 'rt')
 
             for line in self.index_handle:
                 contig, start = line.strip().split()
@@ -39,7 +41,7 @@ class BlockZip():
     def __enter__(self):
         return self
 
-    def __exit__(self ,type, value, traceback):
+    def __exit__(self, type, value, traceback):
         self.bgzf_handle.close()
         self.index_handle.close()
 
@@ -54,24 +56,25 @@ class BlockZip():
             strand(bool)
             data(str)
         """
-        assert(self.mode=='w')
-        if self.prev_contig is None or self.prev_contig!=contig:
-            self.index_handle.write(f'{contig}\t{int(self.bgzf_handle.tell())}\n')
+        assert(self.mode == 'w')
+        if self.prev_contig is None or self.prev_contig != contig:
+            self.index_handle.write(
+                f'{contig}\t{int(self.bgzf_handle.tell())}\n')
 
-        self.bgzf_handle.write(f'{contig}\t{position}\t{"+-"[strand]}\t{data}\n')
-        self.prev_contig =  contig
+        self.bgzf_handle.write(
+            f'{contig}\t{position}\t{"+-"[strand]}\t{data}\n')
+        self.prev_contig = contig
 
     def __iter__(self):
         "Get iterator going over all lines in the file"
-        assert(self.mode=='r')
+        assert(self.mode == 'r')
         yield from iter(self.bgzf_handle)
 
-
     def read_file_line(self, line):
-        line_contig, line_pos, line_strand, rest = line.strip().split(None,3)
-        return line_contig, int(line_pos), line_strand=='-', rest
+        line_contig, line_pos, line_strand, rest = line.strip().split(None, 3)
+        return line_contig, int(line_pos), line_strand == '-', rest
 
-    def __getitem__(self,contig_position_strand ):
+    def __getitem__(self, contig_position_strand):
         """Obtain data at the supplied contig position and strand
         Args:
             contig_position_strand : tuple of (
@@ -83,13 +86,13 @@ class BlockZip():
             when no data is available
         """
         contig, position, strand = contig_position_strand
-        if not contig in self.cache and contig in self.index:
+        if contig not in self.cache and contig in self.index:
             self.read_contig_to_cache(contig)
         if contig in self.cache:
             return self.cache[contig].get((position, strand), None)
 
     def read_contig_to_cache(self, contig):
-        if not contig in self.index:
+        if contig not in self.index:
             return
 
         self.cache[contig] = {}
@@ -99,9 +102,10 @@ class BlockZip():
         while True:
             try:
                 line = self.bgzf_handle.readline()
-                if len(line)==0:
+                if len(line) == 0:
                     break
-                line_contig, line_pos, line_strand, rest = self.read_file_line( line )
+                line_contig, line_pos, line_strand, rest = self.read_file_line(
+                    line)
                 #print((line_pos, line_strand,rest))
                 self.cache[contig][(line_pos, line_strand)] = rest
 

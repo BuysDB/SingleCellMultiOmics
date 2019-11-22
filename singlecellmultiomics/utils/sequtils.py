@@ -1,5 +1,6 @@
 import math
 
+
 def phred_to_prob(phred):
     """Convert a phred score (ASCII) or integer to a numeric probability
     Args:
@@ -9,16 +10,20 @@ def phred_to_prob(phred):
     """
 
     try:
-        if type(phred)==int:
-            return math.pow(10,-(phred)/10 )
-        return math.pow(10,-(ord(phred)-33)/10 )
+        if isinstance(phred, int):
+            return math.pow(10, -(phred) / 10)
+        return math.pow(10, -(ord(phred) - 33) / 10)
     except ValueError:
         return 1
 
-def hamming_distance(a,b):
-    return sum((i!=j and i!='N' and j!='N' for i,j in zip(a,b)))
 
-complement_translate = str.maketrans('ATCGNatcgn','TAGCNtagcn')
+def hamming_distance(a, b):
+    return sum((i != j and i != 'N' and j != 'N' for i, j in zip(a, b)))
+
+
+complement_translate = str.maketrans('ATCGNatcgn', 'TAGCNtagcn')
+
+
 def reverse_complement(seq):
     """Obtain reverse complement of seq
 
@@ -26,6 +31,7 @@ def reverse_complement(seq):
         reverse complement (str)
     """
     return seq.translate(complement_translate)[::-1]
+
 
 def complement(seq):
     """Obtain complement of seq
@@ -35,7 +41,8 @@ def complement(seq):
     """
     return seq.translate(complement_translate)
 
-def split_nth(seq,separator,n):
+
+def split_nth(seq, separator, n):
     """
     Split sequence at the n-th occurence of separator
 
@@ -46,11 +53,12 @@ def split_nth(seq,separator,n):
     """
     pos = 0
     for i in range(n):
-        pos = seq.index(separator,pos+1)
+        pos = seq.index(separator, pos + 1)
 
-    return seq[:pos],seq[pos+1:]
+    return seq[:pos], seq[pos + 1:]
 
-def create_MD_tag(reference_seq,query_seq):
+
+def create_MD_tag(reference_seq, query_seq):
     """Create MD tag
     Args:
         reference_seq (str) : reference sequence of alignment
@@ -60,14 +68,14 @@ def create_MD_tag(reference_seq,query_seq):
     """
     no_change = 0
     md = []
-    for ref_base, query_base in zip(reference_seq,query_seq):
-        if ref_base.upper()==query_base:
-            no_change+=1
+    for ref_base, query_base in zip(reference_seq, query_seq):
+        if ref_base.upper() == query_base:
+            no_change += 1
         else:
-            if no_change>0:
+            if no_change > 0:
                 md.append(str(no_change))
             md.append(ref_base)
-            no_change=0
-    if no_change>0:
+            no_change = 0
+    if no_change > 0:
         md.append(str(no_change))
-    return ''.join( md )
+    return ''.join(md)

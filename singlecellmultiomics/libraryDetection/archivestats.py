@@ -12,28 +12,31 @@ import fnmatch
 import os
 from types import SimpleNamespace
 
-if __name__=='__main__':
-    barcode_dir = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
-    index_dir = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/')
+if __name__ == '__main__':
+    barcode_dir = pkg_resources.resource_filename(
+        'singlecellmultiomics', 'modularDemultiplexer/barcodes/')
+    index_dir = pkg_resources.resource_filename(
+        'singlecellmultiomics', 'modularDemultiplexer/indices/')
 
-    barcode_parser = barcodeFileParser.BarcodeParser(hammingDistanceExpansion=0, barcodeDirectory=barcode_dir)
-    index_parser =  barcodeFileParser.BarcodeParser(hammingDistanceExpansion=1, barcodeDirectory=index_dir)
+    barcode_parser = barcodeFileParser.BarcodeParser(
+        hammingDistanceExpansion=0, barcodeDirectory=barcode_dir)
+    index_parser = barcodeFileParser.BarcodeParser(
+        hammingDistanceExpansion=1, barcodeDirectory=index_dir)
 
     dmx = DemultiplexingStrategyLoader(barcodeParser=barcode_parser,
                                        indexParser=index_parser,
                                        indexFileAlias=None)
 
-
-
-    argparser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, description="""Check multiplexability of many fastq files""")
+    argparser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="""Check multiplexability of many fastq files""")
 
     argparser.add_argument('-locations', default='.')
 
     arguments = argparser.parse_args()
     sequencing_dirs = arguments.locations.split(',')
-    dmxes = sorted([x.shortName  for x in dmx.demultiplexingStrategies])
-    print('\t'.join(['RUN','SEQ','AVO','INDEX','LIBRARY']+dmxes))
-
+    dmxes = sorted([x.shortName for x in dmx.demultiplexingStrategies])
+    print('\t'.join(['RUN', 'SEQ', 'AVO', 'INDEX', 'LIBRARY'] + dmxes))
 
     matches = []
     for sdir in sequencing_dirs:
@@ -42,34 +45,38 @@ if __name__=='__main__':
                 try:
                     fp = os.path.join(root, d)
                     #print('   ' + fp)
-                    if len(list(glob.glob(fp+'/*.fastq.gz'))) and d != 'BaseCalls':
+                    if len(list(glob.glob(fp + '/*.fastq.gz'))
+                           ) and d != 'BaseCalls':
                         matches.append(fp)
-                        fastqfiles = list(glob.glob(fp+'/*.fastq.gz'))
+                        fastqfiles = list(glob.glob(fp + '/*.fastq.gz'))
 
-                        args =     SimpleNamespace(replace=None,
-                            fastqfiles= fastqfiles, slib=None, merge='_',
-                                                   dsize=1000,
-                                                   maxAutoDetectMethods=100,
-                                                   minAutoDetectPct=1
-                        )
-                        libraries = sequencingLibraryListing.SequencingLibraryLister(verbose=False).detect(fastqfiles,
-                                                                                              args=args)
+                        args = SimpleNamespace(
+                            replace=None,
+                            fastqfiles=fastqfiles,
+                            slib=None,
+                            merge='_',
+                            dsize=1000,
+                            maxAutoDetectMethods=100,
+                            minAutoDetectPct=1)
+                        libraries = sequencingLibraryListing.SequencingLibraryLister(
+                            verbose=False).detect(fastqfiles, args=args)
                         for library, associated_fastqs_lane in libraries.items():
                             # Obtain run id
                             run_id = '?'
                             seqid = '?'
-                            index='?'
-                            avo_id ='?'
-                            i=None
-                            dpos=None
-                            for lane, reads in  associated_fastqs_lane.items():
-                                parts = os.path.dirname( reads['R1'][0] ).split('/')
+                            index = '?'
+                            avo_id = '?'
+                            i = None
+                            dpos = None
+                            for lane, reads in associated_fastqs_lane.items():
+                                parts = os.path.dirname(
+                                    reads['R1'][0]).split('/')
 
                                 if 'Data' in parts:
                                     try:
                                         i = parts.index('Data')
                                     except Exception as e:
-                                        i=-2
+                                        i = -2
 
                                     try:
                                         dpos = parts.index('BaseCalls')
@@ -77,24 +84,23 @@ if __name__=='__main__':
                                         dpos = -1
                                         pass
 
-
                                     try:
-                                        run_id = parts[i-2]
+                                        run_id = parts[i - 2]
                                     except Exception as e:
                                         pass
 
                                     try:
-                                        seqid = parts[i-1]
+                                        seqid = parts[i - 1]
                                     except Exception as e:
                                         pass
 
                                     try:
-                                        index = parts[dpos+2]
+                                        index = parts[dpos + 2]
                                     except Exception as e:
                                         pass
 
                                     try:
-                                        avo_id = parts[dpos+1]
+                                        avo_id = parts[dpos + 1]
                                     except Exception as e:
                                         pass
 
@@ -112,10 +118,11 @@ if __name__=='__main__':
                                     break
 
                             processedReadPairs, strategyYieldsForAllLibraries = dmx.detectLibYields(
-                                {library:associated_fastqs_lane},
+                                {library: associated_fastqs_lane},
                                 testReads=args.dsize,
                                 maxAutoDetectMethods=args.maxAutoDetectMethods,
                                 minAutoDetectPct=args.minAutoDetectPct)
-                            print('\t'.join( [run_id,seqid,avo_id,index,library] + [ str(strategyYieldsForAllLibraries[library]['strategyYields'].get(x,0)/10) for x in dmxes]))
+                            print('\t'.join([run_id, seqid, avo_id, index, library] + [str(
+                                strategyYieldsForAllLibraries[library]['strategyYields'].get(x, 0) / 10) for x in dmxes]))
                 except Exception as e:
                     print(e)
