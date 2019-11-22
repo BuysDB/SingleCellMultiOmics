@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 import singlecellmultiomics
 from singlecellmultiomics.molecule import MoleculeIterator, NlaIIIMolecule
 from singlecellmultiomics.fragment import NLAIIIFragment
@@ -12,6 +11,7 @@ import seaborn as sns
 import numpy as np
 import re
 import sklearn.ensemble
+import argparse
 
 def bin_to_sort_value(chrom):
     chrom = chrom.replace('chr','')
@@ -34,6 +34,8 @@ if __name__=='main':
     argparser.add_argument('-umis' , required=True)
     argparser.add_argument('-no-change-regions', required=True)
     argparser.add_argument('-ref', required=True)
+    argparser.add_argument('-corrected_umis_path', required=True)
+    argparser.add_argument('-corrected_reads_path', required=True)
     args = argparser.parse_args()
 
     no_change_regions = args.no_change_regions.split(',')
@@ -67,6 +69,11 @@ if __name__=='main':
     regressor = sklearn.ensemble.RandomForestRegressor(n_estimators=100, n_jobs=8)
 
     X = rdf[no_change_regions].T
-    y = df_umis[no_change_regions].sum(0)*2
+    y = df_reads[no_change_regions].sum(0)*2
+
     regressor.fit(X,y)
+    reduced = (df_umis/regressor.predict(rdf.T)).fillna(0) # fill with other value @todo
+    pd.DataFrame(reduced).to_pickle(args.corrected_umis_path)
+
     reduced = (df_umis/regressor.predict(rdf.T)).fillna(0)
+    pd.DataFrame(reduced).to_pickle(args.corrected_reads_path)
