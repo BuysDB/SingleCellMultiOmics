@@ -308,7 +308,11 @@ class Molecule():
         """
         tags_obs = collections.defaultdict(collections.Counter)
         for tag, value in itertools.chain(*[r.tags for r in self.iter_reads()]) :
-            tags_obs[tag][value] += 1
+            try:
+                tags_obs[tag][value] += 1
+            except TypeError:
+                # Dont count arrays for example
+                pass
         return tags_obs
 
     def write_tags_to_psuedoreads(self,reads):
