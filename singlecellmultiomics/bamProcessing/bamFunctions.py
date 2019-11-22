@@ -152,6 +152,7 @@ def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None, l
 
 
     """
+    unsorted_path = None
     try:
         unsorted_path = f'{write_path}.unsorted'
         if header is not None:
@@ -163,6 +164,8 @@ def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None, l
         unsorted_alignments = pysam.AlignmentFile(unsorted_path, "wb", header=header)
         yield unsorted_alignments
     finally:
+        if unsorted_path is None:
+            raise ValueError('Unsorted path is undefined, please verify that the origin bam file is valid.')
         unsorted_alignments.close()
         if read_groups is not None:
             add_readgroups_to_header( unsorted_path, read_groups )
