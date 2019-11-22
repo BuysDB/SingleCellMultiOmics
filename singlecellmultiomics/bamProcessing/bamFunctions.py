@@ -155,6 +155,14 @@ def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None, l
     unsorted_path = None
     try:
         unsorted_path = f'{write_path}.unsorted'
+
+        # Create output folder if it does not exists
+        if not os.path.exists( os.path.dirname(unsorted_path) ):
+            try:
+                os.makedirs(os.path.dirname(unsorted_path),exist_ok=True)
+            except Exception as e:
+                raise
+
         if header is not None:
             pass
         elif origin_bam is not None:
@@ -163,10 +171,13 @@ def sorted_bam_file( write_path,origin_bam=None, header=None,read_groups=None, l
             raise ValueError("Supply a header or origin_bam object")
         unsorted_alignments = pysam.AlignmentFile(unsorted_path, "wb", header=header)
         yield unsorted_alignments
+    except Exception:
+        raise
     finally:
         if unsorted_path is None:
             raise ValueError('Unsorted path is undefined, please verify that the origin bam file is valid.')
-        unsorted_alignments.close()
+        else:
+            unsorted_alignments.close()
         if read_groups is not None:
             add_readgroups_to_header( unsorted_path, read_groups )
 

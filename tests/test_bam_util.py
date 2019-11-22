@@ -8,7 +8,7 @@ import pysamiterators.iterators
 from singlecellmultiomics.bamProcessing import sorted_bam_file,write_program_tag,verify_and_fix_bam
 import os
 import sys
-from shutil import copyfile
+from shutil import copyfile,rmtree
 
 """
 These tests check if the Molecule module is working correctly
@@ -58,6 +58,44 @@ class TestSorted(unittest.TestCase):
             os.remove(write_path)
         except Exception as e:
             pass
+
+    def test_write_to_sorted_non_existing_folder(self):
+        write_folder =  './data/non_yet_existing_folder/'
+        write_path = write_folder + 'write_test.bam'
+        if os.path.exists(write_path):
+            os.remove(write_path)
+
+        rmtree(write_folder, ignore_errors=True)
+
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            with sorted_bam_file(write_path, origin_bam=f) as out:
+                for molecule in singlecellmultiomics.molecule.MoleculeIterator(
+                    alignments=f,
+                    moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
+                    fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                    fragment_class_args={'umi_hamming_distance':0},
+                    pooling_method=0,
+                    yield_invalid=True
+                ):
+                    molecule.write_pysam(out)
+
+        self.assertTrue(os.path.exists(write_path))
+
+        with pysam.AlignmentFile(write_path) as f:
+            i =0
+            # Test if the file has reads.
+            for read in f:
+                if read.is_read1:
+                    i+=1
+            self.assertEqual(i, 293)
+
+        try:
+            os.remove(write_path)
+            os.remove(write_path+'.bai')
+        except Exception as e:
+            pass
+
+        rmtree(write_folder, ignore_errors=True)
 
     def test_write_to_read_grouped_sorted(self):
         write_path = './data/write_test_rg.bam'
