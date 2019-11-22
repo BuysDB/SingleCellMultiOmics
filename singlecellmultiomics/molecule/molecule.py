@@ -843,13 +843,13 @@ class Molecule():
         """Obtain the amount of fragments associated to the molecule"""
         return len(self.fragments)
 
-    def get_consensus_base_frequencies(self):
+    def get_consensus_base_frequencies(self, allow_N=False):
         """Obtain the frequency of bases in the molecule consensus sequence
 
         Returns:
             base_frequencies (collections.Counter) : Counter containing base frequecies, for example: { 'A':10,'T':3, C:4 }
         """
-        return collections.Counter( self.get_consensus().values() )
+        return collections.Counter( self.get_consensus(allow_N=allow_N).values() )
 
     def get_feature_vector(self):
         """ Obtain a feature vector representation of the molecule
@@ -1647,7 +1647,7 @@ class Molecule():
 
         return matches, mismatches
 
-    def get_consensus(self, base_obs=None, classifier=None, store_consensus=True, reuse_cached_consensus=True):
+    def get_consensus(self, base_obs=None, classifier=None, store_consensus=True, reuse_cached_consensus=True, allow_N=False):
         """Get dictionary containing consensus calls in respect to reference.
         By default mayority voting is used to determine the consensus base. If a classifier is supplied the classifier is used to determine the consensus base.
 
@@ -1690,7 +1690,7 @@ class Molecule():
 
         if base_obs is None:
             try:
-                base_obs, ref_bases = self.get_base_observation_dict(return_refbases=True)
+                base_obs, ref_bases = self.get_base_observation_dict(return_refbases=True, allow_N=allow_N)
             except ValueError as e:
                 # We cannot determine safe regions
                 raise
