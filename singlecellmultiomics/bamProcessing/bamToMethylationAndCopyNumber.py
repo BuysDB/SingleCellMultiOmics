@@ -90,7 +90,13 @@ if __name__=='__main__':
 
     if args.cnv:
         print('writing count table')
-        pd.DataFrame( fragment_abundance ).to_pickle(f'{output_alias}.CNV.pickle.gz')
+        pd.DataFrame( fragment_abundance ).to_pickle(f'{output_alias}.CNV_umis.pickle.gz')
+
+        pd.DataFrame( fragment_read_abundance ).to_pickle(f'{output_alias}.CNV_reads.pickle.gz')
+
+
+        
+
 
 
     if args.met:
