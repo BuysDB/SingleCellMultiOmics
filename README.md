@@ -27,7 +27,7 @@ The next step is usually to trim and then map the demultiplexed reads.
 For RNA seq data aligned to a transcriptome the step after this is to run featureCounts.
 
 The mapped reads are encoded in a BAM file. This BAM file still contains the encoded data and this has to be decoded in order to get a useful BAM file.
-universalBamTagger.py
+`bamtagmultiome.py`
 1) Recodes the original read names and extracts all information previously encoded by the demultiplexer.
 2) Adds allele information. (A VCF file is required for this)
 3) Supports multiple protocols: 
@@ -59,13 +59,13 @@ demux.py -si GTTTGA *.gz --y --hdi 1
 ### scCHIC
 For every fragment in input.bam find scCHIC seq fragments and deduplicate these. Fragments with the same cell barcode, umi, library and strand and starting within a range of 5 bp from each other are assigned as duplicate. The mnase cut site location is expected to be between the first base (Usually an A) this A is part of the sequencing adapter, and the second base (Usually a T). The cut site location is recorded into the DS tag. When alleles are specified using -alleles, the molecule assignment is split up by allele, this means that if two fragments map to the same location and share the same umi, but contain SNPs which indicate differing alleles, the reads are not assigned to the same molecule. For every fragment the ligation sequence is recorded into the RZ tag.
 ```
-universalBamTagger.py --chic --ftag -moleculeRadius 5  -o tagged.bam input.bam
+bamtagmultiome.py input.bam -method chic -o tagged.bam 
 ```
 [Complete scCHIC data processing instructions from FastQ to count table here](https://github.com/BuysDB/SingleCellMultiOmics/wiki/scCHIC-data-processing)
 ### NlaIII
 For every fragment in input.bam find NLAIII seq fragments and deduplicate these. Fragments with the same cell barcode, umi, library and strand are assigned as duplicate. The NlaIII cut site location is recorded into the DS tag. When alleles are specified using -alleles, the molecule assignment is split up by allele, this means that if two fragments map to the same location and share the same UMI, but contain SNPs which indicate differing alleles, the reads are not assigned to the same molecule. For every fragment the sequenced part of the NlaIII cut site sequence is recorded into the RZ tag, this is usually CATG, but is allowed to be shifted 1 base to ATG. In the NlaIII protocol a reverse transcription (RT) is used, generally capturing more reverse transcription reactions will yield a more accurate molecule consensus sequence. For every fragment which support the molecule the reverse transcription reaction is recorded by storing the location of the random primer used for RT and the sequence of the random primer.
 ```
-universalBamTagger.py --nla --ftag  -o tagged.bam input.bam
+bamtagmultiome.py input.bam -method nla -o tagged.bam 
  ```
  [Complete NlaIII data processing instructions from FastQ to count table here](https://github.com/BuysDB/SingleCellMultiOmics/wiki/NLA-III-data-processing)
 
