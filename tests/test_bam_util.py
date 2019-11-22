@@ -19,11 +19,20 @@ class TestSorted(unittest.TestCase):
     def test_verify_and_fix_bam_autoindex(self):
         file_path_without_index = './data/temp_without_index.bam'
         copyfile('./data/mini_nla_test.bam',file_path_without_index)
+
+        try:
+            os.remove(file_path_without_index+'.bai')
+        except Exception as e:
+            pass
+
         verify_and_fix_bam(file_path_without_index)
+
+        self.assertTrue( os.path.exists(file_path_without_index+'.bai') )
+
         with pysam.AlignmentFile(file_path_without_index) as f:
             i =0
             # Test if the file has reads.
-            for read in f:
+            for read in f.fetch(contig='chr1'):
                 if read.is_read1:
                     i+=1
             self.assertEqual(i, 293)
