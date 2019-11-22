@@ -97,7 +97,7 @@ if __name__=='__main__':
 	ignoreMethods = args.ignoreMethods.split(',')
 	if any( ('*' in fq_file for fq_file in args.fastqfiles) ):
 		raise ValueError("One or more of the fastq file paths contain a '*', these files cannot be interpreted, review your input files")
-	
+
 	if len(set(args.fastqfiles))!=len(args.fastqfiles):
 		print(f'{Fore.RED}{Style.BRIGHT}Some fastq files are supplied multiple times! Pruning those!{Style.RESET_ALL}')
 		args.fastqfiles = set(args.fastqfiles)
@@ -111,6 +111,9 @@ if __name__=='__main__':
 				for line in f:
 					fqFiles.append( line.strip() )
 			args.fastqfiles = fqFiles
+
+	# Sort the fastq files..
+	args.fastqfiles = sorted(args.fastqfiles)
 
 	# Load barcodes
 	barcodeParser = barcodeFileParser.BarcodeParser(hammingDistanceExpansion=args.hd, barcodeDirectory=args.barcodeDir)
