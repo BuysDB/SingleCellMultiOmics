@@ -27,7 +27,7 @@ setup(
     author='Buys de Barbanson',
     author_email='b.barbanson@hubrecht.eu',
     url='https://github.com/BuysDB/SingleCellMultiOmics',
-    download_url = 'https://github.com/BuysDB/SingleCellMultiOmics/archive/v0.1.5.tar.gz',
+    download_url = 'https://github.com/BuysDB/SingleCellMultiOmics/archive/v0.1.6.tar.gz',
 
     license='MIT',
     packages=['singlecellmultiomics',
