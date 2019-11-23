@@ -218,8 +218,12 @@ def run_multiome_tagging(args):
         args.ref = get_reference_from_pysam_alignmentFile(input_bam)
 
     if args.ref is not None:
-        reference = pysamiterators.iterators.CachedFasta(
-            pysam.FastaFile(args.ref))
+        try:
+            reference = pysamiterators.iterators.CachedFasta(
+                pysam.FastaFile(args.ref))
+        except Exception as e:
+            print("Error when loading the reference file, continuing without a reference")
+            reference = None
 
     ##### Define fragment and molecule class arguments and instances: ####
 
