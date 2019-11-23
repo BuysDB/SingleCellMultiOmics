@@ -22,6 +22,7 @@ class CHICFragment(Fragment):
                           )
         # set CHIC cut site given reads
         self.strand = None
+        self.ligation_motif = None
         self.site_location = None
         self.cut_site_strand = None
         self.identify_site()
@@ -55,6 +56,9 @@ class CHICFragment(Fragment):
         if R1 is None:
             self.set_rejection_reason("R1_undefined")
             return None
+
+        if R1.has_tag('lh'):
+            self.ligation_motif = R1.get_tag('lh')
 
         """ Valid configs:
         Observed read pair:

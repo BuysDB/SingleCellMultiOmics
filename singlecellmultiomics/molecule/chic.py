@@ -1,6 +1,6 @@
 from singlecellmultiomics.molecule.molecule import Molecule
 from singlecellmultiomics.molecule.featureannotatedmolecule import FeatureAnnotatedMolecule
-
+import collections
 
 class CHICMolecule(Molecule):
     """CHIC Molecule class
@@ -14,6 +14,7 @@ class CHICMolecule(Molecule):
     def __init__(self, fragment,
                  **kwargs):
         Molecule.__init__(self, fragment, **kwargs)
+        self.ligation_motif = None
 
     def write_tags(self):
         Molecule.write_tags(self)
@@ -45,6 +46,23 @@ class CHICMolecule(Molecule):
             self.chromosome,
             self.spanStart,
             self.spanEnd).upper()
+
+    def __finalise__(self):
+        # Obtain ligation motif(s)
+        self.update_ligation_motif()
+        Molecule.__finalise__(self)
+
+    def update_ligation_motif(self):
+        """
+        Extract lh tag from associated reads and set most common one to the RZ tag
+        """
+        ligation_motif_counts = collections.Counter()
+        for fragment in self:
+            if fragment.ligation_motif is not None:
+                ligation_motif_counts[fragment.ligation_motif]+=1
+        if len(ligation_motif_counts)>0:
+            self.ligation_motif = ligation_motif_counts.most_common(1)[0][0]
+            self.set_meta('RZ', self.ligation_motif)
 
 
 class AnnotatedCHICMolecule(FeatureAnnotatedMolecule, CHICMolecule):
