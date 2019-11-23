@@ -171,7 +171,7 @@ def sorted_bam_file(
 
         # Create output folder if it does not exists
         target_dir = os.path.dirname(unsorted_path)
-        if not os.path.exists(target_dir) and len(otarget_dir)>0 and target_dir!='.':
+        if not os.path.exists(target_dir) and len(target_dir)>0 and target_dir!='.':
             try:
                 os.makedirs(target_dir, exist_ok=True)
             except Exception as e:
