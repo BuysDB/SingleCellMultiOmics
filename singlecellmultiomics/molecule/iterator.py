@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from singlecellmultiomics.molecule import Molecule
 from singlecellmultiomics.fragment import Fragment
 import singlecellmultiomics.universalBamTagger
