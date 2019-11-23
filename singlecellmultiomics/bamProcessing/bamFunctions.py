@@ -164,16 +164,18 @@ def sorted_bam_file(
 
     """
     unsorted_path = None
+    unsorted_alignments = None
+    target_dir = None
     try:
         unsorted_path = f'{write_path}.unsorted'
 
         # Create output folder if it does not exists
-        target_dir = s.path.dirname(unsorted_path)
+        target_dir = os.path.dirname(unsorted_path)
         if not os.path.exists(target_dir) and len(otarget_dir)>0 and target_dir!='.':
             try:
                 os.makedirs(target_dir, exist_ok=True)
             except Exception as e:
-                raise
+                pass
 
         if header is not None:
             pass
@@ -191,7 +193,11 @@ def sorted_bam_file(
             raise ValueError(
                 'Unsorted path is undefined, please verify that the origin bam file is valid.')
         else:
-            unsorted_alignments.close()
+            if unsorted_alignments is not None:
+                unsorted_alignments.close()
+            else:
+                raise ValueError(f'Error opening target file {unsorted_path}, into dir: {target_dir}')
+
         if read_groups is not None:
             add_readgroups_to_header(unsorted_path, read_groups)
 
