@@ -283,7 +283,7 @@ if __name__ == '__main__':
 
     print(f"\n{Style.BRIGHT}Detected libraries:{Style.RESET_ALL}")
     libraries = sequencingLibraryListing.SequencingLibraryLister().detect(
-        args.fastqfiles, args)
+        args.fastqfiles, args=args)
 
     # Detect the libraries:
     if args.use is None:
@@ -425,7 +425,8 @@ if __name__ == '__main__':
                                                                          targetFile=handle,
                                                                          rejectHandle=rejectHandle,
                                                                          log_handle=log_handle,
-                                                                         library=library, maxReadPairs=None if args.n is None else (args.n - processedReadPairsForThisLib))
+                                                                         library=library,
+                                                                         maxReadPairs=None if args.n is None else (args.n - processedReadPairsForThisLib))
                     processedReadPairsForThisLib += processedReadPairs
                     log_handle.write(
                         f"done, processed:\t{processedReadPairsForThisLib} reads\n")

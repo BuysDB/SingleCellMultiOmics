@@ -24,24 +24,33 @@ class SequencingLibraryLister():
     def __init__(self, verbose=True):
         self.verbose = verbose
 
-    # Function which replaces the substring(s) in library within args.replace
+    # Function which replaces the substring(s) in library within replace
 
-    def libraryReplace(self, library, args):
-        if args.replace is None:
+    def libraryReplace(self, library, replace):
+
+        if replace is None:
             return library
 
-        for k in args.replace:
+        for k in replace:
             origin, replace = k.split(',')
             library = library.replace(origin, replace)
         return library
 
-    def detect(self, filesToList, args):
+    def detect(self, filesToList, replace=None, slib=None, merge=None, se=False, ignore=False,  args=None):
+        if args is not None:
+            replace = args.replace
+            slib = args.slib
+            merge = args.merge
+            se = args.se
+            ignore = args.ignore
 
-        if args.replace:
+        fastqfiles = filesToList
+
+        if replace:
             try:
                 if self.verbose:
                     print("Library name replacement:")
-                    for k in args.replace:
+                    for k in replace:
                         origin, replace = k.split(',')
                         print(
                             formatColor(
@@ -54,12 +63,12 @@ class SequencingLibraryLister():
         mergeReport = False
 
         # Glob expansion:
-        if any('*' in path for path in args.fastqfiles):
+        if any('*' in path for path in fastqfiles):
             fqfiles = []
-            for path in args.fastqfiles:
+            for path in fastqfiles:
                 fqfiles += list(glob.glob(path))
         else:
-            fqfiles = args.fastqfiles
+            fqfiles = fastqfiles
 
         for path in fqfiles:
             completefastqFileName = os.path.basename(path)
@@ -81,7 +90,7 @@ class SequencingLibraryLister():
             if fastqFileName.endswith('_R1') or fastqFileName.endswith('_R2'):
                 lane = '0'  # Create "fake" lane
                 library = self.libraryReplace(
-                    fastqFileName.rsplit('_R', 1)[0], args)
+                    fastqFileName.rsplit('_R', 1)[0], replace)
                 r1ORr2 = fastqFileName.rsplit('_', 1)[-1]
 
                 if library not in self.libraries:
@@ -99,11 +108,11 @@ class SequencingLibraryLister():
             elif fastqFileName.startswith("SRR"):
 
                 library, r1ORr2 = fastqFileName.split('_')
-                library = self.libraryReplace(library, args)
+                library = self.libraryReplace(library, replace)
                 r1ORr2 = 'R%s' % r1ORr2  # The demultiplexer expects the format 'R1'
-                if args.slib is not None:
+                if slib is not None:
                     lane = library
-                    library = args.slib
+                    library = slib
                 else:
                     lane = '0'
 
@@ -121,17 +130,17 @@ class SequencingLibraryLister():
                         r'_L[0-9]{3}_R(1|2)_[0-9]{3}',
                         '',
                         fastqFileName),
-                    args)
-                if args.slib is not None:
+                    replace)
+                if slib is not None:
                     lane = library
-                    library = args.slib
+                    library = slib
 
-                if args.merge:
-                    delim = args.merge[0]
-                    nThSplit = int(args.merge[1:]) if len(
-                        args.merge) > 1 else 1
+                if merge:
+                    delim = merge[0]
+                    nThSplit = int(merge[1:]) if len(
+                        merge) > 1 else 1
                     newLibraryName = "".join(
-                        library.split(args.merge[0])[:nThSplit])
+                        library.split(merge[0])[:nThSplit])
                     if not mergeReport:
                         #print("Library merger: %sSplitting on '%s%s%s%s', until part %s%s%s, %s %s->%s %s" % (Style.DIM, Style.RESET_ALL, delim, Style.DIM, Style.RESET_ALL,  nThSplit, Style.DIM, Style.RESET_ALL, library, Style.DIM, Style.RESET_ALL, newLibraryName))
                         if self.verbose:
@@ -171,10 +180,10 @@ class SequencingLibraryLister():
                 if self.verbose:
                     print(("   %s%s%s" % (Style.DIM, lane, Style.RESET_ALL)))
                 if len(self.libraries[lib][lane]) != 2:
-                    if not args.se:
+                    if not se:
                         inconsistent = True
                         inconsistentLane = True
-                        if args.ignore:
+                        if ignore:
                             ignoreFiles.append((lib, lane))
                             if self.verbose:
                                 print(('%s    %s IGNORED FILE.. BOTH MATES NOT AVAILABLE or no mates? %s' % (
@@ -193,7 +202,7 @@ class SequencingLibraryLister():
                         if self.verbose:
                             print(("%s    %s %s%s" % (Fore.RED, R1R2, ', '.join(
                                 self.libraries[lib][lane][R1R2]), Style.RESET_ALL)))
-                        if args.ignore:
+                        if ignore:
                             ignoreFiles.append((lib, lane))
                     else:
                         prevSize = len(self.libraries[lib][lane][R1R2])
@@ -203,7 +212,7 @@ class SequencingLibraryLister():
                                 self.libraries[lib][lane][R1R2]), Style.RESET_ALL)))
 
         if inconsistent:
-            if args.ignore:
+            if ignore:
                 if self.verbose:
                     print(
                         "Mate information missing for some files. --ignore was supplied, ignoring these files:")
