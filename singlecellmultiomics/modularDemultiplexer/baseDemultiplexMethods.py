@@ -232,13 +232,17 @@ class TaggedRecord():
             ('aA', None, True)
         ]
         try:
+            QT_missing=False
             for tag, qualityTag, required in moleculeIdentifiyingTags:
                 if self.has_tag(tag) and not self.tags.get(tag) is None:
                     moleculeIdentifier += self.tags[tag]
                     if qualityTag is None:  # Padding:
                         moleculeQuality += ('o' * len(self.tags[tag]))
                     else:
-                        moleculeQuality += self.tags[qualityTag]
+                        if qualityTag in self.tags:
+                            moleculeQuality += self.tags[qualityTag]
+                        elif qualityTag=='QT':
+                            QT_missing = True
 
                 if required and not self.has_tag(tag):
                     raise NonMultiplexable('Tag was defined to be required')
@@ -259,7 +263,8 @@ class TaggedRecord():
                 self.addTagByTag('ah', hd, isPhred=False, cast_type=int)
 
             self.addTagByTag('MI', moleculeIdentifier, isPhred=False)
-            self.addTagByTag('QM', moleculeQuality, isPhred=False)
+            if not QT_missing:
+                self.addTagByTag('QM', moleculeQuality, isPhred=False)
 
         except NonMultiplexable:
 
@@ -284,7 +289,8 @@ class TaggedRecord():
             if self.tagDefinitions[tag].isPhred:
                 value = fastqHeaderSafeQualitiesToPhred(value, method=3)
             read.set_tag(tag, value)
-        if read.has_tag('QM') and len(
+
+        if not QT_missing and read.has_tag('QM') and len(
                 read.get_tag('QM')) != len(
                 read.get_tag('MI')):
             raise ValueError('QM and MI tag length not matching')
