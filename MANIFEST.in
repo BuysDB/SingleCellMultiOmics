@@ -3,3 +3,4 @@ include data/*
 include singlecellmultiomics/modularDemultiplexer/barcodes/*
 include singlecellmultiomics/modularDemultiplexer/indices/*
 include singlecellmultiomics/molecule/consensus_model/*
+include singlecellmultiomics/snakemake_workflows/*
