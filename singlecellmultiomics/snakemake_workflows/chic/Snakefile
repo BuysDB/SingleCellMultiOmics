@@ -83,12 +83,12 @@ rule map:
         mem_mb=lambda wildcards, attempt: attempt * 8000
 
     run:
-        if config.mapper=='bwa':
+        if config['mapper']=='bwa':
             shell(
                 """bwa mem -t {threads} {input} |  samtools view -bS - | \
                 samtools sort -@ {threads} -m 7G - -o {output}; samtools index {output}"""
                 )
-        elif config.mapper=='bowtie2':
+        elif config['mapper']=='bowtie2':
             shell(
                 """bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1
                  -x {input.ref} -1 {input.r1} -2 {input.r2} | samtools view -Sb > processed/{library}/unsorted.bam;
