@@ -1,3 +1,7 @@
 {
-    "reference_file" : "/media/sf_hubrecht/references/hg38/Homo_sapiens_assembly38.fasta"
+    "reference_file"  :  "/media/sf_hubrecht/references/hg38/Homo_sapiens_assembly38.fasta",
+    "counting_min_mq" : 30,
+    "counting_bin_size": 250_000,
+    "counting_sliding_increment": 50_000,
+    "mapper":"bwa"
 }
