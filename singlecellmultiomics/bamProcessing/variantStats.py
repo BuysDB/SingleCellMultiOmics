@@ -92,7 +92,7 @@ def obtain_variant_statistics(
                 gatk_path=args.gatk3_path,
                 interval_path=None,
                 java_cmd='java -jar -Xmx8G -Djava.io.tmpdir=./gatk_tmp',
-                reference=None,
+                reference=reference.handle.filename.decode('utf8'),
                 interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}')
             alignment_path = target_bam
 
