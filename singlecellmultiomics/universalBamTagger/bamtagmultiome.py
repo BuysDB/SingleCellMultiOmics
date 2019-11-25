@@ -6,6 +6,8 @@ import singlecellmultiomics
 import singlecellmultiomics.molecule
 import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam
+
+from singlecellmultiomics.utils import is_main_chromosome
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
@@ -114,13 +116,6 @@ cg.add_argument(
     default=500_000)
 cg.add_argument('--no_source_reads', action='store_true',
                 help='Do not write original reads, only consensus ')
-
-
-def is_main_chromosome(chrom):
-    if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('JH') or chrom.startswith('GL') or chrom.startswith(
-            'KI') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom or chrom.endswith('_alt') or "HLA-" in chrom:
-        return False
-    return True
 
 
 def run_multiome_tagging_cmd(commandline):

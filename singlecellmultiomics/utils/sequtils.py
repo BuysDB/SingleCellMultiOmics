@@ -1,5 +1,22 @@
 import math
 
+def is_main_chromosome(chrom):
+    """ Returns True when the chromsome is a main chromsome,
+    not an alternative or other
+
+    Args:
+        chrom(str) : chromosome name
+
+    Returns:
+        is_main(bool) : True when the chromsome is a main chromsome
+
+    """
+    if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('JH') or chrom.startswith('GL') or chrom.startswith(
+            'KI') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom or chrom.endswith('_alt') or "HLA-" in chrom:
+        return False
+    return True
+
+
 
 def phred_to_prob(phred):
     """Convert a phred score (ASCII) or integer to a numeric probability
