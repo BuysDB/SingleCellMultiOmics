@@ -355,7 +355,7 @@ def GATK_indel_realign(origin_bam, target_bam,
         -I {origin_bam} \
         -o {interval_write_path} \
         -dcov 1000000 \
-        -maxReadsForRealignment 2000000'
+        -maxReads 2000000'
 
         # Create the intervals file
         os.system(target_creator_cmd)
@@ -371,7 +371,7 @@ def GATK_indel_realign(origin_bam, target_bam,
     -I {origin_bam} \
     -o {target_bam} \
     -dcov 1000000 \
-    -maxReadsForRealignment 2000000'
+    -maxReads 2000000'
     os.system(realign_cmd)
     return target_bam
 
