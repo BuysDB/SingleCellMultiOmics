@@ -13,6 +13,7 @@ from colorama import Fore, Style
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, sort_and_index, get_reference_from_pysam_alignmentFile, add_readgroups_to_header, write_program_tag, GATK_indel_realign
 from singlecellmultiomics.pyutils import meanOfCounter
 import argparse
+import os
 
 f'Please use an environment with python 3.6 or higher!'
 
@@ -82,18 +83,22 @@ def obtain_variant_statistics(
         # Perform re-alignment:
         if args.realign:
             target_bam = f'align_{chromosome}_{region_start}_{region_end}.bam'
-            GATK_indel_realign(
-                alignment_path,
-                target_bam,
-                chromosome,
-                region_start,
-                region_end,
-                args.indelvcf,
-                gatk_path=args.gatk3_path,
-                interval_path=None,
-                java_cmd='java -jar -Xmx8G -Djava.io.tmpdir=./gatk_tmp',
-                reference=reference.handle.filename.decode('utf8'),
-                interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}.intervals')
+
+            if not os.path.exist(target_bam):
+                temp_target_bam = f'{target_bam}.temp.bam'
+                GATK_indel_realign(
+                    alignment_path,
+                    temp_target_bam,
+                    chromosome,
+                    region_start,
+                    region_end,
+                    args.indelvcf,
+                    gatk_path=args.gatk3_path,
+                    interval_path=None,
+                    java_cmd='java -jar -Xmx30G -Djava.io.tmpdir=./gatk_tmp',
+                    reference=reference.handle.filename.decode('utf8'),
+                    interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}.intervals')
+                os.rename(temp_target_bam,target_bam)
             alignment_path = target_bam
 
         with pysam.AlignmentFile(alignment_path) as alignments:
