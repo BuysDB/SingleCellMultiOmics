@@ -278,8 +278,10 @@ def obtain_variant_statistics(
     # and at least ε cells need to vote for it
     statistics[(chromosome, ssnv_position)
                ]['total_samples_voted'] = total_samples_which_voted
+
     if total_samples_which_voted < ε:
         # We don't have enough votes
+        print(f'Not enough votes {total_samples_which_voted} < {ε}')
         return
 
     sSNV_alt_base, sSNV_alt_obs = sSNV_votes.most_common()[0]
