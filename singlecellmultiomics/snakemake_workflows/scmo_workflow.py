@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+import singlecellmultiomics
 import argparse
 import pkg_resources
 from colorama import Fore, Style
@@ -32,10 +32,10 @@ if __name__=='__main__':
     argparser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Obtain single cell multiomics workflow configuration files, deploys configuration in current directory')
-    argparser.add_argument('alias', type=str, help= 'nla, chic', nargs='*')
+    argparser.add_argument('alias', type=str, help= 'nla, chic', nargs='?')
     args = argparser.parse_args()
 
-    if len(args.alias)==0:
+    if args.alias is None:
         # Show available :
         print(Style.BRIGHT + "The following workflows are available:" +Style.RESET_ALL)
         print('\n'.join(get_workflow_list()))
