@@ -93,7 +93,7 @@ def obtain_variant_statistics(
                 interval_path=None,
                 java_cmd='java -jar -Xmx8G -Djava.io.tmpdir=./gatk_tmp',
                 reference=reference.handle.filename.decode('utf8'),
-                interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}')
+                interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}.intervals')
             alignment_path = target_bam
 
         with pysam.AlignmentFile(alignment_path) as alignments:

@@ -353,7 +353,7 @@ def GATK_indel_realign(origin_bam, target_bam,
         -L {contig}:{region_start}-{region_end} \
         -known {known_variants_vcf_path} \
         -I {origin_bam} \
-        -o {interval_path}'
+        -o {interval_write_path}'
 
         # Create the intervals file
         os.system(target_creator_cmd)
