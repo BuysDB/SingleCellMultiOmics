@@ -281,17 +281,20 @@ def obtain_variant_statistics(
 
     if total_samples_which_voted < ε:
         # We don't have enough votes
-        print(f'Not enough votes {total_samples_which_voted} < {ε}')
+        print(f'Not enough votes {total_samples_which_voted} < ε:{ε}')
         return
+    else:
+        print(f'Enough votes {total_samples_which_voted} >= ε:{ε}')
 
     sSNV_alt_base, sSNV_alt_obs = sSNV_votes.most_common()[0]
     statistics[(chromosome, ssnv_position)]['sSNV_alt_vote_ratio'] = (
         sSNV_alt_obs / total_samples_which_voted)
     if (sSNV_alt_obs / total_samples_which_voted) < γ:
         # The ratio of votes is below threshold
+        print(f'sSNV alt is {sSNV_alt_base}, ratio threshold γ:{γ} , not met with {sSNV_alt_obs / total_samples_which_voted}')
         return
 
-    print(f'sSNV alt is {sSNV_alt_base}')
+    print(f'sSNV alt is {sSNV_alt_base}, γ:{γ} votes')
 
     ### Here the "Stats" part of Conbase ends ###
     #############################################
