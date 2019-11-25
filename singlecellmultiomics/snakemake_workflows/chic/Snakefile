@@ -61,6 +61,8 @@ rule SCMO_demux:
     output:
         "processed/{library}/demultiplexedR1.fastq.gz",
         "processed/{library}/demultiplexedR2.fastq.gz"
+
+    params: runtime="30h"
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 4000
     shell:
@@ -74,9 +76,12 @@ rule map:
         r2="processed/{library}/demultiplexedR2.fastq.gz"
     output:
         "processed/{library}/sorted.bam"
+
     threads: 8
+    params: runtime="30h"
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 8000
+
     run:
         if config.mapper=='bwa':
             shell(
@@ -95,7 +100,9 @@ rule map:
 rule SCMO_tagmultiome_ChiC_parallel_scatter:
     input:
         bam = "processed/{library}/sorted.bam"
+
     threads: 1
+    params: runtime="20h"
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 6000 # The amount of memory reqiored is dependent on wether alleles or consensus caller are used
     output:
@@ -107,21 +114,27 @@ rule SCMO_tagmultiome_ChiC_parallel_scatter:
 rule SCMO_tagmultiome_ChiC_parallel_gather:
     input:
         chr_bams =  expand("processed/{{library}}/TEMP_CONTIG/{contig}.bam", contig=contigs)
-    threads: 1
-    message:
-        'Merging contig BAM files'
     output:
         "processed/{library}/tagged.bam"
+
+    threads: 1
+    params: runtime="8h"
+    message:
+        'Merging contig BAM files'
+
     shell:
         "samtools merge -c {output} {input.chr_bams}; samtools index {output}"
 
 
 rule SCMO_library_stats:
-    threads: 1
     input:
         bam = "processed/{library}/tagged.bam"
     output:
         "processed/{library}/plots/ReadCount.png"
+
+    threads: 1
+    params: runtime="30h"
+
     shell:
         "libraryStatistics.py processed/{library} -tagged_bam /tagged.bam"
 
@@ -131,9 +144,13 @@ rule SCMO_count_table:
         bam = "processed/{library}/tagged.bam"
     output:
         "processed/{library}/count_table_{config.counting_bin_size}"
+
     threads: 1
+    params: runtime="50h" # It will generally not use this much time,
+    # but it is very annoying if it gets killed because of time constraints.
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 8000
+
     shell:
         "bamToCountTable.py -bin {config.counting_bin_size} \
         -sliding {config.counting_sliding_increment} \
