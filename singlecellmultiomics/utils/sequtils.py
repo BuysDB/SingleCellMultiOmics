@@ -1,5 +1,5 @@
 import math
-
+from pysam import FastaFile
 def is_main_chromosome(chrom):
     """ Returns True when the chromsome is a main chromsome,
     not an alternative or other
@@ -16,7 +16,26 @@ def is_main_chromosome(chrom):
         return False
     return True
 
+def get_contig_list_from_fasta(fasta_path):
+    """Obtain list of contigs froma  fasta file,
+        all alternative contigs are pooled into the string MISC_ALT_CONTIGS_SCMO
 
+    Returns:
+        contig_list (list) : List of contigs + ['MISC_ALT_CONTIGS_SCMO'] if any alt contig is present in the fasta file
+        """
+
+    contig_list = []
+    has_alt = False
+    with FastaFile(fasta_path) as fa:
+        for reference in fa.references:
+            if is_main_chromosome(reference):
+                contig_list.append(reference)
+            else:
+                has_alt = True
+
+    if has_alt:
+        contig_list.append('MISC_ALT_CONTIGS_SCMO')
+    return contig_list
 
 def phred_to_prob(phred):
     """Convert a phred score (ASCII) or integer to a numeric probability
