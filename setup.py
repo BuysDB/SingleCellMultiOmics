@@ -91,8 +91,10 @@ setup(
 
 
         # Utility: (SGE wrapper)
-        'singlecellmultiomics/utils/submission.py'
+        'singlecellmultiomics/utils/submission.py',
 
+        #Worfklow
+        'singlecellmultiomics/snakemake_workflows/scmo_workflow.py'
 
         ],
 

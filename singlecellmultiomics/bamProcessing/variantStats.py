@@ -13,6 +13,7 @@ from colorama import Fore, Style
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, sort_and_index, get_reference_from_pysam_alignmentFile, add_readgroups_to_header, write_program_tag, GATK_indel_realign
 from singlecellmultiomics.pyutils import meanOfCounter
 import argparse
+import os
 
 f'Please use an environment with python 3.6 or higher!'
 
@@ -82,18 +83,22 @@ def obtain_variant_statistics(
         # Perform re-alignment:
         if args.realign:
             target_bam = f'align_{chromosome}_{region_start}_{region_end}.bam'
-            GATK_indel_realign(
-                alignment_path,
-                target_bam,
-                chromosome,
-                region_start,
-                region_end,
-                args.indelvcf,
-                gatk_path=args.gatk3_path,
-                interval_path=None,
-                java_cmd='java -jar -Xmx8G -Djava.io.tmpdir=./gatk_tmp',
-                reference=None,
-                interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}')
+
+            if not os.path.exist(target_bam):
+                temp_target_bam = f'{target_bam}.temp.bam'
+                GATK_indel_realign(
+                    alignment_path,
+                    temp_target_bam,
+                    chromosome,
+                    region_start,
+                    region_end,
+                    args.indelvcf,
+                    gatk_path=args.gatk3_path,
+                    interval_path=None,
+                    java_cmd='java -jar -Xmx30G -Djava.io.tmpdir=./gatk_tmp',
+                    reference=reference.handle.filename.decode('utf8'),
+                    interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}.intervals')
+                os.rename(temp_target_bam,target_bam)
             alignment_path = target_bam
 
         with pysam.AlignmentFile(alignment_path) as alignments:
@@ -259,7 +264,7 @@ def obtain_variant_statistics(
                 continue
 
             # check if at least alpha reads vote for the sSNV
-            alpha_value = sSNV_supporting_reads / ref_sSNV_reads
+            alpha_value = 0 if ref_sSNV_reads==0 else sSNV_supporting_reads/ref_sSNV_reads
 
             vote = (
                 1 if (
@@ -278,18 +283,23 @@ def obtain_variant_statistics(
     # and at least ε cells need to vote for it
     statistics[(chromosome, ssnv_position)
                ]['total_samples_voted'] = total_samples_which_voted
+
     if total_samples_which_voted < ε:
         # We don't have enough votes
+        print(f'Not enough votes {total_samples_which_voted} < ε:{ε}')
         return
+    else:
+        print(f'Enough votes {total_samples_which_voted} >= ε:{ε}')
 
     sSNV_alt_base, sSNV_alt_obs = sSNV_votes.most_common()[0]
     statistics[(chromosome, ssnv_position)]['sSNV_alt_vote_ratio'] = (
         sSNV_alt_obs / total_samples_which_voted)
     if (sSNV_alt_obs / total_samples_which_voted) < γ:
         # The ratio of votes is below threshold
+        print(f'sSNV alt is {sSNV_alt_base}, ratio threshold γ:{γ} , not met with {sSNV_alt_obs / total_samples_which_voted}')
         return
 
-    print(f'sSNV alt is {sSNV_alt_base}')
+    print(f'sSNV alt is {sSNV_alt_base}, γ: {sSNV_alt_obs / total_samples_which_voted} >= {γ}')
 
     ### Here the "Stats" part of Conbase ends ###
     #############################################
