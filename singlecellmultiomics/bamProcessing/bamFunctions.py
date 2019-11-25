@@ -302,7 +302,7 @@ def GATK_indel_realign(origin_bam, target_bam,
                        # indelRealignerArgs=None,
                        gatk_path='GenomeAnalysisTK.jar',
                        interval_path=None,
-                       java_cmd='java -jar -Xmx20G -Djava.io.tmpdir=./gatk_tmp',
+                       java_cmd='java -jar -Xmx40G -Djava.io.tmpdir=./gatk_tmp',
                        reference=None,
                        interval_write_path=None
                        ):
