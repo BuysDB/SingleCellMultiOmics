@@ -10,6 +10,7 @@ This workflow:
     - [trims] @ todo
     - Maps, sorts and indexes the reads per library
     - Deduplicates and identifies molecules
+    - Creates QC plots
 """
 
 configfile: "scmo_scCHiC_config.json"
@@ -54,7 +55,7 @@ rule demux:
         "processed/{library}/demultiplexedR1.fastq.gz",
         "processed/{library}/demultiplexedR2.fastq.gz"
     shell:
-        "demux.py -merge _ {input.fastqfiles} -o processed --y -n 10000"
+        "demux.py -merge _ {input.fastqfiles} -o processed --y"
 
 rule bwa_map:
     input:
@@ -74,3 +75,11 @@ rule SCMO_tagmultiome_ChiC:
         "processed/{library}/tagged.bam"
     shell:
         "bamtagmultiome.py -method chic {input.bam} -o {output}"
+
+rule SCMO_library_stats:
+    input:
+        bam = "processed/{library}/tagged.bam"
+    output:
+        "processed/{library}/plots/ReadCount.png"
+    shell:
+        "libraryStatistics.py processed/{library} -tagged_bam /tagged.bam"
