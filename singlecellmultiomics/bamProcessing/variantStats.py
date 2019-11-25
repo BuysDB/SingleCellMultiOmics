@@ -259,7 +259,7 @@ def obtain_variant_statistics(
                 continue
 
             # check if at least alpha reads vote for the sSNV
-            alpha_value = sSNV_supporting_reads / ref_sSNV_reads
+            alpha_value = 0 if ref_sSNV_reads==0 else sSNV_supporting_reads/ref_sSNV_reads
 
             vote = (
                 1 if (
