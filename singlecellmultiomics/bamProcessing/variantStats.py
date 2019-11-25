@@ -294,7 +294,7 @@ def obtain_variant_statistics(
         print(f'sSNV alt is {sSNV_alt_base}, ratio threshold γ:{γ} , not met with {sSNV_alt_obs / total_samples_which_voted}')
         return
 
-    print(f'sSNV alt is {sSNV_alt_base}, γ:{γ} votes')
+    print(f'sSNV alt is {sSNV_alt_base}, γ: {sSNV_alt_obs / total_samples_which_voted} >= {γ}')
 
     ### Here the "Stats" part of Conbase ends ###
     #############################################
