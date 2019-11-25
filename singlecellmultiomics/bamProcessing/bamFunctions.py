@@ -369,7 +369,7 @@ def GATK_indel_realign(origin_bam, target_bam,
     -known {known_variants_vcf_path} \
     -L {contig}:{region_start}-{region_end} \
     -I {origin_bam} \
-    -o {target_bam}
+    -o {target_bam} \
     -dcov 1000000 \
     -maxReadsForRealignment 2000000'
     os.system(realign_cmd)
