@@ -53,7 +53,9 @@ def get_target_tagged_bam_list():
 rule all:
     input:
         # get_target_demux_list() use this for demux only
-        get_target_tagged_bam_list()
+        get_target_tagged_bam_list(),
+        expand("processed/{library}/count_table_{bin_size}.csv", library=libraries, bin_size=config['counting_bin_size']),
+        expand("processed/{library}/plots/ReadCount.png", library=libraries)
 
 rule SCMO_demux:
     input:
@@ -143,16 +145,20 @@ rule SCMO_count_table:
     input:
         bam = "processed/{library}/tagged.bam"
     output:
-        "processed/{library}/count_table_{config.counting_bin_size}"
+        "processed/{library}/count_table_{params.bin_size}.csv"
 
     threads: 1
-    params: runtime="50h" # It will generally not use this much time,
-    # but it is very annoying if it gets killed because of time constraints.
+    params:
+        runtime="50h",
+        bin_size = config['counting_bin_size'],
+        counting_sliding_increment = config['counting_sliding_increment'],
+        counting_min_mq = config['counting_min_mq']
+
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 8000
 
     shell:
-        "bamToCountTable.py -bin {config.counting_bin_size} \
-        -sliding {config.counting_sliding_increment} \
-        -minMQ {config.counting_min_mq} \
-        processed/{library} -tagged_bam /tagged.bam -sampleTags SM -joinedFeatureTags reference_name -binTag DS --dedup"
+        """bamToCountTable.py -bin {params.counting_bin_size}
+        -sliding {params.counting_sliding_increment}
+        -minMQ {params.counting_min_mq}
+        processed/{library} -tagged_bam /tagged.bam -sampleTags SM -joinedFeatureTags reference_name -binTag DS --dedup"""
