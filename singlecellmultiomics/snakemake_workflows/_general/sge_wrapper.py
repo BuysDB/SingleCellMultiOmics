@@ -58,7 +58,7 @@ std_err = os.path.abspath( './cluster_jobs/' +  std_err.replace(',', '.').replac
 
 
 # formatting qsub command
-cmd = "qsub -V -pe threaded {n} -l h_vmem={mem}G -l h_rt={time} {job_script}"
+cmd = "qsub -V -pe threaded {n} -l h_vmem={mem}G -l h_rt={time} -o {std_out} -e {std_err} {job_script}"
 cmd = cmd.format(n=n, mem=mem, time=time, std_out=std_out, std_err=std_err, job_script=job_script)
 
 # subprocess job: qsub
