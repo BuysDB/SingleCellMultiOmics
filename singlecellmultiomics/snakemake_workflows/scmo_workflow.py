@@ -61,4 +61,4 @@ if __name__=='__main__':
         On local computer:\n
         {Fore.BLUE}snakemake -np{Style.RESET_ALL}\n
         On SGE cluster:\n
-        {Fore.BLUE}snakemake --cluster ./sge_wrapper.py  --jobs 20 --restart-times 3{Fore.BLUE}""")
+        {Fore.BLUE}snakemake --cluster ./sge_wrapper.py  --jobs 20 --restart-times 3{Style.RESET_ALL}""")
