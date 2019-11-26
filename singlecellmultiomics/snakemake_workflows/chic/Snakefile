@@ -69,8 +69,8 @@ rule SCMO_demux:
     input:
         fastqfiles = get_fastq_file_list
     output:
-        "processed/{library}/demultiplexedR1.fastq.gz",
-        "processed/{library}/demultiplexedR2.fastq.gz"
+        temp("processed/{library}/demultiplexedR1.fastq.gz"),
+        temp("processed/{library}/demultiplexedR2.fastq.gz")
     log:
         stdout="log/demux/{library}.stdout",
         stderr="log/demux/{library}.stderr"
@@ -89,8 +89,8 @@ rule Trim:
         stdout="log/trim/{library}.stdout",
         stderr="log/trim/{library}.stderr"
     output:
-        r1="processed/{library}/trimmed.R1.fastq.gz",
-        r2="processed/{library}/trimmed.R2.fastq.gz"
+        r1=temp("processed/{library}/trimmed.R1.fastq.gz"),
+        r2=temp("processed/{library}/trimmed.R2.fastq.gz")
 
     params: runtime="30h"
     resources:
@@ -115,7 +115,7 @@ rule map:
         r1="processed/{library}/trimmed.R1.fastq.gz",
         r2="processed/{library}/trimmed.R2.fastq.gz"
     output:
-        "processed/{library}/sorted.bam"
+        temp("processed/{library}/sorted.bam")
 
     log:
         stdout="log/map/{library}.stdout",
@@ -128,9 +128,11 @@ rule map:
 
     run:
         if config['mapper']=='bwa':
+            # The sorting and mapping has been disconnected
             shell(
-                """bwa mem -t {threads} {input} |  samtools view -bS - | \
-                samtools sort -@ {threads} -m 7G - -o {output}; samtools index {output} > {log.stdout} 2> {log.stderr}"""
+                """bwa mem -t {threads} {input} |  samtools view -bS - > processed/{library}/unsorted.bam;
+                samtools sort -T processed/{library}/temp_sort -@ {threads} processed/{library}/unsorted.bam > processed/{library}/sorted.unfinished.bam;
+                mv processed/{library}/sorted.unfinished.bam {output}; rm processed/{library}/unsorted.bam; samtools index {output} > {log.stdout} 2> {log.stderr}"""
                 )
         elif config['mapper']=='bowtie2':
             shell(
@@ -140,6 +142,7 @@ rule map:
                 mv processed/{library}/sorted.unfinished.bam {output}; rm processed/{library}/unsorted.bam; samtools index {output} > {log.stdout} 2> {log.stderr}
                 """
                 )
+
 
 rule SCMO_tagmultiome_ChiC_parallel_scatter:
     input:
@@ -154,7 +157,7 @@ rule SCMO_tagmultiome_ChiC_parallel_scatter:
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 6000 # The amount of memory reqiored is dependent on wether alleles or consensus caller are used
     output:
-        "processed/{library}/TEMP_CONTIG/{contig}.bam"
+        temp("processed/{library}/TEMP_CONTIG/{contig}.bam")
     shell:
         "bamtagmultiome.py -method chic -contig {wildcards.contig} {input.bam} -o {output} > {log.stdout} 2> {log.stderr}"
 
@@ -179,7 +182,9 @@ rule SCMO_tagmultiome_ChiC_parallel_gather:
 
 rule SCMO_library_stats:
     input:
-        bam = "processed/{library}/tagged.bam"
+        bam = "processed/{library}/tagged.bam",
+        r1="processed/{library}/demultiplexedR1.fastq.gz", # Its need these to count how many raw reads were present in the lib.
+        r2="processed/{library}/demultiplexedR2.fastq.gz"
     output:
         "processed/{library}/plots/ReadCount.png"
 
@@ -216,4 +221,4 @@ rule SCMO_count_table:
         """bamToCountTable.py -bin {wildcards.counting_bin_size}
         -sliding {wildcards.counting_sliding_window_increment}
         -minMQ {params.counting_min_mq}
-        processed/{wildcards.library} -tagged_bam /tagged.bam -sampleTags SM -joinedFeatureTags reference_name -binTag DS --dedup > {log.stdout} 2> {log.stderr}"""
+        {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS --dedup > {log.stdout} 2> {log.stderr}"""
