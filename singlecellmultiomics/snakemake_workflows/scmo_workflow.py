@@ -22,7 +22,9 @@ def deploy_workflow_files(name, clean=False, directory='./'):
 
     workflow_list = get_workflow_list(True)
     if not name in workflow_list:
-        raise ValueError("Unkown workflow")
+        print(workflow_list)
+        raise ValueError(f"Unkown workflow {name}")
+
 
     base_path = f'snakemake_workflows/{name}'
     for file_to_copy in pkg_resources.resource_listdir('singlecellmultiomics',base_path):
@@ -60,5 +62,3 @@ if __name__=='__main__':
         {Fore.BLUE}snakemake -np{Style.RESET_ALL}\n
         On SGE cluster:\n
         {Fore.BLUE}snakemake --cluster ./sge_wrapper.py  --jobs 20 --restart-times 3{Fore.BLUE}""")
-
-         
