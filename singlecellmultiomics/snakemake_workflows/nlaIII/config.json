@@ -1,3 +1,8 @@
 {
-    "reference_file" : "/media/sf_hubrecht/references/hg38/Homo_sapiens_assembly38.fasta"
+    "reference_file"  :  "/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/SNP_MASKED.fa",
+    "counting_min_mq" : 30,
+    "counting_bin_sizes": [250_000],
+    "alleles": "/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/mus_musculus_incl_consequences.vcf.gz",
+    "allele_samples": "B6,SPRET",
+    "mapper":"bowtie2"
 }
