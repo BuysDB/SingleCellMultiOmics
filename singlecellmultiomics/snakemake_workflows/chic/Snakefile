@@ -218,7 +218,7 @@ rule SCMO_count_table:
         mem_mb=lambda wildcards, attempt: attempt * 8000
 
     shell:
-        """bamToCountTable.py -bin {wildcards.counting_bin_size}
-        -sliding {wildcards.counting_sliding_window_increment}
-        -minMQ {params.counting_min_mq}
-        {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS --dedup > {log.stdout} 2> {log.stderr}"""
+        "bamToCountTable.py -bin {wildcards.counting_bin_size} \
+        -sliding {wildcards.counting_sliding_window_increment} \
+        -minMQ {params.counting_min_mq} \
+        {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS --dedup > {log.stdout} 2> {log.stderr}"
