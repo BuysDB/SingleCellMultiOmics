@@ -63,6 +63,11 @@ rule all:
             counting_bin_size=counting_bin_sizes,
             counting_sliding_window_increment=counting_sliding_window_increments),
 
+        expand("processed/{library}/count_table_allelic_{counting_bin_size}_{counting_sliding_window_increment}.csv",
+            library=libraries,
+            counting_bin_size=counting_bin_sizes,
+            counting_sliding_window_increment=counting_sliding_window_increments),
+            
         expand("processed/{library}/plots/ReadCount.png", library=libraries)
 
 rule SCMO_demux:
@@ -147,7 +152,7 @@ rule map:
                 )
 
 
-rule SCMO_tagmultiome_NLA_parallel_scatter:
+rule SCMO_tagmultiome_ChiC_parallel_scatter:
     input:
         bam = "processed/{library}/sorted.bam",
         bam_index = "processed/{library}/sorted.bam.bai"
@@ -171,10 +176,10 @@ rule SCMO_tagmultiome_NLA_parallel_scatter:
         mem_mb=lambda wildcards, attempt: attempt * 10000
 
     shell:
-        "bamtagmultiome.py -method nla -allele_samples {params.allele_samples} -alleles {params.alleles} -contig {wildcards.contig} {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
+        "bamtagmultiome.py -method chic -allele_samples {params.allele_samples} -alleles {params.alleles} -contig {wildcards.contig} {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
 
 
-rule SCMO_tagmultiome_NLA_parallel_gather:
+rule SCMO_tagmultiome_ChiC_parallel_gather:
     input:
         chr_bams =  expand("processed/{{library}}/TEMP_CONTIG/{contig}.bam", contig=contigs),
         chr_bams_indices =  expand("processed/{{library}}/TEMP_CONTIG/{contig}.bam.bai", contig=contigs)
@@ -239,3 +244,28 @@ rule SCMO_count_table:
         -minMQ {params.counting_min_mq} \
         --noNames \
         {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS -o {output} --dedup > {log.stdout} 2> {log.stderr}"
+
+rule SCMO_count_table_allelic:
+    input:
+        bam = "processed/{library}/tagged.bam"
+    output:
+        "processed/{library}/count_table_allelic_{counting_bin_size}_{counting_sliding_window_increment}.csv"
+
+    threads: 1
+    params:
+        runtime="50h",
+        counting_min_mq = config['counting_min_mq']
+
+    log:
+        stdout="log/count_table/{library}_{counting_bin_size}_{counting_sliding_window_increment}.stdout",
+        stderr="log/count_table/{library}_{counting_bin_size}_{counting_sliding_window_increment}.stderr"
+
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 8000
+
+    shell:
+        "bamToCountTable.py -bin {wildcards.counting_bin_size} \
+        -sliding {wildcards.counting_sliding_window_increment} \
+        -minMQ {params.counting_min_mq} \
+        --noNames \
+        {input.bam} -sampleTags SM -joinedFeatureTags reference_name,DA -binTag DS -o {output} --dedup > {log.stdout} 2> {log.stderr}"

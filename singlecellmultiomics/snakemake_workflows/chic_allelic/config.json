@@ -3,7 +3,7 @@
     "counting_min_mq" : 30,
     "counting_bin_sizes": [250_000],
     "counting_sliding_window_increments":[250_000],
-    "alleles": "/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/mus_musculus_incl_consequences.vcf.gz",
-    "allele_samples": "C57BL_10J,SPRET_EiJ",
+    "alleles": "/hpc/hub_oudenaarden/group_references/variants/mgp.v5.merged.snps_all.dbSNP142.vcf.gz",
+    "allele_samples": "C57BL_10J,CAST_EiJ",
     "mapper":"bowtie2"
 }
