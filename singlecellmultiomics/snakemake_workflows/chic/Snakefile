@@ -194,8 +194,8 @@ rule SCMO_library_stats:
         bam = "processed/{library}/tagged.bam",
         r1="processed/{library}/demultiplexedR1.fastq.gz", # Its need these to count how many raw reads were present in the lib.
         r2="processed/{library}/demultiplexedR2.fastq.gz",
-        r2="processed/{library}/rejectsR1.fastq.gz",
-        r2="processed/{library}/rejectsR2.fastq.gz"
+        r1_rejects="processed/{library}/rejectsR1.fastq.gz",
+        r2_rejects="processed/{library}/rejectsR2.fastq.gz"
     output:
         "processed/{library}/plots/ReadCount.png"
 
