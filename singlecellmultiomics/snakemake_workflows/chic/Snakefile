@@ -118,8 +118,8 @@ rule map_bwa:
         r1="processed/{library}/trimmed.R1.fastq.gz",
         r2="processed/{library}/trimmed.R2.fastq.gz"
     output:
-        temp("processed/{library}/sorted.bam"),
-        temp("processed/{library}/sorted.bam.bai")
+        bam = temp("processed/{library}/sorted.bam"),
+        bam_index = temp("processed/{library}/sorted.bam.bai")
 
     log:
         stdout="log/map/{library}.stdout",
@@ -152,8 +152,8 @@ rule SCMO_tagmultiome_ChiC_parallel_scatter:
         bam_index = "processed/{library}/sorted.bam.bai"
 
     output:
-        temp("processed/{library}/TEMP_CONTIG/{contig}.bam"),
-        temp("processed/{library}/TEMP_CONTIG/{contig}.bam.bai")
+        bam = temp("processed/{library}/TEMP_CONTIG/{contig}.bam"),
+        bam_index = temp("processed/{library}/TEMP_CONTIG/{contig}.bam.bai")
 
     log:
         stdout="log/tag_scatter/{library}_{contig}.stdout",
@@ -173,8 +173,8 @@ rule SCMO_tagmultiome_ChiC_parallel_gather:
         chr_bams =  expand("processed/{{library}}/TEMP_CONTIG/{contig}.bam", contig=contigs),
         chr_bams_indices =  expand("processed/{{library}}/TEMP_CONTIG/{contig}.bam.bai", contig=contigs)
     output:
-        "processed/{library}/tagged.bam",
-        "processed/{library}/tagged.bam.bai"
+        bam = "processed/{library}/tagged.bam",
+        bam_index = "processed/{library}/tagged.bam.bai"
     log:
         stdout="log/tag_gather/{library}.stdout",
         stderr="log/tag_gather/{library}.stderr"
@@ -185,7 +185,7 @@ rule SCMO_tagmultiome_ChiC_parallel_gather:
         'Merging contig BAM files'
 
     shell:
-        "samtools merge -c {output} {input.chr_bams}; samtools index {output} > {log.stdout} 2> {log.stderr}"
+        "samtools merge -c {output.bam} {input.chr_bams}; samtools index {output.bam} > {log.stdout} 2> {log.stderr}"
 
 
 rule SCMO_library_stats:
