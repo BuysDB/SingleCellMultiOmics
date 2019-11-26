@@ -5,7 +5,7 @@ import os
 import sys
 import re
 import subprocess
-
+import uuid
 from snakemake.utils import read_job_properties
 
 # load
@@ -38,14 +38,7 @@ except KeyError:
         mem = int( int(job_properties['resources']['mem_mb'])/1000 )
     except KeyError:
         mem = 10
-try:
-    std_out = os.path.join(log_path, job_properties['cluster']['output'])
-except KeyError:
-    std_out = os.path.join(log_path, '{cluster.output}')
-try:
-    std_err = os.path.join(log_path, job_properties['cluster']['error'])
-except KeyError:
-    std_err = os.path.join(log_path, '{cluster.error}')
+
 
 # removing 'special' characters in log paths (default for snakemake)
 base_path = os.path.dirname(job_script)
@@ -55,8 +48,9 @@ try:
 except Exception as e :
     pass
 
-std_out =  f'{base_path}/cluster_jobs/' + std_out.replace(',', '.').replace('=', '-')
-std_err = f'{base_path}/cluster_jobs/' +  std_err.replace(',', '.').replace('=', '-')
+job_id = uuid.uuid4()
+std_out =  f'{base_path}/cluster_jobs/{job_id}.o'
+std_err = f'{base_path}/cluster_jobs/{job_id}.e' 
 
 
 # formatting qsub command
