@@ -131,6 +131,7 @@ rule map:
         mem_mb=lambda wildcards, attempt: attempt * 8000
 
     run:
+        # https://stackoverflow.com/questions/40996597/snakemake-remove-output-file this is probably pretier
         if config['mapper']=='bwa':
             # The sorting and mapping has been disconnected
             shell(
@@ -152,8 +153,8 @@ rule SCMO_tagmultiome_ChiC_parallel_scatter:
         bam_index = "processed/{library}/sorted.bam.bai"
 
     output:
-        bam = "processed/{library}/TEMP_CONTIG/{contig}.bam",
-        bam_index = "processed/{library}/TEMP_CONTIG/{contig}.bam.bai"
+        bam = temp("processed/{library}/TEMP_CONTIG/{contig}.bam"),
+        bam_index = temp("processed/{library}/TEMP_CONTIG/{contig}.bam.bai")
 
     log:
         stdout="log/tag_scatter/{library}_{contig}.stdout",
@@ -185,7 +186,7 @@ rule SCMO_tagmultiome_ChiC_parallel_gather:
         'Merging contig BAM files'
 
     shell:
-        "samtools merge -c {output.bam} {input.chr_bams}; samtools index {output.bam} > {log.stdout} 2> {log.stderr}"
+        "samtools merge -c {output.bam} {input.chr_bams} > {log.stdout} 2> {log.stderr}; samtools index {output.bam}"
 
 
 rule SCMO_library_stats:
