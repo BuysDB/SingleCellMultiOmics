@@ -171,7 +171,7 @@ rule SCMO_tagmultiome_NLA_parallel_scatter:
         mem_mb=lambda wildcards, attempt: attempt * 10000
 
     shell:
-        "bamtagmultiome.py -method nla -allele_samples {allele_samples} -alleles {alleles} -contig {wildcards.contig} {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
+        "bamtagmultiome.py -method nla -allele_samples {params.allele_samples} -alleles {alleles} -contig {wildcards.contig} {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
 
 
 rule SCMO_tagmultiome_NLA_parallel_gather:
