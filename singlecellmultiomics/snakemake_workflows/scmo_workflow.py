@@ -8,8 +8,8 @@ import os
 from shutil import copyfile
 
 
-def get_workflow_list():
-    return [ workflow for workflow  in pkg_resources.resource_listdir('singlecellmultiomics','snakemake_workflows') if not workflow.endswith('.py')]
+def get_workflow_list(include_hidden=False):
+    return [ workflow for workflow  in pkg_resources.resource_listdir('singlecellmultiomics','snakemake_workflows') if not workflow.endswith('.py') and (include_hidden or not workflow.startswith('_') ) ]
 
 
 def deploy_workflow_files(name, clean=False, directory='./'):
@@ -20,12 +20,15 @@ def deploy_workflow_files(name, clean=False, directory='./'):
         directory (str) : deploy to this directory
     """
 
-    workflow_list = get_workflow_list()
+    workflow_list = get_workflow_list(True)
     if not name in workflow_list:
         raise ValueError("Unkown workflow")
 
     base_path = f'snakemake_workflows/{name}'
     for file_to_copy in pkg_resources.resource_listdir('singlecellmultiomics',base_path):
+        # Files starting with a _ are never copied
+        if file_to_copy.startswith('_'):
+            continue
         print(Fore.GREEN + f'Creating {file_to_copy}' + Style.RESET_ALL, end="\t")
 
         target = directory+f'/{file_to_copy}'
@@ -34,8 +37,6 @@ def deploy_workflow_files(name, clean=False, directory='./'):
         else:
             copyfile( pkg_resources.resource_filename('singlecellmultiomics', base_path+'/'+file_to_copy),target )
             print(Fore.GREEN + f'[ok]' + Style.RESET_ALL)
-
-    print(f"\nEdit config.json and run:\n{Fore.BLUE}snakemake -np --restart-times 3{Style.RESET_ALL}")
 
 if __name__=='__main__':
     argparser = argparse.ArgumentParser(
@@ -52,3 +53,12 @@ if __name__=='__main__':
 
     else:
         deploy_workflow_files(args.alias, clean=args.clean)
+        deploy_workflow_files('_general', clean=args.clean)
+
+        print(f"""\nEdit config.json and then run either;\n
+        On local computer:\n
+        {Fore.BLUE}snakemake -np{Style.RESET_ALL}\n
+        On SGE cluster:\n
+        {Fore.BLUE}snakemake --cluster ./sge_wrapper.py  --jobs 20 --restart-times 3{Fore.BLUE}""")
+
+         
