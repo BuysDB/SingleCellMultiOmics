@@ -48,14 +48,10 @@ except KeyError:
     std_err = os.path.join(log_path, '{cluster.error}')
 
 # removing 'special' characters in log paths (default for snakemake)
-try:
-    os.makedirs('./cluster_jobs')
-except Exception as e :
-    pass
+base_path = os.path.dirname(job_script)
 
-std_out = os.path.abspath( './cluster_jobs/' + std_out.replace(',', '.').replace('=', '-') )
-std_err = os.path.abspath( './cluster_jobs/' +  std_err.replace(',', '.').replace('=', '-') )
-
+std_out = std_out.replace(',', '.').replace('=', '-')
+std_err = std_err.replace(',', '.').replace('=', '-')
 
 # formatting qsub command
 cmd = "qsub -V -pe threaded {n} -l h_vmem={mem}G -l h_rt={time} -o {std_out} -e {std_err} {job_script}"
