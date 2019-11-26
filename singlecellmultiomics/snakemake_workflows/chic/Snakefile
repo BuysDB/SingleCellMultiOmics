@@ -115,7 +115,8 @@ rule map:
         r1="processed/{library}/trimmed.R1.fastq.gz",
         r2="processed/{library}/trimmed.R2.fastq.gz"
     output:
-        temp("processed/{library}/sorted.bam")
+        temp("processed/{library}/sorted.bam"),
+        temp("processed/{library}/sorted.bam.bai")
 
     log:
         stdout="log/map/{library}.stdout",
@@ -131,22 +132,26 @@ rule map:
             # The sorting and mapping has been disconnected
             shell(
                 """bwa mem -t {threads} {input} |  samtools view -bS - > processed/{library}/unsorted.bam;
-                samtools sort -T processed/{library}/temp_sort -@ {threads} processed/{library}/unsorted.bam > processed/{library}/sorted.unfinished.bam;
-                mv processed/{library}/sorted.unfinished.bam {output}; rm processed/{library}/unsorted.bam; samtools index {output} > {log.stdout} 2> {log.stderr}"""
+                samtools sort -T processed/{wildcards.library}/temp_sort -@ {threads} processed/{wildcards.library}/unsorted.bam > processed/{wildcards.library}/sorted.unfinished.bam;
+                mv processed/{wildcards.library}/sorted.unfinished.bam {output}; rm processed/{wildcards.library}/unsorted.bam; samtools index {output} > {log.stdout} 2> {log.stderr}"""
                 )
         elif config['mapper']=='bowtie2':
             shell(
-                """bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1
-                 -x {input.ref} -1 {input.r1} -2 {input.r2} | samtools view -Sb > processed/{library}/unsorted.bam;
-                samtools sort -T processed/{library}/temp_sort -@ {threads} processed/{library}/unsorted.bam > processed/{library}/sorted.unfinished.bam;
-                mv processed/{library}/sorted.unfinished.bam {output}; rm processed/{library}/unsorted.bam; samtools index {output} > {log.stdout} 2> {log.stderr}
+                """bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1 -x {input.ref} -1 {input.r1} -2 {input.r2} | samtools view -Sb > processed/{wildcards.library}/unsorted.bam;
+                samtools sort -T processed/{wildcards.library}/temp_sort -@ {threads} processed/{wildcards.library}/unsorted.bam > processed/{wildcards.library}/sorted.unfinished.bam;
+                mv processed/{wildcards.library}/sorted.unfinished.bam {output}; rm processed/{wildcards.library}/unsorted.bam; samtools index {output} > {log.stdout} 2> {log.stderr}
                 """
                 )
 
 
 rule SCMO_tagmultiome_ChiC_parallel_scatter:
     input:
-        bam = "processed/{library}/sorted.bam"
+        bam = "processed/{library}/sorted.bam",
+        bam_index = "processed/{library}/sorted.bam.bai"
+
+    output:
+        temp("processed/{library}/TEMP_CONTIG/{contig}.bam"),
+        temp("processed/{library}/TEMP_CONTIG/{contig}.bam.bai")
 
     log:
         stdout="log/tag_scatter/{library}_{contig}.stdout",
@@ -156,17 +161,18 @@ rule SCMO_tagmultiome_ChiC_parallel_scatter:
     params: runtime="20h"
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 6000 # The amount of memory reqiored is dependent on wether alleles or consensus caller are used
-    output:
-        temp("processed/{library}/TEMP_CONTIG/{contig}.bam")
+
     shell:
         "bamtagmultiome.py -method chic -contig {wildcards.contig} {input.bam} -o {output} > {log.stdout} 2> {log.stderr}"
 
 
 rule SCMO_tagmultiome_ChiC_parallel_gather:
     input:
-        chr_bams =  expand("processed/{{library}}/TEMP_CONTIG/{contig}.bam", contig=contigs)
+        chr_bams =  expand("processed/{{library}}/TEMP_CONTIG/{contig}.bam", contig=contigs),
+        chr_bams_indices =  expand("processed/{{library}}/TEMP_CONTIG/{contig}.bam.bai", contig=contigs)
     output:
-        "processed/{library}/tagged.bam"
+        "processed/{library}/tagged.bam",
+        "processed/{library}/tagged.bam.bai"
     log:
         stdout="log/tag_gather/{library}.stdout",
         stderr="log/tag_gather/{library}.stderr"
@@ -198,7 +204,6 @@ rule SCMO_library_stats:
     shell:
         "libraryStatistics.py processed/{wildcards.library} -tagged_bam /tagged.bam > {log.stdout} 2> {log.stderr}"
 
-
 rule SCMO_count_table:
     input:
         bam = "processed/{library}/tagged.bam"
@@ -221,4 +226,5 @@ rule SCMO_count_table:
         "bamToCountTable.py -bin {wildcards.counting_bin_size} \
         -sliding {wildcards.counting_sliding_window_increment} \
         -minMQ {params.counting_min_mq} \
+        --noNames \
         {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS -o {output} --dedup > {log.stdout} 2> {log.stderr}"
