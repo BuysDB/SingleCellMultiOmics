@@ -70,7 +70,10 @@ rule SCMO_demux:
         fastqfiles = get_fastq_file_list
     output:
         temp("processed/{library}/demultiplexedR1.fastq.gz"),
-        temp("processed/{library}/demultiplexedR2.fastq.gz")
+        temp("processed/{library}/demultiplexedR2.fastq.gz"),
+        temp("processed/{library}/rejectsR1.fastq.gz"),
+        temp("processed/{library}/rejectsR2.fastq.gz")
+
     log:
         stdout="log/demux/{library}.stdout",
         stderr="log/demux/{library}.stderr"
@@ -190,7 +193,9 @@ rule SCMO_library_stats:
     input:
         bam = "processed/{library}/tagged.bam",
         r1="processed/{library}/demultiplexedR1.fastq.gz", # Its need these to count how many raw reads were present in the lib.
-        r2="processed/{library}/demultiplexedR2.fastq.gz"
+        r2="processed/{library}/demultiplexedR2.fastq.gz",
+        r2="processed/{library}/rejectsR1.fastq.gz",
+        r2="processed/{library}/rejectsR2.fastq.gz"
     output:
         "processed/{library}/plots/ReadCount.png"
 
