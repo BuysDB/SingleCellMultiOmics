@@ -20,7 +20,7 @@ try:
     threads = job_properties['threads']
 except KeyError:
     threads = 1
-
+n = threads
 
 try:
     time = job_properties['cluster']['time'] # runtime is time in hours
@@ -30,10 +30,7 @@ except KeyError:
     except KeyError:
         time = '12:00:00'
 
-try:
-    n = job_properties['cluster']['n']
-except KeyError:
-    n = 1
+
 try:
     mem = job_properties['cluster']['mem']
 except KeyError:
