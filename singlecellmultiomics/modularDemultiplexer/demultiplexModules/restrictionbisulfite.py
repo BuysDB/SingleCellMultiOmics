@@ -191,7 +191,7 @@ class Nla_384w_u8_c8_ad3_is15(Base_RestrictionBisulfiteDemuxMethod):
             barcodeFileAlias=self.barcodeFileAlias,
             barcodeFileParser=barcodeFileParser,
             **kwargs)
-        self.shortName = 'ReBsNla384C8U8E3I15'
+        self.shortName = 'RBSN' #'ReBsNla384C8U8E3I15'
         self.longName = 'Restriction-BS, NlaIII; 384w; UMI: 8 bp, CB: 8bp, Enz. ID: 3bp, ISPCR: 15 bp'
         self.autoDetectable = True
         self.description = 'Bisulfite-compatible barcoded Nla Adapters (384w). R1 contains UMI, BC, Enzyme ID and ISPCR.'
