@@ -71,18 +71,23 @@ rule SCMO_demux:
     output:
         "processed/{library}/demultiplexedR1.fastq.gz",
         "processed/{library}/demultiplexedR2.fastq.gz"
-
+    log:
+        stdout="log/demux/{library}.stdout",
+        stderr="log/demux/{library}.stderr"
     params: runtime="30h"
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 4000
     shell:
-        "demux.py -merge _ {input.fastqfiles} -o processed --y"
+        "demux.py -merge _ {input.fastqfiles} -o processed --y > {log.stdout} 2> {log.stderr}"
 
 
 rule Trim:
     input:
         r1="processed/{library}/demultiplexedR1.fastq.gz",
         r2="processed/{library}/demultiplexedR2.fastq.gz"
+    log:
+        stdout="log/trim/{library}.stdout",
+        stderr="log/trim/{library}.stderr"
     output:
         "processed/{library}/trimmed.R1.fastq.gz",
         "processed/{library}/trimmed.R2.fastq.gz"
@@ -101,7 +106,7 @@ rule Trim:
         -a  "IlluminaGEX=TTTTTAATGATACGGCGACCACCGAGATCTACACGTTCAGAGTTCTACAGTCCGACGATC;min_overlap=5" \
         -a "IlluminaMultiplexingPCRPrimer=GGAACTCCAGTCACN{{6}}TCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" \
         -A "Aseq=TGGCACCCGAGAATTCCA" -a "Aseq=TGGCACCCGAGAATTCCA"  \
-        -a "illuminaSmallRNAAdapter=TCGTATGCCGTCTTCTGCTTGT"'
+        -a "illuminaSmallRNAAdapter=TCGTATGCCGTCTTCTGCTTGT > {log.stdout} 2> {log.stderr}'
 
 
 rule map:
@@ -112,6 +117,10 @@ rule map:
     output:
         "processed/{library}/sorted.bam"
 
+    log:
+        stdout="log/map/{library}.stdout",
+        stderr="log/map/{library}.stderr"
+
     threads: 8
     params: runtime="30h"
     resources:
@@ -121,20 +130,24 @@ rule map:
         if config['mapper']=='bwa':
             shell(
                 """bwa mem -t {threads} {input} |  samtools view -bS - | \
-                samtools sort -@ {threads} -m 7G - -o {output}; samtools index {output}"""
+                samtools sort -@ {threads} -m 7G - -o {output}; samtools index {output} > {log.stdout} 2> {log.stderr}"""
                 )
         elif config['mapper']=='bowtie2':
             shell(
                 """bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1
                  -x {input.ref} -1 {input.r1} -2 {input.r2} | samtools view -Sb > processed/{library}/unsorted.bam;
                 samtools sort -T processed/{library}/temp_sort -@ {threads} processed/{library}/unsorted.bam > processed/{library}/sorted.unfinished.bam;
-                mv processed/{library}/sorted.unfinished.bam processed/{library}/sorted.bam; rm processed/{library}/unsorted.bam; samtools index {output}
+                mv processed/{library}/sorted.unfinished.bam processed/{library}/sorted.bam; rm processed/{library}/unsorted.bam; samtools index {output} > {log.stdout} 2> {log.stderr}
                 """
                 )
 
 rule SCMO_tagmultiome_ChiC_parallel_scatter:
     input:
         bam = "processed/{library}/sorted.bam"
+
+    log:
+        stdout="log/tag_scatter/{library}_{contig}.stdout",
+        stderr="log/tag_scatter/{library}_{contig}.stderr"
 
     threads: 1
     params: runtime="20h"
@@ -143,7 +156,7 @@ rule SCMO_tagmultiome_ChiC_parallel_scatter:
     output:
         "processed/{library}/TEMP_CONTIG/{contig}.bam"
     shell:
-        "bamtagmultiome.py -method chic -contig {wildcards.contig} {input.bam} -o {output}"
+        "bamtagmultiome.py -method chic -contig {wildcards.contig} {input.bam} -o {output} > {log.stdout} 2> {log.stderr}"
 
 
 rule SCMO_tagmultiome_ChiC_parallel_gather:
@@ -151,6 +164,9 @@ rule SCMO_tagmultiome_ChiC_parallel_gather:
         chr_bams =  expand("processed/{{library}}/TEMP_CONTIG/{contig}.bam", contig=contigs)
     output:
         "processed/{library}/tagged.bam"
+    log:
+        stdout="log/tag_gather/{library}.stdout",
+        stderr="log/tag_gather/{library}.stderr"
 
     threads: 1
     params: runtime="8h"
@@ -158,7 +174,7 @@ rule SCMO_tagmultiome_ChiC_parallel_gather:
         'Merging contig BAM files'
 
     shell:
-        "samtools merge -c {output} {input.chr_bams}; samtools index {output}"
+        "samtools merge -c {output} {input.chr_bams}; samtools index {output} > {log.stdout} 2> {log.stderr}"
 
 
 rule SCMO_library_stats:
@@ -167,11 +183,15 @@ rule SCMO_library_stats:
     output:
         "processed/{library}/plots/ReadCount.png"
 
+    log:
+        stdout="log/library_stats/{library}.stdout",
+        stderr="log/library_stats/{library}.stderr"
+
     threads: 1
     params: runtime="30h"
 
     shell:
-        "libraryStatistics.py processed/{wildcards.library} -tagged_bam /tagged.bam"
+        "libraryStatistics.py processed/{wildcards.library} -tagged_bam /tagged.bam > {log.stdout} 2> {log.stderr}"
 
 
 rule SCMO_count_table:
@@ -185,6 +205,10 @@ rule SCMO_count_table:
         runtime="50h",
         counting_min_mq = config['counting_min_mq']
 
+    log:
+        stdout="log/count_table/{library}_{counting_bin_size}_{counting_sliding_window_increment}.stdout",
+        stderr="log/count_table/{library}_{counting_bin_size}_{counting_sliding_window_increment}.stderr"
+
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 8000
 
@@ -192,4 +216,4 @@ rule SCMO_count_table:
         """bamToCountTable.py -bin {wildcards.counting_bin_size}
         -sliding {wildcards.counting_sliding_window_increment}
         -minMQ {params.counting_min_mq}
-        processed/{wildcards.library} -tagged_bam /tagged.bam -sampleTags SM -joinedFeatureTags reference_name -binTag DS --dedup"""
+        processed/{wildcards.library} -tagged_bam /tagged.bam -sampleTags SM -joinedFeatureTags reference_name -binTag DS --dedup > {log.stdout} 2> {log.stderr}"""
