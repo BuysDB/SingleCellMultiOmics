@@ -89,16 +89,16 @@ rule Trim:
         stdout="log/trim/{library}.stdout",
         stderr="log/trim/{library}.stderr"
     output:
-        "processed/{library}/trimmed.R1.fastq.gz",
-        "processed/{library}/trimmed.R2.fastq.gz"
+        r1="processed/{library}/trimmed.R1.fastq.gz",
+        r2="processed/{library}/trimmed.R2.fastq.gz"
 
     params: runtime="30h"
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 4000
 
     shell:
-        'cutadapt -o trimmed.R1.fastq.gz -p trimmed.R2.fastq.gz \
-        demultiplexedR1.fastq.gz demultiplexedR2.fastq.gz \
+        'cutadapt -o {output.r1} -p {output.r2} \
+        {input.r1} {input.r2} \
         -m 3 -a "IlluminaSmallAdapterConcatBait=GGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTT" \
         -a "IlluminaIndexAdapter=GGAATTCTCGGGTGCCAAGGAACTCCAGTCACN{{6}}ATCTCGTATGCCGTCTTCTGCTTG" \
         -A "IlluminaPairedEndPCRPrimer2.0=AGATCGGAAGAGCGN{{6}}CAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" \
@@ -106,7 +106,7 @@ rule Trim:
         -a  "IlluminaGEX=TTTTTAATGATACGGCGACCACCGAGATCTACACGTTCAGAGTTCTACAGTCCGACGATC;min_overlap=5" \
         -a "IlluminaMultiplexingPCRPrimer=GGAACTCCAGTCACN{{6}}TCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" \
         -A "Aseq=TGGCACCCGAGAATTCCA" -a "Aseq=TGGCACCCGAGAATTCCA"  \
-        -a "illuminaSmallRNAAdapter=TCGTATGCCGTCTTCTGCTTGT > {log.stdout} 2> {log.stderr}'
+        -a "illuminaSmallRNAAdapter=TCGTATGCCGTCTTCTGCTTGT" > {log.stdout} 2> {log.stderr}'
 
 
 rule map:
@@ -137,7 +137,7 @@ rule map:
                 """bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1
                  -x {input.ref} -1 {input.r1} -2 {input.r2} | samtools view -Sb > processed/{library}/unsorted.bam;
                 samtools sort -T processed/{library}/temp_sort -@ {threads} processed/{library}/unsorted.bam > processed/{library}/sorted.unfinished.bam;
-                mv processed/{library}/sorted.unfinished.bam processed/{library}/sorted.bam; rm processed/{library}/unsorted.bam; samtools index {output} > {log.stdout} 2> {log.stderr}
+                mv processed/{library}/sorted.unfinished.bam {output}; rm processed/{library}/unsorted.bam; samtools index {output} > {log.stdout} 2> {log.stderr}
                 """
                 )
 
