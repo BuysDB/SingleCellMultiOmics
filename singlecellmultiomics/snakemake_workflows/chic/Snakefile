@@ -221,4 +221,4 @@ rule SCMO_count_table:
         "bamToCountTable.py -bin {wildcards.counting_bin_size} \
         -sliding {wildcards.counting_sliding_window_increment} \
         -minMQ {params.counting_min_mq} \
-        {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS --dedup > {log.stdout} 2> {log.stderr}"
+        {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS -o {output} --dedup > {log.stdout} 2> {log.stderr}"
