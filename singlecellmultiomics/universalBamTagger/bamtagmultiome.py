@@ -46,6 +46,9 @@ argparser.add_argument(
 argparser.add_argument('-umi_hamming_distance', type=int, default=1)
 argparser.add_argument('-head', type=int)
 argparser.add_argument('-contig', type=str, help='Contig to only process')
+argparser.add_argument('-region_start', type=int, help='Zero based start coordinate of region to process')
+argparser.add_argument('-region_end', type=int, help='Zero based end coordinate of region to process')
+
 argparser.add_argument('-alleles', type=str, help="Phased allele file (VCF)")
 argparser.add_argument(
     '-allele_samples',
@@ -157,6 +160,10 @@ def run_multiome_tagging(args):
         head (int) : Amount of molecules to process
 
         contig (str) : only process this contig
+
+        region_start(int) : Zero based start coordinate of single region to process
+
+        region_end(int) : Zero based end coordinate of single region to process, None: all contigs when contig is not set, complete contig when contig is set.
 
         alleles (str) : path to allele VCF
 
@@ -353,6 +360,14 @@ def run_multiome_tagging(args):
     else:
         contig = args.contig
 
+    # This decides to only extract a single genomic region:
+    if args.region_start is not None:
+        if args.region_end is None:
+            raise ValueError('When supplying -region_start then also supply -region_end')
+        region_start = args.region_start
+        region_end = args.region_end
+
+
     molecule_iterator_args = {
         'alignments': input_bam,
         'queryNameFlagger': queryNameFlagger,
@@ -361,6 +376,8 @@ def run_multiome_tagging(args):
         'molecule_class_args': molecule_class_args,
         'fragment_class_args': fragment_class_args,
         'yield_invalid': yield_invalid,
+        'start':region_start,
+        'end':region_end,
         'contig': contig,
         'every_fragment_as_molecule': every_fragment_as_molecule
     }
