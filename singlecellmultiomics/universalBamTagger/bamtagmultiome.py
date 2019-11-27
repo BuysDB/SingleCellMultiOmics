@@ -122,7 +122,7 @@ cg.add_argument('--no_source_reads', action='store_true',
 
 cg.add_argument('--consensus_allow_train_location_oversampling', action='store_true',
                 help='Allow to train the consensus model multiple times for a single genomic location')
-                
+
 
 
 
@@ -419,10 +419,12 @@ def run_multiome_tagging(args):
                     'singlecellmultiomics', f'molecule/consensus_model/{args.consensus_model}')
             with open(model_path, 'rb') as f:
                 consensus_model = pickle.load(f)
-        elif args.consensus_mask_variants is not None:
-            skip_already_covered_bases = args.consensus_allow_train_location_oversampling
-
-            mask_variants = pysam.VariantFile(args.consensus_mask_variants)
+        else:
+            skip_already_covered_bases = not args.consensus_allow_train_location_oversampling
+            if args.consensus_mask_variants is None:
+                mask_variants = None
+            else:
+                mask_variants = pysam.VariantFile(args.consensus_mask_variants)
             print("Fitting consensus model, this may take a long time")
             consensus_model = singlecellmultiomics.molecule.train_consensus_model(
                 molecule_iterator,
@@ -436,9 +438,6 @@ def run_multiome_tagging(args):
             print(f'Writing consensus model to {consensus_model_path}')
             with open(consensus_model_path, 'wb') as f:
                 pickle.dump(consensus_model, f)
-        else:
-            raise NotImplementedError(
-                "Please supply variants which should be masked (-consensus_mask_variants)")
 
     # We needed to check if every argument is properly placed. If so; the jobs
     # can be sent to the cluster
