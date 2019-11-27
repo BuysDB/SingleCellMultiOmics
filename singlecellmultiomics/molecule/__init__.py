@@ -1,9 +1,9 @@
-from .molecule import *
+from .molecule import Molecule, might_be_variant, molecule_to_random_primer_dict
+from .iterator import MoleculeIterator
 from .taps import *
 from .chic import *
 from .featureannotatedmolecule import *
 from .nlaIII import *
 from .rna import *
-from .iterator import MoleculeIterator
 from .consensus import *
 from .fourthiouridine import *

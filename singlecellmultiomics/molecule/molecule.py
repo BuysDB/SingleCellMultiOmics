@@ -1,6 +1,5 @@
 from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
-import singlecellmultiomics.universalBamTagger
 import singlecellmultiomics.bamProcessing
 from singlecellmultiomics.fragment import Fragment
 import collections

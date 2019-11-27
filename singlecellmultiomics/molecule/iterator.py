@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 from singlecellmultiomics.molecule import Molecule
 from singlecellmultiomics.fragment import Fragment
-import singlecellmultiomics.universalBamTagger
+from singlecellmultiomics.universalBamTagger import QueryNameFlagger
 import pysamiterators.iterators
 import collections
 import pysam
@@ -163,7 +162,7 @@ class MoleculeIterator():
             molecule (Molecule): Molecule
         """
         if queryNameFlagger is None:
-            queryNameFlagger = singlecellmultiomics.universalBamTagger.QueryNameFlagger()
+            queryNameFlagger = QueryNameFlagger()
         self.queryNameFlagger = queryNameFlagger
 
         self.alignments = alignments

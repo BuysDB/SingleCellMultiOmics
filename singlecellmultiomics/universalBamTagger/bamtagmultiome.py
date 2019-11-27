@@ -366,6 +366,9 @@ def run_multiome_tagging(args):
             raise ValueError('When supplying -region_start then also supply -region_end')
         region_start = args.region_start
         region_end = args.region_end
+    else:
+        region_start = None
+        region_end = None
 
 
     molecule_iterator_args = {
