@@ -45,8 +45,10 @@ if __name__ == 'main':
     args = argparser.parse_args()
     bin_size = args.bin_size
 
+
     no_change_regions = args.no_change_regions.split(',')
 
+    print("Reading data...")
     df_reads = pd.read_pickle(args.pickle_reads).sum(level=[1], axis=0)
     df_umis = pd.read_pickle(args.pickle_umis).sum(level=[1], axis=0)
 
@@ -58,6 +60,7 @@ if __name__ == 'main':
                     a[0]),
                 a[1])),
         axis=1)
+
     df_umis = df_umis.reindex(
         sorted(
             df_umis.columns,
@@ -67,9 +70,11 @@ if __name__ == 'main':
                 a[1])),
         axis=1)
 
+    print(f"data size: {df.umis.shape}")
     reference = pysamiterators.CachedFasta(pysam.FastaFile(args.ref))
 
     # Calculate reference statistics
+    print("Calculating reference statistics ... ")
     ref_stats = collections.defaultdict(dict)
     for chrom, bin_idx in df_reads:
         bin_seq = reference.fetch(
@@ -92,15 +97,18 @@ if __name__ == 'main':
         ref_stats[(chrom, bin_idx)]['FRAG>70'] = np.sum(frag_sizes > 70)
         ref_stats[(chrom, bin_idx)]['MEAN_FS'] = np.mean(frag_sizes)
 
+
     regressor = sklearn.ensemble.RandomForestRegressor(
         n_estimators=100, n_jobs=8)
 
+    print("Training model ... ")
     rdf = pd.DataFrame(ref_stats)
     X = rdf[no_change_regions].T
     y = df_reads[no_change_regions].sum(0) * 2
 
     regressor.fit(X, y)
     # fill with other value @todo
+    print(f"Performing correction on {len(X)} bins ")
     reduced = (df_umis / regressor.predict(rdf.T)).fillna(0)
     pd.DataFrame(reduced).to_pickle(args.corrected_umis_path)
 
