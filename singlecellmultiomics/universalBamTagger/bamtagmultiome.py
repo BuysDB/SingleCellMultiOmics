@@ -370,7 +370,6 @@ def run_multiome_tagging(args):
         region_start = None
         region_end = None
 
-
     molecule_iterator_args = {
         'alignments': input_bam,
         'queryNameFlagger': queryNameFlagger,
@@ -529,6 +528,7 @@ def run_multiome_tagging(args):
 
             # Calculate molecule consensus
             if args.consensus:
+
                 consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
                     out,
                     f'consensus_{molecule.get_a_reference_id()}_{i}',
@@ -537,6 +537,7 @@ def run_multiome_tagging(args):
                     consensus_read.set_tag('RG', molecule[0].get_read_group())
                     consensus_read.set_tag('mi', i)
                     out.write(consensus_read)
+
 
             # Write the reads to the output file
             if not args.no_source_reads:

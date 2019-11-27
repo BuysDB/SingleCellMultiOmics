@@ -816,11 +816,20 @@ class Molecule():
 
         features, feature_info, _CIGAR, _alignment_start, _alignment_end = self.get_base_calling_feature_matrix_spaced(
             True, reference=reference, **feature_matrix_args)
+
+        # Edgecase: it can be that not a single base can be used for base calling
+        # in that case features will be None
+        # when there is no features return None
+        if features is None or len(features)==0:
+            return None
+
         # check which bases should not be used
         use_indices = [
             mask_variants is None or
             not might_be_variant_function(chrom, pos, mask_variants, base)
             for chrom, pos, base in feature_info]
+
+
 
         X_molecule = features[use_indices]
         y_molecule = [
@@ -1797,6 +1806,10 @@ class Molecule():
 
             features, reference_bases, CIGAR, alignment_start, alignment_end = self.get_base_calling_feature_matrix_spaced(
                 True)
+
+            if features is None:
+                # We cannot determine the consensus as there are no features...
+                return dict()
 
             predicted_sequence = classifier.predict(features)
             reference_sequence = ''.join(

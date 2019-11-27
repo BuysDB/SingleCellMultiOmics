@@ -18,8 +18,15 @@ def get_consensus_training_data(
             last_end = None
         if last_end is not None and molecule.spanStart < last_end:
             continue
-        x, _y = molecule.get_base_calling_training_data(
+
+        train_result = molecule.get_base_calling_training_data(
             mask_variants, **feature_matrix_args)
+
+        if train_result is None:
+            # Continue when the molecule does not have bases where we can learn from
+            continue
+
+        x, _y = train_result
         if X is None:
             X = np.empty((0, x.shape[1]))
             print(
