@@ -30,7 +30,7 @@ def bin_to_sort_value(chrom):
     return (int_chrom, chrom)
 
 
-if __name__ == 'main':
+if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="""Correct count table for GC, site abundance and others""")
