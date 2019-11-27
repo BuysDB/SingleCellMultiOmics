@@ -43,7 +43,7 @@ def get_consensus_training_data(
         if len(X) >= n_train:
             break
     print(
-        f'Finished, last genomic coordinate: {molecule.chromosome} {molecule.spanEnd}')
+        f'Finished, last genomic coordinate: {molecule.chromosome} {molecule.spanEnd}, training set size is {len(y)}')
     return X, y
 
 
