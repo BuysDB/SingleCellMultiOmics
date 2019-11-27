@@ -120,6 +120,11 @@ cg.add_argument(
 cg.add_argument('--no_source_reads', action='store_true',
                 help='Do not write original reads, only consensus ')
 
+cg.add_argument('--consensus_allow_train_location_oversampling', action='store_true',
+                help='Allow to train the consensus model multiple times for a single genomic location')
+                
+
+
 
 def run_multiome_tagging_cmd(commandline):
     args = argparser.parse_args(commandline)
@@ -402,6 +407,7 @@ def run_multiome_tagging(args):
 
     #####
     consensus_model_path = None
+
     if args.consensus:
         # Load from path if available:
 
@@ -414,12 +420,16 @@ def run_multiome_tagging(args):
             with open(model_path, 'rb') as f:
                 consensus_model = pickle.load(f)
         elif args.consensus_mask_variants is not None:
+            skip_already_covered_bases = args.consensus_allow_train_location_oversampling
+
             mask_variants = pysam.VariantFile(args.consensus_mask_variants)
             print("Fitting consensus model, this may take a long time")
             consensus_model = singlecellmultiomics.molecule.train_consensus_model(
                 molecule_iterator,
                 mask_variants=mask_variants,
-                n_train=args.consensus_n_train)
+                n_train=args.consensus_n_train,
+                skip_already_covered_bases=skip_already_covered_bases
+                )
             # Write the consensus model to disk
             consensus_model_path = os.path.abspath(
                 os.path.dirname(args.o)) + '/consensus_model.pickle.gz'

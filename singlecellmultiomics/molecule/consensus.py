@@ -6,6 +6,7 @@ def get_consensus_training_data(
         molecule_iterator,
         mask_variants=None,
         n_train=100_000,
+        skip_already_covered_bases = True,
         **feature_matrix_args):
     X = None
     y = []
@@ -14,10 +15,11 @@ def get_consensus_training_data(
     last_chrom = None
     for i, molecule in enumerate(molecule_iterator):
         # Never train the same genomic location twice
-        if last_chrom is not None and last_chrom != molecule.chromosome:
-            last_end = None
-        if last_end is not None and molecule.spanStart < last_end:
-            continue
+        if skip_already_covered_bases:
+            if last_chrom is not None and last_chrom != molecule.chromosome:
+                last_end = None
+            if last_end is not None and molecule.spanStart < last_end:
+                continue
 
         train_result = molecule.get_base_calling_training_data(
             mask_variants, **feature_matrix_args)
