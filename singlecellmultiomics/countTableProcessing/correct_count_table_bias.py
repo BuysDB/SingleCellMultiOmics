@@ -18,9 +18,7 @@ def bin_to_sort_value(chrom):
     chrom = chrom.replace('chr', '')
     try:
         if '_' in chrom:
-
             int_chrom = int(chrom.split('_')[0])
-
         elif chrom == 'X':
             int_chrom = 99
         else:
@@ -49,8 +47,8 @@ if __name__ == '__main__':
     no_change_regions = args.no_change_regions.split(',')
 
     print("Reading data...")
-    df_reads = pd.read_pickle(args.reads).sum(level=[1], axis=0)
-    df_umis = pd.read_pickle(args.umis).sum(level=[1], axis=0)
+    df_reads = pd.read_pickle(args.reads).sum(level=[1,2], axis=0).T
+    df_umis = pd.read_pickle(args.umis).sum(level=[1,2], axis=0).T
 
     df_reads = df_reads.reindex(
         sorted(
