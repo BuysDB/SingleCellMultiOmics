@@ -786,8 +786,12 @@ class Fragment():
                         pass  # the alignment is outside the requested view
         return ''.join(visualized_frag)
 
-    def set_rejection_reason(self, reason):
+    def set_rejection_reason(self, reason, set_qcfail=False):
         self.set_meta('RR', reason, as_set=True)
+        if set_qcfail:
+            for read in self:
+                if read is not None:
+                    read.is_qcfail = True
 
     def set_recognized_sequence(self, seq):
         self.set_meta('RZ', seq)

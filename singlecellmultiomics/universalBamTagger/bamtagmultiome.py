@@ -528,15 +528,18 @@ def run_multiome_tagging(args):
 
             # Calculate molecule consensus
             if args.consensus:
-
-                consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
-                    out,
-                    f'consensus_{molecule.get_a_reference_id()}_{i}',
-                    consensus_model)
-                for consensus_read in consensus_reads:
-                    consensus_read.set_tag('RG', molecule[0].get_read_group())
-                    consensus_read.set_tag('mi', i)
-                    out.write(consensus_read)
+                try:
+                    consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
+                        out,
+                        f'consensus_{molecule.get_a_reference_id()}_{i}',
+                        consensus_model)
+                    for consensus_read in consensus_reads:
+                        consensus_read.set_tag('RG', molecule[0].get_read_group())
+                        consensus_read.set_tag('mi', i)
+                        out.write(consensus_read)
+                except Exception as e:
+                    molecule.set_rejection_reason('CONSENSUS_FAILED',set_qcfail=True)
+                    molecule.write_pysam(out)
 
 
             # Write the reads to the output file

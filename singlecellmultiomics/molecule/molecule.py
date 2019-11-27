@@ -895,14 +895,17 @@ class Molecule():
         if self.allele_resolver is not None:
             self.write_allele_phasing_information_tag()
 
-    def set_rejection_reason(self, reason):
+    def set_rejection_reason(self, reason, set_qcfail=False):
         """ Add rejection reason to all fragments associated to this molecule
 
         Args:
             reason (str) : rejection reason to set
+
+            set_qcfail(bool) : set qcfail bit to True for all associated reads
         """
         for fragment in self:
-            fragment.set_rejection_reason(reason)
+            fragment.set_rejection_reason(reason, set_qcfail=set_qcfail)
+
 
     def is_valid(self, set_rejection_reasons=False):
         """Check if the molecule is valid
