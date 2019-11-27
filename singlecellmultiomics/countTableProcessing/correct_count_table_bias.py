@@ -49,8 +49,8 @@ if __name__ == '__main__':
     no_change_regions = args.no_change_regions.split(',')
 
     print("Reading data...")
-    df_reads = pd.read_pickle(args.pickle_reads).sum(level=[1], axis=0)
-    df_umis = pd.read_pickle(args.pickle_umis).sum(level=[1], axis=0)
+    df_reads = pd.read_pickle(args.reads).sum(level=[1], axis=0)
+    df_umis = pd.read_pickle(args.umis).sum(level=[1], axis=0)
 
     df_reads = df_reads.reindex(
         sorted(
