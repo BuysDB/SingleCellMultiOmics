@@ -70,7 +70,7 @@ if __name__ == '__main__':
                 a[1])),
         axis=1)
 
-    print(f"data size: {df.umis.shape}")
+    print(f"data size: {df_umis.shape}")
     reference = pysamiterators.CachedFasta(pysam.FastaFile(args.ref))
 
     # Calculate reference statistics
