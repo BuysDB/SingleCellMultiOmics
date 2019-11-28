@@ -26,6 +26,7 @@ matplotlib.use('Agg')
 
 def select_bam_file(lookup):
     for l in lookup:
+        print(f'Found file at {l}')
         if os.path.exists(l):
             return l
     return None
@@ -139,6 +140,7 @@ if __name__ == '__main__':
         # Check if the bam file is present
         if bamFile is None:
             bamFile = select_bam_file(taggedFilesLookup)
+
 
         demuxFastqFiles = select_fastq_file(demuxFastqFilesLookup)
         rejectFastqFiles = select_fastq_file(rejectFilesLookup)
@@ -287,6 +289,7 @@ if __name__ == '__main__':
                         traceback.print_exc()
 
         # Make RT reaction plot:
-        if not args.nort:
-            os.system(
-                f"bamPlotRTstats.py {bamFile} -head 2_000_000 --notstrict -o {plot_dir}/RT_")
+        if bamFile is not None and os.path.exists(bamFile):
+            if not args.nort:
+                os.system(
+                    f"bamPlotRTstats.py {bamFile} -head 2_000_000 --notstrict -o {plot_dir}/RT_")
