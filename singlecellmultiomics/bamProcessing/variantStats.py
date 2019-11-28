@@ -319,6 +319,7 @@ def obtain_variant_statistics(
     # Determine the phase (most common genotypes)
     sSNV_phase = None
     wt_allele_gSNV = None
+    snv_allele_gSNV = None
     sSNV_phased_votes = sum((obs
                              for (sSNV_state, gSNV_state), obs
                              in complete_genotype_obs.most_common()
@@ -338,6 +339,11 @@ def obtain_variant_statistics(
                 snv_allele_gSNV = gSNV_alt_base
                 # the reference allele is ref
             break
+
+        statistics[(chromosome, ssnv_position)]['sSNV_gSNV_phase'] = snv_allele_gSNV
+        
+        if snv_allele_gSNV is None:
+            return
 
         # Verify that at least ω votes are cast for the currently selected
         # allele :
