@@ -123,6 +123,7 @@ if __name__ == '__main__':
 
         taggedFilesLookup = [
             f'{library}/tagged.bam'
+            f'{library}/tagged/tagged.bam',
             f'{library}/tagged/marked_duplicates.bam',
             f'{library}/tagged/resorted.featureCounts.bam',
             f'{library}/tagged/STAR_mappedAligned.sortedByCoord.out.featureCounts.bam',
@@ -143,9 +144,9 @@ if __name__ == '__main__':
         rejectFastqFiles = select_fastq_file(rejectFilesLookup)
 
         print("Selected files:")
-        print(demuxFastqFiles)
-        print(rejectFastqFiles)
-        print(bamFile)
+        print(f'demultiplexed reads: {demuxFastqFiles}')
+        print(f'rejected reads: {rejectFastqFiles}')
+        print(f'tagged bam: {bamFile}')
 
         demuxReads = None
         rejectedReads = None
