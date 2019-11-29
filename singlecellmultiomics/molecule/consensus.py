@@ -1,6 +1,58 @@
 import sklearn.ensemble
 import numpy as np
 
+def base_calling_matrix_to_df(
+        x,
+        ref_info=None,
+        NUC_RADIUS=1,
+        USE_RT=True):
+    """
+    Convert numpy base calling feature matrix to pandas dataframe with annotated columns
+
+    Args:
+        x(np.array) : feature matrix
+        ref_info(list) : reference position annotations (will be used as index)
+        NUC_RADIUS(int) : generate kmer features target nucleotide
+        USE_RT(bool) : use RT reaction features
+
+    Returns:
+        df (pd.DataFrame)
+    """
+    df = pd.DataFrame(x)
+    # annotate the columns
+    BASE_COUNT = 5
+    RT_INDEX = 7 if USE_RT else None
+    STRAND_INDEX = 0
+    PHRED_INDEX = 1
+    RC_INDEX = 2
+    MATE_INDEX = 3
+    CYCLE_INDEX = 4
+    MQ_INDEX = 5
+    FS_INDEX = 6
+    COLUMN_OFFSET = 0
+    features_per_block = 8 - (not USE_RT)
+
+    block_header = ["?"] * features_per_block
+    block_header[STRAND_INDEX] = 'strand'
+    block_header[PHRED_INDEX] = 'phred'
+    block_header[RC_INDEX] = 'read_count'
+    block_header[MATE_INDEX] = 'mate'
+    block_header[CYCLE_INDEX] = 'cycle'
+    block_header[MQ_INDEX] = 'mq'
+    block_header[FS_INDEX] = 'fragment_size'
+    block_header[RT_INDEX] = 'rt_reactions'
+    k_header = []
+    for k in range(NUC_RADIUS * 2 + 1):
+        for base in 'ACGTN':
+            k_header += [(k, b, base) for b in block_header]
+
+    try:
+        df.columns = pd.MultiIndex.from_tuples(k_header)
+    except ValueError:  # the dataframe is a concateenation of multiple molecules
+        pass
+    if ref_info is not None:
+        df.index = pd.MultiIndex.from_tuples(ref_info)
+    return df
 
 def get_consensus_training_data(
         molecule_iterator,
