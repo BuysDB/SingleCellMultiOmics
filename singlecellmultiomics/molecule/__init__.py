@@ -7,3 +7,4 @@ from .nlaIII import *
 from .rna import *
 from .consensus import *
 from .fourthiouridine import *
+from .filter import molecule_iterator_filter
