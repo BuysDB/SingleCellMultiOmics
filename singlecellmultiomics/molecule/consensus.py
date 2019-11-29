@@ -52,6 +52,7 @@ def train_consensus_model(
         mask_variants=None,
         classifier=None,
         n_train=100_000,
+        skip_already_covered_bases = True,
         **feature_matrix_args):
     if classifier is None:  # default to random forest
         classifier = sklearn.ensemble.RandomForestClassifier(
@@ -62,7 +63,7 @@ def train_consensus_model(
             min_samples_leaf=5
         )
     X, y = get_consensus_training_data(
-        molecule_iterator, mask_variants=mask_variants, n_train=n_train, **feature_matrix_args)
+        molecule_iterator, mask_variants=mask_variants, n_train=n_train, skip_already_covered_bases=skip_already_covered_bases,**feature_matrix_args)
     y = np.array(y)
     # remove unkown ref bases from set
     X = np.array(X)[y != 'N']
