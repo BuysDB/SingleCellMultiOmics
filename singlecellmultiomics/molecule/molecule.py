@@ -884,6 +884,13 @@ class Molecule():
 
         # associatedFragmentCount :
         self.set_meta('af', len(self))
+        for rc, frag in  enumerate(self):
+            frag.set_meta('RC', rc)
+            if rc>0:
+                # Set duplicate bit
+                for read in frag:
+                    if read is not None:
+                        read.is_duplicate = True
 
         # Write RT reaction tags (rt: rt reaction index, rd rt duplicate index)
         for rt_reaction_index, (_, frags) in enumerate(
