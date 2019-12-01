@@ -258,6 +258,7 @@ class Molecule():
         else:
             cread.cigarstring = f'{len(sequence)}M'
         cread.mapping_quality = self.get_max_mapping_qual()
+
         cread.is_reverse = self.strand
         if mdstring is not None:
             cread.set_tag('MD', mdstring)
@@ -380,10 +381,11 @@ class Molecule():
             read.is_duplicate = True
 
         features = self.get_base_calling_feature_matrix(reference=reference)
-        predicted_sequence = classifier.predict(features)
-        #predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
-        phred_scores = np.rint(-10 * np.log10(np.clip(1 - classifier.predict_proba(
-            features).max(1), 0.000000001, 0.999999999))).astype('B')
+
+        # We only use the proba:
+        base_calling_probs = classifier.predict_proba(features)
+        predicted_sequence = [ 'ACGT'[i] for i in np.argmax( base_calling_probs ,1) ]
+        phred_scores = np.rint(-10 * np.log10(np.clip(1 - base_calling_probs.max(1), 0.000000001, 0.999999999))).astype('B')
 
         read = self.get_consensus_read(
             read_name=read_name,
@@ -399,7 +401,9 @@ class Molecule():
             read_name,
             classifier,
             max_N_span=300,
-            reference=None):
+            reference=None,
+            **feature_matrix_args
+            ):
         """
         Deduplicate all associated reads to a single pseudoread, when the span is larger than max_N_span
         the read is split up in multi-segments. Uncovered locations are spaced using N's in the CIGAR.
@@ -417,16 +421,17 @@ class Molecule():
             read.is_duplicate = True
 
         features, reference_bases, CIGAR, alignment_start, alignment_end = self.get_base_calling_feature_matrix_spaced(
-            True, reference=reference)
+            True, reference=reference, **feature_matrix_args)
 
-        predicted_sequence = classifier.predict(features)
+        base_calling_probs = classifier.predict_proba(features)
+        predicted_sequence = [ 'ACGT'[i] for i in np.argmax( base_calling_probs ,1) ]
         reference_sequence = ''.join(
             [base for chrom, pos, base in reference_bases])
         #predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
         predicted_sequence = ''.join(predicted_sequence)
 
         phred_scores = np.rint(
-            -10 * np.log10(np.clip(1 - classifier.predict_proba(features).max(1),
+            -10 * np.log10(np.clip(1 -base_calling_probs.max(1),
                                    0.000000001,
                                    0.999999999)
                            )).astype('B')
@@ -1768,12 +1773,14 @@ class Molecule():
                 # We cannot determine the consensus as there are no features...
                 return dict()
 
-            predicted_sequence = classifier.predict(features)
+            base_calling_probs = classifier.predict_proba(features)
+            predicted_sequence = [ 'ACGT'[i] for i in np.argmax( base_calling_probs ,1) ]
+
             reference_sequence = ''.join(
                 [base for chrom, pos, base in reference_bases])
 
             phred_scores = np.rint(
-                -10 * np.log10(np.clip(1 - classifier.predict_proba(features).max(1),
+                -10 * np.log10(np.clip(1 - base_calling_probs.max(1),
                                        0.000000001,
                                        0.999999999)
                                )).astype('B')
