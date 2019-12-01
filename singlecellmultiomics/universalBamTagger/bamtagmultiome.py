@@ -430,8 +430,13 @@ def run_multiome_tagging(args):
             else:
                 model_path = pkg_resources.resource_filename(
                     'singlecellmultiomics', f'molecule/consensus_model/{args.consensus_model}')
-            with open(model_path, 'rb') as f:
-                consensus_model = pickle.load(f)
+
+            if model_path.endswith('.h5'):
+                from tensorflow.keras.models import load_model
+                consensus_model = load_model(model_path)
+            else:
+                with open(model_path, 'rb') as f:
+                    consensus_model = pickle.load(f)
         else:
             skip_already_covered_bases = not args.consensus_allow_train_location_oversampling
             if args.consensus_mask_variants is None:
