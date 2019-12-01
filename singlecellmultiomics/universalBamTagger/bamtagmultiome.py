@@ -21,6 +21,7 @@ import sklearn
 import pkg_resources
 import pickle
 from datetime import datetime
+import traceback
 
 argparser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -62,6 +63,10 @@ argparser.add_argument(
     '--every_fragment_as_molecule',
     action='store_true',
     help='Assign every fragment as a molecule, this effectively disables UMI deduplication')
+argparser.add_argument(
+    '--ignore_bam_issues',
+    action='store_true',
+    help='Ignore truncation')
 
 argparser.add_argument(
     '-mapfile',
@@ -117,6 +122,13 @@ cg.add_argument(
     type=int,
     help='Amount of bases used for training',
     default=500_000)
+
+cg.add_argument(
+    '-consensus_k_rad',
+    type=int,
+    help='consensus model k radius',
+    default=3)
+
 cg.add_argument('--no_source_reads', action='store_true',
                 help='Do not write original reads, only consensus ')
 
@@ -211,13 +223,14 @@ def run_multiome_tagging(args):
             "Supply an output which ends in .bam, for example -o output.bam")
 
     # Verify wether the input file is indexed and sorted...
-    verify_and_fix_bam(args.bamin)
+    if not args.ignore_bam_issues:
+        verify_and_fix_bam(args.bamin)
 
     if os.path.exists(args.o):
         print(f"Removing existing file {args.o}")
         os.remove(args.o)
 
-    input_bam = pysam.AlignmentFile(args.bamin, "rb")
+    input_bam = pysam.AlignmentFile(args.bamin, "rb", ignore_truncation=args.ignore_bam_issues)
 
     # autodetect reference:
     reference = None
@@ -541,12 +554,17 @@ def run_multiome_tagging(args):
                     consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
                         out,
                         f'consensus_{molecule.get_a_reference_id()}_{i}',
-                        consensus_model)
+                        consensus_model,
+                        NUC_RADIUS=args.consensus_k_rad
+                        )
                     for consensus_read in consensus_reads:
                         consensus_read.set_tag('RG', molecule[0].get_read_group())
                         consensus_read.set_tag('mi', i)
                         out.write(consensus_read)
                 except Exception as e:
+
+                    #traceback.print_exc()
+                    #print(e)
                     molecule.set_rejection_reason('CONSENSUS_FAILED',set_qcfail=True)
                     molecule.write_pysam(out)
 
