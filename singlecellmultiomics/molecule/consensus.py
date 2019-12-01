@@ -1,5 +1,7 @@
 import sklearn.ensemble
 import numpy as np
+import pandas as pd
+import time
 
 def base_calling_matrix_to_df(
         x,
@@ -57,46 +59,70 @@ def base_calling_matrix_to_df(
 def get_consensus_training_data(
         molecule_iterator,
         mask_variants=None,
-        n_train=100_000,
+        n_train=100_000, # When None, training data is created until molecule source depletion
         skip_already_covered_bases = True,
+        yield_results=False, # Yield results instead of returning a matrix
         **feature_matrix_args):
-    X = None
-    y = []
 
+
+
+    if not yield_results:
+        X = None
+        y = []
+    molecules_used = 0
+    training_set_size = 0
     last_end = None
     last_chrom = None
-    for i, molecule in enumerate(molecule_iterator):
-        # Never train the same genomic location twice
-        if skip_already_covered_bases:
-            if last_chrom is not None and last_chrom != molecule.chromosome:
-                last_end = None
-            if last_end is not None and molecule.spanStart < last_end:
+    try:
+
+        for i, molecule in enumerate(molecule_iterator):
+            # Never train the same genomic location twice
+            if skip_already_covered_bases:
+                if last_chrom is not None and last_chrom != molecule.chromosome:
+                    last_end = None
+                if last_end is not None and molecule.spanStart < last_end:
+                    continue
+
+            train_result = molecule.get_base_calling_training_data(
+                mask_variants, **feature_matrix_args)
+
+            if train_result is None:
+                # Continue when the molecule does not have bases where we can learn from
                 continue
 
-        train_result = molecule.get_base_calling_training_data(
-            mask_variants, **feature_matrix_args)
+            x, _y = train_result
+            training_set_size += len(_y)
 
-        if train_result is None:
-            # Continue when the molecule does not have bases where we can learn from
-            continue
+            if yield_results:
+                yield x, _y
 
-        x, _y = train_result
-        if X is None:
-            X = np.empty((0, x.shape[1]))
-            print(
-                f"Creating feature matrix with {x.shape[1]} dimensions and {n_train} training base-calls")
-        y += _y
-        X = np.append(X, x, axis=0)
-        last_chrom = molecule.chromosome
-        if molecule.spanEnd is not None:
-            last_end = molecule.spanEnd
-        else:
-            last_end += len(_y)
-        if len(X) >= n_train:
-            break
+            else:
+                if X is None:
+                    X = np.empty((0, x.shape[1]))
+                    print(
+                        f"Creating feature matrix with {x.shape[1]} dimensions and {n_train} training base-calls")
+                y += _y
+                X = np.append(X, x, axis=0)
+                last_chrom = molecule.chromosome
+
+                if training_set_size >= n_train:
+                    break
+
+            molecules_used+=1
+            if molecule.spanEnd is not None:
+                last_end = molecule.spanEnd
+            else:
+                last_end += len(_y)
+
+
+    except KeyboardInterrupt as e:
+        print("Got keyboard interrupt, stopping to load more data")
+
     print(
-        f'Finished, last genomic coordinate: {molecule.chromosome} {molecule.spanEnd}, training set size is {len(y)}')
-    return X, y
+            f'Finished, last genomic coordinate: {molecule.chromosome} {molecule.spanEnd}, training set size is {training_set_size}, used {molecules_used} molecules for training')
+    if not yield_results:
+        return X, y
+
 
 
 def train_consensus_model(
@@ -115,7 +141,8 @@ def train_consensus_model(
             min_samples_leaf=5
         )
     X, y = get_consensus_training_data(
-        molecule_iterator, mask_variants=mask_variants, n_train=n_train, skip_already_covered_bases=skip_already_covered_bases,**feature_matrix_args)
+        molecule_iterator, mask_variants=mask_variants, n_train=n_train,
+        skip_already_covered_bases=skip_already_covered_bases,**feature_matrix_args)
     y = np.array(y)
     # remove unkown ref bases from set
     X = np.array(X)[y != 'N']
