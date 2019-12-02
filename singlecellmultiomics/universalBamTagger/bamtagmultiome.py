@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 import pysam
 from singlecellmultiomics.molecule import MoleculeIterator
 import singlecellmultiomics
@@ -468,7 +469,7 @@ def run_multiome_tagging(args):
 
             ## Create folder to store cluster files:
             cluster_file_folder = os.path.abspath(os.path.dirname(
-                args.o)) + '/cluster')
+                args.o)) + '/cluster'
             print(f'Writing cluster scripts and standard out and error to {cluster_file_folder}')
             if not os.path.exists(cluster_file_folder):
                 try:
