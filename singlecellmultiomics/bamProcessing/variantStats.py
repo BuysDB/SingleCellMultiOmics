@@ -648,12 +648,20 @@ if __name__ == '__main__':
         }
 
     print('Writing final site table')
-    site_stats = pd.DataFrame(lambda_free_dict).T.join(
-        pd.DataFrame(haplotype_scores).T)
+    try:
+        site_stats = pd.DataFrame(lambda_free_dict).T.join(
+            pd.DataFrame(haplotype_scores).T)
+    except Exception as e:
+        print(e)
+        site_stats = pd.DataFrame(lambda_free_dict.T)
+
     site_stats.to_pickle(f'{args.prefix}_site_stats.pickle.gz')
     site_stats.to_csv(f'{args.prefix}_site_stats.csv')
 
     print('Writing final cell table')
-    cell_call_df = pd.DataFrame(cell_call_data)
-    cell_call_df.to_pickle(f'{args.prefix}_cell_calls.pickle.gz')
-    cell_call_df.to_csv(f'{args.prefix}_cell_calls.csv')
+    try:
+        cell_call_df = pd.DataFrame(cell_call_data)
+        cell_call_df.to_pickle(f'{args.prefix}_cell_calls.pickle.gz')
+        cell_call_df.to_csv(f'{args.prefix}_cell_calls.csv')
+    except Exception as e:
+        print(e)
