@@ -24,6 +24,8 @@ import pickle
 from datetime import datetime
 import traceback
 
+available_consensus_models = pkg_resources.resource_listdir('singlecellmultiomics','molecule/consensus_model')
+
 argparser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     description='Assign molecules, set sample tags, set alleles')
@@ -99,6 +101,13 @@ cluster.add_argument(
     type=int,
     help='Time requested per job')
 
+cluster.add_argument(
+    '-clusterdir',
+    type=str,
+    default=None,
+    help='Folder to store cluster files in (scripts and sterr/out, when not specified a "cluster" folder will be made in same directory as -o')
+
+
 tr = argparser.add_argument_group('transcriptome specific settings')
 tr.add_argument('-exons', type=str, help='Exon GTF file')
 tr.add_argument(
@@ -116,7 +125,7 @@ cg.add_argument('-consensus_mask_variants', type=str,
 cg.add_argument(
     '-consensus_model',
     type=str,
-    help='Name of or path to consensus classifier',
+    help=f'Name of or path to consensus classifier, built-in available models are:{", ".join(available_consensus_models)}',
     default=None)
 cg.add_argument(
     '-consensus_n_train',
