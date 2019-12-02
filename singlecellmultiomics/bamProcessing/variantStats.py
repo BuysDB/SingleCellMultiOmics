@@ -103,7 +103,7 @@ def obtain_variant_statistics(
 
                 print(f'Renaming {temp_target_bam} > {target_bam}')
                 os.rename(temp_target_bam,target_bam)
-                os.rename(temp_target_bai,target_bam.replace('.bam','bai'))
+                os.rename(temp_target_bai,target_bam.replace('.bam','.bai'))
             alignment_path = target_bam
 
         with pysam.AlignmentFile(alignment_path) as alignments:
