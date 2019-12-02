@@ -98,7 +98,10 @@ def obtain_variant_statistics(
                     java_cmd=f'java -jar -Xmx{args.realign_mem}G -Djava.io.tmpdir=./gatk_tmp',
                     reference=reference.handle.filename.decode('utf8'),
                     interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}.intervals')
+
+                print(f'Renaming {temp_target_bam} > {target_bam}')
                 os.rename(temp_target_bam,target_bam)
+                os.rename(temp_target_bam+'.bai',target_bam+'.bai')
             alignment_path = target_bam
 
         with pysam.AlignmentFile(alignment_path) as alignments:
