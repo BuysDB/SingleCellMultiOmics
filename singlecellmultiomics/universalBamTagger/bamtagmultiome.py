@@ -466,6 +466,17 @@ def run_multiome_tagging(args):
                 args.o)) + '/SCMO_' + str(uuid.uuid4())
             hold_merge = []
 
+            ## Create folder to store cluster files:
+            cluster_file_folder = os.path.abspath(os.path.dirname(
+                args.o)) + '/cluster')
+            print(f'Writing cluster scripts and standard out and error to {cluster_file_folder}')
+            if not os.path.exists(cluster_file_folder):
+                try:
+                    os.makedirs(cluster_file_folder,exist_ok=True)
+                except Exception as e:
+                    print(e)
+                    pass
+
             found_alts = 0
             for chrom in list(input_bam.references) + [MISC_ALT_CONTIGS_SCMO]:
                 if not is_main_chromosome(chrom):
@@ -481,13 +492,13 @@ def run_multiome_tagging(args):
                 job = f'SCMULTIOMICS_{str(uuid.uuid4())}'
                 os.system(
                     f'submission.py --silent' +
-                    f' -y --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"')
+                    f' -y -s {cluster_file_folder} --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"')
                 hold_merge.append(job)
 
             hold = ','.join(hold_merge)
             os.system(
                 f'submission.py --silent' +
-                f' -y --py36 -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"')
+                f' -y --py36 -s {cluster_file_folder} -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"')
             exit()
 
     #####
