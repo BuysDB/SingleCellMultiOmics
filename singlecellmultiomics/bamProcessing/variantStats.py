@@ -14,7 +14,7 @@ from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, sor
 from singlecellmultiomics.pyutils import meanOfCounter
 import argparse
 import os
-
+import traceback
 f'Please use an environment with python 3.6 or higher!'
 
 
@@ -572,23 +572,26 @@ if __name__ == '__main__':
         for variant_index, ((chromosome, ssnv_position), potential_gsnv_position) in enumerate(
                 probed_variants.items()):
 
-            obtain_variant_statistics(
-                alignment_file_paths=paths,
-                cell_obs=cell_obs,
-                cell_call_data=cell_call_data,
-                statistics=statistics,
-                reference=reference,
-                chromosome=chromosome,
-                ssnv_position=ssnv_position,
-                gsnv_position=potential_gsnv_position,
-                WINDOW_RADIUS=WINDOW_RADIUS,
-                haplotype_scores=haplotype_scores,
-                out=out, min_read_obs=args.min_read_obs,
-                read_groups=read_groups,
-                args=args,
-                umi_hamming_distance=1
-            )
-
+            try:
+                obtain_variant_statistics(
+                    alignment_file_paths=paths,
+                    cell_obs=cell_obs,
+                    cell_call_data=cell_call_data,
+                    statistics=statistics,
+                    reference=reference,
+                    chromosome=chromosome,
+                    ssnv_position=ssnv_position,
+                    gsnv_position=potential_gsnv_position,
+                    WINDOW_RADIUS=WINDOW_RADIUS,
+                    haplotype_scores=haplotype_scores,
+                    out=out, min_read_obs=args.min_read_obs,
+                    read_groups=read_groups,
+                    args=args,
+                    umi_hamming_distance=1
+                )
+            except Exception as e:
+                traceback.print_exc()
+                
             if args.head and (variant_index > args.head - 1):
                 print(
                     f'Stopping at variant {variant_index+1} because head was supplied ')
