@@ -589,7 +589,7 @@ if __name__ == '__main__':
     haplotype_scores = {}
 
     read_groups = set()  # Store unique read groups in this set
-    with sorted_bam_file(f'{prefix}_evidence.bam', origin_bam=pysam.AlignmentFile(paths[0]), read_groups=read_groups) as out:
+    with sorted_bam_file(f'{args.prefix}_evidence.bam', origin_bam=pysam.AlignmentFile(paths[0]), read_groups=read_groups) as out:
 
         for variant_index, ((chromosome, ssnv_position), potential_gsnv_position) in enumerate(
                 probed_variants.items()):
