@@ -14,6 +14,7 @@ from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, sor
 from singlecellmultiomics.pyutils import meanOfCounter
 import argparse
 import os
+import sys
 import traceback
 f'Please use an environment with python 3.6 or higher!'
 
@@ -537,7 +538,7 @@ if __name__ == '__main__':
 
     argparser.add_argument('-window_radius', type=int, default=250)
     argparser.add_argument('-realign_mem', type=int, default=25)
-
+    argparser.add_argument('--cluster', action='store_true')
     args = argparser.parse_args()
 
     if args.realign and args.indelvcf is None:
@@ -565,6 +566,17 @@ if __name__ == '__main__':
                 snv_pos, gsnv_pos = int(snv_pos), int(gsnv_pos)
                 probed_variants[(chrom, snv_pos)] = gsnv_pos
 
+    if args.cluster:
+        for i,((chrom, snv_pos), gsnv_pos) in enumerate(probed_variants.items()):
+            arguments = " ".join(
+                [x for x in sys.argv if x != '--cluster' and '.bed' not in x ])
+
+            job_name = f'vstat_{i}'
+            out_folder = './variantStats'
+            if not os.path.exists(out_folder):
+                os.makedirs(out_folder)
+            print('submission.py' + f' -y --py36 -time 50 -t 1 -m 40 -N {job_name} "{arguments} -ssnv {chrom}:{snv_pos} -gsnv {chrom}:{gsnv_pos} -prefix {out_folder}/{chrom}_{snv_pos}" ')
+        exit()
     reference = pysamiterators.CachedFasta(pysam.FastaFile(args.reference))
 
     cell_obs = collections.defaultdict(
