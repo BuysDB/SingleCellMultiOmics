@@ -653,7 +653,7 @@ if __name__ == '__main__':
             pd.DataFrame(haplotype_scores).T)
     except Exception as e:
         print(e)
-        site_stats = pd.DataFrame(lambda_free_dict.T)
+        site_stats = pd.DataFrame(lambda_free_dict).T
 
     site_stats.to_pickle(f'{args.prefix}_site_stats.pickle.gz')
     site_stats.to_csv(f'{args.prefix}_site_stats.csv')
