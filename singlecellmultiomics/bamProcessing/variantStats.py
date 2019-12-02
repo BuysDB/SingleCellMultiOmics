@@ -95,7 +95,7 @@ def obtain_variant_statistics(
                     args.indelvcf,
                     gatk_path=args.gatk3_path,
                     interval_path=None,
-                    java_cmd='java -jar -Xmx{args.realign_mem}G -Djava.io.tmpdir=./gatk_tmp',
+                    java_cmd=f'java -jar -Xmx{args.realign_mem}G -Djava.io.tmpdir=./gatk_tmp',
                     reference=reference.handle.filename.decode('utf8'),
                     interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}.intervals')
                 os.rename(temp_target_bam,target_bam)
