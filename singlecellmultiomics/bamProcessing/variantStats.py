@@ -508,12 +508,12 @@ if __name__ == '__main__':
     argparser.add_argument('bamfiles', nargs='+')
     argparser.add_argument(
         '-ssnv',
-        help="sSNV bed file",
+        help="sSNV bed file, or single sSNV location chr:pos",
         type=str,
         required=True)
     argparser.add_argument(
         '-gsnv',
-        help="gSNV bed file",
+        help="gSNV bed file, or single gSNV location chr:pos",
         type=str,
         required=True)
     argparser.add_argument(
@@ -532,6 +532,9 @@ if __name__ == '__main__':
         type=str,
         default='GenomeAnalysisTK.jar')
     argparser.add_argument('-indelvcf', type=str)
+
+    argparser.add_argument('-prefix', type=str, default='')
+
     argparser.add_argument('-window_radius', type=int, default=250)
     argparser.add_argument('-realign_mem', type=int, default=25)
 
@@ -545,15 +548,22 @@ if __name__ == '__main__':
 
     # Load probed variants
     probed_variants = {}
-    with open(args.ssnv) as s, \
-            open(args.gsnv) as g:
-        for i, (ssnv_line, gsnv_line) in enumerate(zip(s, g)):
-            if ssnv_line.startswith('track name'):
-                continue
-            chrom, snv_pos, _ = ssnv_line.strip().split()
-            _, gsnv_pos, __ = gsnv_line.strip().split()
-            snv_pos, gsnv_pos = int(snv_pos), int(gsnv_pos)
-            probed_variants[(chrom, snv_pos)] = gsnv_pos
+    if ':' in args.ssnv:
+        chrom, snv_pos = args.ssnv.strip().split(':')
+        chrom_g, gsnv_pos = args.gsnv.strip().split(':')
+        assert chrom==chrom_g, 'germline SNV should be on the same chromosome as the sSNV'
+        probed_variants[(chrom, int(snv_pos))] = int( gsnv_pos)
+
+    else:
+        with open(args.ssnv) as s, \
+                open(args.gsnv) as g:
+            for i, (ssnv_line, gsnv_line) in enumerate(zip(s, g)):
+                if ssnv_line.startswith('track name'):
+                    continue
+                chrom, snv_pos, _ = ssnv_line.strip().split()
+                _, gsnv_pos, __ = gsnv_line.strip().split()
+                snv_pos, gsnv_pos = int(snv_pos), int(gsnv_pos)
+                probed_variants[(chrom, snv_pos)] = gsnv_pos
 
     reference = pysamiterators.CachedFasta(pysam.FastaFile(args.reference))
 
@@ -591,7 +601,7 @@ if __name__ == '__main__':
                 )
             except Exception as e:
                 traceback.print_exc()
-                
+
             if args.head and (variant_index > args.head - 1):
                 print(
                     f'Stopping at variant {variant_index+1} because head was supplied ')
@@ -628,10 +638,10 @@ if __name__ == '__main__':
     print('Writing final site table')
     site_stats = pd.DataFrame(lambda_free_dict).T.join(
         pd.DataFrame(haplotype_scores).T)
-    site_stats.to_pickle('site_stats.pickle.gz')
-    site_stats.to_csv('site_stats.csv')
+    site_stats.to_pickle(f'{args.prefix}_site_stats.pickle.gz')
+    site_stats.to_csv(f'{args.prefix}_site_stats.csv')
 
     print('Writing final cell table')
     cell_call_df = pd.DataFrame(cell_call_data)
-    cell_call_df.to_pickle('cell_calls.pickle.gz')
-    cell_call_df.to_csv('cell_calls.csv')
+    cell_call_df.to_pickle(f'{args.prefix}_cell_calls.pickle.gz')
+    cell_call_df.to_csv(f'{args.prefix}_cell_calls.csv')
