@@ -468,8 +468,11 @@ def run_multiome_tagging(args):
             hold_merge = []
 
             ## Create folder to store cluster files:
-            cluster_file_folder = os.path.abspath(os.path.dirname(
-                args.o)) + '/cluster'
+            if args.clusterdir is None:
+                cluster_file_folder = os.path.abspath(os.path.dirname(
+                    args.o)) + '/cluster'
+            else:
+                cluster_file_folder = args.clusterdir
             print(f'Writing cluster scripts and standard out and error to {cluster_file_folder}')
             if not os.path.exists(cluster_file_folder):
                 try:
