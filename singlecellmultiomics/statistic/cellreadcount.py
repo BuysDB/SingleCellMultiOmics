@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 from .statistic import StatisticHistogram
 import singlecellmultiomics.pyutils as pyutils
 import collections
-
+import pandas as pd
 import matplotlib
+import numpy as np
 matplotlib.rcParams['figure.dpi'] = 160
 matplotlib.use('Agg')
 
@@ -36,7 +37,7 @@ class CellReadCount(StatisticHistogram):
         self.molecule_counts[cell] +=1
 
     def to_csv(self, path):
-        pd.DataFrame({'reads':self.read_counts, 'umis':self.molecule_count}).to_csv(path)
+        pd.DataFrame({'reads':self.read_counts, 'umis':self.molecule_counts}).to_csv(path)
 
     def __repr__(self):
         return f'The average amount of reads is {np.mean(self.read_counts.values())}'

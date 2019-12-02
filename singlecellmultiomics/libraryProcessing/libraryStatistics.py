@@ -60,6 +60,12 @@ if __name__ == '__main__':
         '--plotsOnly',
         action='store_true',
         help="only make plots")
+
+    argparser.add_argument(
+        '--tablesOnly',
+        action='store_true',
+        help="only make tables")
+
     argparser.add_argument('-head', type=int)
     argparser.add_argument(
         '-tagged_bam',
@@ -246,22 +252,25 @@ if __name__ == '__main__':
             plot_dir = args.o
             table_dir = f'{args.o}/tables'
             statFile = f'{args.o}/statistics.pickle.gz'
+            
+        if not args.tablesOnly:
 
-        if not os.path.exists(plot_dir):
-            os.makedirs(plot_dir)
-        for statistic in statistics:
-            if not hasattr(statistic, 'plot'):
-                print(
-                    f'Not making a plot for {statistic.__class__.__name__} as no plot method is defined')
-                continue
-            try:
-                statistic.plot(
-                    f'{plot_dir}/{statistic.__class__.__name__}.png',
-                    title=library_name)
-            except Exception as e:
-                if args.v:
-                    import traceback
-                    traceback.print_exc()
+
+            if not os.path.exists(plot_dir):
+                os.makedirs(plot_dir)
+            for statistic in statistics:
+                if not hasattr(statistic, 'plot'):
+                    print(
+                        f'Not making a plot for {statistic.__class__.__name__} as no plot method is defined')
+                    continue
+                try:
+                    statistic.plot(
+                        f'{plot_dir}/{statistic.__class__.__name__}.png',
+                        title=library_name)
+                except Exception as e:
+                    if args.v:
+                        import traceback
+                        traceback.print_exc()
 
         # Make tables:
         if not args.plotsOnly:
