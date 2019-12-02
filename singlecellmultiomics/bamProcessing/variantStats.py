@@ -87,6 +87,7 @@ def obtain_variant_statistics(
 
             if not os.path.exists(target_bam):
                 temp_target_bam = f'{target_bam}.temp.bam'
+                temp_target_bai = f'{target_bam}.temp.bai'
                 GATK_indel_realign(
                     alignment_path,
                     temp_target_bam,
@@ -102,7 +103,7 @@ def obtain_variant_statistics(
 
                 print(f'Renaming {temp_target_bam} > {target_bam}')
                 os.rename(temp_target_bam,target_bam)
-                os.rename(temp_target_bam+'.bai',target_bam+'.bai')
+                os.rename(temp_target_bai,target_bam.replace('.bam','bai'))
             alignment_path = target_bam
 
         with pysam.AlignmentFile(alignment_path) as alignments:
