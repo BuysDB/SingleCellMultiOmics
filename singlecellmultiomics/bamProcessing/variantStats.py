@@ -569,13 +569,13 @@ if __name__ == '__main__':
     if args.cluster:
         for i,((chrom, snv_pos), gsnv_pos) in enumerate(probed_variants.items()):
             arguments = " ".join(
-                [x for x in sys.argv if x != '--cluster' and '.bed' not in x ])
+                [x for x in sys.argv if x != '--cluster' and '.bed' not in x and '-ssnv'!=x and '-gsnv'!=x ])
 
             job_name = f'vstat_{i}'
             out_folder = './variantStats'
             if not os.path.exists(out_folder):
                 os.makedirs(out_folder)
-            print('submission.py' + f' -y --py36 -time 50 -t 1 -m 40 -N {job_name} "{arguments} -ssnv {chrom}:{snv_pos} -gsnv {chrom}:{gsnv_pos} -prefix {out_folder}/{chrom}_{snv_pos}" ')
+            print('submission.py' + f' -y --py36 -time 50 -t 1 -m 50 -N {job_name} "{arguments} -ssnv {chrom}:{snv_pos} -gsnv {chrom}:{gsnv_pos} -prefix {out_folder}/{chrom}_{snv_pos}" ')
         exit()
     reference = pysamiterators.CachedFasta(pysam.FastaFile(args.reference))
 
