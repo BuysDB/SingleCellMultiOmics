@@ -87,7 +87,8 @@ if __name__ == '__main__':
             FragmentSizeHistogram(args),
             RejectionReasonHistogram(args),
             MappingQualityHistogram(args),
-            OversequencingHistogram(args)
+            OversequencingHistogram(args),
+            CellReadCount(args)
         ]
         if(args.t in ['meth-stats', 'all-stats']):
             statistics.extend([
