@@ -84,7 +84,7 @@ def obtain_variant_statistics(
         if args.realign:
             target_bam = f'align_{chromosome}_{region_start}_{region_end}.bam'
 
-            if not os.path.exist(target_bam):
+            if not os.path.exists(target_bam):
                 temp_target_bam = f'{target_bam}.temp.bam'
                 GATK_indel_realign(
                     alignment_path,
@@ -95,7 +95,7 @@ def obtain_variant_statistics(
                     args.indelvcf,
                     gatk_path=args.gatk3_path,
                     interval_path=None,
-                    java_cmd='java -jar -Xmx30G -Djava.io.tmpdir=./gatk_tmp',
+                    java_cmd='java -jar -Xmx{args.realign_mem}G -Djava.io.tmpdir=./gatk_tmp',
                     reference=reference.handle.filename.decode('utf8'),
                     interval_write_path=f'./align_{chromosome}_{region_start}_{region_end}.intervals')
                 os.rename(temp_target_bam,target_bam)
@@ -341,7 +341,7 @@ def obtain_variant_statistics(
             break
 
         statistics[(chromosome, ssnv_position)]['sSNV_gSNV_phase'] = snv_allele_gSNV
-        
+
         if snv_allele_gSNV is None:
             return
 
@@ -530,6 +530,8 @@ if __name__ == '__main__':
         default='GenomeAnalysisTK.jar')
     argparser.add_argument('-indelvcf', type=str)
     argparser.add_argument('-window_radius', type=int, default=250)
+    argparser.add_argument('-realign_mem', type=int, default=25)
+
     args = argparser.parse_args()
 
     if args.realign and args.indelvcf is None:
