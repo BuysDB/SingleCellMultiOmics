@@ -136,9 +136,9 @@ class TestMolecule(unittest.TestCase):
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
             moleculeClass=singlecellmultiomics.molecule.Molecule,
-            fragmentClass=singlecellmultiomics.fragment.Fragment,
+            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
             fragment_class_args={
-                'R1_primer_length':4,
+                'R1_primer_length':0,
                 'R2_primer_length':6,
             }
             )
@@ -147,7 +147,7 @@ class TestMolecule(unittest.TestCase):
                 if  molecule.get_sample()=='APKS3-P19-1-1_91':
                     break
 
-            self.assertEqual(''.join( list(molecule.get_consensus().values()) ), 'AGTTAGATATGGACTCTTCTTCAGACACTTTGTTTAAATTTTAAATTTTTTTCTGATTGCATATTACTAAAAATGTGTTATGAATATTTTCCATATCATTAAACATTCTTCTCAAGCATAACTTTAAATAACTATAGAAAATTTACGCTACTTTTGTTTTTGTTTTTTTTTTTTTTTTTTTACTATTATTAATAACAC')
+            self.assertEqual(''.join( list(molecule.get_consensus().values()) ), 'CATGAGTTAGATATGGACTCTTCTTCAGACACTTTGTTTAAATTTTAAATTTTTTTCTGATTGCATATTACTAAAAATGTGTTATGAATATTTTCCATATCATTAAACATTCTTCTCAAGCATAACTTTAAATAACTGCATTATAGAAAATTTACGCTACTTTTGTTTTTGTTTTTTTTTTTTTTTTTTTACTATTATTAATAACACGGTGG')
 
     def test_fragment_sizes(self):
 
@@ -160,7 +160,7 @@ class TestMolecule(unittest.TestCase):
                     'R2_primer_length':6,
                 },
 
-                fragmentClass=singlecellmultiomics.fragment.Fragment):
+                fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment):
 
                 # This is a dovetailed molecule, both R1 and R2 overshoot into the adapter
                 if molecule.sample=='APKS2-P18-2-1_66' and molecule.umi=='CGC':
@@ -172,10 +172,10 @@ class TestMolecule(unittest.TestCase):
                     # Resulting in a fragment size of 109 - 10 = 101
                     self.assertEqual(
                         abs(molecule[0].span[1]-molecule[0].span[2])
-                        , 101)
+                        , 107)
                     self.assertEqual(
                         molecule.get_safely_aligned_length()
-                        , 101)
+                        , 107)
 
 
     def test_get_match_mismatch_frequency(self):
@@ -185,17 +185,17 @@ class TestMolecule(unittest.TestCase):
             alignments=f,
             moleculeClass=singlecellmultiomics.molecule.Molecule,
             fragment_class_args={
-                'R1_primer_length':4,
-                'R2_primer_length':6,
+                'R1_primer_length':0,
+                'R2_primer_length':0,
             },
 
-            fragmentClass=singlecellmultiomics.fragment.Fragment)
+            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment)
             for molecule in iter(it):
                 #print(molecule.get_sample())
                 if  molecule.get_sample()=='APKS3-P19-1-1_91':
                     break
         #print(molecule.get_match_mismatch_frequency())
-        self.assertEqual( (583, 13), molecule.get_match_mismatch_frequency() )
+        self.assertEqual( (628, 13), molecule.get_match_mismatch_frequency() )
 
     def test_get_consensus_gc_ratio(self):
         """Test if the gc ratio of a molecule is properly determined"""
@@ -205,8 +205,8 @@ class TestMolecule(unittest.TestCase):
             moleculeClass=singlecellmultiomics.molecule.Molecule,
             fragmentClass=singlecellmultiomics.fragment.Fragment,
             fragment_class_args={
-                'R1_primer_length':4,
-                'R2_primer_length':6,
+                'R1_primer_length':0,
+                'R2_primer_length':0,
             }
             )
             for molecule in iter(it):
@@ -214,7 +214,7 @@ class TestMolecule(unittest.TestCase):
                 if  molecule.get_sample()=='APKS3-P19-1-1_91':
                     break
 
-        self.assertAlmostEqual(0.2070707, molecule.get_consensus_gc_ratio() )
+        self.assertAlmostEqual(0.23113207547169812, molecule.get_consensus_gc_ratio() )
 
 
     def test_deduplication(self):

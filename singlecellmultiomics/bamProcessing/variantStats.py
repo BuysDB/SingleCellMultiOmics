@@ -475,7 +475,7 @@ def obtain_variant_statistics(
             if phased_variant_support_reads >= 3:
                 cell_call_data[(chrom, pos)][cell] = 20
 
-        if variant_neg_support_reads / total_reads > 0.1:
+        if uninformative_reads / total_reads > 0.1:
             # 0.1 for ref allele obs
             cell_call_data[(chrom, pos)][cell] += 0.1
 

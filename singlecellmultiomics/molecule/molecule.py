@@ -1613,7 +1613,7 @@ class Molecule():
             R2 = fragment.get_R2()
             try:
                 start, end = pysamiterators.iterators.getPairGenomicLocations(
-                    R1=R1, R1PrimerLength=0, R2PrimerLength=0,
+                    R1=R1, R1PrimerLength=fragment.R1_primer_length, R2PrimerLength=fragment.R2_primer_length,
                     R2=R2,
                     allow_unsafe=(R1 is None or fragment.unsafe_trimmed))
             except ValueError as e:

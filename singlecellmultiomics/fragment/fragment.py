@@ -109,6 +109,7 @@ class Fragment():
             if read.has_tag('rS'):
                 self.random_primer_sequence = read.get_tag('rS')
                 self.unsafe_trimmed = True
+                self.R2_primer_length = 0 # Set R2 primer length to zero, as the primer has been removed
             if not read.is_unmapped:
                 self.is_mapped = True
             if read.mapping_quality > 0:
