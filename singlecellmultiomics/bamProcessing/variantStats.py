@@ -276,7 +276,7 @@ def obtain_variant_statistics(
                     alpha_value >= α and (
                         sSNV_supporting_reads +
                         ref_sSNV_reads) >= β) or (
-                    alpha_value < α and ref_sSNV_reads >= β) else 0)
+                    alpha_value < α and sSNV_supporting_reads >= β) else 0)
 
             print(f'{sample}\tsSNV alt:{sSNV_state}\t{sSNV_supporting_reads}\tsSNV ref:{ref_sSNV_reads}\t{ref_sSNV_reads}\tα:{alpha_value}\t{"votes" if vote else "no vote"}')
 
