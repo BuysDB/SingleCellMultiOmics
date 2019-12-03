@@ -241,7 +241,7 @@ def obtain_variant_statistics(
     # determine tp*, the alleles we expect observe
     # ϴ τ α γ κ λ ν ξ ρ ϕ
     α = 0.2  # minimum relative abundance of sSNV voting reads in single sample
-    β = 10  # minimum amount of sSSNV reads in cell, or in total if α is exceeded
+    β = 3  # minimum amount of sSSNV reads in cell, or in total if α is exceeded
     γ = 0.9  # minimum amount of votes for sSNV
     ε = 2  # minimum amount of cells voting for sSNV
     ω = 0.9  # gsnv majority
@@ -277,6 +277,8 @@ def obtain_variant_statistics(
                         sSNV_supporting_reads +
                         ref_sSNV_reads) >= β) or (
                     alpha_value < α and ref_sSNV_reads >= β) else 0)
+
+            print(f'{sample}\tsSNV alt:{sSNV_state}\t{sSNV_supporting_reads}\tsSNV ref:{ref_sSNV_reads}\t{ref_sSNV_reads}\tα:{alpha_value}\t{"votes" if vote else "no vote"}')
 
             if vote:
                 votes_for_this_sample.add(sSNV_state)
@@ -319,6 +321,7 @@ def obtain_variant_statistics(
 
     if sSNV_alt_base is None or gSNV_alt_base is None:
         # No phased alt base found ...
+        print(f'No phased allele found')
         return
 
     # Determine the phase (most common genotypes)
