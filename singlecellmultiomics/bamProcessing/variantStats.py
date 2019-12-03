@@ -344,7 +344,7 @@ def obtain_variant_statistics(
         if sSNV_state != sSNV_alt_base or  gSNV_state is None:
             continue
 
-        print('There are {sSNV_phased_votes} votes for the haplotype {sSNV_state} {gSNV_state}, ratio:{this_phase_obs / sSNV_phased_votes} ')
+        print(f'There are {sSNV_phased_votes} votes for the haplotype {sSNV_state} {gSNV_state}, ratio:{this_phase_obs / sSNV_phased_votes} ')
 
         if (this_phase_obs / sSNV_phased_votes) < ω:
             print(f'This does not pass the threshold ω {ω} ')
@@ -464,9 +464,6 @@ def obtain_variant_statistics(
         if variant_neg_support_reads>0:
             cell_call_data[(chrom, pos)][cell] = 0
 
-        if conflict_reads / (total_reads) > 0.2:
-            cell_call_data[(chrom, pos)][cell] = -1  # invalid
-
         if (unphased_variant_support_reads +
                 phased_variant_support_reads) / total_reads > 0.1:
             cell_call_data[(chrom, pos)][cell] = 1
@@ -481,6 +478,9 @@ def obtain_variant_statistics(
         if uninformative_reads / total_reads > 0.1:
             # 0.1 for ref allele obs
             cell_call_data[(chrom, pos)][cell] += 0.1
+
+        if conflict_reads / (total_reads) > 0.2:
+            cell_call_data[(chrom, pos)][cell] = -1  # invalid
 
 
     haplotype_scores[(chrom, pos)]['uninformative_obs'] = uninformative_obs
