@@ -36,7 +36,7 @@ if __name__ == '__main__':
     arguments = argparser.parse_args()
     sequencing_dirs = arguments.locations.split(',')
     dmxes = sorted([x.shortName for x in dmx.demultiplexingStrategies])
-    print('\t'.join(['RUN', 'SEQ', 'AVO', 'INDEX', 'LIBRARY'] + dmxes))
+    #print('\t'.join(['RUN', 'SEQ', 'AVO', 'INDEX', 'LIBRARY'] + dmxes))
 
     matches = []
     for sdir in sequencing_dirs:
@@ -55,74 +55,94 @@ if __name__ == '__main__':
                             fastqfiles=fastqfiles,
                             slib=None,
                             merge='_',
-                            dsize=1000,
+                            dsize=10000,
+                            se=False,
+                            ignore=True,
                             maxAutoDetectMethods=100,
                             minAutoDetectPct=1)
                         libraries = sequencingLibraryListing.SequencingLibraryLister(
                             verbose=False).detect(fastqfiles, args=args)
-                        for library, associated_fastqs_lane in libraries.items():
-                            # Obtain run id
-                            run_id = '?'
-                            seqid = '?'
-                            index = '?'
-                            avo_id = '?'
-                            i = None
-                            dpos = None
-                            for lane, reads in associated_fastqs_lane.items():
-                                parts = os.path.dirname(
-                                    reads['R1'][0]).split('/')
 
-                                if 'Data' in parts:
-                                    try:
-                                        i = parts.index('Data')
-                                    except Exception as e:
-                                        i = -2
+                        processedReadPairs, strategyYieldsForAllLibraries = dmx.detectLibYields(
+                            libraries, testReads=args.dsize, maxAutoDetectMethods=args.maxAutoDetectMethods, minAutoDetectPct=args.minAutoDetectPct, verbose=False)
 
-                                    try:
-                                        dpos = parts.index('BaseCalls')
-                                    except Exception as e:
-                                        dpos = -1
-                                        pass
+                        #print(strategyYieldsForAllLibraries)
 
-                                    try:
-                                        run_id = parts[i - 2]
-                                    except Exception as e:
-                                        pass
+                        if False:
+                            for library, associated_fastqs_lane in libraries.items():
+                                # Obtain run id
+                                run_id = '?'
+                                seqid = '?'
+                                index = '?'
+                                avo_id = '?'
+                                i = None
+                                dpos = None
+                                for lane, reads in associated_fastqs_lane.items():
+                                    parts = os.path.dirname(
+                                        reads['R1'][0]).split('/')
 
-                                    try:
-                                        seqid = parts[i - 1]
-                                    except Exception as e:
-                                        pass
-
-                                    try:
-                                        index = parts[dpos + 2]
-                                    except Exception as e:
-                                        pass
-
-                                    try:
-                                        avo_id = parts[dpos + 1]
-                                    except Exception as e:
-                                        pass
-
-                                    else:
+                                    if 'Data' in parts:
                                         try:
-                                            avo_id = parts[-2]
+                                            i = parts.index('Data')
+                                        except Exception as e:
+                                            i = -2
+
+                                        try:
+                                            dpos = parts.index('BaseCalls')
+                                        except Exception as e:
+                                            dpos = -1
+                                            pass
+
+                                        try:
+                                            run_id = parts[i - 2]
                                         except Exception as e:
                                             pass
 
                                         try:
-                                            index = parts[-1]
+                                            seqid = parts[i - 1]
                                         except Exception as e:
                                             pass
 
-                                    break
+                                        try:
+                                            index = parts[dpos + 2]
+                                        except Exception as e:
+                                            pass
 
-                            processedReadPairs, strategyYieldsForAllLibraries = dmx.detectLibYields(
-                                {library: associated_fastqs_lane},
-                                testReads=args.dsize,
+                                        try:
+                                            avo_id = parts[dpos + 1]
+                                        except Exception as e:
+                                            pass
+
+                                        else:
+                                            try:
+                                                avo_id = parts[-2]
+                                            except Exception as e:
+                                                pass
+
+                                            try:
+                                                index = parts[-1]
+                                            except Exception as e:
+                                                pass
+
+                                        break
+
+
+
+                        for library in libraries:
+                            processedReadPairs = strategyYieldsForAllLibraries[library]['processedReadPairs']
+                            strategyYieldForLibrary = strategyYieldsForAllLibraries[library]['strategyYields']
+                            selectedStrategies = dmx.selectedStrategiesBasedOnYield(
+                                processedReadPairs,
+                                strategyYieldForLibrary,
                                 maxAutoDetectMethods=args.maxAutoDetectMethods,
                                 minAutoDetectPct=args.minAutoDetectPct)
-                            print('\t'.join([run_id, seqid, avo_id, index, library] + [str(
-                                strategyYieldsForAllLibraries[library]['strategyYields'].get(x, 0) / 10) for x in dmxes]))
+                            selectedStrategies = dmx.getSelectedStrategiesFromStringList(
+                                selectedStrategies, verbose=False)
+
+                            print(library,selectedStrategies[0].shortName)
+
+                        #print('\t'.join([run_id, seqid, avo_id, index, library] + [str(
+                        #    strategyYieldsForAllLibraries[library]['strategyYields'].get(x, 0) ) for x in dmxes]))
                 except Exception as e:
-                    print(e)
+                    raise
+                    #print(e)
