@@ -101,14 +101,15 @@ class DemultiplexingStrategyLoader:
                 print('The error only affects this module.\nProceeding to load more modules...\n')
         """
 
-    def getSelectedStrategiesFromStringList(self, strList):
+    def getSelectedStrategiesFromStringList(self, strList, verbose=True):
         selectedStrategies = []
 
         resolved = {part: False for part in strList}
         for strategy in self.demultiplexingStrategies:
             if strategy.shortName in strList:
                 selectedStrategies.append(strategy)
-                print('Selected strategy %s' % strategy)
+                if verbose:
+                    print('Selected strategy %s' % strategy)
                 resolved[strategy.shortName] = True
 
         if any([v is False for v in resolved.values()]):
