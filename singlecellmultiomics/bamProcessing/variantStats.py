@@ -427,6 +427,7 @@ def obtain_variant_statistics(
 
     # Create the cell call dictionary
 
+    uninformative_obs = 0 # This is important, otherwise we might use a SNP ..
     for cell, observed_tuples in cell_read_obs.items():
         print(cell,  observed_tuples)
         total_reads = 0
@@ -454,6 +455,9 @@ def obtain_variant_statistics(
                     # reads on informative allele where we found evidence
                     # of the sSNV not being present
                     variant_neg_support_reads += reads
+                elif gSNV_state == wt_allele_gSNV:
+                    uninformative_reads += reads
+                    uninformative_obs += 1
 
         if total_reads==0:
             continue
@@ -462,7 +466,6 @@ def obtain_variant_statistics(
 
         if conflict_reads / (total_reads) > 0.2:
             cell_call_data[(chrom, pos)][cell] = -1  # invalid
-
 
         if (unphased_variant_support_reads +
                 phased_variant_support_reads) / total_reads > 0.1:
@@ -480,7 +483,7 @@ def obtain_variant_statistics(
             cell_call_data[(chrom, pos)][cell] += 0.1
 
 
-
+    haplotype_scores[(chrom, pos)]['uninformative_obs'] = uninformative_obs
     # Annotate every molecule...
 
     for molecule_id, (m, ssnv_state, gsnv_state) in enumerate(
@@ -663,7 +666,7 @@ if __name__ == '__main__':
             'ssnv_ref_phred': meanOfCounter(stats['ssnv_ref_phred']),
             'ssnv_alt_phred': meanOfCounter(stats['ssnv_alt_phred']),
             'gsnv_ref_phred': meanOfCounter(stats['gsnv_ref_phred']),
-            'gsnv_alt_phred': meanOfCounter(stats['gsnv_alt_phred']),
+            'gsnv_any_alt_phred': meanOfCounter(stats['gsnv_any_alt_phred']),
 
             'mean_max_mapping_quality': meanOfCounter(stats['max_mapping_quality']),
             'mean_ivt_dups': meanOfCounter(stats['ivt_dups']),
