@@ -1,0 +1,72 @@
+from singlecellmultiomics.libraryDetection.sequencingLibraryListing import SequencingLibraryLister
+from glob import glob
+import collections
+from singlecellmultiomics.utils import get_contig_list_from_fasta
+
+"""
+This workflow:
+    Starts off from a folder containing fastq files
+    - Detects libraries
+    - Concatenates all fastq files belonging to the same library
+"""
+
+# This code detects which libraries are present in the current folder:
+l = SequencingLibraryLister()
+LIBRARIES = l.detect(glob('*.fastq.gz'), merge='_')
+# Flatten to library:[fastqfile, fastqfile, ...]
+fastq_per_lib = collections.defaultdict(list)
+
+fastq_per_lib_R1 = collections.defaultdict(list)
+fastq_per_lib_R2 = collections.defaultdict(list)
+
+for lib,lane_dict in LIBRARIES.items():
+    for lane,read_dict in lane_dict.items():
+        fastq_per_lib_R1[lib] += read_dict['R1']
+        fastq_per_lib_R2[lib] += read_dict['R2']
+        fastq_per_lib[lib] += read_dict['R1']
+        fastq_per_lib[lib] += read_dict['R2']
+libraries =  list( fastq_per_lib.keys() )
+
+
+def get_fastq_file_list(wildcards):
+    # Obtain a list of fastq files associated to wildcards.library
+    global libraries
+    return sorted( fastq_per_lib[wildcards.library] )
+
+def get_fastq_file_list_R1(wildcards):
+    # Obtain a list of fastq files associated to wildcards.library
+    global libraries
+    return sorted( fastq_per_lib_R1[wildcards.library] )
+
+def get_fastq_file_list_R2(wildcards):
+    # Obtain a list of fastq files associated to wildcards.library
+    global libraries
+    return sorted( fastq_per_lib_R2[wildcards.library] )
+
+def get_target_merge_list():
+    global libraries
+    targets = []
+    for lib in libraries:
+        targets.append(f'merged/{lib}_merged_R1.fastq.gz' )
+        targets.append(f'merged/{lib}_merged_R2.fastq.gz' )
+    return targets
+
+rule all:
+    input:
+        get_target_merge_list()
+
+rule merge_R1:
+    input:
+        fastqfiles = get_fastq_file_list_R1
+    output:
+        merged_fastq = "merged/{library}_merged_R1.fastq.gz"
+    shell:
+        "cat {input.fastqfiles} > {output.merged_fastq}"
+
+rule merge_R2:
+    input:
+        fastqfiles = get_fastq_file_list_R2
+    output:
+        merged_fastq = "merged/{library}_merged_R2.fastq.gz"
+    shell:
+        "cat {input.fastqfiles} > {output.merged_fastq}"
