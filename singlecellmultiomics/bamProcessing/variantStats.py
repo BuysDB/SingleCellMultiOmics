@@ -106,7 +106,7 @@ def obtain_variant_statistics(
                 os.rename(temp_target_bai,target_bam.replace('.bam','.bai'))
             alignment_path = target_bam
 
-        with pysam.AlignmentFile(alignment_path) as alignments:
+        with pysam.AlignmentFile(alignment_path, ignore_truncation=args.ignore_bam_issues) as alignments:
 
             for molecule_id, molecule in enumerate(
                     singlecellmultiomics.molecule.MoleculeIterator(alignments,
@@ -131,6 +131,8 @@ def obtain_variant_statistics(
                     if str(e) == 'Could not extract any safe data from molecule':
                         statistics[(chromosome, ssnv_position)
                                    ]['R2_unmapped'][True] += 1
+                    else:
+                        print(e)
                     continue
 
                 # Extract the gSNV and sSNV:
@@ -331,177 +333,198 @@ def obtain_variant_statistics(
     sSNV_phased_votes = sum((obs
                              for (sSNV_state, gSNV_state), obs
                              in complete_genotype_obs.most_common()
-                             if sSNV_state == sSNV_alt_base
+                             if sSNV_state == sSNV_alt_base and  gSNV_state is not None
                              ))
 
-    for (sSNV_state, gSNV_state), obs in complete_genotype_obs.most_common():
-        if sSNV_state == sSNV_alt_base:
-            sSNV_phase = (sSNV_state, gSNV_state)
-            phased_gSNV = gSNV_state
-            if gSNV_state == gSNV_ref_base:
-                # the reference allele is alt
-                wt_allele_gSNV = gSNV_alt_base
-                snv_allele_gSNV = gSNV_ref_base
-            else:
-                wt_allele_gSNV = gSNV_ref_base
-                snv_allele_gSNV = gSNV_alt_base
-                # the reference allele is ref
-            break
+    if sSNV_phased_votes==0:
+        print('No votes cast for phasing the selected alternative allele')
+        return
+    # Find the phased germline variant:
+    for (sSNV_state, gSNV_state), this_phase_obs in complete_genotype_obs.most_common():
+        if sSNV_state != sSNV_alt_base or  gSNV_state is None:
+            continue
 
-        statistics[(chromosome, ssnv_position)]['sSNV_gSNV_phase'] = snv_allele_gSNV
+        print('There are {sSNV_phased_votes} votes for the haplotype {sSNV_state} {gSNV_state}, ratio:{this_phase_obs / sSNV_phased_votes} ')
 
-        if snv_allele_gSNV is None:
+        if (this_phase_obs / sSNV_phased_votes) < ω:
+            print(f'This does not pass the threshold ω {ω} ')
             return
+        else:
+            print(f'This does pass the threshold ω {ω} ')
+        break
 
-        # Verify that at least ω votes are cast for the currently selected
-        # allele :
-        if (sSNV_phased_votes / obs) < ω:
-            return
+    sSNV_phase = (sSNV_state, gSNV_state)
+    phased_gSNV = gSNV_state
+    snv_allele_gSNV = None
+    if gSNV_state == gSNV_ref_base:
+        # the reference allele is alt
+        wt_allele_gSNV = gSNV_alt_base
+        snv_allele_gSNV = gSNV_ref_base
+    else:
+        wt_allele_gSNV = gSNV_ref_base
+        snv_allele_gSNV = gSNV_alt_base
+            # the reference allele is ref
+        # break ? why?
 
-        # The valid tuples are thus:
-        uninformative_allele = (sSNV_ref_base, wt_allele_gSNV)
-        informative_allele_wt = (sSNV_ref_base, snv_allele_gSNV)
+    statistics[(chromosome, ssnv_position)]['sSNV_gSNV_phase'] = snv_allele_gSNV
 
-        valid_tuples = [sSNV_phase,  # mutated
-                        informative_allele_wt,  # wt
-                        uninformative_allele]
+    if snv_allele_gSNV is None:
+        print("No germline variant was phased")
+        return
 
-        # As we have umi's we just have a threshold for the least amount of reads
-        # we want to observe for a molecule to be taken into account
-        # Count how often we found valid and invalid genotypes
-        valid = 0
-        invalid = 0
-        valid_var = 0
-        invalid_var = 0
-        for (ssnv, gsnv), tuple_obs in complete_genotype_obs.most_common():
-            if ssnv == sSNV_alt_base:  # variant:
-                if (ssnv, gsnv) in valid_tuples:
-                    valid_var += tuple_obs
-                else:
-                    invalid_var += tuple_obs
+    # The valid tuples are thus:
+    uninformative_allele = (sSNV_ref_base, wt_allele_gSNV)
+    informative_allele_wt = (sSNV_ref_base, snv_allele_gSNV)
 
+    valid_tuples = [sSNV_phase,  # mutated
+                    informative_allele_wt,  # wt
+                    uninformative_allele]
+
+    # As we have umi's we just have a threshold for the least amount of reads
+    # we want to observe for a molecule to be taken into account
+    # Count how often we found valid and invalid genotypes
+    valid = 0
+    invalid = 0
+    valid_var = 0
+    invalid_var = 0
+    for (ssnv, gsnv), tuple_obs in complete_genotype_obs.most_common():
+        if ssnv == sSNV_alt_base:  # variant:
             if (ssnv, gsnv) in valid_tuples:
-                valid += tuple_obs
+                valid_var += tuple_obs
             else:
-                invalid += tuple_obs
+                invalid_var += tuple_obs
 
-        phase_ratio = 0
-        if valid_var + invalid_var > 0:
-            phase_ratio = valid_var / (valid_var + invalid_var)
+        if (ssnv, gsnv) in valid_tuples:
+            valid += tuple_obs
+        else:
+            invalid += tuple_obs
 
-        # Score Tuples with evidence for variant
-        haplotype_scores[(chrom, pos)] = {
-            'valid_tuples': valid,
-            'invalid_tuples': invalid,
-            'valid_var_tuples': valid_var,
-            'invalid_var_tuples': invalid_var,
-            'phasing_ratio': phase_ratio,
-            'gSNV_allelic_bias': gSNV_obs[gSNV_ref_base] / (gSNV_obs[gSNV_ref_base] + gSNV_obs[gSNV_alt_base])
-        }
+    phase_ratio = 0
+    if valid_var + invalid_var > 0:
+        phase_ratio = valid_var / (valid_var + invalid_var)
 
-        print(f'Germline variant obs: {gSNV_ref_base} {gSNV_alt_base}')
-        print(f'sSNV obs: {sSNV_ref_base} {sSNV_alt_base}')
-        if sSNV_phase is not None:
-            print(f'sSNV variant is phased with {phased_gSNV}')
-        print(Style.BRIGHT + 'Valid tuples:' + Style.RESET_ALL)
-        for g, s in valid_tuples:
-            print(f' {g}\t{s}')
+    # Score Tuples with evidence for variant
+    haplotype_scores[(chrom, pos)] = {
+        'valid_tuples': valid,
+        'invalid_tuples': invalid,
+        'valid_var_tuples': valid_var,
+        'invalid_var_tuples': invalid_var,
+        'phasing_ratio': phase_ratio,
+        'gSNV_allelic_bias': gSNV_obs[gSNV_ref_base] / (gSNV_obs[gSNV_ref_base] + gSNV_obs[gSNV_alt_base])
+    }
 
-        print(Style.BRIGHT + 'Scores:' + Style.RESET_ALL)
-        for name, obs in haplotype_scores[(chrom, pos)].items():
-            print(f' {name}\t{obs}')
+    print(f'Germline variant obs: {gSNV_ref_base} {gSNV_alt_base}')
+    print(f'sSNV obs: {sSNV_ref_base} {sSNV_alt_base}')
+    if sSNV_phase is not None:
+        print(f'sSNV variant is phased with {phased_gSNV}')
+    print(Style.BRIGHT + 'Valid tuples:' + Style.RESET_ALL)
+    for g, s in valid_tuples:
+        print(f' {g}\t{s}')
 
-        # Create the cell call dictionary
+    print(Style.BRIGHT + 'Scores:' + Style.RESET_ALL)
+    for name, obs in haplotype_scores[(chrom, pos)].items():
+        print(f' {name}\t{obs}')
 
-        for cell, observed_tuples in cell_read_obs.items():
-            total_reads = 0
-            phased_variant_support_reads = 0
-            unphased_variant_support_reads = 0
-            variant_neg_support_reads = 0
-            uninformative_reads = 0
-            conflict_reads = 0
-            for (sSNV_state, gSNV_state), reads in observed_tuples:
-                if sSNV_state is None:
-                    continue
-                total_reads += reads
-                if sSNV_state == sSNV_alt_base:
-                    if gSNV_state == wt_allele_gSNV:
-                        conflict_reads += reads
-                    elif gSNV_state == snv_allele_gSNV:
-                        # reads containing the sSNV and gSNV as expected
-                        phased_variant_support_reads += reads
-                    elif gSNV_state is None:
-                        # reads containing sSNV but not overlapping with gSNV
-                        unphased_variant_support_reads += reads
+    # Create the cell call dictionary
 
-                elif sSNV_state == sSNV_ref_base:
-                    if gSNV_state == snv_allele_gSNV:
-                        # reads on informative allele where we found evidence
-                        # of the sSNV not being present
-                        variant_neg_support_reads += reads
-
-            if conflict_reads / (total_reads) > 0.2:
-                cell_call_data[(chrom, pos)][cell] = -1  # invalid
-
-            if (unphased_variant_support_reads +
-                    phased_variant_support_reads) / total_reads > 0.1:
-                cell_call_data[(chrom, pos)][cell] = 1
-                if unphased_variant_support_reads + phased_variant_support_reads >= 3:
-                    cell_call_data[(chrom, pos)][cell] = 10
-
-            if (phased_variant_support_reads) / total_reads > 0.1:
-                cell_call_data[(chrom, pos)][cell] = 2
-                if phased_variant_support_reads >= 3:
-                    cell_call_data[(chrom, pos)][cell] = 20
-
-            if variant_neg_support_reads / total_reads > 0.1:
-                # 0.1 for ref allele obs
-                cell_call_data[(chrom, pos)][cell] += 0.1
-
-        # Annotate every molecule...
-
-        for molecule_id, (m, ssnv_state, gsnv_state) in enumerate(
-                window_molecules):
-            m.set_meta('mi', molecule_id)
-            if gsnv_state is None:
-                m.set_meta('gv', '?')
-            else:
-                m.set_meta('gv', gsnv_state)
-
-            if ssnv_state is None:
-                m.set_meta('sv', '?')
-            else:
-                m.set_meta('sv', ssnv_state)
-
-            if ssnv_state is None:
-                m.set_meta('VD', 'NO_SNV_OVERLAP')
+    for cell, observed_tuples in cell_read_obs.items():
+        print(cell,  observed_tuples)
+        total_reads = 0
+        phased_variant_support_reads = 0
+        unphased_variant_support_reads = 0
+        variant_neg_support_reads = 0
+        uninformative_reads = 0
+        conflict_reads = 0
+        for (sSNV_state, gSNV_state), reads in observed_tuples.items():
+            if sSNV_state is None:
                 continue
+            total_reads += reads
+            if sSNV_state == sSNV_alt_base:
+                if gSNV_state == wt_allele_gSNV:
+                    conflict_reads += reads
+                elif gSNV_state == snv_allele_gSNV:
+                    # reads containing the sSNV and gSNV as expected
+                    phased_variant_support_reads += reads
+                elif gSNV_state is None:
+                    # reads containing sSNV but not overlapping with gSNV
+                    unphased_variant_support_reads += reads
 
-            if gsnv_state is not None and not (
-                    ssnv_state, gsnv_state) in valid_tuples:
-                m.set_meta('VD', 'INVALID_PHASE')
-                continue
-            if ssnv_state == sSNV_alt_base:
-                m.set_meta('VD', 'SNV_ALT')
-                continue
+            elif sSNV_state == sSNV_ref_base:
+                if gSNV_state == snv_allele_gSNV:
+                    # reads on informative allele where we found evidence
+                    # of the sSNV not being present
+                    variant_neg_support_reads += reads
 
-            if ssnv_state == sSNV_ref_base and gsnv_state == phased_gSNV:
-                m.set_meta('VD', 'SNV_REF')
-                continue
-            if gsnv_state != phased_gSNV:
-                m.set_meta('VD', 'UNINFORMATIVE_ALLELE')
-                continue
+        if total_reads==0:
+            continue
+        if variant_neg_support_reads>0:
+            cell_call_data[(chrom, pos)][cell] = 0
 
-            m.set_meta('VD', 'REJECTED')
-        # write
+        if conflict_reads / (total_reads) > 0.2:
+            cell_call_data[(chrom, pos)][cell] = -1  # invalid
 
-        for m, ssnv_state, gsnv_state in window_molecules:
-            m.write_tags()
-            m.write_pysam(out)
 
-            # Update read groups
-            for fragment in m:
-                read_groups.add(fragment.get_read_group())
+        if (unphased_variant_support_reads +
+                phased_variant_support_reads) / total_reads > 0.1:
+            cell_call_data[(chrom, pos)][cell] = 1
+            if unphased_variant_support_reads + phased_variant_support_reads >= 3:
+                cell_call_data[(chrom, pos)][cell] = 10
+
+        if (phased_variant_support_reads) / total_reads > 0.1:
+            cell_call_data[(chrom, pos)][cell] = 2
+            if phased_variant_support_reads >= 3:
+                cell_call_data[(chrom, pos)][cell] = 20
+
+        if variant_neg_support_reads / total_reads > 0.1:
+            # 0.1 for ref allele obs
+            cell_call_data[(chrom, pos)][cell] += 0.1
+
+
+
+    # Annotate every molecule...
+
+    for molecule_id, (m, ssnv_state, gsnv_state) in enumerate(
+            window_molecules):
+        m.set_meta('mi', molecule_id)
+        if gsnv_state is None:
+            m.set_meta('gv', '?')
+        else:
+            m.set_meta('gv', gsnv_state)
+
+        if ssnv_state is None:
+            m.set_meta('sv', '?')
+        else:
+            m.set_meta('sv', ssnv_state)
+
+        if ssnv_state is None:
+            m.set_meta('VD', 'NO_SNV_OVERLAP')
+            continue
+
+        if gsnv_state is not None and not (
+                ssnv_state, gsnv_state) in valid_tuples:
+            m.set_meta('VD', 'INVALID_PHASE')
+            continue
+        if ssnv_state == sSNV_alt_base:
+            m.set_meta('VD', 'SNV_ALT')
+            continue
+
+        if ssnv_state == sSNV_ref_base and gsnv_state == phased_gSNV:
+            m.set_meta('VD', 'SNV_REF')
+            continue
+        if gsnv_state != phased_gSNV:
+            m.set_meta('VD', 'UNINFORMATIVE_ALLELE')
+            continue
+
+        m.set_meta('VD', 'REJECTED')
+    # write
+
+    for m, ssnv_state, gsnv_state in window_molecules:
+        m.write_tags()
+        m.write_pysam(out)
+
+        # Update read groups
+        for fragment in m:
+            read_groups.add(fragment.get_read_group())
 
 
 if __name__ == '__main__':
@@ -532,6 +555,10 @@ if __name__ == '__main__':
         '--realign',
         action='store_true',
         help='Perform re-alignment using GATK')
+    argparser.add_argument(
+        '--ignore_bam_issues',
+        action='store_true',
+        help='')
     argparser.add_argument(
         '-gatk3_path',
         type=str,
@@ -593,7 +620,7 @@ if __name__ == '__main__':
     haplotype_scores = {}
 
     read_groups = set()  # Store unique read groups in this set
-    with sorted_bam_file(f'{args.prefix}_evidence.bam', origin_bam=pysam.AlignmentFile(paths[0]), read_groups=read_groups) as out:
+    with sorted_bam_file(f'{args.prefix}_evidence.bam', origin_bam=pysam.AlignmentFile(paths[0], ignore_truncation=args.ignore_bam_issues), read_groups=read_groups) as out:
 
         for variant_index, ((chromosome, ssnv_position), potential_gsnv_position) in enumerate(
                 probed_variants.items()):
