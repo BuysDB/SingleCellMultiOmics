@@ -35,7 +35,7 @@ argparser.add_argument(
     '-method',
     type=str,
     default=None,
-    help="Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps")
+    help="Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps, nla_no_overhang")
 argparser.add_argument(
     '-qflagger',
     type=str,
@@ -163,7 +163,7 @@ def run_multiome_tagging(args):
 
         o(str) : path to output bam file
 
-        method(str): Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps
+        method(str): Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps, nla_no_overhang
 
         qflagger(str): Query flagging algorithm to use, this algorithm extracts UMI and sample information from your reads. When no query flagging algorithm is specified, the `singlecellmultiomics.universalBamTagger.universalBamTagger.QueryNameFlagger` is used
 
@@ -339,9 +339,17 @@ def run_multiome_tagging(args):
         moleculeClass = singlecellmultiomics.molecule.CHICMolecule
         fragmentClass = singlecellmultiomics.fragment.CHICFragment
 
-    elif args.method == 'nla':
+    elif args.method == 'nla' or args.method == 'nla_no_overhang':
         moleculeClass = singlecellmultiomics.molecule.NlaIIIMolecule
         fragmentClass = singlecellmultiomics.fragment.NLAIIIFragment
+
+        if args.method == 'nla_no_overhang':
+            assert reference is not None, 'Supply a reference fasta using -reference!'
+            fragment_class_args.update({
+                    'reference': reference,
+                    'no_overhang': True
+                })
+
 
     elif args.method == 'nla_transcriptome':
         moleculeClass = singlecellmultiomics.molecule.AnnotatedNLAIIIMolecule
