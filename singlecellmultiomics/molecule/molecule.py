@@ -16,6 +16,77 @@ from singlecellmultiomics.utils import find_ranges, create_MD_tag
 import pandas as pd
 
 
+###############
+
+# Variant validation function
+def detect_alleles(molecules,
+                   contig,
+                   position,
+                   min_cell_obs=3,
+                   base_confidence_threshold=None,
+                   classifier=None): # [ alleles]
+    """
+    Detect the alleles (variable bases) present at the selected location
+
+    Args:
+
+        molecules : generator to extract molecules from
+
+        variant_location(tuple) : (contig, position) zero based location of the location to test
+
+        min_cell_obs (int) : minimum amount of cells containing the allele to be emitted
+
+        confidence_threshold(float) : minimum confidence of concensus base-call to be taken into account
+
+        classifier (obj) : classifier used for consensus call, when no classifier is supplied a mayority vote is used
+
+    """
+    observed_alleles = collections.defaultdict(set) # cell -> { base_call , .. }
+    for molecule in molecules:
+        base_call = molecule.get_consensus_base(contig, position, classifier=classifier)
+
+        #confidence = molecule.get_mean_base_quality(*variant_location, base_call)
+        if base_call is not None:
+            observed_alleles[base_call].add(molecule.sample)
+
+    return [allele for allele, cells in observed_alleles.items() if len(cells)>=min_cell_obs]
+
+
+def get_variant_phase(molecules, contig, position, variant_base, allele_resolver, phasing_ratio_threshold=None): # (location,base) -> [( location, base, idenfifier)]
+    alleles = [ variant_base ]
+    phases = collections.defaultdict(collections.Counter) # Allele_id -> variant->obs
+    for molecule in molecules:
+        #allele_obs = molecule.get_allele(return_allele_informative_base_dict=True,allele_resolver=allele_resolver)
+        allele = list( molecule.get_allele(allele_resolver) )
+        if allele is None or len(allele)>1 or len(allele)==0:
+            continue
+        allele=allele[0]
+
+        base  = molecule.get_consensus_base(contig, position)
+        if base in alleles:
+            phases[base][allele] += 1
+        else:
+            pass
+
+
+    if len(phases[variant_base])==0:
+        raise ValueError("Phasing not established, no gSNVS available")
+
+    phased_allele_id = phases[variant_base].most_common(1)[0][0]
+
+    # Check if the phasing noise is below the threshold:
+    if phasing_ratio_threshold is not None:
+        correct = phases[variant_base].most_common(1)[0][1]
+        total = sum( phases[variant_base].values() )
+        phasing_ratio = correct/total
+        if correct/total < phasing_ratio_threshold:
+            raise ValueError(f'Phasing ratio not met. ({phasing_ratio}) < {phasing_ratio_threshold}')
+    # Check if the other allele i
+
+    return phased_allele_id
+
+###############
+
 @functools.lru_cache(maxsize=1000)
 def might_be_variant(chrom, pos, variants, ref_base=None):
     """Returns True if a variant exists at the given coordinate"""
