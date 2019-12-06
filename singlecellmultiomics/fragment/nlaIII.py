@@ -9,9 +9,16 @@ class NLAIIIFragment(Fragment):
                  R2_primer_length=6,
                  assignment_radius=1_000,
                  umi_hamming_distance=1,
-                 invert_strand=False
+                 invert_strand=False,
+                 no_overhang =False, # CATG is present OUTSIDE the fragment
+                 reference=None #Reference is required when no_overhang=True
                  ):
         self.invert_strand = invert_strand
+        self.no_overhang = no_overhang
+        self.reference = reference
+        if self.no_overhang and reference  is None:
+            raise ValueError('Supply a reference handle when no_overhang=True')
+
         Fragment.__init__(self,
                           reads,
                           assignment_radius=assignment_radius,
@@ -67,34 +74,42 @@ class NLAIIIFragment(Fragment):
             self.set_rejection_reason('unmapped R1')
             return None
 
-        if R1.seq[:4] == 'CATG' and not R1.is_reverse:
+        if self.no_overhang:
+            forward_motif = self.reference.fetch(R1.reference_name,  R1.reference_start-4,  R1.reference_start)
+            rev_motif = self.reference.fetch(R1.reference_name, R1.reference_end, R1.reference_end+4)
+        else:
+            forward_motif = R1.seq[:4]
+            rev_motif = R1.seq[-4:]
+
+
+        if forward_motif == 'CATG' and not R1.is_reverse:
             rpos = (R1.reference_name, R1.reference_start)
             self.set_site(site_strand=1, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('CATG')
             return(rpos)
-        elif R1.seq[-4:] == 'CATG' and R1.is_reverse:
+        elif rev_motif == 'CATG' and R1.is_reverse:
             rpos = (R1.reference_name, R1.reference_end - 4)
             self.set_site(site_strand=0, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('CATG')
             return(rpos)
 
-        # Sometimes the cycle is off
-        elif R1.seq[:3] == 'ATG' and not R1.is_reverse:
+        # Sometimes the cycle is off, this is dangerous though because the cell barcode and UMI might be shifted too!
+        elif forward_motif.startswith( 'ATG') and not R1.is_reverse:
             rpos = (R1.reference_name, R1.reference_start - 1)
             self.set_site(site_strand=1, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('ATG')
             return(rpos)
-        elif R1.seq[-3:] == 'CAT' and R1.is_reverse:  # First base was trimmed or lost
+        elif rev_motif.startswith( 'ATG') and R1.is_reverse:  # First base was trimmed or lost
             rpos = (R1.reference_name, R1.reference_end - 3)
             self.set_site(site_strand=0, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('CAT')
             return(rpos)
 
         else:
-            if R1.seq[:4] == 'CATG' and R1.is_reverse:
+            if forward_motif == 'CATG' and R1.is_reverse:
                 self.set_rejection_reason('found CATG R1 REV exp FWD')
 
-            elif R1.seq[-4:] == 'CATG' and not R1.is_reverse:
+            elif rev_motif == 'CATG' and not R1.is_reverse:
                 self.set_rejection_reason('found CATG R1 FWD exp REV')
             else:
                 self.set_rejection_reason('no CATG')
