@@ -1811,6 +1811,28 @@ class Molecule():
 
         return consensus
 
+    def get_consensus_base(self, contig, position, classifier=None):
+        """Obtain base call at single position of the molecule
+
+        Args:
+            contig (str) : contig to extract base call from
+
+            position (int) : position to extract base call from (zero based)
+
+            classifier (obj) : base calling classifier
+
+        Returns:
+
+            base_call (str) : base call, or None when no base call could be made
+        """
+
+        try:
+            c = self.get_consensus(classifier)
+        except ValueError:
+            return None
+        return c.get(  (contig, position), None)
+
+
     # when enabled other calls (non ref non alt will be set None)
     def check_variants(self, variants, exclude_other_calls=True):
         """Verify variants in molecule
