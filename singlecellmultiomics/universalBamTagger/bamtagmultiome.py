@@ -344,7 +344,7 @@ def run_multiome_tagging(args):
         fragmentClass = singlecellmultiomics.fragment.NLAIIIFragment
 
         if args.method == 'nla_no_overhang':
-            assert reference is not None, 'Supply a reference fasta using -reference!'
+            assert reference is not None, 'Supply a reference fasta using -ref!'
             fragment_class_args.update({
                     'reference': reference,
                     'no_overhang': True
