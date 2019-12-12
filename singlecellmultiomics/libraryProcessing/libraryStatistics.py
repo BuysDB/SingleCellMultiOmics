@@ -62,6 +62,12 @@ if __name__ == '__main__':
         help="only make plots")
 
     argparser.add_argument(
+        '--sl',
+        action='store_true',
+        help="Show lookup paths")
+
+
+    argparser.add_argument(
         '--tablesOnly',
         action='store_true',
         help="only make tables")
@@ -85,6 +91,7 @@ if __name__ == '__main__':
             print("Bam file was supplied:")
             print(bamFile)
         else:
+            print("A library was supplied, automatically detecting files ..")
             bamFile = None
         rc = ReadCount(args)  # Is also mappability
 
@@ -130,7 +137,7 @@ if __name__ == '__main__':
         ]
 
         taggedFilesLookup = [
-            f'{library}/tagged.bam'
+            f'{library}/tagged.bam',
             f'{library}/tagged/tagged.bam',
             f'{library}/tagged/marked_duplicates.bam',
             f'{library}/tagged/resorted.featureCounts.bam',
@@ -141,13 +148,25 @@ if __name__ == '__main__':
             taggedFilesLookup = [
                 library + '/' + args.tagged_bam] + taggedFilesLookup
 
+        if args.sl:
+            print(f'{Style.BRIGHT}Demux file lookup paths{Style.RESET_ALL}')
+            print(demuxFastqFilesLookup)
+            print(f'{Style.BRIGHT}Reject fastq file lookup paths{Style.RESET_ALL}')
+            print(rejectFilesLookup)
+            print(f'{Style.BRIGHT}Tagged bam lookup paths{Style.RESET_ALL}')
+            print(taggedFilesLookup)
+
         if 'cluster' in library:
             continue
         print(f'{Style.BRIGHT}Library {library}{Style.RESET_ALL}')
         # Check if the bam file is present
         if bamFile is None:
             bamFile = select_bam_file(taggedFilesLookup)
-
+            if bamFile is None:
+                print(f'{Fore.RED}BAM FILE MISSING{library}{Style.RESET_ALL}')
+                exit()
+            else:
+                print(f'{Fore.GREEN}Bam file at {bamFile}{Style.RESET_ALL}')
 
         demuxFastqFiles = select_fastq_file(demuxFastqFilesLookup)
         rejectFastqFiles = select_fastq_file(rejectFilesLookup)
@@ -252,7 +271,7 @@ if __name__ == '__main__':
             plot_dir = args.o
             table_dir = f'{args.o}/tables'
             statFile = f'{args.o}/statistics.pickle.gz'
-            
+
         if not args.tablesOnly:
 
 
