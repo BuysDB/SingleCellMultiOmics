@@ -257,12 +257,12 @@ def sort_and_index(
         SamtoolsError when sorting or indexing fails
     """
     if local_temp_sort:
-
+        base_directory = os.path.dirname(sorted_path)
         pysam.sort(
             '-o',
             sorted_path,
             '-T',
-            f'TMP.{uuid.uuid4()}',
+            f'{base_directory}/TMP.{uuid.uuid4()}', # Current directory with a random prefix
             unsorted_path,
         )
     else:
