@@ -129,6 +129,9 @@ class MoleculeIterator():
                  yield_invalid=False,
                  queryNameFlagger=None,
                  every_fragment_as_molecule=False,
+                 yield_secondary =  False,
+                 yield_supplementary= False
+
                  **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
@@ -155,6 +158,8 @@ class MoleculeIterator():
             queryNameFlagger(class) : class which contains the method digest(self, reads) which accepts pysam.AlignedSegments and adds at least the SM and RX tags
 
             every_fragment_as_molecule(bool): When set to true all valid fragments are emitted as molecule with one associated fragment, this is a way to disable deduplication.
+
+            yield_secondary (bool):  When true all secondary alignments will be yielded as a molecule
 
             **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
 
