@@ -124,7 +124,7 @@ class TaggedRecord():
         ) if not self.tagDefinitions[attribute].doNotWrite])
         if len(header) > 255:  # the header length is stored as uint_8 and includes a null character. The maximum length is thus 255
             raise ValueError(
-                f"The length of the demultiplexed header is longer than 255 characters. Reduce the length of the header. For example by using -merge _ which will not put the flow cell in the sample name. The header looks like this: {header}")
+                f"The length of the demultiplexed header is longer than 255 characters. Try to keep your library name below 60 characters. Reduce the length of the header. For example by using -merge _ which will not put the flow cell in the sample name. The header looks like this: {header}")
         return "@%s\n%s\n%s\n%s\n" % (
             header,
             sequence,
