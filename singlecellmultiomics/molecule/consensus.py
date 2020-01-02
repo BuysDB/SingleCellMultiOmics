@@ -61,14 +61,14 @@ def get_consensus_training_data(
         mask_variants=None,
         n_train=100_000, # When None, training data is created until molecule source depletion
         skip_already_covered_bases = True,
-        yield_results=False, # Yield results instead of returning a matrix
+        #yield_results=False, # Yield results instead of returning a matrix
         **feature_matrix_args):
 
 
 
-    if not yield_results:
-        X = None
-        y = []
+    #if not yield_results:
+    X = None
+    y = []
     molecules_used = 0
     training_set_size = 0
     last_end = None
@@ -93,20 +93,20 @@ def get_consensus_training_data(
             x, _y = train_result
             training_set_size += len(_y)
 
-            if yield_results:
-                yield x, _y
+            #if yield_results:
+            #    yield x, _y
 
-            else:
-                if X is None:
-                    X = np.empty((0, x.shape[1]))
-                    print(
-                        f"Creating feature matrix with {x.shape[1]} dimensions and {n_train} training base-calls")
-                y += _y
-                X = np.append(X, x, axis=0)
-                last_chrom = molecule.chromosome
+            #else:
+            if X is None:
+                X = np.empty((0, x.shape[1]))
+                print(
+                    f"Creating feature matrix with {x.shape[1]} dimensions and {n_train} training base-calls")
+            y += _y
+            X = np.append(X, x, axis=0)
+            last_chrom = molecule.chromosome
 
-                if training_set_size >= n_train:
-                    break
+            if training_set_size >= n_train:
+                break
 
             molecules_used+=1
             if molecule.spanEnd is not None:
@@ -120,8 +120,8 @@ def get_consensus_training_data(
 
     print(
             f'Finished, last genomic coordinate: {molecule.chromosome} {molecule.spanEnd}, training set size is {training_set_size}, used {molecules_used} molecules for training')
-    if not yield_results:
-        return X, y
+    #if not yield_results:
+    return X, y
 
 
 
