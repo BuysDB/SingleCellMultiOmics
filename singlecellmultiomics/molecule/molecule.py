@@ -685,7 +685,7 @@ class Molecule():
                             features[row_index][MATE_INDEX +
                                                 COLUMN_OFFSET +
                                                 features_per_block *
-                                                block_index] += read.is_reverse
+                                                block_index] += read.is_read2
 
                             # Update fragment sizes:
                             features[row_index][FS_INDEX +
