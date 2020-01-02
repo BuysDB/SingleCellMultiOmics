@@ -130,8 +130,7 @@ class MoleculeIterator():
                  queryNameFlagger=None,
                  every_fragment_as_molecule=False,
                  yield_secondary =  False,
-                 yield_supplementary= False
-
+                 yield_supplementary= False,
                  **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
