@@ -64,7 +64,22 @@ def get_consensus_training_data(
         #yield_results=False, # Yield results instead of returning a matrix
         **feature_matrix_args):
 
+    """
+    Create a tensor/matrix containing alignment and base calling information, which can be used for consensus calling.
+    This function also creates a vector containing the corresponding reference bases, which can be used for training a consensus model.
 
+    Args:
+        molecule_iterator : generator which generates molecules from which base calling feature matrices are extracted
+
+        mask_variants (pysam.VariantFile) : variant locations which should be excluded from the matrix
+
+        n_train (int) : amount of rows in the matrix
+
+        skip_already_covered_bases(bool) : when True every reference position is at most a single row in the output matrix, this prevents overfitting
+
+        **feature_matrix_args : Arguments to pass to the feature matrix function of the molecules.
+
+    """
 
     #if not yield_results:
     X = None
@@ -118,10 +133,13 @@ def get_consensus_training_data(
     except KeyboardInterrupt as e:
         print("Got keyboard interrupt, stopping to load more data")
 
-    print(
-            f'Finished, last genomic coordinate: {molecule.chromosome} {molecule.spanEnd}, training set size is {training_set_size}, used {molecules_used} molecules for training')
+    if molecules_used > 0:
+        print(
+                f'Finished, last genomic coordinate: {molecule.chromosome} {molecule.spanEnd}, training set size is {training_set_size}, used {molecules_used} molecules for training')
     #if not yield_results:
     return X, y
+
+
 
 
 
