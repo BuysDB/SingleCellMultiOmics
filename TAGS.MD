@@ -65,6 +65,7 @@
 | SM    | sampleName                                   | No         | No                   |
 | SP    | IsSpliced                                    | No         | No                   |
 | SQ    | meanBaseQuality                              | No         | No                   |
+| SS    | sampleSequence                               | No         | No                   |
 | Ti    | tile                                         | No         | No                   |
 | Us    | undigestedSiteCount                          | No         | No                   |
 | XA    | alternativeAlignmentHits                     | No         | No                   |
