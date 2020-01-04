@@ -133,10 +133,13 @@ def get_consensus_training_data(
     except KeyboardInterrupt as e:
         print("Got keyboard interrupt, stopping to load more data")
 
-    print(
-            f'Finished, last genomic coordinate: {molecule.chromosome} {molecule.spanEnd}, training set size is {training_set_size}, used {molecules_used} molecules for training')
+    if molecules_used > 0:
+        print(
+                f'Finished, last genomic coordinate: {molecule.chromosome} {molecule.spanEnd}, training set size is {training_set_size}, used {molecules_used} molecules for training')
     #if not yield_results:
     return X, y
+
+
 
 
 
