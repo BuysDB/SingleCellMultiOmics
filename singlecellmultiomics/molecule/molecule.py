@@ -883,6 +883,62 @@ class Molecule():
                 return features, ref_info
             return features
 
+
+
+    def get_CIGAR(self, return_ref_info=False,
+    reference=None):
+        """ Get alignment of all associated reads
+
+        Returns:
+            y : reference bases
+            CIGAR : alignment of feature matrix to reference tuples (operation, count)
+            reference(pysam.FastaFile) : reference to fetch reference bases from, if not supplied the MD tag is used
+        """
+
+        X = None
+        if return_ref_info:
+            y = []
+        CIGAR = []
+        prev_end = None
+        alignment_start = None
+        alignment_end = None
+        for start, end in self.get_aligned_blocks():
+            if return_ref_info:
+                x, y_ = self.get_base_calling_feature_matrix(
+                    return_ref_info=return_ref_info, start=start, end=end,
+                    reference=reference, **feature_matrix_args
+                )
+                y += y_
+            else:
+                x = self.get_base_calling_feature_matrix(
+                    return_ref_info=return_ref_info,
+                    start=start,
+                    end=end,
+                    reference=reference,
+                    **feature_matrix_args)
+            if X is None:
+                X = x
+            else:
+                X = np.append(X, x, axis=0)
+
+            if prev_end is not None:
+                CIGAR.append(('N', start - prev_end - 1))
+            CIGAR.append(('M', (end - start + 1)))
+            prev_end = end
+
+            if alignment_start is None:
+                alignment_start = start
+                alignment_end = end
+            else:
+                alignment_start = min(alignment_start, start)
+                alignment_end = max(alignment_end, end)
+
+        if return_ref_info:
+            return X, y, CIGAR, alignment_start, alignment_end
+        else:
+            return X, CIGAR, alignment_start, alignment_end
+
+
     @functools.lru_cache(maxsize=4)
     def get_base_calling_feature_matrix_spaced(
             self,
