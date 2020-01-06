@@ -1,22 +1,30 @@
-singlecellmultiomics\.pyutils package
-=====================================
+singlecellmultiomics.pyutils package
+====================================
 
 Submodules
 ----------
 
-singlecellmultiomics\.pyutils\.pyutils module
----------------------------------------------
+singlecellmultiomics.pyutils.handlelimiter module
+-------------------------------------------------
+
+.. automodule:: singlecellmultiomics.pyutils.handlelimiter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+singlecellmultiomics.pyutils.pyutils module
+-------------------------------------------
 
 .. automodule:: singlecellmultiomics.pyutils.pyutils
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 
 Module contents
 ---------------
 
 .. automodule:: singlecellmultiomics.pyutils
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

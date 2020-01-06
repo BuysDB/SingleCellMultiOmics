@@ -54,7 +54,7 @@ class NlaIIIMolecule(Molecule):
         """Obtain the sequence between the start and end of the molecule
         Args:
             reference(pysam.FastaFile) : reference  to use.
-                If not specified self.reference is used
+                If not specified `self.reference` is used
         Returns:
             sequence (str)
         """
@@ -71,18 +71,15 @@ class NlaIIIMolecule(Molecule):
         """
         Obtain the amount of undigested sites in the span of the molecule
 
-        Parameters
-        ----------
-        reference : pysam.FastaFile or similiar
+        Args:
+            reference(pysam.FastaFile) : reference handle
 
-        Returns
-        -------
-        undigested_site_count : int
+        Returns:
+            undigested_site_count : int
             amount of undigested cut sites in the mapping span of the molecule
 
         Raises:
-        -------
-        ValueError : when the span of the molecule is not properly defined
+            ValueError : when the span of the molecule is not properly defined
         """
         if reference is None:
             if self.reference is None:
