@@ -20,7 +20,8 @@
 import os
 import sys
 import glob
-sys.path.insert(0, os.path.abspath('../singlecellmultiomics/'))
+#sys.path.insert(0, os.path.abspath('../singlecellmultiomics/'))
+sys.path.insert(0, os.path.abspath('../singlecellmultiomics'))
 import sphinx_rtd_theme
 
 # -- General configuration ------------------------------------------------

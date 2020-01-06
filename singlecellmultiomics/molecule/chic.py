@@ -32,9 +32,11 @@ class CHICMolecule(Molecule):
 
     def get_fragment_span_sequence(self, reference=None):
         """Obtain the sequence between the start and end of the molecule
+
         Args:
             reference(pysam.FastaFile) : reference  to use.
-                If not specified self.reference is used
+                If not specified `self.reference` is used
+
         Returns:
             sequence (str)
         """

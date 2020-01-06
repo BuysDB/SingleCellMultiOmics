@@ -873,6 +873,7 @@ class Molecule():
 
     def get_strand_repr(self, unknown='?'):
         """Get string representation of mapping strand
+
         Args:
             unknown (str) :  set what character/string to return
                              when the strand is not available
@@ -1029,6 +1030,7 @@ class Molecule():
                              skip_missing_reads=False
                              ):
         """ Obtain a tensor representation of the molecule alignment around the given centroid
+
         Args:
             max_reads (int) : maximum amount of reads returned in the tensor, this will be the amount of rows/4 of the returned feature matrix
 
@@ -1039,6 +1041,7 @@ class Molecule():
             mask_centroid(bool) : when True, mask reference base at centroid with N
 
             refence_backed(bool) : when True the molecules reference is used to emit reference bases instead of the MD tag
+
         Returns:
             tensor_repr(np.array) : (4*window_radius*2*max_reads) dimensional feature matrix
         """
@@ -1997,6 +2000,7 @@ class Molecule():
 
     def get_methylated_count(self, context=3):
         """Get the total amount of methylated bases
+
         Args:
             context (int) : 3 or 4 base context
 
