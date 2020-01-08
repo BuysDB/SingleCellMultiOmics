@@ -581,6 +581,19 @@ class Molecule():
         return reads
 
 
+
+    def extract_stretch_from_dict(self, base_call_dict, alignment_start, alignment_end):
+        base_calling_probs = np.array([base_call_dict.get( (self.chromosome, pos), ('N',0))[1] for pos in range(alignment_start, alignment_end)])
+        predicted_sequence = [base_call_dict.get( (self.chromosome, pos), ('N',0))[0] for pos in range(alignment_start, alignment_end)]
+        predicted_sequence = ''.join(predicted_sequence)
+        phred_scores = np.rint(
+            -10 * np.log10(np.clip(1 -base_calling_probs,
+                                   0.000000001,
+                                   0.999999999)
+                           )).astype('B')
+        return predicted_sequence,phred_scores
+
+
     def deduplicate_to_single_CIGAR_spaced_from_dict(
             self,
             target_bam,
@@ -605,22 +618,7 @@ class Molecule():
         for read in self.iter_reads():
             read.is_duplicate = True
 
-        features, reference_bases, CIGAR, alignment_start, alignment_end = self.get_CIGAR(
-            True, reference=reference)
-
-        base_calling_probs = [base_call_dict.get(self.chromsome, pos)[1] for pos in range(alignment_start, alignment_end)]
-        predicted_sequence = [base_call_dict.get(self.chromsome, pos)[0] for pos in range(alignment_start, alignment_end)]
-
-        reference_sequence = ''.join(
-            [base for chrom, pos, base in reference_bases])
-        #predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
-        predicted_sequence = ''.join(predicted_sequence)
-
-        phred_scores = np.rint(
-            -10 * np.log10(np.clip(1 -base_calling_probs.max(1),
-                                   0.000000001,
-                                   0.999999999)
-                           )).astype('B')
+        CIGAR, alignment_start, alignment_end = self.get_CIGAR()
 
         reads = []
 
@@ -632,62 +630,50 @@ class Molecule():
         partial_CIGAR = []
         partial_MD = []
 
+
         for operation, amount in CIGAR:
-            if operation == 'M':  # Consume query and reference
-                query_index_end += amount
-                reference_position += amount
-                partial_CIGAR.append(f'{amount}{operation}')
 
             if operation == 'N':
                 # Consume reference:
                 reference_position += amount
-                if amount > max_N_span:  # Split up in supplementary alignment
-                    # Eject previous
-                    # reference_seq =
 
-                    consensus_read = self.get_consensus_read(
-                        read_name=read_name,
-                        target_file=target_bam,
-                        consensus=predicted_sequence[query_index_start:query_index_end],
-                        phred_scores=phred_scores[query_index_start:query_index_end],
-                        cigarstring=''.join(partial_CIGAR),
-                        mdstring=create_MD_tag(
-                                    reference_sequence[query_index_start:query_index_end],
-                                    predicted_sequence[query_index_start:query_index_end]
-                        ),
-                        start=reference_start,
-                        supplementary=supplementary
-                    )
-                    reads.append(consensus_read)
-                    if not supplementary:
-                        consensus_read.is_read1 = True
+            if operation == 'M':  # Consume query and reference
+                query_index_end += amount
+                reference_start = reference_position
+                reference_position += amount
+                reference_end = reference_position
 
-                    supplementary = True
-                    # Start new:
-                    query_index_start = query_index_end
-                    reference_start = reference_position
-                    partial_CIGAR = []
-                else:
-                    partial_CIGAR.append(f'{amount}{operation}')
+                partial_CIGAR.append(f'{amount}{operation}')
 
-        reads.append(self.get_consensus_read(
-            read_name=read_name,
-            target_file=target_bam,
-            consensus=''.join(predicted_sequence[query_index_start:query_index_end]),
-            phred_scores=phred_scores[query_index_start:query_index_end],
-            cigarstring=''.join(partial_CIGAR),
-            mdstring=create_MD_tag(
-                        reference_sequence[query_index_start:query_index_end],
-                        predicted_sequence[query_index_start:query_index_end]
+                predicted_sequence, phred_scores = self.extract_stretch_from_dict( base_call_dict, reference_start, reference_end  ) #[start .. end)
 
-            ),
-            start=reference_start,
-            supplementary=supplementary
-        ))
+                consensus_read = self.get_consensus_read(
+                    read_name=read_name,
+                    target_file=target_bam,
+                    consensus=predicted_sequence,
+                    phred_scores=phred_scores,
+                    cigarstring=''.join(partial_CIGAR),
+                    mdstring=create_MD_tag(
+                                reference.fetch(self.chromosome,reference_start,reference_end),
+                                predicted_sequence
+                    ),
+                    start=reference_start,
+                    supplementary=supplementary
+                )
+                reads.append(consensus_read)
+                if not supplementary:
+                    consensus_read.is_read1 = True
+
+                supplementary = True
+                reference_start = reference_position
+                partial_CIGAR = []
+
+
 
         # Write last index tag to last read ..
         if supplementary:
             reads[-1].is_read2 = True
+            reads[0].is_read1 = True
 
         # Write NH tag (the amount of records with the same query read):
         for read in reads:
@@ -885,8 +871,7 @@ class Molecule():
 
 
 
-    def get_CIGAR(self, return_ref_info=False,
-    reference=None):
+    def get_CIGAR(self, reference=None):
         """ Get alignment of all associated reads
 
         Returns:
@@ -896,30 +881,12 @@ class Molecule():
         """
 
         X = None
-        if return_ref_info:
-            y = []
+
         CIGAR = []
         prev_end = None
         alignment_start = None
         alignment_end = None
         for start, end in self.get_aligned_blocks():
-            if return_ref_info:
-                x, y_ = self.get_base_calling_feature_matrix(
-                    return_ref_info=return_ref_info, start=start, end=end,
-                    reference=reference, **feature_matrix_args
-                )
-                y += y_
-            else:
-                x = self.get_base_calling_feature_matrix(
-                    return_ref_info=return_ref_info,
-                    start=start,
-                    end=end,
-                    reference=reference,
-                    **feature_matrix_args)
-            if X is None:
-                X = x
-            else:
-                X = np.append(X, x, axis=0)
 
             if prev_end is not None:
                 CIGAR.append(('N', start - prev_end - 1))
@@ -933,10 +900,7 @@ class Molecule():
                 alignment_start = min(alignment_start, start)
                 alignment_end = max(alignment_end, end)
 
-        if return_ref_info:
-            return X, y, CIGAR, alignment_start, alignment_end
-        else:
-            return X, CIGAR, alignment_start, alignment_end
+        return CIGAR, alignment_start, alignment_end
 
 
     @functools.lru_cache(maxsize=4)
