@@ -147,5 +147,6 @@ if __name__ == '__main__':
 
     except (KeyboardInterrupt, BrokenPipeError) as e:
         pass
-if output is not None:
-    finish_bam(output, args, temp_out)
+
+    if output is not None:
+        finish_bam(output, args, temp_out)

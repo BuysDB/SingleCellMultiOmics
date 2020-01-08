@@ -581,6 +581,106 @@ class Molecule():
         return reads
 
 
+
+    def extract_stretch_from_dict(self, base_call_dict, alignment_start, alignment_end):
+        base_calling_probs = np.array([base_call_dict.get( (self.chromosome, pos), ('N',0))[1] for pos in range(alignment_start, alignment_end)])
+        predicted_sequence = [base_call_dict.get( (self.chromosome, pos), ('N',0))[0] for pos in range(alignment_start, alignment_end)]
+        predicted_sequence = ''.join(predicted_sequence)
+        phred_scores = np.rint(
+            -10 * np.log10(np.clip(1 -base_calling_probs,
+                                   0.000000001,
+                                   0.999999999)
+                           )).astype('B')
+        return predicted_sequence,phred_scores
+
+
+    def deduplicate_to_single_CIGAR_spaced_from_dict(
+            self,
+            target_bam,
+            read_name,
+            base_call_dict, #(contig, position) -> (base_call, confidence)
+            max_N_span=300,
+            reference=None,
+            ):
+        """
+        Deduplicate all associated reads to a single pseudoread, when the span is larger than max_N_span
+        the read is split up in multi-segments. Uncovered locations are spaced using N's in the CIGAR.
+
+        Args:
+            target_bam (pysam.AlignmentFile) : file to associate the read with
+            read_name (str) : name of the pseudoread
+            classifier (sklearn classifier) : classifier for consensus prediction
+        Returns:
+            reads( list [ pysam.AlignedSegment ] )
+
+        """
+        # Set all associated reads to duplicate
+        for read in self.iter_reads():
+            read.is_duplicate = True
+
+        CIGAR, alignment_start, alignment_end = self.get_CIGAR()
+
+        reads = []
+
+        query_index_start = 0
+        query_index_end = 0
+        reference_position = alignment_start  # pointer to current position
+        reference_start = alignment_start  # pointer to alignment start of current read
+        supplementary = False
+        partial_CIGAR = []
+        partial_MD = []
+
+
+        for operation, amount in CIGAR:
+
+            if operation == 'N':
+                # Consume reference:
+                reference_position += amount
+
+            if operation == 'M':  # Consume query and reference
+                query_index_end += amount
+                reference_start = reference_position
+                reference_position += amount
+                reference_end = reference_position
+
+                partial_CIGAR.append(f'{amount}{operation}')
+
+                predicted_sequence, phred_scores = self.extract_stretch_from_dict( base_call_dict, reference_start, reference_end  ) #[start .. end)
+
+                consensus_read = self.get_consensus_read(
+                    read_name=read_name,
+                    target_file=target_bam,
+                    consensus=predicted_sequence,
+                    phred_scores=phred_scores,
+                    cigarstring=''.join(partial_CIGAR),
+                    mdstring=create_MD_tag(
+                                reference.fetch(self.chromosome,reference_start,reference_end),
+                                predicted_sequence
+                    ),
+                    start=reference_start,
+                    supplementary=supplementary
+                )
+                reads.append(consensus_read)
+                if not supplementary:
+                    consensus_read.is_read1 = True
+
+                supplementary = True
+                reference_start = reference_position
+                partial_CIGAR = []
+
+
+
+        # Write last index tag to last read ..
+        if supplementary:
+            reads[-1].is_read2 = True
+            reads[0].is_read1 = True
+
+        # Write NH tag (the amount of records with the same query read):
+        for read in reads:
+            read.set_tag('NH', len(reads))
+
+        return reads
+
     def get_base_calling_feature_matrix(
             self,
             return_ref_info=False,
@@ -769,6 +869,40 @@ class Molecule():
                 return features, ref_info
             return features
 
+
+
+    def get_CIGAR(self, reference=None):
+        """ Get alignment of all associated reads
+
+        Returns:
+            y : reference bases
+            CIGAR : alignment of feature matrix to reference tuples (operation, count)
+            reference(pysam.FastaFile) : reference to fetch reference bases from, if not supplied the MD tag is used
+        """
+
+        X = None
+
+        CIGAR = []
+        prev_end = None
+        alignment_start = None
+        alignment_end = None
+        for start, end in self.get_aligned_blocks():
+
+            if prev_end is not None:
+                CIGAR.append(('N', start - prev_end - 1))
+            CIGAR.append(('M', (end - start + 1)))
+            prev_end = end
+
+            if alignment_start is None:
+                alignment_start = start
+                alignment_end = end
+            else:
+                alignment_start = min(alignment_start, start)
+                alignment_end = max(alignment_end, end)
+
+        return CIGAR, alignment_start, alignment_end
+
+
     @functools.lru_cache(maxsize=4)
     def get_base_calling_feature_matrix_spaced(
             self,
@@ -873,6 +1007,7 @@ class Molecule():
 
     def get_strand_repr(self, unknown='?'):
         """Get string representation of mapping strand
+
         Args:
             unknown (str) :  set what character/string to return
                              when the strand is not available
@@ -1029,6 +1164,7 @@ class Molecule():
                              skip_missing_reads=False
                              ):
         """ Obtain a tensor representation of the molecule alignment around the given centroid
+
         Args:
             max_reads (int) : maximum amount of reads returned in the tensor, this will be the amount of rows/4 of the returned feature matrix
 
@@ -1039,6 +1175,7 @@ class Molecule():
             mask_centroid(bool) : when True, mask reference base at centroid with N
 
             refence_backed(bool) : when True the molecules reference is used to emit reference bases instead of the MD tag
+
         Returns:
             tensor_repr(np.array) : (4*window_radius*2*max_reads) dimensional feature matrix
         """
@@ -1997,6 +2134,7 @@ class Molecule():
 
     def get_methylated_count(self, context=3):
         """Get the total amount of methylated bases
+
         Args:
             context (int) : 3 or 4 base context
 

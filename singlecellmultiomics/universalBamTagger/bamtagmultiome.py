@@ -198,7 +198,7 @@ def run_multiome_tagging(args):
 
         unphased_alleles(str) : Path to VCF containing unphased germline SNPs
 
-        mapfile (str) : 'Path to *.safe.bgzf file, used to decide if molecules are uniquely mappable, generate one using createMapabilityIndex.py
+        mapfile (str) : 'Path to \*.safe.bgzf file, used to decide if molecules are uniquely mappable, generate one using createMapabilityIndex.py
 
         annotmethod (int) : Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base
 

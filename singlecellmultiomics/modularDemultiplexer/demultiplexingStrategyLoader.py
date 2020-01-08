@@ -52,7 +52,8 @@ class DemultiplexingStrategyLoader:
             dm.CELSeq2_c8_u6,
             IlluminaBaseDemultiplexer,
             dm.CELSeq2_c8_u6_swapped_reads,
-            dm.SCCHIC_384w_c8_u3
+            dm.SCCHIC_384w_c8_u3,
+            dm.SCCHIC_384w_c8_u3_cs2
         ]
         for c in self.demux_classes:
             self.demultiplexingStrategies.append(c(

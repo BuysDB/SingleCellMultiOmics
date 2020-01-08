@@ -1,86 +1,86 @@
-singlecellmultiomics\.modularDemultiplexer\.demultiplexModules package
-======================================================================
+singlecellmultiomics.modularDemultiplexer.demultiplexModules package
+====================================================================
 
 Submodules
 ----------
 
-singlecellmultiomics\.modularDemultiplexer\.demultiplexModules\.BULK\_ILLUMINA module
--------------------------------------------------------------------------------------
+singlecellmultiomics.modularDemultiplexer.demultiplexModules.BULK\_ILLUMINA module
+----------------------------------------------------------------------------------
 
 .. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexModules.BULK_ILLUMINA
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-singlecellmultiomics\.modularDemultiplexer\.demultiplexModules\.CELSeq1 module
-------------------------------------------------------------------------------
+singlecellmultiomics.modularDemultiplexer.demultiplexModules.CELSeq1 module
+---------------------------------------------------------------------------
 
 .. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexModules.CELSeq1
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-singlecellmultiomics\.modularDemultiplexer\.demultiplexModules\.CELSeq2 module
-------------------------------------------------------------------------------
+singlecellmultiomics.modularDemultiplexer.demultiplexModules.CELSeq2 module
+---------------------------------------------------------------------------
 
 .. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexModules.CELSeq2
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-singlecellmultiomics\.modularDemultiplexer\.demultiplexModules\.Hexamer module
-------------------------------------------------------------------------------
+singlecellmultiomics.modularDemultiplexer.demultiplexModules.Hexamer module
+---------------------------------------------------------------------------
 
 .. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexModules.Hexamer
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-singlecellmultiomics\.modularDemultiplexer\.demultiplexModules\.MSPJI module
-----------------------------------------------------------------------------
+singlecellmultiomics.modularDemultiplexer.demultiplexModules.MSPJI module
+-------------------------------------------------------------------------
 
 .. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexModules.MSPJI
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-singlecellmultiomics\.modularDemultiplexer\.demultiplexModules\.NLAIII module
------------------------------------------------------------------------------
+singlecellmultiomics.modularDemultiplexer.demultiplexModules.NLAIII module
+--------------------------------------------------------------------------
 
 .. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexModules.NLAIII
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-singlecellmultiomics\.modularDemultiplexer\.demultiplexModules\.restriction\-bisulfite module
----------------------------------------------------------------------------------------------
+singlecellmultiomics.modularDemultiplexer.demultiplexModules.restrictionbisulfite module
+----------------------------------------------------------------------------------------
 
-.. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexModules.restriction-bisulfite
-    :members:
-    :undoc-members:
-    :show-inheritance:
+.. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexModules.restrictionbisulfite
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-singlecellmultiomics\.modularDemultiplexer\.demultiplexModules\.scCHIC module
------------------------------------------------------------------------------
+singlecellmultiomics.modularDemultiplexer.demultiplexModules.scCHIC module
+--------------------------------------------------------------------------
 
 .. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexModules.scCHIC
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-singlecellmultiomics\.modularDemultiplexer\.demultiplexModules\.scartrace module
---------------------------------------------------------------------------------
+singlecellmultiomics.modularDemultiplexer.demultiplexModules.scartrace module
+-----------------------------------------------------------------------------
 
 .. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexModules.scartrace
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 
 Module contents
 ---------------
 
 .. automodule:: singlecellmultiomics.modularDemultiplexer.demultiplexModules
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
