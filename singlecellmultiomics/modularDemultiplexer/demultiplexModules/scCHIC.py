@@ -87,7 +87,7 @@ class SCCHIC_384w_c8_u3_cs2(IlluminaBaseDemultiplexer):
         self.description = '384 well format, mixed transcriptome and CHiC. scCHiC: 3bp umi followed by 8bp barcode and a single A. R2 ends with a 6bp random primer. Transcriptome: cs2 + template switching oligo'
         self.shortName = 'CHICT'
 
-        self.autoDetectable = True
+        self.autoDetectable = False
 
         # The demultiplexer used for the transcriptome reads:
         self.transcriptome_demux =  CELSeq2_c8_u6(barcodeFileParser=barcodeFileParser,**kwargs)
@@ -115,6 +115,8 @@ class SCCHIC_384w_c8_u3_cs2(IlluminaBaseDemultiplexer):
             pass
 
         # Check if the TSO oligo is present..
+
+        # or cs2 barcode in R1 (Also makes it transcriptome)
 
         # If not try to demultiplex as CHiC:
 
