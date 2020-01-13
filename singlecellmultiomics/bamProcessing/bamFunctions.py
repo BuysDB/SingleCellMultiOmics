@@ -269,7 +269,16 @@ def sort_and_index(
         pysam.sort("-o", sorted_path, unsorted_path)
     pysam.index(sorted_path)
     if remove_unsorted:
-        os.remove(unsorted_path)
+        remove_tries = 3
+        for i in range(remove_tries):
+            try:
+                os.remove(unsorted_path)
+                return
+            except OSError:
+                time.sleep(2)
+                if i == remove_tries-1:
+                    raise
+                    
 
 
 class MapabilityReader():
