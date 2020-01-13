@@ -1846,7 +1846,7 @@ class Molecule():
 
         return base_obs
 
-    def get_base_observation_dict(self, return_refbases=False, allow_N=False):
+    def get_base_observation_dict(self, return_refbases=False, allow_N=False,allow_unsafe=False):
         '''
         Obtain observed bases at reference aligned locations
 
@@ -1883,7 +1883,7 @@ class Molecule():
                     R2=R2,
                     R1PrimerLength=0, #fragment.R1_primer_length,
                     R2PrimerLength=0, #fragment.R2_primer_length,
-                    allow_unsafe=(R1 is None))
+                    allow_unsafe=(R1 is None or allow_unsafe))
             except ValueError as e:
                 ignored += 1
                 continue
@@ -1952,6 +1952,7 @@ class Molecule():
             classifier=None,
             store_consensus=True,
             reuse_cached_consensus=True,
+            allow_unsafe=False,
             allow_N=False):
         """Get dictionary containing consensus calls in respect to reference.
         By default mayority voting is used to determine the consensus base. If a classifier is supplied the classifier is used to determine the consensus base.
@@ -2004,7 +2005,7 @@ class Molecule():
         if base_obs is None:
             try:
                 base_obs, ref_bases = self.get_base_observation_dict(
-                    return_refbases=True, allow_N=allow_N)
+                    return_refbases=True, allow_N=allow_N, allow_unsafe=allow_unsafe)
             except ValueError as e:
                 # We cannot determine safe regions
                 raise
