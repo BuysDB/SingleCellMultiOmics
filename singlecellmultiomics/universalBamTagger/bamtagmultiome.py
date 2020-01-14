@@ -356,7 +356,7 @@ def run_multiome_tagging(args):
                 })
 
     elif args.method == 'cs_feature_count' :
-        moleculeClass = singlecellmultiomics.molecule.VASA
+        moleculeClass = singlecellmultiomics.molecule.Molecule
         fragmentClass = singlecellmultiomics.fragment.FeatureCountsSingleEndFragment
 
     elif args.method == 'nla_transcriptome':
