@@ -35,7 +35,7 @@ argparser.add_argument(
     '-method',
     type=str,
     default=None,
-    help="Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps, nla_no_overhang")
+    help="Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, cs_feature_counts,  nla_taps ,chic_taps, nla_no_overhang")
 argparser.add_argument(
     '-qflagger',
     type=str,
@@ -174,6 +174,7 @@ def run_multiome_tagging(args):
             nla_transcriptome
             vasa
             cs
+            cs_feature_count
             nla_taps
             chic_taps
 
@@ -350,6 +351,9 @@ def run_multiome_tagging(args):
                     'no_overhang': True
                 })
 
+    elif args.method == 'cs_feature_count' :
+        moleculeClass = singlecellmultiomics.molecule.VASA
+        fragmentClass = singlecellmultiomics.fragment.FeatureCountsSingleEndFragment
 
     elif args.method == 'nla_transcriptome':
         moleculeClass = singlecellmultiomics.molecule.AnnotatedNLAIIIMolecule
