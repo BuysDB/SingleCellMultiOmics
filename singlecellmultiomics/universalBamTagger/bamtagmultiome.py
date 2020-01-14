@@ -297,7 +297,10 @@ def run_multiome_tagging(args):
             colorama.Style.BRIGHT +
             'Running in transcriptome annotation mode' +
             colorama.Style.RESET_ALL)
-        if args.exons is None or args.introns is None:
+        if args.exons is None :
+            raise ValueError("Supply an exon GTF file")
+
+        if args.introns is not None and args.exons is None:
             raise ValueError("Please supply both intron and exon GTF files")
 
         transcriptome_features = singlecellmultiomics.features.FeatureContainer()
@@ -312,14 +315,15 @@ def run_multiome_tagging(args):
             contig=args.contig,
             head=None)
 
-        print("Loading introns", end='\r')
-        transcriptome_features.loadGTF(
-            args.introns,
-            select_feature_type=['intron'],
-            identifierFields=['transcript_id'],
-            store_all=True,
-            contig=args.contig,
-            head=None)
+        if args.introns is not None:
+            print("Loading introns", end='\r')
+            transcriptome_features.loadGTF(
+                args.introns,
+                select_feature_type=['intron'],
+                identifierFields=['transcript_id'],
+                store_all=True,
+                contig=args.contig,
+                head=None)
         print("All features loaded")
 
         # Add more molecule class arguments
