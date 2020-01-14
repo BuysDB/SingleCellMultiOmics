@@ -35,7 +35,18 @@ argparser.add_argument(
     '-method',
     type=str,
     default=None,
-    help="Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, cs_feature_counts,  nla_taps ,chic_taps, nla_no_overhang")
+    help="""Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, cs_feature_counts,  nla_taps ,chic_taps, nla_no_overhang. nla (Data with digested by Nla III enzyme)
+    nla (Data with digested by Nla III enzyme)
+    qflag (Only add basic tags like sampple and UMI, no molecule assignment)
+    chic (Data digested using mnase fusion)
+    nla_transcriptome (Data with transcriptome and genome digested by Nla III )
+    vasa (VASA transcriptomic data)
+    cs (CELseq data, 1 and 2)
+    from_featurecounts_tagged (deduplicate using a bam file tagged using featurecounts)
+    nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
+    chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
+    nla_no_overhang (Data with digested by Nla III enzyme, without the CATG present in the reads)
+    """)
 argparser.add_argument(
     '-qflagger',
     type=str,
@@ -168,15 +179,15 @@ def run_multiome_tagging(args):
         qflagger(str): Query flagging algorithm to use, this algorithm extracts UMI and sample information from your reads. When no query flagging algorithm is specified, the `singlecellmultiomics.universalBamTagger.universalBamTagger.QueryNameFlagger` is used
 
         method(str) : Method name, what kind of molecules need to be extracted. Select from:
-            nla
-            qflag
-            chic
-            nla_transcriptome
-            vasa
-            cs
-            cs_feature_count
-            nla_taps
-            chic_taps
+            nla (Data with digested by Nla III enzyme)
+            qflag (Only add basic tags like sampple and UMI, no molecule assignment)
+            chic (Data digested using mnase fusion)
+            nla_transcriptome (Data with transcriptome and genome digested by Nla III )
+            vasa (VASA transcriptomic data)
+            cs (CELseq data, 1 and 2)
+            from_featurecounts_tagged (deduplicate using a bam file tagged using featurecounts)
+            nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
+            chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
 
 
         custom_flags(str): Arguments passed to the query name flagger, comma separated "MI,RX,BI,SM"
@@ -355,8 +366,8 @@ def run_multiome_tagging(args):
                     'no_overhang': True
                 })
 
-    elif args.method == 'cs_feature_count' :
-        moleculeClass = singlecellmultiomics.molecule.VASA
+    elif args.method == 'from_featurecounts_tagged' :
+        moleculeClass = singlecellmultiomics.molecule.Molecule
         fragmentClass = singlecellmultiomics.fragment.FeatureCountsSingleEndFragment
 
     elif args.method == 'nla_transcriptome':
