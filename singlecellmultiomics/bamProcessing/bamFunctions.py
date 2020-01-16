@@ -257,28 +257,38 @@ def sort_and_index(
         SamtoolsError when sorting or indexing fails
     """
     if local_temp_sort:
-        base_directory = os.path.dirname(sorted_path)
-        pysam.sort(
-            '-o',
-            sorted_path,
-            '-T',
-            f'{base_directory}/TMP.{uuid.uuid4()}', # Current directory with a random prefix
-            unsorted_path,
-        )
+        base_directory = os.path.abspath( os.path.dirname(sorted_path) )
+        prefix = f'TMP.{uuid.uuid4()}'
+        temp_path_first = f'{base_directory}/{prefix}'
+        if temp_path_first.startswith('/TMP'):
+            # Perform sort in current directory
+            temp_path_first = f'./{prefix}'
+
+
+        # Try to sort at multiple locations, if sorting fails try the next until all locations have been tried
+        temp_paths =  [temp_path_first, f'/tmp/{prefix}', f'./{prefix}' ]
+        for i,temp_path in enumerate(temp_paths):
+            failed=False
+            try:
+                pysam.sort(
+                    '-o',
+                    sorted_path,
+                    '-T',
+                    f'{temp_path}', # Current directory with a random prefix
+                    unsorted_path,
+                )
+            except Exception as e:
+                failed = True
+                if i==len(temp_paths)-1:
+                    raise
+
+            if not failed:
+                break
     else:
         pysam.sort("-o", sorted_path, unsorted_path)
     pysam.index(sorted_path)
     if remove_unsorted:
-        remove_tries = 3
-        for i in range(remove_tries):
-            try:
-                os.remove(unsorted_path)
-                return
-            except OSError:
-                time.sleep(2)
-                if i == remove_tries-1:
-                    raise
-                    
+        os.remove(unsorted_path)
 
 
 class MapabilityReader():
