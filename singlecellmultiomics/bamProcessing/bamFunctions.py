@@ -47,6 +47,40 @@ def verify_and_fix_bam(bam_path):
                     f'The file {bam_path} is not sorted or damaged in some way')
 
 
+def _get_samples_from_bam(handle):
+    """Get a list of samples present in the bam_file
+    private: please use get_samples_from_bam()
+
+    Args:
+        bam_file(pysam.AlignmentFile) : path to bam file or pysam object
+
+    Returns:
+        samples (set) : set containing all sample names
+
+    """
+    return set([entry['SM'] for entry in handle.header.as_dict()['RG']])
+def get_samples_from_bam(bam):
+    """Get a list of samples present in the bam_file
+
+    Args:
+        bam_file(str) or pysam.AlignmentFile : path to bam file or pysam object
+
+    Returns:
+        samples (set) : set containing all sample names
+
+    """
+
+    if isinstance(bam, str):
+        with pysam.AlignmentFile(bam) as pysam_AlignmentFile_handle:
+            return _get_samples_from_bam(pysam_AlignmentFile_handle)
+    elif isinstance(bam, pysam.AlignmentFile):
+        return _get_samples_from_bam(bam)
+
+    else:
+        raise ValueError(
+            'Supply either a path to a bam file or pysam.AlignmentFile object')
+
+
 def get_reference_from_pysam_alignmentFile(
         pysam_AlignmentFile, ignore_missing=False):
     """Extract path to reference from pysam handle
