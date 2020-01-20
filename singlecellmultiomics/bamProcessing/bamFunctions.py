@@ -6,6 +6,8 @@ from shutil import which
 from singlecellmultiomics.utils import BlockZip
 import uuid
 import os
+from collections import defaultdict
+
 
 
 def verify_and_fix_bam(bam_path):
@@ -59,6 +61,36 @@ def _get_samples_from_bam(handle):
 
     """
     return set([entry['SM'] for entry in handle.header.as_dict()['RG']])
+
+def get_sample_to_read_group_dict(bam):
+    """ Obtain a dictionary containing {'sample name' : ['read groupA', 'read group B'], ...}
+        Args:
+            bam_file(pysam.AlignmentFile) or path to bam file or pysam object
+    """
+    if isinstance(bam, str):
+        with pysam.AlignmentFile(bam) as pysam_AlignmentFile_handle:
+            return _get_sample_to_read_group_dict(pysam_AlignmentFile_handle)
+    elif isinstance(bam, pysam.AlignmentFile):
+        return _get_sample_to_read_group_dict(bam)
+
+    else:
+        raise ValueError(
+            'Supply either a path to a bam file or pysam.AlignmentFile object')
+
+
+def _get_sample_to_read_group_dict(handle):
+    """ Obtain a dictionary containing {'sample name' : ['read groupA', 'read group B']}
+        Args:
+            bam_file(pysam.AlignmentFile) : path to bam file or pysam object
+    """
+
+    sample_to_read_group_dict = defaultdict(list)
+    # Traverse the read groups;
+    for entry in handle.header.as_dict()['RG']:
+        sample_to_read_group_dict[ entry['SM'] ].append(entry['ID'])
+    return sample_to_read_group_dict
+
+
 def get_samples_from_bam(bam):
     """Get a list of samples present in the bam_file
 
@@ -79,6 +111,7 @@ def get_samples_from_bam(bam):
     else:
         raise ValueError(
             'Supply either a path to a bam file or pysam.AlignmentFile object')
+
 
 
 def get_reference_from_pysam_alignmentFile(
