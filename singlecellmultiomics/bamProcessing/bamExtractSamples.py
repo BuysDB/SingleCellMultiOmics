@@ -7,6 +7,54 @@ import sys
 from singlecellmultiomics.bamProcessing import get_sample_to_read_group_dict
 import collections
 
+def extract_samples( input_bam_path, output_path, capture_samples, head=None ):
+    """
+    Extract samples from a bam file
+
+    Args:
+        input_bam_path(str) : path to bam file from which to extract data from specified samples
+
+        output_path(str) : prefix of path to write bam files to
+
+        capture_samples(dict) : dictionary of lists {group: [sample, sample, sample], }
+
+        head(int) : write this amount of reads, then exit
+
+    """
+    bamFile = pysam.AlignmentFile(input_bam_path, "rb")
+    header = bamFile.header.copy()
+
+    # Write to multiple files:
+    output_handles = {}
+    print('Groups:')
+    for group in capture_samples:
+
+        output_handles[group] = pysam.AlignmentFile(output_path.replace('.bam',f'{group}.bam'), "wb", header=header)
+        print(f'\t{group}\t{output_handles[group].filename.decode()}')
+
+    written = 0
+    for r in bamFile:
+        if r.has_tag('SM'):
+            sample = r.get_tag('SM')
+            for group in capture_samples:
+                if sample in capture_samples[group]:
+                    # Write
+                    output_handles[group].write(r)
+
+            written += 1
+            if head is not None and written >= head:
+                break
+
+    print(f'Filtering finished, {written} reads')
+    for group,handle in output_handles.items():
+        handle.close()
+        try:
+            os.system(f'samtools index {handle.filename.decode()}')
+        except Exception as e:
+            print(e)
+            pass
+
+
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -32,17 +80,13 @@ if __name__ == '__main__':
 
     assert args.o.endswith('.bam'), 'output file path should end with .bam'
 
-    bamFile = pysam.AlignmentFile(args.bamfile, "rb")
-    header = bamFile.header.copy()
-
-
     capture_samples = collections.defaultdict( set ) # group -> set( samples )
     with open(args.extract) as e:
         for line in e:
             parts = line.strip().split()
 
             if len(parts)==1:
-                group = 0
+                group = ''
                 sample = parts[0]
             elif len(parts)==2:
                 sample, group = parts
@@ -50,33 +94,4 @@ if __name__ == '__main__':
                 raise ValueError("Please supply a file with one or two columns: [SAMPLE], or [SAMPLE]{tab}[GROUP]")
             capture_samples[group].add( parts[0] )
 
-    # Write to multiple files:
-    output_handles = {}
-    print('Groups:')
-    for group in capture_samples:
-
-        output_handles[group] = pysam.AlignmentFile(args.o.replace('.bam',f'{group}.bam'), "wb", header=header)
-
-        print(f'\t{group}\t{output_handles[group].filename.decode()}')
-
-    written = 0
-    for r in bamFile:
-        if r.has_tag('SM'):
-            sample = r.get_tag('SM')
-            for group in capture_samples:
-                if sample in capture_samples[group]:
-                    # Write
-                    output_handles[group].write(r)
-
-            written += 1
-            if args.head and written >= args.head:
-                break
-
-    print(f'Filtering finished, {written} reads')
-    for group,handle in output_handles.items():
-        handle.close()
-        try:
-            os.system(f'samtools index {handle.filename.decode()}')
-        except Exception as e:
-            print(e)
-            pass
+    extract_samples(args.bamfile, args.o, capture_samples, head=args.head )
