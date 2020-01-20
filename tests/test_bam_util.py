@@ -6,6 +6,7 @@ import singlecellmultiomics.fragment
 import pysam
 import pysamiterators.iterators
 from singlecellmultiomics.bamProcessing import sorted_bam_file,write_program_tag,verify_and_fix_bam
+from singlecellmultiomics.bamProcessing.bamExtractSamples import extract_samples
 import os
 import sys
 from shutil import copyfile,rmtree
@@ -65,6 +66,7 @@ class TestSorted(unittest.TestCase):
         self.assertTrue(os.path.exists(write_path))
         try:
             os.remove(write_path)
+            os.remove(write_path+'.bai')
         except Exception as e:
             pass
 
@@ -152,10 +154,46 @@ class TestSorted(unittest.TestCase):
                 if read.is_read1:
                     i+=1
             self.assertEqual(i, 293)
+
         try:
             os.remove(write_path)
         except Exception as e:
             pass
+
+        try:
+            os.remove(write_path+'.bai')
+        except Exception as e:
+            pass
+
+
+    def  test_sample_extraction(self):
+
+        output_path= './data/write_test_extract.bam'
+        final_output_paths= ['./data/write_test_extract0.bam', './data/write_test_extract1.bam']
+
+        capture_samples = {'0':['APKS1P25-NLAP2L1_30','APKS1P25-NLAP2L1_31'],
+        # 4 reads expected
+         '1':['APKS1P25-NLAP2L2_86']}
+         #samtools view ./data/mini_nla_test.bam | grep 'APKS1P25-NLAP2L2_86' | wc -l -> 8
+        extract_samples( './data/mini_nla_test.bam', output_path, capture_samples )
+
+        with pysam.AlignmentFile(final_output_paths[0]) as f:
+            for i,_ in enumerate(f):
+                pass
+            self.assertEqual(i, 4-1)
+
+        with pysam.AlignmentFile(final_output_paths[1]) as f:
+            for i,_ in enumerate(f):
+                pass
+            self.assertEqual(i, 8-1)
+
+
+        for p in final_output_paths:
+            try:
+                os.remove(p)
+                os.remove(f'{p}.bai')
+            except Exception as e:
+                pass
 
 
 if __name__ == '__main__':

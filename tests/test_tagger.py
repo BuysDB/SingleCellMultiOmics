@@ -33,6 +33,7 @@ class TestMultiomeTaggingNLA(unittest.TestCase):
 
         self.assertTrue( os.path.exists(write_path) )
         os.remove(write_path)
+        os.remove(write_path+'.bai')
 
     def test_write_to_read_grouped_sorted_no_rejects(self):
         write_path = './data/write_test_rg.bam'
@@ -50,6 +51,7 @@ class TestMultiomeTaggingNLA(unittest.TestCase):
 
         self.assertTrue( os.path.exists(write_path) )
         os.remove(write_path)
+        os.remove(write_path+'.bai')
 
 
 
