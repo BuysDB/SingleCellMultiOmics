@@ -66,6 +66,7 @@ class TestSorted(unittest.TestCase):
         self.assertTrue(os.path.exists(write_path))
         try:
             os.remove(write_path)
+            os.remove(write_path+'.bai')
         except Exception as e:
             pass
 
@@ -153,8 +154,14 @@ class TestSorted(unittest.TestCase):
                 if read.is_read1:
                     i+=1
             self.assertEqual(i, 293)
+
         try:
             os.remove(write_path)
+        except Exception as e:
+            pass
+
+        try:
+            os.remove(write_path+'.bai')
         except Exception as e:
             pass
 
@@ -180,11 +187,13 @@ class TestSorted(unittest.TestCase):
                 pass
             self.assertEqual(i, 8-1)
 
-        try:
-            for p in final_output_paths:
+
+        for p in final_output_paths:
+            try:
                 os.remove(p)
-        except Exception as e:
-            pass
+                os.remove(f'{p}.bai')
+            except Exception as e:
+                pass
 
 
 if __name__ == '__main__':
