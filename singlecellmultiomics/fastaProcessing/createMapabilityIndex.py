@@ -142,7 +142,7 @@ if __name__ == '__main__':
                 contig,
                 pos,
                 strand,
-                f'{measured["correct"]}\t{measured["lost"]}\t{measured["wrong_gain"]}\n')
+                f'{measured["correct"]}\t{measured["lost"]}\t{measured["wrong_gain"]}')
 
             if measured['wrong_gain'] == 0 and measured['lost'] == 0 and measured['correct'] == 1:
                 safe.write(contig, pos, strand, 'ok')
