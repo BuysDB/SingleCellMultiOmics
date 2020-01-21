@@ -46,6 +46,7 @@ argparser.add_argument(
     nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
     chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
     nla_no_overhang (Data with digested by Nla III enzyme, without the CATG present in the reads)
+    scartrace (Lineage tracing )
     """)
 argparser.add_argument(
     '-qflagger',
@@ -118,6 +119,8 @@ cluster.add_argument(
     default=None,
     help='Folder to store cluster files in (scripts and sterr/out, when not specified a "cluster" folder will be made in same directory as -o')
 
+scartrace_settings = argparser.add_argument_group('Scartrace specific settings')
+scartrace_settings.add_argument('-scartrace_r1_primers', type=str, default='CCTTGAACTTCTGGTTGTAG', help='Comma separated list of R1 primers used. Only fragments starting with this read are taken into account.')
 
 tr = argparser.add_argument_group('transcriptome specific settings')
 tr.add_argument('-exons', type=str, help='Exon GTF file')
@@ -174,7 +177,7 @@ def run_multiome_tagging(args):
 
         o(str) : path to output bam file
 
-        method(str): Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps, nla_no_overhang
+        method(str): Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps, nla_no_overhang, scartrace
 
         qflagger(str): Query flagging algorithm to use, this algorithm extracts UMI and sample information from your reads. When no query flagging algorithm is specified, the `singlecellmultiomics.universalBamTagger.universalBamTagger.QueryNameFlagger` is used
 
@@ -188,6 +191,7 @@ def run_multiome_tagging(args):
             from_featurecounts_tagged (deduplicate using a bam file tagged using featurecounts)
             nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
             chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
+            scartrace  (lineage tracing protocol)
 
 
         custom_flags(str): Arguments passed to the query name flagger, comma separated "MI,RX,BI,SM"
@@ -235,6 +239,9 @@ def run_multiome_tagging(args):
         consensus_n_train(int) : Amount of bases used for training the consensus model
 
         no_source_reads(bool) :  Do not write original reads, only consensus
+
+        scartrace_r1_primers(str) : comma separated list of R1 primers used in scartrace protocol
+
     """
 
     MISC_ALT_CONTIGS_SCMO = 'MISC_ALT_CONTIGS_SCMO'
@@ -405,6 +412,18 @@ def run_multiome_tagging(args):
             'pooling_method': 1,  # all data from the same cell can be dealt with separately
             'stranded': 1  # data is stranded
         })
+
+    elif args.method == 'scartrace':
+
+        moleculeClass = singlecellmultiomics.molecule.ScarTraceMolecule
+        fragmentClass = singlecellmultiomics.fragment.ScarTraceFragment
+
+        r1_primers = args.scartrace_r1_primers.split(',')
+        fragment_class_args.update({
+                'scartrace_r1_primers': r1_primers,
+                #'reference': reference
+            })
+
 
     else:
         raise ValueError("Supply a valid method")
