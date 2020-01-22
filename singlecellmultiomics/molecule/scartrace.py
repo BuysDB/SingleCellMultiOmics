@@ -22,6 +22,10 @@ class ScarTraceMolecule(Molecule):
         scarDescription = set()
         qualities = []
         for read in self.iter_reads():
+            if read is None:
+                continue
+            if read.is_unmapped:
+                continue
             firstCigarOperation, firstCigarLen = read.cigartuples[0]
             insertPos = 0
             lastNonNoneRefPos = read.reference_start if firstCigarOperation != 4 else read.reference_start - firstCigarLen
