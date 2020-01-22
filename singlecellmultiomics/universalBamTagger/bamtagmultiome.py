@@ -65,15 +65,29 @@ argparser.add_argument('-contig', type=str, help='Contig to only process')
 argparser.add_argument('-region_start', type=int, help='Zero based start coordinate of region to process')
 argparser.add_argument('-region_end', type=int, help='Zero based end coordinate of region to process')
 
-argparser.add_argument('-alleles', type=str, help="Phased allele file (VCF)")
-argparser.add_argument(
+allele_gr = argparser.add_argument_group('alleles')
+allele_gr.add_argument('-alleles', type=str, help="Phased allele file (VCF)")
+allele_gr.add_argument(
     '-allele_samples',
     type=str,
     help="Comma separated samples to extract from the VCF file. For example B6,SPRET")
-argparser.add_argument(
+allele_gr.add_argument(
     '-unphased_alleles',
     type=str,
     help="Unphased allele file (VCF)")
+
+allele_gr.add_argument(
+    '--set_allele_resolver_verbose',
+    action='store_true',
+    help='Makes the allele resolver print more')
+
+allele_gr.add_argument(
+    '--use_allele_cache',
+    action='store_true',
+    help='Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not available. Once they are available there is not thread safety issue anymore')
+
+
+
 argparser.add_argument(
     '--every_fragment_as_molecule',
     action='store_true',
@@ -304,6 +318,8 @@ def run_multiome_tagging(args):
             args.alleles,
             select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
             lazyLoad=True,
+            use_cache=args.use_allele_cache,
+            verbose = args.set_allele_resolver_verbose,
             ignore_conversions=ignore_conversions)
 
     if args.mapfile is not None:
@@ -570,7 +586,8 @@ def run_multiome_tagging(args):
     unphased_allele_resolver = None
     if args.unphased_alleles is not None:
         unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver(
-            phased=False, ignore_conversions=ignore_conversions)
+            use_cache=args.use_allele_cache,
+            phased=False, ignore_conversions=ignore_conversions,verbose = args.set_allele_resolver_verbose)
         try:
             for i, variant in enumerate(
                 pysam.VariantFile(
