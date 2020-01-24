@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import itertools
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
+import gzip  # for loading blacklist bedfiles
 TagDefinitions = singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods.TagDefinitions
 
 
@@ -97,7 +98,7 @@ def readTag(read, tag, defective='None'):
 # define if a read should be used
 
 
-def read_should_be_counted(read, args):
+def read_should_be_counted(read, args, blacklist_dic = None):
     """
     Check if a read should be counted given the filter arguments
 
@@ -111,7 +112,17 @@ def read_should_be_counted(read, args):
     bool
     """
 
-# Read is empty
+    # Read is in blacklist
+    if blacklist_dic is not None:
+        if read.reference_name in blacklist_dic:
+            # iterate through tuples of startend to check
+            for startend in blacklist_dic[read.reference_name]:
+                # start is 0-based inclusive, end is 0-based exclusive
+                if (read.reference_start >= startend[0] & read.reference_start < startend[1]) | \
+                        (read.reference_end >= startend[0] & read.reference_end < startend[1])
+                    return False
+
+    # Read is empty
     if read is None or read.is_qcfail:
         return False
 
@@ -146,10 +157,11 @@ def assignReads(
         joinFeatures,
         featureTags,
         sampleTags,
-        more_args=[]):
+        more_args=[],
+        blacklist_dic = None):
 
     assigned = 0
-    if not read_should_be_counted(read, args):
+    if not read_should_be_counted(read, args, blacklist_dic):
         return assigned
 
     # Get the sample to which this read belongs
@@ -416,6 +428,24 @@ def create_count_table(args, return_df=False):
     countTable = collections.defaultdict(
         collections.Counter)  # cell->feature->count
 
+    if args.blacklist is not None:
+        # create blacklist dictionary {chromosome : [ (start1, end1), ..., (startN, endN) ]} 
+        # used to check each read and exclude if it is within any of these start end sites
+        # 
+        blacklist_dic = {}
+        print("Creating blacklist dictionary:")
+        with open(args.blacklist, mode='r') as blfile:
+            for row in blfile:
+                parts = row.strip().split()
+                chromo, start, end = parts[0], int(parts[1]), int(parts[2])
+                if chromo not in blacklist_dic:
+                    # init chromo
+                    blacklist_dic[chromo] = []  # list of tuples
+                blacklist_dic[chromo].append( (start, end) )
+        print(blacklist_dic)
+    else:
+        blacklist_dic = None
+
     assigned = 0
     for bamFile in args.alignmentfiles:
 
@@ -446,8 +476,9 @@ def create_count_table(args, return_df=False):
                                             args,
                                             joinFeatures,
                                             featureTags,
-                                            sampleTags)
-            else:
+                                            sampleTags,
+                                            blacklist_dic = blacklist_dic)
+            else:  # args.bedfile is not None
                 # for adding counts associated with a bedfile
                 with open(args.bedfile, "r") as bfile:
                     #breader = csv.reader(bfile, delimiter = "\t")
@@ -601,7 +632,7 @@ if __name__ == '__main__':
         '-byValue',
         type=str,
         help='Extract the value from the supplied tag and use this as count to add')
-
+    binning_args.add_argument('-blacklist', metavar='BED FILE BLACKLIST TO FILTER OUT', help = 'Bedfile of blacklist regions to exclude', default=None)
     bed_args = argparser.add_argument_group('Bedfiles', '')
     bed_args.add_argument(
         '-bedfile',
