@@ -1405,7 +1405,23 @@ class Molecule():
         """
         if self.spanStart is None or self.spanEnd is None:
             return None
-        return abs(self.spanEnd - self.spanStart)
+
+        start = None
+        end = None
+        contig = None
+        for fragment in self:
+            if contig is None:
+                contig = fragment.span[0]
+            if contig == fragment.span[0]:
+                f_start, f_end = fragment.get_safe_span()
+                if start is None:
+                    start = f_start
+                    end = f_end
+                else:
+                    start = min(f_start, start)
+                    end = min(f_end, end)
+
+        return abs(end - start)
 
     def add_fragment(self, fragment, use_hash=True):
         """Associate a fragment with this Molecule
