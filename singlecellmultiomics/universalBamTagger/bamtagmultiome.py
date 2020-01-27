@@ -86,12 +86,6 @@ allele_gr.add_argument(
     action='store_true',
     help='Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not available. Once they are available there is not thread safety issue anymore')
 
-
-
-argparser.add_argument(
-    '--every_fragment_as_molecule',
-    action='store_true',
-    help='Assign every fragment as a molecule, this effectively disables UMI deduplication')
 argparser.add_argument(
     '--ignore_bam_issues',
     action='store_true',
@@ -174,6 +168,17 @@ cg.add_argument('--consensus_allow_train_location_oversampling', action='store_t
                 help='Allow to train the consensus model multiple times for a single genomic location')
 
 
+ma = argparser.add_argument_group('Molecule assignment settings')
+
+ma.add_argument(
+    '--every_fragment_as_molecule',
+    action='store_true',
+    help='Assign every fragment as a molecule, this effectively disables UMI deduplication')
+
+ma.add_argument(
+    '--no_umi_cigar_processing',
+    action='store_true',
+    help='Do not use the alignment during deduplication')
 
 
 def run_multiome_tagging_cmd(commandline):
@@ -443,6 +448,12 @@ def run_multiome_tagging(args):
 
     else:
         raise ValueError("Supply a valid method")
+
+
+    # This disables umi_cigar_processing:
+    if args.no_umi_cigar_processing:
+        fragment_class_args['no_umi_cigar_processing'] = True
+    
 
     # This decides what molecules we will traverse
     if args.contig == MISC_ALT_CONTIGS_SCMO:
