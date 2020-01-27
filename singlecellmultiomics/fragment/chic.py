@@ -9,7 +9,8 @@ class CHICFragment(Fragment):
                  R2_primer_length=6,
                  assignment_radius=1_000,
                  umi_hamming_distance=1,
-                 invert_strand=True
+                 invert_strand=True,
+                 no_umi_cigar_processing=False
                  ):
         self.invert_strand = invert_strand
         Fragment.__init__(self,
@@ -21,6 +22,7 @@ class CHICFragment(Fragment):
 
                           )
         # set CHIC cut site given reads
+        self.no_umi_cigar_processing = no_umi_cigar_processing
         self.strand = None
         self.ligation_motif = None
         self.site_location = None
@@ -83,12 +85,13 @@ class CHICFragment(Fragment):
 
         r1_start =(R1.reference_end if R1.is_reverse else R1.reference_start)
 
-        if R1.is_reverse:
-            if R1.cigartuples[-1][0]==4: # softclipped at end
-                r1_start+=R1.cigartuples[-1][1]
-        else:
-            if R1.cigartuples[0][0]==4: # softclipped at start
-                r1_start-=R1.cigartuples[0][1]
+        if not self.no_umi_cigar_processing:
+            if R1.is_reverse:
+                if R1.cigartuples[-1][0]==4: # softclipped at end
+                    r1_start+=R1.cigartuples[-1][1]
+            else:
+                if R1.cigartuples[0][0]==4: # softclipped at start
+                    r1_start-=R1.cigartuples[0][1]
 
         if is_trimmed:
             # The first base of the read has been taken off and the lh tag is
