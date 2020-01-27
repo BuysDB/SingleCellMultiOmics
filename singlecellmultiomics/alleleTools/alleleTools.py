@@ -25,7 +25,9 @@ class AlleleResolver:
                  lazyLoad=False,
                  select_samples=None,
                  use_cache=False,
-                 ignore_conversions=None
+                 ignore_conversions=None,
+                 verbose=False
+
 
                  # When this flag is true a cache file is generated containing
                  # usable SNPs for every chromosome in gzipped format
@@ -41,6 +43,8 @@ class AlleleResolver:
 
             uglyMode (bool) : the vcf file is invalid (not indexed) and has to be loaded to memory
 
+            verbose (bool) : Print debug information
+
             lazyLoad (bool) : the vcf file is valid and indexed and does not need to be loaded to memory
 
             select_samples (list) : Use only these samples from the VCF file
@@ -52,7 +56,7 @@ class AlleleResolver:
         """
         self.ignore_conversions = ignore_conversions
         self.phased = phased
-        self.verbose = False
+        self.verbose = verbose
         self.locationToAllele = collections.defaultdict(lambda: collections.defaultdict(
             lambda: collections.defaultdict(set)))  # chrom -> pos-> base -> sample(s)
         self.select_samples = select_samples

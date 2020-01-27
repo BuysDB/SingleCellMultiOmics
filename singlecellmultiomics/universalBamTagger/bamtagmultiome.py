@@ -46,6 +46,7 @@ argparser.add_argument(
     nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
     chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
     nla_no_overhang (Data with digested by Nla III enzyme, without the CATG present in the reads)
+    scartrace (Lineage tracing )
     """)
 argparser.add_argument(
     '-qflagger',
@@ -64,19 +65,27 @@ argparser.add_argument('-contig', type=str, help='Contig to only process')
 argparser.add_argument('-region_start', type=int, help='Zero based start coordinate of region to process')
 argparser.add_argument('-region_end', type=int, help='Zero based end coordinate of region to process')
 
-argparser.add_argument('-alleles', type=str, help="Phased allele file (VCF)")
-argparser.add_argument(
+allele_gr = argparser.add_argument_group('alleles')
+allele_gr.add_argument('-alleles', type=str, help="Phased allele file (VCF)")
+allele_gr.add_argument(
     '-allele_samples',
     type=str,
     help="Comma separated samples to extract from the VCF file. For example B6,SPRET")
-argparser.add_argument(
+allele_gr.add_argument(
     '-unphased_alleles',
     type=str,
     help="Unphased allele file (VCF)")
-argparser.add_argument(
-    '--every_fragment_as_molecule',
+
+allele_gr.add_argument(
+    '--set_allele_resolver_verbose',
     action='store_true',
-    help='Assign every fragment as a molecule, this effectively disables UMI deduplication')
+    help='Makes the allele resolver print more')
+
+allele_gr.add_argument(
+    '--use_allele_cache',
+    action='store_true',
+    help='Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not available. Once they are available there is not thread safety issue anymore')
+
 argparser.add_argument(
     '--ignore_bam_issues',
     action='store_true',
@@ -118,6 +127,8 @@ cluster.add_argument(
     default=None,
     help='Folder to store cluster files in (scripts and sterr/out, when not specified a "cluster" folder will be made in same directory as -o')
 
+scartrace_settings = argparser.add_argument_group('Scartrace specific settings')
+scartrace_settings.add_argument('-scartrace_r1_primers', type=str, default='CCTTGAACTTCTGGTTGTAG', help='Comma separated list of R1 primers used. Only fragments starting with this read are taken into account.')
 
 tr = argparser.add_argument_group('transcriptome specific settings')
 tr.add_argument('-exons', type=str, help='Exon GTF file')
@@ -157,6 +168,17 @@ cg.add_argument('--consensus_allow_train_location_oversampling', action='store_t
                 help='Allow to train the consensus model multiple times for a single genomic location')
 
 
+ma = argparser.add_argument_group('Molecule assignment settings')
+
+ma.add_argument(
+    '--every_fragment_as_molecule',
+    action='store_true',
+    help='Assign every fragment as a molecule, this effectively disables UMI deduplication')
+
+ma.add_argument(
+    '--no_umi_cigar_processing',
+    action='store_true',
+    help='Do not use the alignment during deduplication')
 
 
 def run_multiome_tagging_cmd(commandline):
@@ -174,7 +196,7 @@ def run_multiome_tagging(args):
 
         o(str) : path to output bam file
 
-        method(str): Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps, nla_no_overhang
+        method(str): Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, nla_taps ,chic_taps, nla_no_overhang, scartrace
 
         qflagger(str): Query flagging algorithm to use, this algorithm extracts UMI and sample information from your reads. When no query flagging algorithm is specified, the `singlecellmultiomics.universalBamTagger.universalBamTagger.QueryNameFlagger` is used
 
@@ -188,6 +210,7 @@ def run_multiome_tagging(args):
             from_featurecounts_tagged (deduplicate using a bam file tagged using featurecounts)
             nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
             chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
+            scartrace  (lineage tracing protocol)
 
 
         custom_flags(str): Arguments passed to the query name flagger, comma separated "MI,RX,BI,SM"
@@ -235,6 +258,9 @@ def run_multiome_tagging(args):
         consensus_n_train(int) : Amount of bases used for training the consensus model
 
         no_source_reads(bool) :  Do not write original reads, only consensus
+
+        scartrace_r1_primers(str) : comma separated list of R1 primers used in scartrace protocol
+
     """
 
     MISC_ALT_CONTIGS_SCMO = 'MISC_ALT_CONTIGS_SCMO'
@@ -297,6 +323,8 @@ def run_multiome_tagging(args):
             args.alleles,
             select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
             lazyLoad=True,
+            use_cache=args.use_allele_cache,
+            verbose = args.set_allele_resolver_verbose,
             ignore_conversions=ignore_conversions)
 
     if args.mapfile is not None:
@@ -406,8 +434,26 @@ def run_multiome_tagging(args):
             'stranded': 1  # data is stranded
         })
 
+    elif args.method == 'scartrace':
+
+        moleculeClass = singlecellmultiomics.molecule.ScarTraceMolecule
+        fragmentClass = singlecellmultiomics.fragment.ScarTraceFragment
+
+        r1_primers = args.scartrace_r1_primers.split(',')
+        fragment_class_args.update({
+                'scartrace_r1_primers': r1_primers,
+                #'reference': reference
+            })
+
+
     else:
         raise ValueError("Supply a valid method")
+
+
+    # This disables umi_cigar_processing:
+    if args.no_umi_cigar_processing:
+        fragment_class_args['no_umi_cigar_processing'] = True
+    
 
     # This decides what molecules we will traverse
     if args.contig == MISC_ALT_CONTIGS_SCMO:
@@ -469,8 +515,13 @@ def run_multiome_tagging(args):
                     'singlecellmultiomics', f'molecule/consensus_model/{args.consensus_model}')
 
             if model_path.endswith('.h5'):
-                from tensorflow.keras.models import load_model
+                try:
+                    from tensorflow.keras.models import load_model
+                except ImportError:
+                    print("Please install tensorflow")
+                    raise
                 consensus_model = load_model(model_path)
+
             else:
                 with open(model_path, 'rb') as f:
                     consensus_model = pickle.load(f)
@@ -546,7 +597,8 @@ def run_multiome_tagging(args):
     unphased_allele_resolver = None
     if args.unphased_alleles is not None:
         unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver(
-            phased=False, ignore_conversions=ignore_conversions)
+            use_cache=args.use_allele_cache,
+            phased=False, ignore_conversions=ignore_conversions,verbose = args.set_allele_resolver_verbose)
         try:
             for i, variant in enumerate(
                 pysam.VariantFile(
