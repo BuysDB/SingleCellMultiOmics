@@ -11,11 +11,13 @@ class NLAIIIFragment(Fragment):
                  umi_hamming_distance=1,
                  invert_strand=False,
                  no_overhang =False, # CATG is present OUTSIDE the fragment
-                 reference=None #Reference is required when no_overhang=True
+                 reference=None, #Reference is required when no_overhang=True
+                 no_umi_cigar_processing=False
                  ):
         self.invert_strand = invert_strand
         self.no_overhang = no_overhang
         self.reference = reference
+        self.no_umi_cigar_processing= no_umi_cigar_processing
         if self.no_overhang and reference  is None:
             raise ValueError('Supply a reference handle when no_overhang=True')
 
@@ -82,13 +84,22 @@ class NLAIIIFragment(Fragment):
             rev_motif = R1.seq[-4:]
 
 
+        r1_start =(R1.reference_end if R1.is_reverse else R1.reference_start)
+        if not self.no_umi_cigar_processing:
+            if R1.is_reverse:
+                if R1.cigartuples[-1][0]==4: # softclipped at end
+                    r1_start+=R1.cigartuples[-1][1]
+            else:
+                if R1.cigartuples[0][0]==4: # softclipped at start
+                    r1_start-=R1.cigartuples[0][1]
+
         if forward_motif == 'CATG' and not R1.is_reverse:
-            rpos = (R1.reference_name, R1.reference_start)
+            rpos = (R1.reference_name, r1_start)
             self.set_site(site_strand=1, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('CATG')
             return(rpos)
         elif rev_motif == 'CATG' and R1.is_reverse:
-            rpos = (R1.reference_name, R1.reference_end - 4)
+            rpos = (R1.reference_name, r1_start - 4)
             self.set_site(site_strand=0, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('CATG')
             return(rpos)
