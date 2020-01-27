@@ -6,11 +6,25 @@ import singlecellmultiomics.fragment
 import pysam
 import pysamiterators.iterators
 import os
+
+
+from singlecellmultiomics.molecule import MoleculeIterator, CHICMolecule
+from singlecellmultiomics.fragment import CHICFragment
+
 """
 These tests check if the Molecule module is working correctly
 """
 
 class TestMolecule(unittest.TestCase):
+
+    def test_chic_cigar_dedup(self):
+        i = 0
+        with pysam.AlignmentFile('./data/chic_test_region.bam') as alignments:
+
+            for molecule in MoleculeIterator(alignments,CHICMolecule, CHICFragment):
+                i+=1
+
+        self.assertEqual(i,1)
 
     def test_a_pysam_iterators(self):
         """Test if the pysamiterators package yields the proper amount or mate pairs"""
