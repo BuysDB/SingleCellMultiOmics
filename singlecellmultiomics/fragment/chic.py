@@ -79,7 +79,17 @@ class CHICFragment(Fragment):
             self.set_rejection_reason("R1_unmapped")
             return(None)
 
-        # if R1.seq[0]=='T': # Site on the start of R1, R2 should map behind
+        # Identify the start coordinate of Read 1 by reading the amount of softclips on the start of the read
+
+        r1_start =(R1.reference_end if R1.is_reverse else R1.reference_start)
+
+        if R1.is_reverse:
+            if R1.cigartuples[-1][0]==4: # softclipped at end
+                r1_start+=R1.cigartuples[-1][1]
+        else:
+            if R1.cigartuples[0][0]==4: # softclipped at start
+                r1_start-=R1.cigartuples[0][1]
+
         if is_trimmed:
             # The first base of the read has been taken off and the lh tag is
             # already set, this can be copied to RZ
@@ -89,10 +99,10 @@ class CHICFragment(Fragment):
                 # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
                 # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
                 site_chrom=R1.reference_name,
-                site_pos=(R1.reference_end if R1.is_reverse else R1.reference_start),
+                site_pos=r1_start,
                 is_trimmed=True
-
             )
+
         else:
 
             self.set_site(
@@ -100,7 +110,7 @@ class CHICFragment(Fragment):
                 # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
                 # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
                 site_chrom=R1.reference_name,
-                site_pos=(R1.reference_end - 1 if R1.is_reverse else R1.reference_start + 1),
+                site_pos=(r1_start - 1 if R1.is_reverse else r1_start + 1),
                 is_trimmed=False)
 
     def is_valid(self):
