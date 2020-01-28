@@ -233,47 +233,45 @@ def sorted_bam_file(
     unsorted_path = None
     unsorted_alignments = None
     target_dir = None
-    try:
-        unsorted_path = f'{write_path}.unsorted'
 
-        # Create output folder if it does not exists
-        target_dir = os.path.dirname(unsorted_path)
-        if not os.path.exists(target_dir) and len(target_dir)>0 and target_dir!='.':
-            try:
-                os.makedirs(target_dir, exist_ok=True)
-            except Exception as e:
-                pass
-
-        if header is not None:
+    unsorted_path = f'{write_path}.unsorted'
+    # Create output folder if it does not exists
+    target_dir = os.path.dirname(unsorted_path)
+    if not os.path.exists(target_dir) and len(target_dir)>0 and target_dir!='.':
+        try:
+            os.makedirs(target_dir, exist_ok=True)
+        except Exception as e:
             pass
-        elif origin_bam is not None:
-            header = origin_bam.header.copy()
-        else:
-            raise ValueError("Supply a header or origin_bam object")
+
+    if header is not None:
+        pass
+    elif origin_bam is not None:
+        header = origin_bam.header.copy()
+    else:
+        raise ValueError("Supply a header or origin_bam object")
+
+
+    try: # Try to open the temp unsorted file:
         unsorted_alignments = pysam.AlignmentFile(
             unsorted_path, "wb", header=header)
-        yield unsorted_alignments
     except Exception:
+        # Raise when this fails
         raise
-    finally:
-        if unsorted_path is None:
-            raise ValueError(
-                'Unsorted path is undefined, please verify that the origin bam file is valid.')
-        else:
-            if unsorted_alignments is not None:
-                unsorted_alignments.close()
-            else:
-                raise ValueError(f'Error opening target file {unsorted_path}, into dir: {target_dir}')
 
-        if read_groups is not None:
-            add_readgroups_to_header(unsorted_path, read_groups)
+    # Yield a handle to the alignments,
+    # this handle will be released when the handle runs out of scope
+    yield unsorted_alignments
+    unsorted_alignments.close()
 
-        # Write, sort and index
-        sort_and_index(
-            unsorted_path,
-            write_path,
-            remove_unsorted=True,
-            local_temp_sort=local_temp_sort)
+    if read_groups is not None:
+        add_readgroups_to_header(unsorted_path, read_groups)
+
+    # Write, sort and index
+    sort_and_index(
+        unsorted_path,
+        write_path,
+        remove_unsorted=True,
+        local_temp_sort=local_temp_sort)
 
 
 def write_program_tag(input_header,
