@@ -433,34 +433,35 @@ class Fragment():
     def update_span(self):
         """
         Update the span (the location the fragment maps to) stored in Fragment
+
+        The span is a single stretch of coordinates on a single contig.
+        The contig is determined by the reference_name assocated to the first
+        mapped read in self.reads
+
         """
 
-        if self.mapping_dir != (False, True):
-            raise NotImplementedError("Sorry only FW RV is implemented")
-
         contig = None
+
+        start = None
+        end = None
         for read in self.reads:
             if read is not None and not read.is_unmapped:
-                contig = read.reference_name
+                if contig is None:
+                    contig = read.reference_name
+                if contig == read.reference_name:
 
-        try:
-            surfaceStart, surfaceEnd = pysamiterators.iterators.getPairGenomicLocations(
-                self.get_R1(),
-                self.get_R2(),
-                R1PrimerLength=self.R1_primer_length,
-                R2PrimerLength=self.R2_primer_length,
-                allow_unsafe=True
-            )
-            self.span = (contig, surfaceStart, surfaceEnd)
-            self.safe_span = True
-        except Exception as e:
+                    if start is None:
+                        start = read.reference_start
+                    else:
+                        start = min(start, read.reference_start)
 
-            if self.has_R1() and not self.get_R1().is_unmapped:
-                self.span = (
-                    contig,
-                    self.get_R1().reference_start,
-                    self.get_R1().reference_end)
-            self.safe_span = False
+                    if end is None:
+                        end = read.reference_end
+                    else:
+                        end = max(end, read.reference_end)
+
+        self.span = (contig, start, end)
+        
 
     def get_span(self):
         return self.span

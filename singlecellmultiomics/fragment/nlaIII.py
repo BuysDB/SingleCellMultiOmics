@@ -11,11 +11,13 @@ class NLAIIIFragment(Fragment):
                  umi_hamming_distance=1,
                  invert_strand=False,
                  no_overhang =False, # CATG is present OUTSIDE the fragment
-                 reference=None #Reference is required when no_overhang=True
+                 reference=None, #Reference is required when no_overhang=True
+                 no_umi_cigar_processing=False
                  ):
         self.invert_strand = invert_strand
         self.no_overhang = no_overhang
         self.reference = reference
+        self.no_umi_cigar_processing= no_umi_cigar_processing
         if self.no_overhang and reference  is None:
             raise ValueError('Supply a reference handle when no_overhang=True')
 
@@ -51,6 +53,63 @@ class NLAIIIFragment(Fragment):
         self.site_location = (site_chrom, site_pos)
         self.cut_site_strand = site_strand
 
+    def get_safe_span(self, allow_unsafe=True):
+
+    # For a mapped read pair it can be important to figure out which bases are actual genomic signal
+    # Al sequence behind and aligned to the random primer(s) cannot be trusted and should be masked out
+    # secondly all signal before the starting location of R1 cannot be trusted
+    # This function returns a lower and higher bound of the locations within the fragment that can be trusted
+    # ASCII art: (H is primer sequence)
+    #           R1 H------------------------>
+    #   <------------------HH R2
+
+    # Output: (E is emitted)
+    #           R1 HEEEEEEE----------------->
+    #   <------------------HH R2
+    
+
+        if self.R1_primer_length==0 and self.R2_primer_length==0:
+            starts = tuple( read.reference_start for read in self if read is not None and not read.is_unmapped )
+            ends = tuple( read.reference_end for read in self if read is not None and not read.is_unmapped )
+            return min( min(starts), min(ends) ), max( max(starts), max(ends) )
+
+        R1, R2 = self.reads
+
+        if (R1 is None or R1.is_unmapped) and allow_unsafe:
+            return R2.reference_start,R2.reference_end
+
+        if (R2 is None or R2.is_unmapped) and allow_unsafe:
+            return R1.reference_start,R1.reference_end
+
+
+        if  (R1 is None and not allow_unsafe) or R2 is None or R1.is_unmapped:
+            # This is an annoying situation, we cannot determine what bases can be trusted
+            raise ValueError('Genomic locations cannot be determined')
+
+        if R2.is_unmapped:
+            # This is an annoying situation, we cannot determine what bases can be trusted
+            raise ValueError('Genomic locations cannot be determined')
+
+        if R1.is_reverse==R2.is_reverse:
+            raise ValueError('Fragment incorrectly mapped') # The fragment is not correctly mapped
+
+        if not R1.is_reverse: # R1 is forward, R2 is reverse
+            #           R1 H------------------------>
+            #   <------------------HH R2
+            start = R1.reference_start+ self.R1_primer_length
+            end = R2.reference_end -  self.R2_primer_length
+        else:
+            #           R2 HH------------------------>
+            #   <------------------HH R1
+            start = R2.reference_start+ self.R2_primer_length
+            end = R1.reference_end -  self.R1_primer_length
+
+        if start>=end:
+            raise ValueError('Fragment has no size')
+
+        return start,end
+
+
     def identify_site(self):
 
         R1, R2 = self.reads
@@ -82,13 +141,22 @@ class NLAIIIFragment(Fragment):
             rev_motif = R1.seq[-4:]
 
 
+        r1_start =(R1.reference_end if R1.is_reverse else R1.reference_start)
+        if not self.no_umi_cigar_processing:
+            if R1.is_reverse:
+                if R1.cigartuples[-1][0]==4: # softclipped at end
+                    r1_start+=R1.cigartuples[-1][1]
+            else:
+                if R1.cigartuples[0][0]==4: # softclipped at start
+                    r1_start-=R1.cigartuples[0][1]
+
         if forward_motif == 'CATG' and not R1.is_reverse:
-            rpos = (R1.reference_name, R1.reference_start)
+            rpos = (R1.reference_name, r1_start)
             self.set_site(site_strand=1, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('CATG')
             return(rpos)
         elif rev_motif == 'CATG' and R1.is_reverse:
-            rpos = (R1.reference_name, R1.reference_end - 4)
+            rpos = (R1.reference_name, r1_start - 4)
             self.set_site(site_strand=0, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('CATG')
             return(rpos)
