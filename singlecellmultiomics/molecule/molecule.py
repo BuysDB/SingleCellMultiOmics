@@ -1405,7 +1405,23 @@ class Molecule():
         """
         if self.spanStart is None or self.spanEnd is None:
             return None
-        return abs(self.spanEnd - self.spanStart)
+
+        start = None
+        end = None
+        contig = None
+        for fragment in self:
+            if contig is None:
+                contig = fragment.span[0]
+            if contig == fragment.span[0]:
+                f_start, f_end = fragment.get_safe_span()
+                if start is None:
+                    start = f_start
+                    end = f_end
+                else:
+                    start = min(f_start, start)
+                    end = min(f_end, end)
+
+        return abs(end - start)
 
     def add_fragment(self, fragment, use_hash=True):
         """Associate a fragment with this Molecule
@@ -1817,20 +1833,11 @@ class Molecule():
         used = 0  # some alignments yielded valid calls
         ignored = 0
         for fragment in self:
-            R1 = fragment.get_R1()
-            R2 = fragment.get_R2()
-            try:
-                start, end = pysamiterators.iterators.getPairGenomicLocations(
-                    R1=R1, R1PrimerLength=fragment.R1_primer_length, R2PrimerLength=fragment.R2_primer_length,
-                    R2=R2,
-                    allow_unsafe=(R1 is None or fragment.unsafe_trimmed))
-            except ValueError as e:
-                ignored += 1
-                continue
-            used += 1
-            for read in [R1, R2]:
+            _ ,start, end = fragment.span
+            for read in fragment:
                 if read is None:
                     continue
+
                 for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(
                         read, with_seq=False):
 
@@ -1845,6 +1852,8 @@ class Molecule():
             raise ValueError('Could not extract any safe data from molecule')
 
         return base_obs
+
+
 
     def get_base_observation_dict(self, return_refbases=False, allow_N=False,allow_unsafe=False):
         '''
@@ -1874,21 +1883,12 @@ class Molecule():
         ref_bases = {}
         used = 0  # some alignments yielded valid calls
         ignored = 0
+        error=None
         for fragment in self:
-            R1 = fragment.get_R1()
-            R2 = fragment.get_R2()
-            try:
-                start, end = pysamiterators.iterators.getPairGenomicLocations(
-                    R1=R1,
-                    R2=R2,
-                    R1PrimerLength=0, #fragment.R1_primer_length,
-                    R2PrimerLength=0, #fragment.R2_primer_length,
-                    allow_unsafe=(R1 is None or allow_unsafe))
-            except ValueError as e:
-                ignored += 1
-                continue
+            _, start, end = fragment.span
+
             used += 1
-            for read in [R1, R2]:
+            for read in fragment:
                 if read is None:
                     continue
                 for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(
@@ -1907,7 +1907,7 @@ class Molecule():
                                   ] = ref_base.upper()
 
         if used == 0 and ignored > 0:
-            raise ValueError('Could not extract any safe data from molecule')
+            raise ValueError(f'Could not extract any safe data from molecule {error}')
 
         self.saved_base_obs = (base_obs, ref_bases)
 
@@ -2063,18 +2063,8 @@ class Molecule():
         variant_calls = collections.defaultdict(collections.Counter)
         for fragment in self:
 
-            R1 = fragment.get_R1()
-            R2 = fragment.get_R2()
-            start, end = pysamiterators.iterators.getPairGenomicLocations(
-                R1=R1,
-                R2=R2,
-                R1PrimerLength=fragment.R1_primer_length,
-                R2PrimerLength=fragment.R2_primer_length,
 
-                allow_unsafe=(R1 is None))
-            if start is None or end is None:
-                continue
-
+            _, start, end = fragment.span
             for read in fragment:
                 if read is None:
                     continue

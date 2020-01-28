@@ -191,8 +191,10 @@ class TestMolecule(unittest.TestCase):
                     # the 4 bases of the CATG are not counted.
                     # the 6 bases of the random primer are also not counted
                     # Resulting in a fragment size of 109 - 10 = 101
+
+                    start, end = molecule[0].get_safe_span()
                     self.assertEqual(
-                        abs(molecule[0].span[1]-molecule[0].span[2])
+                        abs(end-start)
                         , 107)
                     self.assertEqual(
                         molecule.get_safely_aligned_length()
