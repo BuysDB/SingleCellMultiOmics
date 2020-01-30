@@ -55,6 +55,11 @@ class AlleleResolver:
 
             ignore_conversions(set) : conversions to ignore {(ref, alt), ..} , for example set( ('C','T'), ('G','A') )
 
+            region_start(int) : only load variants within this range (region_start-region_end) when reading a cached variant file
+
+            region_end(int) : only load variants within this range (region_start-region_end) when reading a cached variant file
+
+
         """
         self.ignore_conversions = ignore_conversions
         self.phased = phased
