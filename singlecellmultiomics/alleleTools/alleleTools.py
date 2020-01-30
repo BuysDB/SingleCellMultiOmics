@@ -26,7 +26,9 @@ class AlleleResolver:
                  select_samples=None,
                  use_cache=False,
                  ignore_conversions=None,
-                 verbose=False
+                 verbose=False,
+                 region_start=None,
+                 region_end=None
 
 
                  # When this flag is true a cache file is generated containing
@@ -60,6 +62,8 @@ class AlleleResolver:
         self.locationToAllele = collections.defaultdict(lambda: collections.defaultdict(
             lambda: collections.defaultdict(set)))  # chrom -> pos-> base -> sample(s)
         self.select_samples = select_samples
+        self.region_start = region_start
+        self.region_end = region_end
 
         self.lazyLoad = lazyLoad
 
@@ -193,7 +197,7 @@ class AlleleResolver:
             print(f'Reading variants for {chrom} ', end='')
         with pysam.VariantFile(vcffile) as v:
             try:
-                for rec in v.fetch(chrom):
+                for rec in v.fetch(chrom, start=self.region_start, stop=self.region_end):
                     used = False
                     bad = False
                     bases_to_alleles = collections.defaultdict(
