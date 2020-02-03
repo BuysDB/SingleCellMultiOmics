@@ -119,13 +119,13 @@ class MoleculeIterator():
 
     Example:
 
-        from singlecellmultiomics.bamProcessing import mate_pileup
-
-        with pysam.AlignmentFile('example.bam') as alignments:
-            for molecule in MoleculeIterator(
-                mate_pileup(alignments, contig='1', position=420000, check_eject_every=None)
-            ):
-                pass
+        >>> from singlecellmultiomics.bamProcessing import mate_pileup
+        >>> from singlecellmultiomics.molecule import MoleculeIterator
+        >>> with pysam.AlignmentFile('example.bam') as alignments:
+        >>>     for molecule in MoleculeIterator(
+        >>>         mate_pileup(alignments, contig='1', position=420000, check_eject_every=None)
+        >>>     ):
+        >>>         pass
 
 
     Warning:
