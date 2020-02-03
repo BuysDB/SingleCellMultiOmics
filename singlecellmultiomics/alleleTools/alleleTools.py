@@ -26,7 +26,9 @@ class AlleleResolver:
                  select_samples=None,
                  use_cache=False,
                  ignore_conversions=None,
-                 verbose=False
+                 verbose=False,
+                 region_start=None,
+                 region_end=None
 
 
                  # When this flag is true a cache file is generated containing
@@ -53,6 +55,11 @@ class AlleleResolver:
 
             ignore_conversions(set) : conversions to ignore {(ref, alt), ..} , for example set( ('C','T'), ('G','A') )
 
+            region_start(int) : only load variants within this range (region_start-region_end) when reading a cached variant file
+
+            region_end(int) : only load variants within this range (region_start-region_end) when reading a cached variant file
+
+
         """
         self.ignore_conversions = ignore_conversions
         self.phased = phased
@@ -60,6 +67,8 @@ class AlleleResolver:
         self.locationToAllele = collections.defaultdict(lambda: collections.defaultdict(
             lambda: collections.defaultdict(set)))  # chrom -> pos-> base -> sample(s)
         self.select_samples = select_samples
+        self.region_start = region_start
+        self.region_end = region_end
 
         self.lazyLoad = lazyLoad
 
@@ -147,8 +156,13 @@ class AlleleResolver:
         with gzip.open(path, 'rt') as f:
             for line in f:
                 position, base, samples = line.strip().split('\t', 3)
-                self.locationToAllele[chrom][int(
-                    position)][base] = set(samples.split(','))
+                position = int(position)
+                if self.region_start is not None and position<self.region_start:
+                    continue
+                if self.region_end is not None and position>self.region_end:
+                    break
+
+                self.locationToAllele[chrom][position][base] = set(samples.split(','))
 
     def fetchChromosome(self, vcffile, chrom, clear=False):
         if clear:
@@ -193,7 +207,7 @@ class AlleleResolver:
             print(f'Reading variants for {chrom} ', end='')
         with pysam.VariantFile(vcffile) as v:
             try:
-                for rec in v.fetch(chrom):
+                for rec in v.fetch(chrom, start=self.region_start, stop=self.region_end):
                     used = False
                     bad = False
                     bases_to_alleles = collections.defaultdict(
