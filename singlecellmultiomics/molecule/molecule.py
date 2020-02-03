@@ -1894,7 +1894,7 @@ class Molecule():
                 for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(
                         read, with_seq=True, reference=self.reference):
 
-                    if query_pos is None or ref_pos is None or ref_pos < start or ref_pos > end:
+                    if query_pos is None or ref_pos is None: #or ref_pos < start or ref_pos > end:
                         continue
                     query_base = read.seq[query_pos]
                     #query_qual = read.qual[query_pos]
