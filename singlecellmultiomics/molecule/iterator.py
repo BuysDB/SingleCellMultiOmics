@@ -115,6 +115,7 @@ class MoleculeIterator():
 
 
     In the next example the molecules overlapping with a single location on chromosome `'1'` position `420000` are extracted
+    Don't forget to supply `check_eject_every = None`, this allows non-sorted data to be passed to the MoleculeIterator.
 
     Example:
 
@@ -122,7 +123,7 @@ class MoleculeIterator():
 
         with pysam.AlignmentFile('example.bam') as alignments:
             for molecule in MoleculeIterator(
-                mate_pileup(alignments, contig='1', position=420000)
+                mate_pileup(alignments, contig='1', position=420000, check_eject_every=None)
             ):
                 pass
 
