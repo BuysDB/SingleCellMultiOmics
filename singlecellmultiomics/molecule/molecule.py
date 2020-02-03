@@ -108,22 +108,22 @@ def molecule_to_random_primer_dict(
     # First add all reactions without a N in the sequence:
     for fragment in molecule:
 
-        hstart, hseq = fragment.get_random_primer_hash()
+        h_contig, hstart, hseq = fragment.get_random_primer_hash()
         if hseq is None:
             # This should really not happen with freshly demultiplexed data, it means we cannot extract the random primer sequence
             # which should be present as a tag (rP) in the record
-            rp[None, None].append(fragment)
+            rp[None, None, None].append(fragment)
         elif 'N' not in hseq:
-            rp[hstart, hseq].append(fragment)
+            rp[h_contig, hstart, hseq].append(fragment)
 
     # Try to match reactions with N with reactions without a N
     for fragment in molecule:
 
-        hstart, hseq = fragment.get_random_primer_hash()
+        h_contig, hstart, hseq = fragment.get_random_primer_hash()
         if hseq is not None and 'N' in hseq:
             # find nearest
-            for other_start, other_seq in rp:
-                if other_start != hstart:
+            for other_contig, other_start, other_seq in rp:
+                if other_contig!=h_contig or other_start != hstart:
                     continue
 
                 if hseq.count('N') > max_N_distance:
@@ -133,7 +133,7 @@ def molecule_to_random_primer_dict(
                     continue
 
                 if hamming_distance(hseq, other_seq) == 0:
-                    rp[other_start, other_seq].append(fragment)
+                    rp[other_contig, other_start, other_seq].append(fragment)
     return rp
 
 
@@ -1496,7 +1496,7 @@ class Molecule():
 
         # Obtain the fragment sizes of all RT reactions:
         rt_sizes = []
-        for (rt_end, hexamer), fragments in rt_reactions.items():
+        for (rt_contig, rt_end, hexamer), fragments in rt_reactions.items():
 
             if rt_end is None:
                 continue
