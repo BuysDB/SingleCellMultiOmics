@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-def mate_pileup(alignments, contig, position):
+def mate_pileup(alignments, contig, position,**kwargs):
     """
     Extract all fragments (R1, and R2) which overlap with the supplied position
 
@@ -38,10 +38,10 @@ def mate_pileup(alignments, contig, position):
     _mate_pileup(alignments=alignments,
                  piled_reads=piled_reads,
                  contig=contig,
-                 position=position, obs=None, add_missing_only=False)
+                 position=position, obs=None, add_missing_only=False,**kwargs)
     return list(piled_reads.values())
 
-def _mate_pileup(alignments, piled_reads, contig, position, obs=None, add_missing_only=False):
+def _mate_pileup(alignments, piled_reads, contig, position, obs=None, add_missing_only=False, max_depth=50000, stepper='nofilter',ignore_overlaps=False,ignore_orphans=False):
     """
     Extract all fragments (R1, and R2) which overlap with the supplied position
 
@@ -59,7 +59,7 @@ def _mate_pileup(alignments, piled_reads, contig, position, obs=None, add_missin
         add_missing_only(bool): Only add missing mates to the existing dictionary (piled_reads)
 
     """
-    for pile in alignments.pileup(contig,position,position+1,stepper='nofilter',ignore_overlaps=False):
+    for pile in alignments.pileup(contig,position,position+1,stepper=stepper,ignore_overlaps=ignore_overlaps,ignore_orphans=ignore_orphans,max_depth=max_depth):
         if position!=pile.reference_pos:
             continue
 
