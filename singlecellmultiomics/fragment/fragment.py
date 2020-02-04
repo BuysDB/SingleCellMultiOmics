@@ -340,35 +340,36 @@ class Fragment():
 
     def get_random_primer_hash(self):
         """Obtain hash describing the random primer
-        this assumes the random primer is on the end of R2 and has a length of 6BP
+        this assumes the random primer is on the end of R2 and has a length of self.R2_primer_length
         When the rS tag is set, the value of this tag is used as random primer sequence
         Returns None,None when the random primer cannot be described
 
         Returns:
+            reference_name (str) or None
             reference_start (int) : Int or None
             sequence (str) : Int or None
         """
         R2 = self.get_R2()
 
         if R2 is None or R2.query_sequence is None:
-            return None, None
+            return None, None, None
         # The read was not mapped
         if R2.is_unmapped:
             # Guess the orientation does not matter
             if self.random_primer_sequence is not None:
-                return None, self.random_primer_sequence
-            return None, R2.query_sequence[:self.R2_primer_length]
+                return None, None, self.random_primer_sequence
+            return None, None, R2.query_sequence[:self.R2_primer_length]
 
         if R2.is_reverse:
             global complement
             if self.random_primer_sequence is not None:
-                return R2.reference_end, self.random_primer_sequence
+                return R2.reference_name, R2.reference_end, self.random_primer_sequence
 
-            return(R2.reference_end, R2.query_sequence[-self.R2_primer_length:][::-1].translate(complement))
+            return(R2.reference_name, R2.reference_end, R2.query_sequence[-self.R2_primer_length:][::-1].translate(complement))
         else:
             if self.random_primer_sequence is not None:
-                return R2.reference_start, self.random_primer_sequence
-            return(R2.reference_start, R2.query_sequence[:self.R2_primer_length])
+                return R2.reference_name, R2.reference_start, self.random_primer_sequence
+            return(R2.reference_name, R2.reference_start, R2.query_sequence[:self.R2_primer_length])
         raise ValueError()
 
     def set_meta(self, key, value, as_set=False):
@@ -461,7 +462,7 @@ class Fragment():
                         end = max(end, read.reference_end)
 
         self.span = (contig, start, end)
-        
+
 
     def get_span(self):
         return self.span

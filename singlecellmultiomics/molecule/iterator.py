@@ -113,8 +113,23 @@ class MoleculeIterator():
                     has R2: no
                     randomer trimmed: no
 
+
+    In the next example the molecules overlapping with a single location on chromosome `'1'` position `420000` are extracted
+    Don't forget to supply `check_eject_every = None`, this allows non-sorted data to be passed to the MoleculeIterator.
+
+    Example:
+
+        >>> from singlecellmultiomics.bamProcessing import mate_pileup
+        >>> from singlecellmultiomics.molecule import MoleculeIterator
+        >>> with pysam.AlignmentFile('example.bam') as alignments:
+        >>>     for molecule in MoleculeIterator(
+        >>>         mate_pileup(alignments, contig='1', position=420000, check_eject_every=None)
+        >>>     ):
+        >>>         pass
+
+
     Warning:
-        Always make sure the reads being supplied to the MoleculeIterator sorted by genomic coordinate!
+        Make sure the reads being supplied to the MoleculeIterator sorted by genomic coordinate! If the reads are not sorted set `check_eject_every=None`
     """
 
     def __init__(self, alignments, moleculeClass=Molecule,
@@ -141,7 +156,7 @@ class MoleculeIterator():
 
             fragmentClass (pysam.FastaFile): Class to use for fragments.
 
-            check_eject_every (int): Check for yielding every N reads.
+            check_eject_every (int): Check for yielding every N reads. When None is supplied, all reads are kept into memory making coordinate sorted data not required.
 
             molecule_class_args (dict): arguments to pass to moleculeClass.
 
@@ -285,7 +300,7 @@ class MoleculeIterator():
 
             self.waiting_fragments += 1
             self.check_ejection_iter += 1
-            if self.check_ejection_iter > self.check_eject_every:
+            if self.check_eject_every is not None and self.check_ejection_iter > self.check_eject_every:
                 current_chrom, _, current_position = fragment.get_span()
                 if current_chrom is None:
                     continue
