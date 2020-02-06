@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
         totalMasked = 0
         (chrom, fasta_file_path, variant_file_path) = jargs
-        with pysam.FastaFile(fasta_file_path) as faIn, pysam.VariantFile(variant_file_path) as  variants:
+        with pysam.FastaFile(fasta_file_path) as faIn, pysam.VariantFile(variant_file_path, threads=4) as  variants:
 
             chrom_seq = bytearray(faIn.fetch(chrom), 'ascii')
             if chrom in variants.index:
