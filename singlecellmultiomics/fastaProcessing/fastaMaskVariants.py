@@ -6,6 +6,7 @@ import os
 import itertools
 import gzip
 import pandas as pd
+import multiprocessing
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
@@ -26,6 +27,11 @@ if __name__ == '__main__':
         type=str,
         default='./masked.fasta.gz',
         help='output file')
+    argparser.add_argument(
+        '-t',
+        type=int,
+        default=10,
+        help='Amount of contigs to process in parallel')
     args = argparser.parse_args()
 
     try:
@@ -41,36 +47,49 @@ if __name__ == '__main__':
     except Exception as e:
         raise
 
-    outputHandle = gzip.open(args.o, 'wb')
+    if args.o.endswith('.gz'):
+        outputHandle = gzip.open(args.o, 'wb')
+    else:
+        outputHandle = open(args.o, 'wb')
     referenceNames = faIn.references
     referenceLengths = dict(zip(referenceNames, faIn.lengths))
-
-    # wholeGenome = {
-    #    ref:faIn.fetch(ref) for ref in referenceNames
-    # }
-    warnedMissing = set()
     totalMasked = 0
-    variants = pysam.VariantFile(args.vcf)
-    for chrom in referenceNames:
-        try:
+
+    def get_masked_bytearray( jargs ):
+
+        totalMasked = 0
+        (chrom, fasta_file_path, variant_file_path) = jargs
+        with pysam.FastaFile(fasta_file_path) as faIn, pysam.VariantFile(variant_file_path) as  variants:
+
             chrom_seq = bytearray(faIn.fetch(chrom), 'ascii')
-            for rec in variants.fetch(chrom):
-                if rec.start >= (referenceLengths[rec.chrom]):
-                    print(
-                        f"WARNING record {rec.chrom} {rec.pos} defines a variant outside the supplied fasta file!")
-                    continue
+            if chrom in variants.index:
+                print(f'masking {chrom}')
+                for rec in variants.fetch(chrom):
+                    if rec.start >= (referenceLengths[rec.chrom]):
+                        print(
+                            f"WARNING: record {rec.chrom} {rec.pos} defines a variant outside the supplied fasta file!")
+                        continue
 
-                if len(rec.alleles) == 1 and len(rec.alleles[0]) == 1:
-                    chrom_seq[rec.pos - 1] = 78  # ord N
-                    totalMasked += 1
-                elif len(rec.alleles[0]) == 1 and len(rec.alleles[1]) == 1:
+                    if len(rec.alleles) == 1 and len(rec.alleles[0]) == 1:
+                        chrom_seq[rec.pos-1] = 78  # ord N
+                        totalMasked += 1
+                    elif len(rec.alleles[0]) == 1 and len(rec.alleles[1]) == 1:
 
-                    chrom_seq[rec.pos - 1] = 78  # ord N
-                    totalMasked += 1
+                        chrom_seq[rec.pos-1] = 78  # ord N
+                        totalMasked += 1
+            print(f'Masked {totalMasked} bases of {chrom}')
+            return chrom_seq
 
-        except ValueError:
-            print(f"No variants for {chrom}")
-            pass
+
+    workers = multiprocessing.Pool(args.t)
+
+
+    for chrom, chrom_seq in zip(
+                referenceNames,
+                workers.imap(
+                    get_masked_bytearray,
+                    ((chrom, args.fasta, args.vcf )
+                    for chrom in referenceNames ))):
         # Write chromsome
         outputHandle.write(f'>{chrom}\n'.encode('ascii'))
         outputHandle.write(chrom_seq)
