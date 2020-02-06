@@ -146,6 +146,7 @@ class MoleculeIterator():
                  every_fragment_as_molecule=False,
                  yield_secondary =  False,
                  yield_supplementary= False,
+                 iterator_class = pysamiterators.iterators.MatePairIterator,
                  **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
@@ -196,6 +197,10 @@ class MoleculeIterator():
         self.pooling_method = pooling_method
         self.yield_invalid = yield_invalid
         self.every_fragment_as_molecule = every_fragment_as_molecule
+
+        self.iterator_class = iterator_class
+
+
         self._clear_cache()
 
     def _clear_cache(self):
@@ -236,7 +241,7 @@ class MoleculeIterator():
         self.waiting_fragments = 0
         # prepare the source iterator which generates the read pairs:
         if isinstance(self.alignments, pysam.libcalignmentfile.AlignmentFile):
-            self.matePairIterator = pysamiterators.iterators.MatePairIterator(
+            self.matePairIterator = self.iterator_class(
                 self.alignments,
                 performProperPairCheck=False,
                 **self.pysamArgs)

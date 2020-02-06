@@ -7,7 +7,6 @@ import pysam
 import pysamiterators.iterators
 import os
 
-
 from singlecellmultiomics.molecule import MoleculeIterator, CHICMolecule
 from singlecellmultiomics.fragment import CHICFragment
 
@@ -60,6 +59,42 @@ class TestMolecule(unittest.TestCase):
             )):
                 pass
             self.assertEqual(i,337)
+
+    def test_every_fragment_as_molecule_np_iterator(self):
+
+        to_be_found = set()
+        amount_of_r1s_to_be_found=0
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            for read in f:
+                if read.is_read1 and not read.is_read2:
+                    to_be_found.add(read.query_name)
+                    amount_of_r1s_to_be_found+=1
+        found=set()
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            frag_count=0
+            for i,m in enumerate(singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.Molecule,
+            fragmentClass=singlecellmultiomics.fragment.Fragment,
+            every_fragment_as_molecule=True,
+            iterator_class=pysamiterators.MatePairIteratorIncludingNonProper
+            )):
+                if m[0].has_R1():
+                    frag_count+=1
+                    found.add( m[0][0].query_name )
+
+
+            diff = to_be_found.difference( found )
+            tm = found.difference(to_be_found)
+            print('missed:')
+            print(diff)
+            print('too much:')
+            print(tm)
+            self.assertEqual( len(diff), 0)
+            self.assertEqual(frag_count,amount_of_r1s_to_be_found)
+            self.assertEqual(frag_count,293)
+
+
 
 
 
