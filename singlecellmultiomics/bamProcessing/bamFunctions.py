@@ -297,6 +297,7 @@ def write_program_tag(input_header,
         input_header['PG'] = []
 
     input_header['PG'].append({
+        'ID': program_name,
         'PN': program_name,
         'CL': command_line,
         'VN': version,
