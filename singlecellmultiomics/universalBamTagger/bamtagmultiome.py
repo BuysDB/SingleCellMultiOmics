@@ -12,7 +12,8 @@ from singlecellmultiomics.utils import is_main_chromosome
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
-import pysamiterators
+from pysamiterators import CachedFasta,MatePairIteratorIncludingNonProper,MatePairIterator
+
 import argparse
 import uuid
 import os
@@ -90,6 +91,11 @@ argparser.add_argument(
     '--ignore_bam_issues',
     action='store_true',
     help='Ignore truncation')
+
+argparser.add_argument(
+    '--resolve_unproperly_paired_reads',
+    action='store_true',
+    help='When enabled bamtagmultiome will look through the complete bam file in a hunt for the mate, the two mates will always end up in 1 molecule if both present in the bam file. This also works when the is_proper_pair bit is not set. Use this option when you want to find the breakpoints of genomic re-arrangements.')
 
 argparser.add_argument(
     '-mapfile',
@@ -239,6 +245,8 @@ def run_multiome_tagging(args):
 
         cluster (bool) : Run contigs in separate cluster jobs
 
+        resolve_unproperly_paired_reads(bool) : When enabled bamtagmultiome will look through the complete bam file in a hunt for the mate, the two mates will always end up in 1 molecule if both present in the bam file. This also works when the is_proper_pair bit is not set. Use this option when you want to find the breakpoints of genomic re-arrangements.
+
         no_rejects(bool) : Do not write rejected reads
 
         mem (int) : Amount of gigabytes to request for cluster jobs
@@ -260,6 +268,7 @@ def run_multiome_tagging(args):
         no_source_reads(bool) :  Do not write original reads, only consensus
 
         scartrace_r1_primers(str) : comma separated list of R1 primers used in scartrace protocol
+
 
     """
 
@@ -287,7 +296,7 @@ def run_multiome_tagging(args):
 
     if args.ref is not None:
         try:
-            reference = pysamiterators.iterators.CachedFasta(
+            reference = CachedFasta(
                 pysam.FastaFile(args.ref))
         except Exception as e:
             print("Error when loading the reference file, continuing without a reference")
@@ -453,7 +462,7 @@ def run_multiome_tagging(args):
     # This disables umi_cigar_processing:
     if args.no_umi_cigar_processing:
         fragment_class_args['no_umi_cigar_processing'] = True
-    
+
 
     # This decides what molecules we will traverse
     if args.contig == MISC_ALT_CONTIGS_SCMO:
@@ -484,6 +493,9 @@ def run_multiome_tagging(args):
         'contig': contig,
         'every_fragment_as_molecule': every_fragment_as_molecule
     }
+
+    if args.resolve_unproperly_paired_reads:
+        molecule_iterator_args['iterator_class'] = MatePairIteratorIncludingNonProper
 
     if args.contig == MISC_ALT_CONTIGS_SCMO:
         # When MISC_ALT_CONTIGS_SCMO is set as argument, all molecules with reads
