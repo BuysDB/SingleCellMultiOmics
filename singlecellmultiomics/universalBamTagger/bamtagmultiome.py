@@ -115,7 +115,7 @@ cluster.add_argument(
 cluster.add_argument(
     '--no_rejects',
     action='store_true',
-    help='Write rejected reads to output file')
+    help='Do not write rejected reads to output file')
 cluster.add_argument(
     '-mem',
     default=40,
@@ -287,7 +287,7 @@ def run_multiome_tagging(args):
         print(f"Removing existing file {args.o}")
         os.remove(args.o)
 
-    input_bam = pysam.AlignmentFile(args.bamin, "rb", ignore_truncation=args.ignore_bam_issues)
+    input_bam = pysam.AlignmentFile(args.bamin, "rb", ignore_truncation=args.ignore_bam_issues, threads=4)
 
     # autodetect reference:
     reference = None
