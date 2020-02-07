@@ -26,6 +26,9 @@ def metaFromRead(read, tag):
     if tag=='BI' and read.has_tag('bi'):
         return read.get_tag('bi')
 
+    # Forwards compatibility:
+    if tag=='bi' and read.has_tag('BI'):
+        return read.get_tag('BI')
 
     try:
         return getattr(read, tag)
