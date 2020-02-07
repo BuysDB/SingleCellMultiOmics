@@ -6,7 +6,8 @@
 | AQ    | Read2Clipped3primeBasesKmerQuality           | Yes        | No                   |
 | AS    | alignmentScore                               | No         | No                   |
 | BC    | barcode                                      | No         | No                   |
-| BI    | barcodeIndex                                 | No         | No                   |
+| BD    | gatk_insert_deletion_base_qualities          | No         | No                   |
+| BI    | gatk_insert_deletion_base_qualities          | No         | No                   |
 | BK    | isBulk                                       | No         | No                   |
 | BX    | umiCorrected                                 | No         | No                   |
 | BZ    | umiCorrectedQuality                          | Yes        | No                   |
@@ -83,6 +84,7 @@
 | ap    | phasedAllelicSNVs                            | No         | No                   |
 | au    | phasednUnknownAllelicOriginSNVs              | No         | No                   |
 | bc    | rawBarcode                                   | No         | No                   |
+| bi    | barcodeIndex                                 | No         | No                   |
 | dt    | assingedDataType                             | No         | No                   |
 | e1    | Read1Clipped5primeBasesKmer                  | No         | No                   |
 | eB    | Read1Clipped5primeCycle                      | No         | No                   |

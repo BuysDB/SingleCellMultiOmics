@@ -54,7 +54,7 @@ argparser.add_argument(
     type=str,
     default=None,
     help="Query flagging algorithm")
-argparser.add_argument('-custom_flags', type=str, default="MI,RX,BI,SM")
+argparser.add_argument('-custom_flags', type=str, default="MI,RX,bi,SM")
 argparser.add_argument(
     '-ref',
     type=str,
@@ -219,7 +219,7 @@ def run_multiome_tagging(args):
             scartrace  (lineage tracing protocol)
 
 
-        custom_flags(str): Arguments passed to the query name flagger, comma separated "MI,RX,BI,SM"
+        custom_flags(str): Arguments passed to the query name flagger, comma separated "MI,RX,bi,SM"
 
         ref(str) : Path to reference fasta file, autodected from bam header when not supplied
 

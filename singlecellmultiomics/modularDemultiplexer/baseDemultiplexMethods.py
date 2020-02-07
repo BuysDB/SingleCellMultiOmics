@@ -22,6 +22,11 @@ def metaFromRead(read, tag):
     if read.has_tag(tag):
         return read.get_tag(tag)
 
+    # Backwards compatibility with BI > bi tag:
+    if tag=='BI' and read.has_tag('bi'):
+        return read.get_tag('bi')
+
+
     try:
         return getattr(read, tag)
     except Exception as e:
@@ -272,12 +277,12 @@ class TaggedRecord():
             self.tags['BK'] = True
 
         # Add sample tag: (If possible)
-        # If the BI tag is present it means we know the index of the cell
-        # if no BI tag is present, assume the sample is bulk
-        if 'BI' in self.tags:
+        # If the bi tag is present it means we know the index of the cell
+        # if no bi tag is present, assume the sample is bulk
+        if 'bi' in self.tags:
             self.addTagByTag(
                 'SM',
-                f'{self.tags["LY"]}_{self.tags["BI"]}',
+                f'{self.tags["LY"]}_{self.tags["bi"]}',
                 isPhred=False)
         else:
             self.addTagByTag('SM', f'{self.tags["LY"]}_BULK', isPhred=False)
@@ -535,13 +540,13 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
                 #tr.addTagByTag('QM', barcodeQual+umiQual, isPhred=True)
 
             """ These can be updated at once
-            tr.addTagByTag('BI', barcodeIdentifier, isPhred=False)
+            tr.addTagByTag('bi', barcodeIdentifier, isPhred=False)
             tr.addTagByTag('bc', rawBarcode, isPhred=False)
             tr.addTagByTag('MX', self.shortName, isPhred=False)
             tr.addTagByTag('BC', barcode, isPhred=False )
             """
             tr.tags.update({
-                'BI': barcodeIdentifier,
+                'bi': barcodeIdentifier,
                 'bc': rawBarcode,
                 'MX': self.shortName,
                 'BC': barcode
