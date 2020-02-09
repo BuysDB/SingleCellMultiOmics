@@ -157,6 +157,7 @@ if __name__ == '__main__':
 
         jobData = [
             '#!/bin/sh',
+            '#SBATCH -J %s' % args.N, # Sets job name
             '#SBATCH -n %s' % args.t,
             '#SBATCH --time %s:00:00' % str(args.time).zfill(2),
             '#SBATCH --mem %sG' % args.m,
