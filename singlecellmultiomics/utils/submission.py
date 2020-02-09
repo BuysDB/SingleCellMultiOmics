@@ -57,6 +57,12 @@ if __name__ == '__main__':
         '-i',
         action="store_true",
         help="Show info on submitted and running jobs")
+
+    argparser.add_argument(
+        '--slurm',
+        action="store_true",
+        help="Send to SLURM scheduler")
+
     argparser.add_argument(
         '-e',
         type=str,
@@ -99,6 +105,7 @@ if __name__ == '__main__':
     if args.email == 'none':
         args.email = None
 
+
     if args.i:
         for job in glob.glob("%s/cluster/*.sh" % args.s):
             jobName = os.path.basename(job).replace('.sh', '')
@@ -130,6 +137,7 @@ if __name__ == '__main__':
     jobfile = args.s + '/%s.sh' % jobName
     stderr = args.s + '/%s.stderr' % jobName
     stdout = args.s + '/%s.stdout' % jobName
+
     if args.jp is None:
         while os.path.exists(jobfile):
             jobName = '%s-%s' % (time.strftime("%d_%m_%Y_%H_%M_%S"), args.N)
@@ -145,28 +153,45 @@ if __name__ == '__main__':
     workingDirectory = args.w if args.w is not None else os.getcwd()
 
     # '#$ -r yes', # This allows jobs to be rescheduled
-    jobData = [
-        '#!/bin/sh',
-        '#$ -S /bin/bash',
-        '#$ -N %s' % args.N,
-        '#$ -l h_rt=%s:00:00' % args.time,
-        '#$ -l h_vmem=%sG' % args.m,
-        # '#$ -l hostname=\'!n00[18]*\'',
-        '#$ -wd %s' % (workingDirectory),
-        '#$ -o %s' % stdout,
-        '#$ -e %s' % stderr,
-        '#$ -q all.q'
-    ]
+    if args.slurm:
 
-    if args.email is not None:
-        jobData.append('#$ -M %s' % args.email)
-        jobData.append('#$ -m %sas' % ('e' if args.mf else ''))
+        jobData = [
+            '#!/bin/sh',
+            '#SBATCH -n %s' % args.t,
+            '#SBATCH --time %s:00:00' % str(args.time).zfill(2),
+            '#SBATCH --mem %sG' % args.m,
+            # '#$ -l hostname=\'!n00[18]*\'',
+            '#SBATCH --chdir %s' % (workingDirectory),
+            '#SBATCH -o %s' % stdout,
+            '#SBATCH -e %s' % stderr
+        ]
 
-    if not args.nenv:
-        jobData.append('#$ -V')
+        if args.email is not None:
+            jobData.append('#SBATCH --mail-type=FAIL')
+            jobData.append('#SBATCH --mail-user=%s' % args.email)
+    else:
+        jobData = [
+            '#!/bin/sh',
+            '#$ -S /bin/bash',
+            '#$ -N %s' % args.N,
+            '#$ -l h_rt=%s:00:00' % args.time,
+            '#$ -l h_vmem=%sG' % args.m,
+            # '#$ -l hostname=\'!n00[18]*\'',
+            '#$ -wd %s' % (workingDirectory),
+            '#$ -o %s' % stdout,
+            '#$ -e %s' % stderr,
+            '#$ -q all.q'
+        ]
 
-    if args.t > 1:
-        jobData.append('#$ -pe threaded %s' % args.t)
+        if args.email is not None:
+            jobData.append('#$ -M %s' % args.email)
+            jobData.append('#$ -m %sas' % ('e' if args.mf else ''))
+
+        if not args.nenv:
+            jobData.append('#$ -V')
+
+        if args.t > 1:
+            jobData.append('#$ -pe threaded %s' % args.t)
 
     if not args.silent:
         print('using %s as working directory' % workingDirectory)
@@ -177,15 +202,21 @@ if __name__ == '__main__':
     #jobData.append( 'export PYTHONPATH="";\nsource /hpc/hub_oudenaarden/bdebarbanson/virtualEnvironments/py36/bin/activate;')
     #jobData.append('module load python%s' % args.v)
 
-    jobData.append('%s' % cmd)
+    if args.slurm:
+        jobData.append('%s' % cmd)
+    else:
+        jobData.append('%s' % cmd)
     if not args.silent:
         print('\n'.join(jobData))
 
     with open(jobfile, 'w') as f:
         f.write('\n'.join(jobData) + '\n')
 
-    qs = 'qsub %s %s' % ((('-hold_jid %s' % args.hold)
-                          if (args.hold is not None and args.hold != 'none') else ''), jobfile)
+    if args.slurm:
+        qs = 'sbatch %s' % jobfile
+    else:
+        qs = 'qsub %s %s' % ((('-hold_jid %s' % args.hold)
+                              if (args.hold is not None and args.hold != 'none') else ''), jobfile)
     if not args.silent:
         print(qs)
     if args.y:
