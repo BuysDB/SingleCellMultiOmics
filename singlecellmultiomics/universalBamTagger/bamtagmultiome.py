@@ -43,7 +43,7 @@ argparser.add_argument(
     nla_transcriptome (Data with transcriptome and genome digested by Nla III )
     vasa (VASA transcriptomic data)
     cs (CELseq data, 1 and 2)
-    from_featurecounts_tagged (deduplicate using a bam file tagged using featurecounts)
+    cs_feature_counts (deduplicate using a bam file tagged using featurecounts)
     nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
     chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
     nla_no_overhang (Data with digested by Nla III enzyme, without the CATG present in the reads)
@@ -213,7 +213,7 @@ def run_multiome_tagging(args):
             nla_transcriptome (Data with transcriptome and genome digested by Nla III )
             vasa (VASA transcriptomic data)
             cs (CELseq data, 1 and 2)
-            from_featurecounts_tagged (deduplicate using a bam file tagged using featurecounts)
+            cs_feature_counts (deduplicate using a bam file tagged using featurecounts)
             nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
             chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
             scartrace  (lineage tracing protocol)
@@ -403,7 +403,7 @@ def run_multiome_tagging(args):
                     'no_overhang': True
                 })
 
-    elif args.method == 'from_featurecounts_tagged' :
+    elif args.method == 'cs_feature_counts' :
         moleculeClass = singlecellmultiomics.molecule.Molecule
         fragmentClass = singlecellmultiomics.fragment.FeatureCountsSingleEndFragment
 
