@@ -340,35 +340,36 @@ class Fragment():
 
     def get_random_primer_hash(self):
         """Obtain hash describing the random primer
-        this assumes the random primer is on the end of R2 and has a length of 6BP
+        this assumes the random primer is on the end of R2 and has a length of self.R2_primer_length
         When the rS tag is set, the value of this tag is used as random primer sequence
         Returns None,None when the random primer cannot be described
 
         Returns:
+            reference_name (str) or None
             reference_start (int) : Int or None
             sequence (str) : Int or None
         """
         R2 = self.get_R2()
 
         if R2 is None or R2.query_sequence is None:
-            return None, None
+            return None, None, None
         # The read was not mapped
         if R2.is_unmapped:
             # Guess the orientation does not matter
             if self.random_primer_sequence is not None:
-                return None, self.random_primer_sequence
-            return None, R2.query_sequence[:self.R2_primer_length]
+                return None, None, self.random_primer_sequence
+            return None, None, R2.query_sequence[:self.R2_primer_length]
 
         if R2.is_reverse:
             global complement
             if self.random_primer_sequence is not None:
-                return R2.reference_end, self.random_primer_sequence
+                return R2.reference_name, R2.reference_end, self.random_primer_sequence
 
-            return(R2.reference_end, R2.query_sequence[-self.R2_primer_length:][::-1].translate(complement))
+            return(R2.reference_name, R2.reference_end, R2.query_sequence[-self.R2_primer_length:][::-1].translate(complement))
         else:
             if self.random_primer_sequence is not None:
-                return R2.reference_start, self.random_primer_sequence
-            return(R2.reference_start, R2.query_sequence[:self.R2_primer_length])
+                return R2.reference_name, R2.reference_start, self.random_primer_sequence
+            return(R2.reference_name, R2.reference_start, R2.query_sequence[:self.R2_primer_length])
         raise ValueError()
 
     def set_meta(self, key, value, as_set=False):
@@ -433,34 +434,35 @@ class Fragment():
     def update_span(self):
         """
         Update the span (the location the fragment maps to) stored in Fragment
+
+        The span is a single stretch of coordinates on a single contig.
+        The contig is determined by the reference_name assocated to the first
+        mapped read in self.reads
+
         """
 
-        if self.mapping_dir != (False, True):
-            raise NotImplementedError("Sorry only FW RV is implemented")
-
         contig = None
+
+        start = None
+        end = None
         for read in self.reads:
             if read is not None and not read.is_unmapped:
-                contig = read.reference_name
+                if contig is None:
+                    contig = read.reference_name
+                if contig == read.reference_name:
 
-        try:
-            surfaceStart, surfaceEnd = pysamiterators.iterators.getPairGenomicLocations(
-                self.get_R1(),
-                self.get_R2(),
-                R1PrimerLength=self.R1_primer_length,
-                R2PrimerLength=self.R2_primer_length,
-                allow_unsafe=True
-            )
-            self.span = (contig, surfaceStart, surfaceEnd)
-            self.safe_span = True
-        except Exception as e:
+                    if start is None:
+                        start = read.reference_start
+                    else:
+                        start = min(start, read.reference_start)
 
-            if self.has_R1() and not self.get_R1().is_unmapped:
-                self.span = (
-                    contig,
-                    self.get_R1().reference_start,
-                    self.get_R1().reference_end)
-            self.safe_span = False
+                    if end is None:
+                        end = read.reference_end
+                    else:
+                        end = max(end, read.reference_end)
+
+        self.span = (contig, start, end)
+
 
     def get_span(self):
         return self.span

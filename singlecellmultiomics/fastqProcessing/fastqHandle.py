@@ -36,7 +36,7 @@ class FastqHandle:
         if self.sc:
             for readIdx, record in zip(('R1', 'R2'), records):
                 # Obtain cell from record:
-                cell = f"{record.tags.get('BI','no_cell_id')}.{record.tags.get('MX','unk')}"
+                cell = f"{record.tags.get('bi','no_cell_id')}.{record.tags.get('MX','unk')}"
                 self.handles.write(
                     f'{self.path}.{cell}.{readIdx}.fastq.gz',
                     str(record),

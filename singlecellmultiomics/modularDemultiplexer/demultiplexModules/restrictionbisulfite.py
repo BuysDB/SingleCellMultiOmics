@@ -135,7 +135,7 @@ class Base_RestrictionBisulfiteDemuxMethod(UmiBarcodeDemuxMethod):
                 #tr.addTagByTag('QM', barcodeQual+umiQual, isPhred=True)
 
             tr.addTagByTag(
-                'BI',
+                'bi',
                 barcodeIdentifier,
                 isPhred=False,
                 make_safe=False)

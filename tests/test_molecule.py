@@ -6,11 +6,31 @@ import singlecellmultiomics.fragment
 import pysam
 import pysamiterators.iterators
 import os
+
+from singlecellmultiomics.molecule import MoleculeIterator, CHICMolecule
+from singlecellmultiomics.fragment import CHICFragment
+
 """
 These tests check if the Molecule module is working correctly
 """
 
 class TestMolecule(unittest.TestCase):
+
+    def test_chic_cigar_dedup(self):
+        i = 0
+        with pysam.AlignmentFile('./data/chic_test_region.bam') as alignments:
+
+            for molecule in MoleculeIterator(alignments,CHICMolecule, CHICFragment):
+                i+=1
+
+        self.assertEqual(i,1)
+
+    def test_chic_nocigar_dedup(self):
+        i = 0
+        with pysam.AlignmentFile('./data/chic_test_region.bam') as alignments:
+            for molecule in MoleculeIterator(alignments,CHICMolecule, CHICFragment,fragment_class_args={'no_umi_cigar_processing':True}):
+                i+=1
+        self.assertEqual(i,2)
 
     def test_a_pysam_iterators(self):
         """Test if the pysamiterators package yields the proper amount or mate pairs"""
@@ -39,6 +59,42 @@ class TestMolecule(unittest.TestCase):
             )):
                 pass
             self.assertEqual(i,337)
+
+    def test_every_fragment_as_molecule_np_iterator(self):
+
+        to_be_found = set()
+        amount_of_r1s_to_be_found=0
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            for read in f:
+                if read.is_read1 and not read.is_read2:
+                    to_be_found.add(read.query_name)
+                    amount_of_r1s_to_be_found+=1
+        found=set()
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            frag_count=0
+            for i,m in enumerate(singlecellmultiomics.molecule.MoleculeIterator(
+            alignments=f,
+            moleculeClass=singlecellmultiomics.molecule.Molecule,
+            fragmentClass=singlecellmultiomics.fragment.Fragment,
+            every_fragment_as_molecule=True,
+            iterator_class=pysamiterators.MatePairIteratorIncludingNonProper
+            )):
+                if m[0].has_R1():
+                    frag_count+=1
+                    found.add( m[0][0].query_name )
+
+
+            diff = to_be_found.difference( found )
+            tm = found.difference(to_be_found)
+            print('missed:')
+            print(diff)
+            print('too much:')
+            print(tm)
+            self.assertEqual( len(diff), 0)
+            self.assertEqual(frag_count,amount_of_r1s_to_be_found)
+            self.assertEqual(frag_count,293)
+
+
 
 
 
@@ -170,8 +226,10 @@ class TestMolecule(unittest.TestCase):
                     # the 4 bases of the CATG are not counted.
                     # the 6 bases of the random primer are also not counted
                     # Resulting in a fragment size of 109 - 10 = 101
+
+                    start, end = molecule[0].get_safe_span()
                     self.assertEqual(
-                        abs(molecule[0].span[1]-molecule[0].span[2])
+                        abs(end-start)
                         , 107)
                     self.assertEqual(
                         molecule.get_safely_aligned_length()
