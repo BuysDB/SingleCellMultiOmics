@@ -287,6 +287,11 @@ class TaggedRecord():
                 'SM',
                 f'{self.tags["LY"]}_{self.tags["bi"]}',
                 isPhred=False)
+        elif 'BI' in self.tags:
+            self.addTagByTag(
+                'SM',
+                f'{self.tags["LY"]}_{self.tags["BI"]}',
+                isPhred=False)
         else:
             self.addTagByTag('SM', f'{self.tags["LY"]}_BULK', isPhred=False)
 
