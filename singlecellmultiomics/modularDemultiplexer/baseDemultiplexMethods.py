@@ -292,8 +292,15 @@ class TaggedRecord():
                 'SM',
                 f'{self.tags["LY"]}_{self.tags["BI"]}',
                 isPhred=False)
+
+            # Remove BI tag
+            self.tags['bi'] = self.tags("BI")
+            del self.tags['BI']
         else:
             self.addTagByTag('SM', f'{self.tags["LY"]}_BULK', isPhred=False)
+
+
+
 
         # Now we defined the desired values of the tags. Write them to the
         # record:
