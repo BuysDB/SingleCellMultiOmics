@@ -144,9 +144,11 @@ def submit_job(command, job_alias, target_directory,  working_directory,
     if submit:
         if scheduler=='slurm':
             job_id = os.popen(qs).read().replace('Submitted batch job ','')
+            return job_id
         elif scheduler=='sge':
             rd  = os.popen(qs).read()
             job_id = rd.split(' ')[2]
+            return job_id
         elif scheduler=='local':
             # Run the job now:
             os.system(f'bash {jobfile} 2>{stderr} >{stdout}')
