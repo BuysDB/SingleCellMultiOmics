@@ -7,6 +7,125 @@ import glob
 import time
 import datetime
 import subprocess
+import distutils.spawn
+
+def create_job_file_paths(target_directory,job_alias='dobby', jobName=None):
+
+    if not os.path.exists(target_directory):
+        os.makedirs(target_directory)
+
+    if jobName is None:
+        jobName = '%s-%s' % (time.strftime("%d_%m_%Y_%H_%M_%S"), job_alias)
+
+    jobfile = args.s + '/%s.sh' % jobName
+    stderr = args.s + '/%s.stderr' % jobName
+    stdout = args.s + '/%s.stdout' % jobName
+
+    if args.jp is None:
+        while os.path.exists(jobfile):
+            jobName = '%s-%s' % (time.strftime("%d_%m_%Y_%H_%M_%S"), args.N)
+            jobfile = args.s + '/%s.sh' % jobName
+            stderr = args.s + '/%s.stderr' % jobName
+            stdout = args.s + '/%s.stdout' % jobName
+            time.sleep(1)
+    else:
+        if os.path.exists(jobfile):
+            print(
+                "Job %s already exists. Files might become corrupted if previous job is still running" %
+                jobfile)
+
+    return jobfile,stderr, stdout
+
+
+def generate_job_script(manager, job_name, memory_gb, working_directory, time_h, threads_n, email, mail_when_finished=False )
+    
+    if manager=='slurm':
+        jobData = [
+            '#!/bin/sh',
+            '#SBATCH -J %s' % args.N, # Sets job name
+            '#SBATCH -n %s' % threads_n,
+            '#SBATCH --time %s:00:00' % str(time_h).zfill(2),
+            '#SBATCH --mem %sG' % memory_gb,
+            '#SBATCH --chdir %s' % (working_directory),
+            '#SBATCH -o %s' % stdout,
+            '#SBATCH -e %s' % stderr
+        ]
+
+        if email is not None:
+            jobData.append('#SBATCH --mail-type=FAIL')
+            jobData.append('#SBATCH --mail-user=%s' % email)
+    elif manager=='sge':
+        jobData = [
+            '#!/bin/sh',
+            '#$ -S /bin/bash',
+            '#$ -N %s' % job_name,
+            '#$ -l h_rt=%s:00:00' % time_h,
+            '#$ -l h_vmem=%sG' % memory_gb,
+            # '#$ -l hostname=\'!n00[18]*\'',
+            '#$ -wd %s' % (workingDirectory),
+            '#$ -o %s' % stdout,
+            '#$ -e %s' % stderr,
+            '#$ -q all.q'
+        ]
+
+        if args.email is not None:
+            jobData.append('#$ -M %s' % email)
+            jobData.append('#$ -m %sas' % ('e' if mail_when_finished else ''))
+
+        if not args.nenv:
+            jobData.append('#$ -V')
+
+        if args.t > 1:
+            jobData.append('#$ -pe threaded %s' % threads_n)
+
+    return jobData
+
+
+#jobData.append( 'export PYTHONPATH="";\nsource /hpc/hub_oudenaarden/bdebarbanson/virtualEnvironments/py36/bin/activate;')
+#jobData.append('module load python%s' % args.v)
+
+if args.slurm:
+    jobData.append('%s' % cmd)
+else:
+    jobData.append('%s' % cmd)
+if not args.silent:
+    print('\n'.join(jobData))
+
+with open(jobfile, 'w') as f:
+    f.write('\n'.join(jobData) + '\n')
+
+if args.slurm:
+    qs = 'sbatch %s %s' % ((('-d %s' % args.hold)
+                          if (args.hold is not None and args.hold != 'none') else ''), jobfile)
+else:
+    qs = 'qsub %s %s' % ((('-hold_jid %s' % args.hold)
+                          if (args.hold is not None and args.hold != 'none') else ''), jobfile)
+
+
+
+def submit_job(command, job_alias, target_directory, threads=1, memory_gb=8, time_h=8, manager='sge', mail_when_finished=False, hold=None,submit=True):
+    """
+    Submit a job
+
+    Args:
+        threads(int) : amount of requested threads
+        memory_gb(int) : amount of requested memory
+        manager(str): sge/slurm/local
+        hold(list): list of job depedencies
+        submit(bool) : perform the actual submission, when set to False only the submission script is written
+    Returns:
+        job_id(str) : id of sumbitted job
+    """
+
+    qsub_available = (distutils.spawn.find_executable("qsub") is not None)
+
+    sbatch_available = (distutils.spawn.find_executable("sbatch") is not None)
+
+    jobfile,stderr, stdout = create_job_file_paths(target_directory,job_alias)
+
+    create_job_script()
+
+
 
 ## ##### Dependency handling  ##### ##
 if __name__ == '__main__':
@@ -14,7 +133,7 @@ if __name__ == '__main__':
     username = os.getenv('USER')
     defaultEmail = os.getenv('EMAIL')
 
-    import distutils.spawn
+
     qsub_available = (distutils.spawn.find_executable("qsub") is not None)
 
     PY36ENV = os.getenv('PY36ENV')
@@ -53,10 +172,6 @@ if __name__ == '__main__':
         help="Runtime in hours")
     argparser.add_argument('-m', type=int, default=4, help="Memory in gigs")
     argparser.add_argument('-y', action="store_true", help="Submit jobs")
-    argparser.add_argument(
-        '-i',
-        action="store_true",
-        help="Show info on submitted and running jobs")
 
     argparser.add_argument(
         '--slurm',
@@ -66,8 +181,8 @@ if __name__ == '__main__':
     argparser.add_argument(
         '-e',
         type=str,
-        help="How to execute the job; qsub, local",
-        default="qsub")
+        help="How to execute the job; submit, local",
+        default="submit")
     argparser.add_argument(
         '-hold',
         type=str,
@@ -161,7 +276,6 @@ if __name__ == '__main__':
             '#SBATCH -n %s' % args.t,
             '#SBATCH --time %s:00:00' % str(args.time).zfill(2),
             '#SBATCH --mem %sG' % args.m,
-            # '#$ -l hostname=\'!n00[18]*\'',
             '#SBATCH --chdir %s' % (workingDirectory),
             '#SBATCH -o %s' % stdout,
             '#SBATCH -e %s' % stderr
@@ -214,7 +328,8 @@ if __name__ == '__main__':
         f.write('\n'.join(jobData) + '\n')
 
     if args.slurm:
-        qs = 'sbatch %s' % jobfile
+        qs = 'sbatch %s %s' % ((('-d %s' % args.hold)
+                              if (args.hold is not None and args.hold != 'none') else ''), jobfile)
     else:
         qs = 'qsub %s %s' % ((('-hold_jid %s' % args.hold)
                               if (args.hold is not None and args.hold != 'none') else ''), jobfile)
@@ -223,9 +338,17 @@ if __name__ == '__main__':
     if args.y:
 
         if args.e == 'qsub' and qsub_available:
-            os.system(qs)
+
+            if args.slurm:
+                job_id = os.popen(qs).read().replace('Submitted batch job ','')
+            else:
+                rd  = os.popen(qs).read()
+                job_id = rd.split(' ')[2]
+
+            return job_id
         else:
             cmd = 'sh %s > %s 2> %s' % (jobfile, stdout, stderr)
             if not args.silent:
                 print("Local execution: %s" % cmd)
+
             subprocess.call(cmd, shell=True)
