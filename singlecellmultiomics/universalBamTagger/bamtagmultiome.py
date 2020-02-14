@@ -9,6 +9,7 @@ import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam
 
 from singlecellmultiomics.utils import is_main_chromosome
+from singlecellmultiomics.utils.submission import submit_job
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
@@ -24,7 +25,6 @@ import pkg_resources
 import pickle
 from datetime import datetime
 import traceback
-from singlecellmultiomics.util.submission import submit_job
 
 available_consensus_models = pkg_resources.resource_listdir('singlecellmultiomics','molecule/consensus_model')
 
