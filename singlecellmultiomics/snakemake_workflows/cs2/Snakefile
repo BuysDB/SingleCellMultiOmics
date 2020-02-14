@@ -23,7 +23,7 @@ This workflow:
     - Maps using STAR, sorts and indexes the reads per library
     - uses featureCounting
     - Tags and demultiplexes
-
+    - Creates library statistics plots for quality control
     - Creates count tables for deduplicated and non-deduplicated counts:
        -> Count table containing rows with gene information and columns with cell information 
 """
@@ -66,9 +66,9 @@ rule all:
         expand("processed/{library}/count_table_not_deduplicated.csv",
             library=libraries),
         expand("processed/{library}/count_table_deduplicated.csv",
-            library=libraries)
+            library=libraries),
 
-        #expand("processed/{library}/plots/ReadCount.png", library=libraries)
+        expand("processed/{library}/plots/ReadCount.png", library=libraries)
 
 
 #### 1. Demultiplexing 
@@ -140,7 +140,7 @@ rule map:
         mem_mb=lambda wildcards, attempt: attempt * 8000
         
     shell:
-      "STAR --runThreadN 8 --outSAMtype BAM SortedByCoordinate --outFilterMultimapNmax 20 --outMultimapperOrder Random --outSAMmultNmax 1 --readFilesCommand zcat  --readFilesIn {input.r2} \
+      "STAR --runThreadN 8 --outSAMtype BAM SortedByCoordinate --outFilterMultimapNmax 20 --outMultimapperOrder Random --outSAMattributes All --outSAMmultNmax 1 --readFilesCommand zcat  --readFilesIn {input.r2} \
       --genomeDir {params.ref} --outFileNamePrefix {params.output_dir} > {log.stdout} 2> {log.stderr}"
 
 #### 4. Feature counting
@@ -186,6 +186,27 @@ rule SCMO_tagmultiome_CS2:
         "samtools sort -T processed/{wildcards.library}/temp_sort -@ {threads} {input.bam} > processed/{wildcards.library}/sorted.unfinished.bam; \
         mv processed/{wildcards.library}/sorted.unfinished.bam {output.bamSorted}; samtools index {output.bamSorted}; \
         bamtagmultiome.py -method cs_feature_counts -umi_hamming_distance 0 {output.bamSorted} -o {output.bam} > {log.stdout} 2> {log.stderr}"
+
+#### 6. Library statistics
+rule SCMO_library_stats:
+    input:
+        bam = "processed/{library}/tagged.bam",
+        r1="processed/{library}/demultiplexedR1.fastq.gz", # Its need these to count how many raw reads were present in the lib.
+        r2="processed/{library}/demultiplexedR2.fastq.gz",
+        r1_rejects="processed/{library}/rejectsR1.fastq.gz",
+        r2_rejects="processed/{library}/rejectsR2.fastq.gz"
+    output:
+        "processed/{library}/plots/ReadCount.png"
+
+    log:
+        stdout="log/library_stats/{library}.stdout",
+        stderr="log/library_stats/{library}.stderr"
+
+    threads: 1
+    params: runtime="30h"
+
+    shell:
+        "libraryStatistics.py processed/{wildcards.library} -tagged_bam /tagged.bam > {log.stdout} 2> {log.stderr}"
 
 #### 7. Make dedup and no dedup count tables
 #### a. Make count tables of non-deduplicated bam files
