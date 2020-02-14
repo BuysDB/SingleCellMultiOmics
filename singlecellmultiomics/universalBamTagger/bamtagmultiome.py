@@ -24,6 +24,7 @@ import pkg_resources
 import pickle
 from datetime import datetime
 import traceback
+from singlecellmultiomics.util.submission import submit_job
 
 available_consensus_models = pkg_resources.resource_listdir('singlecellmultiomics','molecule/consensus_model')
 
@@ -126,6 +127,12 @@ cluster.add_argument(
     default=52,
     type=int,
     help='Time requested per job')
+
+cluster.add_argument(
+    '-sched',
+    default='slurm',
+    type=str,
+    help='Scheduler to use: sge, slurm, local')
 
 cluster.add_argument(
     '-clusterdir',
@@ -593,15 +600,29 @@ def run_multiome_tagging(args):
                 if consensus_model_path is not None:
                     arguments += f' -consensus_model {consensus_model_path}'
                 job = f'SCMULTIOMICS_{str(uuid.uuid4())}'
+
+                """ old cmd:
                 os.system(
                     f'submission.py --silent' +
                     f' -y -s {cluster_file_folder} --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"')
-                hold_merge.append(job)
+                """
+
+                job_id = submit_job(f'{arguments};', job_alias=job, target_directory=cluster_file_folder,  working_directory=None,
+                               threads_n=1, memory_gb=args.mem, time_h=args.time, scheduler=args.sched, copy_env=True,
+                               email=None, mail_when_finished=False, hold=None,submit=True)
+
+                hold_merge.append(job_id)
 
             hold = ','.join(hold_merge)
+            """ old cmd:
             os.system(
                 f'submission.py --silent' +
-                f' -y --py36 -s {cluster_file_folder} -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"')
+                f' -y --py36 -s {cluster_file_folder} -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge -@ 4 -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"')
+            """
+            command = f'samtools merge -@ 4 -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*'
+            submit_job(f'{command};', job_alias=job, target_directory=cluster_file_folder,  working_directory=None,
+                           threads_n=4, memory_gb=10, time_h=args.time, scheduler=args.sched, copy_env=True,
+                           email=None, mail_when_finished=False, hold=hold,submit=True)
             exit()
 
     #####
