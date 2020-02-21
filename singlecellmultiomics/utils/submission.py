@@ -107,7 +107,7 @@ def generate_submission_command(jobfile, hold, scheduler='sge'):
 
             js = ','.join( [f'afterok:{h.strip()}' for h in hold] )
             qs = f'sbatch {jobfile} -d {js}'
-            print(qs)
+            #print(qs)
         else:
             qs = 'sbatch %s' % jobfile
     else:
@@ -160,12 +160,12 @@ def submit_job(command,  target_directory,  working_directory,
 
     if submit:
         if scheduler=='slurm':
-            job_id = os.popen(qs).read().replace('Submitted batch job ','')
+            job_id = os.popen(qs).read().replace('Submitted batch job ','').strip()
             return job_id
         elif scheduler=='sge':
             rd  = os.popen(qs).read()
             job_id = rd.split(' ')[2]
-            return job_id
+            return job_id.strip()
         elif scheduler=='local':
             # Run the job now:
             os.system(f'bash {jobfile} 2>{stderr} >{stdout}')
