@@ -621,9 +621,10 @@ def run_multiome_tagging(args):
             """
             job = f'SCMULTIOMICS_MERGE_{str(uuid.uuid4())}'
             command = f'samtools merge -@ 4 -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*'
-            submit_job(f'{command};', job_name=job, target_directory=cluster_file_folder,  working_directory=None,
+            final_job_id = submit_job(f'{command};', job_name=job, target_directory=cluster_file_folder,  working_directory=None,
                            threads_n=4, memory_gb=10, time_h=args.time, scheduler=args.sched, copy_env=True,
                            email=None, mail_when_finished=False, hold=hold,submit=True)
+            print(f'final job id is:{final_job_id}')
             exit()
 
     #####
