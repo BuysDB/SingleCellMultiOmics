@@ -133,8 +133,8 @@ if __name__ == '__main__':
             sites[key_mapped]['wrong_gain'] += 1
 
     print("Writing site statistics ...")
-    outtab = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mapability.stats.bgzf'
-    outtabsafe = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mapability.safe.bgzf'
+    outtab = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mappability.stats.bgzf'
+    outtabsafe = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mappability.safe.bgzf'
 
     with BlockZip(outtab, 'w') as stats, BlockZip(outtabsafe, 'w') as safe:
         for (contig, pos, strand), measured in sites.items():
