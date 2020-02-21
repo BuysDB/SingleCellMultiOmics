@@ -9,6 +9,7 @@ import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam
 
 from singlecellmultiomics.utils import is_main_chromosome
+from singlecellmultiomics.utils.submission import submit_job
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
@@ -126,6 +127,12 @@ cluster.add_argument(
     default=52,
     type=int,
     help='Time requested per job')
+
+cluster.add_argument(
+    '-sched',
+    default='slurm',
+    type=str,
+    help='Scheduler to use: sge, slurm, local')
 
 cluster.add_argument(
     '-clusterdir',
@@ -562,8 +569,9 @@ def run_multiome_tagging(args):
     if args.cluster:
         if args.contig is None:
             # Create jobs for all chromosomes:
+            unique_id = str(uuid.uuid4())
             temp_prefix = os.path.abspath(os.path.dirname(
-                args.o)) + '/SCMO_' + str(uuid.uuid4())
+                args.o)) + '/SCMO_' + unique_id
             hold_merge = []
 
             ## Create folder to store cluster files:
@@ -581,7 +589,7 @@ def run_multiome_tagging(args):
                     pass
 
             found_alts = 0
-            for chrom in list(input_bam.references) + [MISC_ALT_CONTIGS_SCMO]:
+            for ci,chrom in enumerate(list(input_bam.references) + [MISC_ALT_CONTIGS_SCMO]):
                 if not is_main_chromosome(chrom):
                     found_alts += 1
                     continue
@@ -592,16 +600,21 @@ def run_multiome_tagging(args):
                     [x for x in sys.argv if not x == args.o and x != '-o']) + f" -contig {chrom} -o {temp_bam_path}"
                 if consensus_model_path is not None:
                     arguments += f' -consensus_model {consensus_model_path}'
-                job = f'SCMULTIOMICS_{str(uuid.uuid4())}'
-                os.system(
-                    f'submission.py --silent' +
-                    f' -y -s {cluster_file_folder} --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"')
-                hold_merge.append(job)
+                job = f'SCMULTIOMICS_{ci}_{unique_id}'
+                job_id = submit_job(f'{arguments};', job_name=job, target_directory=cluster_file_folder,  working_directory=None,
+                               threads_n=1, memory_gb=args.mem, time_h=args.time, scheduler=args.sched, copy_env=True,
+                               email=None, mail_when_finished=False, hold=None,submit=True)
+                print(f'Job for contig {chrom} submitted with job id: {job_id}')
+                hold_merge.append(job_id)
 
-            hold = ','.join(hold_merge)
-            os.system(
-                f'submission.py --silent' +
-                f' -y --py36 -s {cluster_file_folder} -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"')
+            hold = hold_merge
+
+            job = f'SCMULTIOMICS_MERGE_{unique_id}'
+            command = f'samtools merge -@ 4 -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*'
+            final_job_id = submit_job(f'{command};', job_name=job, target_directory=cluster_file_folder,  working_directory=None,
+                           threads_n=4, memory_gb=10, time_h=args.time, scheduler=args.sched, copy_env=True,
+                           email=None, mail_when_finished=False, hold=hold,submit=True)
+            print(f'final job id is:{final_job_id}')
             exit()
 
     #####

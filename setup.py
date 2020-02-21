@@ -59,7 +59,7 @@ setup(
 
         # Fasta
         'singlecellmultiomics/fastaProcessing/fastaMaskVariants.py',
-        'singlecellmultiomics/fastaProcessing/createMapabilityIndex.py',
+        'singlecellmultiomics/fastaProcessing/createMappabilityIndex.py',
 
         # Tagging
         'singlecellmultiomics/universalBamTagger/universalBamTagger.py',
@@ -104,7 +104,7 @@ setup(
        'pysam>=0.15.3','numpy>=1.16.4','pandas>=0.25.0','colorama',
        'pysamiterators>=1.7','more-itertools','matplotlib','tabulate',
        'wheel','setuptools>=40.8.0','scikit-learn>=0.21.3','seaborn',
-       'biopython>=1.71','pytest>=5.0.0','pytest-runner','snakemake>=5.8.1' #,'tensorflow>=1.14.0'
+       'biopython>=1.71','pytest>=5.0.0','pytest-runner','snakemake>=5.8.1','lxml' #,'tensorflow>=1.14.0'
    ],
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],
