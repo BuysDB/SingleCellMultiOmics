@@ -106,7 +106,7 @@ def generate_submission_command(jobfile, hold, scheduler='sge'):
         if hold is not None and len(hold)>0 and hold[0]!='none':
 
             js = 'afterany:' + ':'.join( [f'{h.strip()}' for h in hold] )
-            qs = f'sbatch {jobfile} --dependency={js}'
+            qs = f'sbatch --dependency={js} {jobfile}'
             print(qs)
         else:
             qs = 'sbatch %s' % jobfile
