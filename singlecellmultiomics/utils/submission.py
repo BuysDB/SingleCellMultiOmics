@@ -103,11 +103,16 @@ def write_cmd_to_submission_file(cmd, job_data, jobfile, scheduler='sge' ):
 def generate_submission_command(jobfile, hold, scheduler='sge'):
 
     if scheduler=='slurm':
-        qs = 'sbatch %s %s' % ((('-d %s' % hold)
-                              if (hold is not None and hold != 'none') else ''), jobfile)
+        if len(hold)>0 and hold[0]!='none':
+
+            js = ','.join( [f'after:{h}' for h in hold] )
+            qs = f'sbatch {jobfile} -d {js}'
+        
+        else:
+            qs = 'sbatch %s' % jobfile
     else:
-        qs = 'qsub %s %s' % ((('-hold_jid %s' % hold)
-                              if (hold is not None and hold != 'none') else ''), jobfile)
+        qs = 'qsub %s %s' % ((('-hold_jid %s' % ','.join(hold))
+                              if (hold is not None and hold[0] != 'none') else ''), jobfile)
     return qs
 
 
@@ -268,6 +273,6 @@ if __name__ == '__main__':
 
     jid = submit_job(' '.join(args.c), args.N, target_directory=args.s,  working_directory=working_directory,
                    threads_n=args.t, memory_gb=args.m, time_h=args.time, scheduler=args.sched, copy_env=not args.nenv,
-                   email=args.email, mail_when_finished=args.mf, hold=args.hold,submit=args.y, prefix=args.jp)
+                   email=args.email, mail_when_finished=args.mf, hold=args.hold.split(','),submit=args.y, prefix=args.jp)
     if jid is not None:
         print(jid)
