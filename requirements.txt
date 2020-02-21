@@ -14,3 +14,4 @@ pytest-cov
 seaborn
 biopython>=1.71
 snakemake>=5.8.1
+lxml
