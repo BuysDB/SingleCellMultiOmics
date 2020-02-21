@@ -110,7 +110,7 @@ def generate_submission_command(jobfile, hold, scheduler='sge'):
 
 def submit_job(command, job_alias, target_directory,  working_directory,
                threads_n=1, memory_gb=8, time_h=8, scheduler='sge', copy_env=True,
-               email=None, mail_when_finished=False, hold=None,submit=True, prefix=None):
+               email=None, mail_when_finished=False, hold=None,submit=True, prefix=None, job_name=None):
     """
     Submit a job
 
@@ -136,7 +136,13 @@ def submit_job(command, job_alias, target_directory,  working_directory,
         if scheduler=='slurm' and not sbatch_available:
             raise ValueError('sbatch is not available on the system')
 
-    jobfile,stderr, stdout, job_name = create_job_file_paths(target_directory,job_alias,prefix=prefix)
+    jobfile,stderr, stdout, _job_name = create_job_file_paths(target_directory,job_alias,prefix=prefix,jobName=jobName)
+    if job_name is None:
+        job_name=_job_name
+    else:
+        if job_name!=_job_name:
+            print(f'Job name changed from {job_name} to {_job_name}')
+
     job_data = generate_job_script(scheduler, jobfile,stderr, stdout,job_name, memory_gb, working_directory, time_h, threads_n, email, mail_when_finished, copy_env )
     qs = generate_submission_command( jobfile, hold, scheduler)
     write_cmd_to_submission_file(command, job_data, jobfile, scheduler)

@@ -588,7 +588,7 @@ def run_multiome_tagging(args):
                     pass
 
             found_alts = 0
-            for chrom in list(input_bam.references) + [MISC_ALT_CONTIGS_SCMO]:
+            for ci,chrom in enumerate(list(input_bam.references) + [MISC_ALT_CONTIGS_SCMO]):
                 if not is_main_chromosome(chrom):
                     found_alts += 1
                     continue
@@ -607,7 +607,7 @@ def run_multiome_tagging(args):
                     f' -y -s {cluster_file_folder} --py36 -time {args.time} -t 1 -m {args.mem} -N {job} " {arguments};"')
                 """
 
-                job_id = submit_job(f'{arguments};', job_alias=job, target_directory=cluster_file_folder,  working_directory=None,
+                job_id = submit_job(f'{arguments};', job_name=job, target_directory=cluster_file_folder,  working_directory=None,
                                threads_n=1, memory_gb=args.mem, time_h=args.time, scheduler=args.sched, copy_env=True,
                                email=None, mail_when_finished=False, hold=None,submit=True)
 
@@ -620,7 +620,7 @@ def run_multiome_tagging(args):
                 f' -y --py36 -s {cluster_file_folder} -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge -@ 4 -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"')
             """
             command = f'samtools merge -@ 4 -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*'
-            submit_job(f'{command};', job_alias=job, target_directory=cluster_file_folder,  working_directory=None,
+            submit_job(f'{command};', job_name=job, target_directory=cluster_file_folder,  working_directory=None,
                            threads_n=4, memory_gb=10, time_h=args.time, scheduler=args.sched, copy_env=True,
                            email=None, mail_when_finished=False, hold=hold,submit=True)
             exit()
