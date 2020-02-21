@@ -619,6 +619,7 @@ def run_multiome_tagging(args):
                 f'submission.py --silent' +
                 f' -y --py36 -s {cluster_file_folder} -time {args.time} -t 1 -m 10 -N {job} -hold {hold} " samtools merge -@ 4 -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*"')
             """
+            job_name = f'SCMULTIOMICS_MERGE_{str(uuid.uuid4())}'
             command = f'samtools merge -@ 4 -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*'
             submit_job(f'{command};', job_name=job, target_directory=cluster_file_folder,  working_directory=None,
                            threads_n=4, memory_gb=10, time_h=args.time, scheduler=args.sched, copy_env=True,
