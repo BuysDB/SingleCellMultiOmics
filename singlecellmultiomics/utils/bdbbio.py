@@ -366,7 +366,7 @@ def encodePath(step, name, params, extension, spacers={'flag': ',', 'param':'_',
             if not( any(i in parname for i in invalidFileNameCharacters) or any(i in params[parname] for i in invalidFileNameCharacters) ):
                 encodedPath+='%s%s%s%s' % (paramSpacer, parname, keyValueSpacer, params[parname])
             else:
-                self.warn('Parameter encoding failed: %s %s contains at least one invalid character' % (parname, params[parname]) )
+                raise ValueError('Parameter encoding failed: %s %s contains at least one invalid character' % (parname, params[parname]) )
 
     #Todo check flags for mistakes
     if 'flags' in params:
@@ -656,9 +656,9 @@ class ClustalOmega(ExternalTool):
 
 
     def alignFastqs(self, fqPath, outputFastaFilePath):
-        self.log('converting %s to fasta' % fqpath)
+        #self.log('converting %s to fasta' % fqpath)
         f = FastqToFasta()
-        tmp = getTempFileName()
+        tmpFasta = getTempFileName()
         f.execute(fqPath, tmpFasta)
         self.alignFasta(tmpFasta,outputFastaFilePath)
         os.remove(tmpFasta)
@@ -1050,7 +1050,7 @@ class DistanceMatrix():
                 f.write('%s%s%s\n' % (keyA, separator,separator.join(values)))
 
 
-    def loadFromFile(self, path):
+    def loadFromFile(self, path,separator=None):
         with open(path) as f:
             idx = 0
             header = {}

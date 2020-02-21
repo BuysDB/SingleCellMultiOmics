@@ -677,7 +677,7 @@ class BDBPlot():
     def getAxis(self,hv=0):
 
         if hv==1:
-            p = self.getPath(getPathDefinition([self.getPlottingCoord(self.xMin, self.yMin), self.getPlottingCoord(self.xMax, self.yMin)]))
+            p = self.getPath(self.getPathDefinition([self.getPlottingCoord(self.xMin, self.yMin), self.getPlottingCoord(self.xMax, self.yMin)]))
         elif hv==2:
             p = self.getPath(self.getPathDefinition([self.getPlottingCoord(self.xMin, self.yMax),self.getPlottingCoord(self.xMin, self.yMin)]))
         else:
@@ -1684,7 +1684,7 @@ def classHistogram( classCountMapping, logTransform = False, classColors=None,  
     if isinstance(classCountMapping, collections.OrderedDict):
 
         if reverseOrder:
-            classOrderKeys = list(reversed(classOrder))
+            classOrderKeys = list(reversed(list(classCountMapping.keys())))
         else:
             classOrderKeys = list(classCountMapping.keys())
 

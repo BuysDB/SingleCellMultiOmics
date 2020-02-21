@@ -152,7 +152,7 @@ def bulkNameToReplicatePlateAndPassage( bulkSampleName ):
         raise ValueError(f"Could not parse: {bulkSampleName}")
 
 
-def cellNameToFacsName( df, returnPlateType=False ):
+def cellNameToFacsName( df, library, returnPlateType=False ):
     well2index = collections.defaultdict(dict)
     index2well = collections.defaultdict(dict)
     rows = string.ascii_uppercase[:16]
