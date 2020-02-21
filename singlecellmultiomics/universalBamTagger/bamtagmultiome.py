@@ -613,7 +613,7 @@ def run_multiome_tagging(args):
                 print(f'Job for contig {chrom} submitted with job id: {job_id}')
                 hold_merge.append(job_id)
 
-            hold = ','.join(hold_merge)
+            hold = hold_merge
             """ old cmd:
             os.system(
                 f'submission.py --silent' +
