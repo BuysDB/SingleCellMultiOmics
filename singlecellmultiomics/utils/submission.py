@@ -108,9 +108,9 @@ def generate_submission_command(jobfile, hold, scheduler='sge'):
     return qs
 
 
-def submit_job(command, job_alias, target_directory,  working_directory,
+def submit_job(command,  target_directory,  working_directory,
                threads_n=1, memory_gb=8, time_h=8, scheduler='sge', copy_env=True,
-               email=None, mail_when_finished=False, hold=None,submit=True, prefix=None, job_name=None):
+               email=None,job_alias=None, mail_when_finished=False, hold=None,submit=True, prefix=None, job_name=None):
     """
     Submit a job
 
@@ -126,6 +126,9 @@ def submit_job(command, job_alias, target_directory,  working_directory,
 
     qsub_available = (distutils.spawn.find_executable("qsub") is not None)
     sbatch_available = (distutils.spawn.find_executable("sbatch") is not None)
+
+    if job_alias is None and job_name is None:
+        raise ValueError('Supply either job_alias or job_name')
 
     if working_directory is None:
         working_directory = os.getcwd()
