@@ -273,6 +273,6 @@ if __name__ == '__main__':
 
     jid = submit_job(' '.join(args.c), args.N, target_directory=args.s,  working_directory=working_directory,
                    threads_n=args.t, memory_gb=args.m, time_h=args.time, scheduler=args.sched, copy_env=not args.nenv,
-                   email=args.email, mail_when_finished=args.mf, hold=args.hold.split(','),submit=args.y, prefix=args.jp)
+                   email=args.email, mail_when_finished=args.mf, hold=(args.hold.split(',') if args.hold is not None else None) ,submit=args.y, prefix=args.jp)
     if jid is not None:
         print(jid)
