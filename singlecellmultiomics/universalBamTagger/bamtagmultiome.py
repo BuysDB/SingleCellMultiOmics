@@ -599,7 +599,7 @@ def run_multiome_tagging(args):
                     [x for x in sys.argv if not x == args.o and x != '-o']) + f" -contig {chrom} -o {temp_bam_path}"
                 if consensus_model_path is not None:
                     arguments += f' -consensus_model {consensus_model_path}'
-                job = f'SCMULTIOMICS_{str(uuid.uuid4())}'
+                job = f'SCMULTIOMICS_{ci}_{str(uuid.uuid4())}'
 
                 """ old cmd:
                 os.system(
