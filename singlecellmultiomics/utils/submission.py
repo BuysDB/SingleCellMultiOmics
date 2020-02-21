@@ -139,7 +139,7 @@ def submit_job(command,  target_directory,  working_directory,
     sbatch_available = (distutils.spawn.find_executable("sbatch") is not None)
 
     if job_alias is None and job_name is None:
-        job_name = str(uuid.uuid4())
+        job_name = 'J%s' % str(uuid.uuid4())
 
     if working_directory is None:
         working_directory = os.getcwd()
