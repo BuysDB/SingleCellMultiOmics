@@ -176,6 +176,8 @@ class MoleculeIterator():
 
             yield_secondary (bool):  When true all secondary alignments will be yielded as a molecule
 
+            iterator_class : Class name of class which generates mate-pairs out of a pysam.AlignmentFile either (pysamIterators.MatePairIterator or pysamIterators.MatePairIteratorIncludingNonProper)
+
             **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
 
         Yields:
