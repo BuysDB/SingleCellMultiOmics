@@ -105,7 +105,7 @@ def generate_submission_command(jobfile, hold, scheduler='sge'):
     if scheduler=='slurm':
         if hold is not None and len(hold)>0 and hold[0]!='none':
 
-            js = ','.join( [f'afterok:{h.strip()}' for h in hold] )
+            js = 'afterany:' + ','.join( [f'{h.strip()}' for h in hold] )
             qs = f'sbatch {jobfile} --dependency={js}'
             print(qs)
         else:
