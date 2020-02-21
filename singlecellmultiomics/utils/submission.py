@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import sys
 import os
 import re
@@ -8,6 +10,7 @@ import time
 import datetime
 import subprocess
 import distutils.spawn
+import uuid
 
 def create_job_file_paths(target_directory,job_alias='dobby', prefix=None, jobName=None):
 
@@ -136,7 +139,7 @@ def submit_job(command,  target_directory,  working_directory,
     sbatch_available = (distutils.spawn.find_executable("sbatch") is not None)
 
     if job_alias is None and job_name is None:
-        raise ValueError('Supply either job_alias or job_name')
+        job_name = 'J%s' % str(uuid.uuid4())
 
     if working_directory is None:
         working_directory = os.getcwd()
@@ -271,7 +274,8 @@ if __name__ == '__main__':
 
     working_directory = args.w if args.w is not None else os.getcwd()
 
-    jid = submit_job(' '.join(args.c), job_name=args.jp, target_directory=args.s,  working_directory=working_directory,
+    jid = submit_job(' '.join(args.c), job_alias=args.jp, target_directory=args.s,
+                   working_directory=working_directory,
                    threads_n=args.t, memory_gb=args.m, time_h=args.time, scheduler=args.sched, copy_env=not args.nenv,
                    email=args.email, mail_when_finished=args.mf, hold=(args.hold.split(',') if args.hold is not None else None) ,submit=args.y, prefix=args.N)
     if jid is not None:
