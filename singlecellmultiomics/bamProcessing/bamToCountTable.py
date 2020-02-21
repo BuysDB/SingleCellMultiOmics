@@ -454,8 +454,8 @@ def create_count_table(args, return_df=False):
                     for row in bfile:
 
                         parts = row.strip().split()
-                        chromo, start, end, bname = parts[0], int(
-                            parts[1]), int(parts[2]), parts[3]
+                        chromo, start, end, bname = parts[0], int(float(
+                            parts[1])), int(float(parts[2])), parts[3]
                         if args.contig is not None and chromo != args.contig:
                             continue
                         for i, read in enumerate(f.fetch(chromo, start, end)):
