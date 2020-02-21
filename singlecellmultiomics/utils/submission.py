@@ -86,6 +86,9 @@ def generate_job_script(scheduler, jobfile,stderr, stdout, job_name, memory_gb, 
         if threads_n > 1:
             jobData.append('#$ -pe threaded %s' % threads_n)
 
+    # Make sure we land in the right directory
+    if working_directory is not None:
+        jobData.append(f'cd {working_directory}')
     return jobData
 
 def write_cmd_to_submission_file(cmd, job_data, jobfile, scheduler='sge' ):
