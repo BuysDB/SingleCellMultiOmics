@@ -139,7 +139,7 @@ def submit_job(command,  target_directory,  working_directory,
         if scheduler=='slurm' and not sbatch_available:
             raise ValueError('sbatch is not available on the system')
 
-    jobfile,stderr, stdout, _job_name = create_job_file_paths(target_directory,job_alias,prefix=prefix,jobName=jobName)
+    jobfile,stderr, stdout, _job_name = create_job_file_paths(target_directory,job_alias,prefix=prefix,jobName=job_name)
     if job_name is None:
         job_name=_job_name
     else:
