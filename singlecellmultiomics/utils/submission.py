@@ -103,11 +103,11 @@ def write_cmd_to_submission_file(cmd, job_data, jobfile, scheduler='sge' ):
 def generate_submission_command(jobfile, hold, scheduler='sge'):
 
     if scheduler=='slurm':
-        if len(hold)>0 and hold[0]!='none':
+        if hold is not None and len(hold)>0 and hold[0]!='none':
 
             js = ','.join( [f'after:{h}' for h in hold] )
             qs = f'sbatch {jobfile} -d {js}'
-        
+
         else:
             qs = 'sbatch %s' % jobfile
     else:
