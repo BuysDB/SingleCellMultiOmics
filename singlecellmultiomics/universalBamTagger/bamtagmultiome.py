@@ -610,7 +610,7 @@ def run_multiome_tagging(args):
                 job_id = submit_job(f'{arguments};', job_name=job, target_directory=cluster_file_folder,  working_directory=None,
                                threads_n=1, memory_gb=args.mem, time_h=args.time, scheduler=args.sched, copy_env=True,
                                email=None, mail_when_finished=False, hold=None,submit=True)
-
+                print(f'Job for contig {chrom} submitted with job id: {job_id}')
                 hold_merge.append(job_id)
 
             hold = ','.join(hold_merge)
