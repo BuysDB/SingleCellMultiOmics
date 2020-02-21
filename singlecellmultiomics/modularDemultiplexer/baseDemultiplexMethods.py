@@ -294,7 +294,7 @@ class TaggedRecord():
                 isPhred=False)
 
             # Remove BI tag
-            self.tags['bi'] = self.tags("BI")
+            self.tags['bi'] = self.tags["BI"]
             del self.tags['BI']
         else:
             self.addTagByTag('SM', f'{self.tags["LY"]}_BULK', isPhred=False)
