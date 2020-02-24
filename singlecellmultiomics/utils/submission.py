@@ -12,7 +12,7 @@ import subprocess
 import distutils.spawn
 import uuid
 
-def create_job_file_paths(target_directory,job_alias='dobby', prefix=None, jobName=None):
+def create_job_file_paths(target_directory,job_alias=None, prefix=None, job_file_name=None):
 
     if not os.path.exists(target_directory):
         os.makedirs(target_directory)
@@ -20,19 +20,19 @@ def create_job_file_paths(target_directory,job_alias='dobby', prefix=None, jobNa
     if prefix is None:
         prefix = time.strftime("%d_%m_%Y_%H_%M_%S")
 
-    if jobName is None:
-        jobName = '%s-%s' % (prefix, job_alias)
+    if job_file_name is None:
+        job_file_name = '%s-%s' % (prefix, job_alias)
 
-    jobfile = target_directory + '/%s.sh' % jobName
-    stderr = target_directory + '/%s.stderr' % jobName
-    stdout = target_directory + '/%s.stdout' % jobName
+    jobfile = target_directory + '/%s.sh' % job_file_name
+    stderr = target_directory + '/%s.stderr' % job_file_name
+    stdout = target_directory + '/%s.stdout' % job_file_name
 
     if prefix is None:
         while os.path.exists(jobfile):
-            jobName = '%s-%s' % (time.strftime("%d_%m_%Y_%H_%M_%S"), job_alias)
-            jobfile = target_directory + '/%s.sh' % jobName
-            stderr = target_directory + '/%s.stderr' % jobName
-            stdout = target_directory + '/%s.stdout' % jobName
+            job_file_name = '%s-%s' % (time.strftime("%d_%m_%Y_%H_%M_%S"), job_alias)
+            jobfile = target_directory + '/%s.sh' % job_file_name
+            stderr = target_directory + '/%s.stderr' % job_file_name
+            stdout = target_directory + '/%s.stdout' % job_file_name
             time.sleep(1)
     else:
         if os.path.exists(jobfile):
@@ -40,7 +40,7 @@ def create_job_file_paths(target_directory,job_alias='dobby', prefix=None, jobNa
                 "Job %s already exists. Files might become corrupted if previous job is still running" %
                 jobfile)
 
-    return jobfile,stderr, stdout, jobName
+    return jobfile,stderr, stdout, job_file_name
 
 
 def generate_job_script(scheduler, jobfile,stderr, stdout, job_name, memory_gb, working_directory, time_h, threads_n, email, mail_when_finished=False, copy_env=True ):
@@ -121,7 +121,8 @@ def generate_submission_command(jobfile, hold, scheduler='sge'):
 
 def submit_job(command,  target_directory,  working_directory,
                threads_n=1, memory_gb=8, time_h=8, scheduler='sge', copy_env=True,
-               email=None,job_alias=None, mail_when_finished=False, hold=None,submit=True, prefix=None, job_name=None):
+               email=None,job_alias=None, mail_when_finished=False,
+               hold=None,submit=True, prefix=None, job_file_name=None, job_name=None):
     """
     Submit a job
 
@@ -141,6 +142,11 @@ def submit_job(command,  target_directory,  working_directory,
     if job_alias is None and job_name is None:
         job_name = 'J%s' % str(uuid.uuid4())
 
+    # If no file was specified, we generate a file using the supplied job name
+    if job_file_name is None:
+        job_alias = job_name
+
+
     if working_directory is None:
         working_directory = os.getcwd()
 
@@ -150,14 +156,19 @@ def submit_job(command,  target_directory,  working_directory,
         if scheduler=='slurm' and not sbatch_available:
             raise ValueError('sbatch is not available on the system')
 
-    jobfile,stderr, stdout, _job_name = create_job_file_paths(target_directory,job_alias,prefix=prefix,jobName=job_name)
-    if job_name is None:
-        job_name=_job_name
+    jobfile,stderr, stdout, _job_file_name = create_job_file_paths(target_directory,job_alias=job_alias,prefix=prefix,job_file_name=job_file_name)
+    if job_file_name is None:
+        job_file_name=_job_file_name
     else:
-        if job_name!=_job_name:
-            print(f'Job name changed from {job_name} to {_job_name}')
+        if job_file_name!=_job_file_name:
+            print(f'Job file name changed from {job_file_name} to {_job_file_name}')
 
-    job_data = generate_job_script(scheduler, jobfile,stderr, stdout,job_name, memory_gb, working_directory, time_h, threads_n, email, mail_when_finished, copy_env )
+    job_data = generate_job_script(scheduler=scheduler, jobfile=jobfile,
+    stderr=stderr, stdout=stdout,
+    job_name=job_name,
+    memory_gb=memory_gb, working_directory=working_directory,
+    time_h=time_h, threads_n=threads_n, email=email, mail_when_finished=mail_when_finished, copy_env= copy_env)
+
     qs = generate_submission_command( jobfile, hold, scheduler)
     write_cmd_to_submission_file(command, job_data, jobfile, scheduler)
 
@@ -274,9 +285,10 @@ if __name__ == '__main__':
 
     working_directory = args.w if args.w is not None else os.getcwd()
 
-    jid = submit_job(' '.join(args.c), job_alias=args.jp, target_directory=args.s,
+    jid = submit_job(' '.join(args.c), job_name=args.N, target_directory=args.s,
+                    job_file_name = args.jp,
                    working_directory=working_directory,
                    threads_n=args.t, memory_gb=args.m, time_h=args.time, scheduler=args.sched, copy_env=not args.nenv,
-                   email=args.email, mail_when_finished=args.mf, hold=(args.hold.split(',') if args.hold is not None else None) ,submit=args.y, prefix=args.N)
+                   email=args.email, mail_when_finished=args.mf, hold=(args.hold.split(',') if args.hold is not None else None) ,submit=args.y, prefix=None)
     if jid is not None:
         print(jid)

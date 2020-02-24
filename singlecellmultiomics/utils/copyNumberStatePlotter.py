@@ -63,12 +63,12 @@ class StatePlotter():
             isAllelic = chromosome.endswith('_A') or chromosome.endswith('_B')
             #Obtain how many bases this chromosome has
             chrom = chromosome.split('_')[0]
-            if chromosomeSizes is not None and chromosome in chromosomeSizes:
+            if chromosomeSizes is not None and chrom in chromosomeSizes:
                 chromosomeSize = chromosomeSizes[chrom]
             else:
 
                 chromosomeSize = row[ row['chromosome']==chromosome ]['endCoordinate'].max()
-
+                
 
             chromosomePixelWidth = chromosomeSize * self.pixelsPerBase
 
