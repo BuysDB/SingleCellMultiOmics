@@ -373,7 +373,7 @@ if __name__ == '__main__':
                     job_name = f'glue_{library}_{i}'
                     print(
                         'submission.py' +
-                        f' -y --silent --py36 -time 4 -t 1 -m 2 -N "glue_{library}" "{cmd}" -hold {",".join(submitted_jobs)}')
+                        f' -y --silent --py36 -time 4 -t 1 -m 2 -N "{job_name}" "{cmd}" -hold {",".join(submitted_jobs)}')
                     final_jobs.append(job_name)
 
             # Execute last command if applicable
