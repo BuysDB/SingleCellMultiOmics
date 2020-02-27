@@ -46,9 +46,8 @@ base_path = os.path.dirname(job_script)
 
 cluster_file_folder= base_path+'/cluster_jobs'
 
-
 # formatting qsub command
-job_id = submit_job(f'sh {job_script};', job_alias='snake', target_directory=cluster_file_folder,  working_directory=None,
+job_id = submit_job(f'sh {job_script};', prefix='snake', target_directory=cluster_file_folder,  working_directory='.',
                threads_n=n, memory_gb=mem, time_h=time, scheduler='slurm', copy_env=True,
                email=None, mail_when_finished=False, hold=None,submit=True)
 print(job_id)

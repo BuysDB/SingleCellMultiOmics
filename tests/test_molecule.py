@@ -331,6 +331,21 @@ class TestMolecule(unittest.TestCase):
     def test_molecule_pooling_nlaIIIoptim_umi_mismatch(self):
         self._pool_test(1,1)
 
+    def test_max_associated_fragments(self):
+
+        for i in range(1,3):
+            with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+                for molecule in singlecellmultiomics.molecule.MoleculeIterator(
+                    alignments=f,
+                    moleculeClass=singlecellmultiomics.molecule.Molecule,
+                    fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                    molecule_class_args={'max_associated_fragments':i},
+                    fragment_class_args={'umi_hamming_distance':1}
+
+                ):
+                    self.assertTrue(len(molecule)<= i , f'{i}, {len(molecule)}')
+
+
     def test_rt_reaction_counting_HAMMING_1(self):
         # This is a dictionary containing molecules and the amount of rt reactions for location chr1:164834865
 
