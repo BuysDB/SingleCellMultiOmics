@@ -169,6 +169,7 @@ class Molecule():
                  min_max_mapping_quality: typing.Optional[int] = None,
                  mapability_reader: typing.Optional[singlecellmultiomics.bamProcessing.MapabilityReader] = None,
                  allele_resolver: typing.Optional[singlecellmultiomics.alleleTools.AlleleResolver] = None,
+                 max_associated_fragments=None,
                  **kwargs
 
                  ):
@@ -187,6 +188,8 @@ class Molecule():
 
         cache_size (int): radius of molecule assignment cache
 
+        max_associated_fragments(int) : Maximum amount of fragments associated to molecule. If more fragments are added using add_fragment() they are not added anymore to the molecule
+
         """
 
         self.reference = reference
@@ -203,6 +206,7 @@ class Molecule():
         self.fragment_match = None
         self.min_max_mapping_quality = min_max_mapping_quality
         self.umi_counter = collections.Counter()  # Observations of umis
+        self.max_associated_fragments = max_associated_fragments
         if fragments is not None:
             if isinstance(fragments, list):
                 for frag in fragments:
@@ -1380,6 +1384,11 @@ class Molecule():
         # if we already had a fragment, this fragment is a duplicate:
         if len(self.fragments) > 1:
             fragment.set_duplicate(True)
+
+        # Do not process the fragment when the max_associated_fragments threshold is exceeded
+        if self.max_associated_fragments is not None and len(self.fragments)>=(self.max_associated_fragments):
+            return
+
         self.fragments.append(fragment)
 
         # Update span:
