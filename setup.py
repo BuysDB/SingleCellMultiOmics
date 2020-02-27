@@ -84,7 +84,7 @@ setup(
         'singlecellmultiomics/bamProcessing/structureTensor.py',
         'singlecellmultiomics/bamProcessing/variantStats.py',
         'singlecellmultiomics/bamProcessing/bamMatchGATKBQSRReport.py',
-        
+
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py',
         'singlecellmultiomics/libraryDetection/archivestats.py',
@@ -98,7 +98,8 @@ setup(
 
         #Worfklow
         'singlecellmultiomics/snakemake_workflows/scmo_workflow.py',
-        'singlecellmultiomics/snakemake_workflows/_general/sge_wrapper.py'
+        'singlecellmultiomics/snakemake_workflows/_general/sge_wrapper.py',
+        'singlecellmultiomics/snakemake_workflows/_general/slurm_wrapper.py'
 
         ],
 
