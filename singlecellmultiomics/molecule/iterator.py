@@ -135,7 +135,6 @@ class MoleculeIterator():
     def __init__(self, alignments, moleculeClass=Molecule,
                  fragmentClass=Fragment,
                  check_eject_every=10_000,  # bigger sizes are very speed benificial
-
                  molecule_class_args={},  # because the relative amount of molecules
                  # which can be ejected will be much higher
                  fragment_class_args={},
@@ -146,6 +145,7 @@ class MoleculeIterator():
                  every_fragment_as_molecule=False,
                  yield_secondary =  False,
                  yield_supplementary= False,
+                 max_buffer_size=None,  #Limit the amount of stored reads, when this value is exceeded, a MemoryError is thrown
                  iterator_class = pysamiterators.iterators.MatePairIterator,
                  **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
@@ -201,6 +201,7 @@ class MoleculeIterator():
         self.every_fragment_as_molecule = every_fragment_as_molecule
 
         self.iterator_class = iterator_class
+        self.max_buffer_size=max_buffer_size
 
 
         self._clear_cache()
@@ -307,6 +308,10 @@ class MoleculeIterator():
 
             self.waiting_fragments += 1
             self.check_ejection_iter += 1
+
+            if self.max_buffer_size is not None and self.waiting_fragments>self.max_buffer_size:
+                raise MemoryError(f'max_buffer_size exceeded with {self.waiting_fragments} waiting fragments')
+
             if self.check_eject_every is not None and self.check_ejection_iter > self.check_eject_every:
                 current_chrom, _, current_position = fragment.get_span()
                 if current_chrom is None:
