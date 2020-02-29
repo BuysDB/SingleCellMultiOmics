@@ -112,15 +112,6 @@ def read_should_be_counted(read, args, blacklist_dic = None):
     bool
     """
 
-    # Read is in blacklist
-    if blacklist_dic is not None:
-        if read.reference_name in blacklist_dic:
-            # iterate through tuples of startend to check
-            for startend in blacklist_dic[read.reference_name]:
-                # start is 0-based inclusive, end is 0-based exclusive
-                if (read.reference_start >= startend[0] & read.reference_start < startend[1]) | \
-                        (read.reference_end >= startend[0] & read.reference_end < startend[1])
-                    return False
 
     # Read is empty
     if read is None or read.is_qcfail:
@@ -140,6 +131,17 @@ def read_should_be_counted(read, args, blacklist_dic = None):
     if read.is_unmapped or (args.dedup and (
             read.has_tag("RR") or read.is_duplicate)):
         return False
+
+    # Read is in blacklist
+    if blacklist_dic is not None:
+        if read.reference_name in blacklist_dic:
+            # iterate through tuples of startend to check
+            for startend in blacklist_dic[read.reference_name]:
+                # start is 0-based inclusive, end is 0-based exclusive
+                start_bad = read.reference_start >= startend[0] and read.reference_start < startend[1]
+                end_bad = read.reference_end >= startend[0] and read.reference_end < startend[1]
+                if start_bad or end_bad:
+                    return False
 
     return True
 
