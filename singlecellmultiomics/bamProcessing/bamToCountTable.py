@@ -501,7 +501,8 @@ def create_count_table(args, return_df=False):
                                                     sampleTags,
                                                     more_args=[start,
                                                                end,
-                                                               bname])
+                                                               bname],
+                                                    blacklist_dic = blacklist_dic)
 
                             if args.head is not None and i > args.head:
                                 break
