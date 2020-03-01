@@ -85,8 +85,8 @@ rule mutect_scatter:
         gatk_path=config['gatk_path']
 
     resources:
-        mem_mb = lambda wildcards, attempt: attempt * 10000,
-        runtime = lambda wildcards, attempt: 30 + attempt * 24
+        mem_mb = lambda wildcards, attempt, input: attempt * 10000,
+        runtime = lambda wildcards, attempt, input: attempt * 24
 
     shell:
         "{params.gatk_path} Mutect2 -I {input.tumor} -I {input.normal} --normal-sample {normalSampleName} --output {output.vcf} --reference {params.reference} --intervals {wildcards.contig}  > {log.stdout} 2> {log.stderr}"
@@ -105,9 +105,9 @@ rule mutect_gather:
         stderr="log/mutect_gather/{tumorSampleName}_VS_{normalSampleName}.stderr" #.format(compid=compid, contig='{contig}')
 
     threads: 1
-    params:
-        runtime=lambda wildcards, attempt: 8 + attempt * 24,
-        mem_mb = 2000
+    resources:
+        runtime=lambda wildcards, attempt, input: ( attempt * 24),
+        mem_mb = 2000,
     message:
         'Merging contig VCF files'
 

@@ -16,7 +16,7 @@ def is_main_chromosome(chrom):
         return False
     return True
 
-def get_contig_list_from_fasta(fasta_path):
+def get_contig_list_from_fasta(fasta_path, with_length=False):
     """Obtain list of contigs froma  fasta file,
         all alternative contigs are pooled into the string MISC_ALT_CONTIGS_SCMO
 
@@ -26,15 +26,25 @@ def get_contig_list_from_fasta(fasta_path):
 
     contig_list = []
     has_alt = False
+    if with_length:
+        lens = []
     with FastaFile(fasta_path) as fa:
-        for reference in fa.references:
+        for reference, length in zip(fa.references, fa.lengths):
             if is_main_chromosome(reference):
                 contig_list.append(reference)
+                if with_length:
+                    lens.append(length)
             else:
                 has_alt = True
 
     if has_alt:
         contig_list.append('MISC_ALT_CONTIGS_SCMO')
+        if with_length:
+            lens.append(None)
+
+    if with_length:
+        return contig_list, lens
+
     return contig_list
 
 def phred_to_prob(phred):
