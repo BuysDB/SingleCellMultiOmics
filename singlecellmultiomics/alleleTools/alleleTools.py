@@ -216,13 +216,15 @@ class AlleleResolver:
                     if self.phased:  # variants are phased, assign a random allele
                         samples_assigned = set()
                         most_assigned_base = 0
+                        monomorphic=False
                         for sample, sampleData in rec.samples.items():
 
                             if self.select_samples is not None and sample not in self.select_samples:
                                 continue
                             for base in sampleData.alleles:
                                 if base is None:
-                                    unTrusted.append((rec.chrom, rec.pos))
+                                    # This site is monomorphic:
+                                    monomorphic=True
                                     continue
                                 if len(base) == 1:
                                     bases_to_alleles[base].add(sample)
@@ -237,7 +239,9 @@ class AlleleResolver:
                                     self.select_samples):
                                 # The site is not informative
                                 bad = True
-                        if len(bases_to_alleles) < 2:
+                        if monomorphic and len(bases_to_alleles)>0:
+                            bad=False
+                        elif len(bases_to_alleles) < 2:
                             bad = True
                             # The site is not informative
                     else:  # not phased
@@ -259,8 +263,7 @@ class AlleleResolver:
                                                          1] = bases_to_alleles
                         added += 1
             except Exception as e:
-                print(e)
-
+                raise
         # for t in unTrusted:
         #    if t in self.locationToAllele:
         #        del self.locationToAllele[t[0]][t[1]]
