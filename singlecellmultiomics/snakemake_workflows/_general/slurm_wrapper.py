@@ -24,12 +24,15 @@ except KeyError:
 n = threads
 
 try:
-    time = job_properties['cluster']['time'] # runtime is time in hours
+    time = int( job_properties['resources']['time'])
 except KeyError:
     try:
-        time = job_properties['params']['runtime'].replace('h','')
+        time = int(job_properties['cluster']['time']) # runtime is time in hours
     except KeyError:
-        time = '12'
+        try:
+            time = job_properties['params']['runtime'].replace('h','')
+        except KeyError:
+            time = '12'
 
 
 try:

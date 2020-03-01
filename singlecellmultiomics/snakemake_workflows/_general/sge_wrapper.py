@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from singlecellmultiomics.utils.submission import submit_job
 
 import os
 import sys
@@ -23,12 +24,15 @@ except KeyError:
 n = threads
 
 try:
-    time = job_properties['cluster']['time'] # runtime is time in hours
+    time = int( job_properties['resources']['time'])
 except KeyError:
     try:
-        time = job_properties['params']['runtime'].replace('h','') + ':00:00'
+        time = int(job_properties['cluster']['time']) # runtime is time in hours
     except KeyError:
-        time = '12:00:00'
+        try:
+            time = job_properties['params']['runtime'].replace('h','')
+        except KeyError:
+            time = '12'
 
 
 try:
@@ -43,32 +47,10 @@ except KeyError:
 # removing 'special' characters in log paths (default for snakemake)
 base_path = os.path.dirname(job_script)
 
-try:
-    os.makedirs(base_path+'/cluster_jobs')
-except Exception as e :
-    pass
-
-job_id = uuid.uuid4()
-std_out =  f'{base_path}/cluster_jobs/{job_id}.o'
-std_err = f'{base_path}/cluster_jobs/{job_id}.e' 
-
+cluster_file_folder= base_path+'/cluster_jobs'
 
 # formatting qsub command
-cmd = "qsub -V -pe threaded {n} -l h_vmem={mem}G -l h_rt={time} -o {std_out} -e {std_err} {job_script}"
-cmd = cmd.format(n=n, mem=mem, time=time, std_out=std_out, std_err=std_err, job_script=job_script)
-
-# subprocess job: qsub
-try:
-    res = subprocess.run(cmd, check=True, shell=True, stdout=subprocess.PIPE)
-except subprocess.CalledProcessError as e:
-    raise e
-
-# get qsub job ID
-res = res.stdout.decode()
-try:
-    m = re.search("Your job (\d+)", res)
-    jobid = m.group(1)
-    print(jobid)
-except Exception as e:
-    print(e)
-    raise
+job_id = submit_job(f'sh {job_script};', prefix='snake', target_directory=cluster_file_folder,  working_directory='.',
+               threads_n=n, memory_gb=mem, time_h=time, scheduler='sge', copy_env=True,
+               email=None, mail_when_finished=False, hold=None,submit=True)
+print(job_id)

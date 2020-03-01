@@ -1,0 +1,115 @@
+from glob import glob
+import collections
+import os
+from singlecellmultiomics.utils import get_contig_list_from_fasta
+from singlecellmultiomics.bamProcessing.bamFunctions import get_samples_from_bam
+"""
+This workflow:
+    - Detects contigs
+    - Runs mutect on every contig
+    - Merges results
+"""
+################## configuration ##################
+configfile: "config.json"
+# config
+
+# Obtain contigs:
+contigs = [contig for contig in get_contig_list_from_fasta(config['reference_file']) if contig!='MISC_ALT_CONTIGS_SCMO']
+# If you want to select on which chromosomes to run, change and  uncomment the next line:
+# contigs = ['chr1','chr2']
+
+# Obtain sample name from normal bam
+try:
+    normalSampleName = list( get_samples_from_bam(config['normal_bam']) )[0]
+except Exception as e:
+    print(e)
+    raise ValueError('Supply a NORMAL bam file which has read groups')
+
+# Obtain sample names from tumor bam(s)
+try:
+    tumor_bam_samples = [list( get_samples_from_bam(tumor_bam) )[0] for tumor_bam in config['tumor_bams'] ]
+    tumor_bam_mapping = dict(zip(tumor_bam_samples,config['tumor_bams']))
+except Exception as e:
+    print(e)
+    raise ValueError('Supply a TUMOR bam file which has read groups')
+
+print("Tumor samples:")
+for sample_name, bam_path in tumor_bam_mapping.items():
+    print(f'\t{sample_name} : {bam_path}')
+    pass
+
+print("Normal sample:")
+print(f'\t{normalSampleName} : {config["normal_bam"]}')
+
+
+def get_tumor_bam_file(wildcards):
+    global tumor_bam_mapping
+    return tumor_bam_mapping[wildcards.tumorSampleName]
+
+def get_normal_bam_file(wildcards):
+    global config
+    return config['normal_bam']
+
+def get_target_list():
+    global normalSampleName
+    targets = [f"{ts}_VS_{normalSampleName}/mutect.vcf.gz" for ts in tumor_bam_samples]
+    print('TARGETS:',targets)
+    return targets
+
+
+rule all:
+    input:
+        get_target_list()
+        #expand( "{tumorSampleName}_{normalSampleName}/mutect.vcf.gz" , tumorSampleName=tumor_bam_samples, normalSampleName=[normalSampleName])
+
+
+rule mutect_scatter:
+    input:
+        tumor=get_tumor_bam_file,
+        normal=get_normal_bam_file
+
+    output:
+        vcf = "{tumorSampleName}_VS_{normalSampleName}/TEMP/{contig}.vcf.gz",
+        vcfindex = "{tumorSampleName}_VS_{normalSampleName}/TEMP/{contig}.vcf.gz.tbi",
+        stats = "{tumorSampleName}_VS_{normalSampleName}/TEMP/{contig}.vcf.gz.stats"
+
+    log:
+        stdout="log/mutect_scatter/{tumorSampleName}_VS_{normalSampleName}_{contig}.stdout", #.format(compid=compid, contig='{contig}'),
+        stderr="log/mutect_scatter/{tumorSampleName}_VS_{normalSampleName}_{contig}.stderr" #.format(compid=compid, contig='{contig}')
+
+
+    threads: 1
+    params:
+        runtime="60h",
+        reference=config['reference_file'],
+        gatk_path=config['gatk_path']
+
+    resources:
+        mem_mb = lambda wildcards, attempt, input: attempt * 10000,
+        runtime = lambda wildcards, attempt, input: attempt * 24
+
+    shell:
+        "{params.gatk_path} Mutect2 -I {input.tumor} -I {input.normal} --normal-sample {normalSampleName} --output {output.vcf} --reference {params.reference} --intervals {wildcards.contig}  > {log.stdout} 2> {log.stderr}"
+
+
+rule mutect_gather:
+    input:
+        chr_vcfs =  expand(
+        "{{tumorSampleName}}_VS_{{normalSampleName}}/TEMP/{contig}.vcf.gz",
+        contig=contigs) #.format(compid=compid, contig='{contig}'), contig=contigs),
+
+    output:
+        vcf = "{tumorSampleName}_VS_{normalSampleName}/mutect.vcf.gz"
+    log:
+        stdout="log/mutect_gather/{tumorSampleName}_VS_{normalSampleName}.stdout", #.format(compid=compid, contig='{contig}'),
+        stderr="log/mutect_gather/{tumorSampleName}_VS_{normalSampleName}.stderr" #.format(compid=compid, contig='{contig}')
+
+    threads: 1
+    resources:
+        runtime=lambda wildcards, attempt, input: ( attempt * 24),
+        mem_mb = 2000,
+    message:
+        'Merging contig VCF files'
+
+    shell:
+        "bcftools concat -Oz -o {output.vcf} {input.chr_vcfs}; bcftools index {output.vcf}"
