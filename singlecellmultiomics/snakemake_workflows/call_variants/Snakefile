@@ -49,7 +49,7 @@ rule bcftools_call:
 
     output:
         vcf = "variant_calls/TEMP/{contig}_{start}_{end}.vcf.gz",
-        vcfindex = "variant_calls/TEMP/{contig}_{start}_{end}.vcf.gz.tbi"
+        vcfindex = "variant_calls/TEMP/{contig}_{start}_{end}.vcf.gz.csi"
 
     log:
         stdout="log/variant_calls/{contig}_{start}_{end}.stdout",
