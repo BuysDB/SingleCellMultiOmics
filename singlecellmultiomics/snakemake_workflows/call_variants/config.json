@@ -1,0 +1,4 @@
+{
+    "reference_file"  :  "/hpc/hub_oudenaarden/bdebarbanson/ref/GATK-Bundle/hg38/Homo_sapiens_assembly38.fasta",
+    "bam" : "all.bam"
+}
