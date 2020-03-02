@@ -65,7 +65,7 @@ def job_gen( induced_variants_path, germline_variants_path, germline_variants_sa
             if min_qual is not None and record.qual<min_qual:
                 continue
 
-            if len(record.alts[0])>1:
+            if len(record.alts[0])!=1 or len(record.ref)!=1:
                 continue
 
             k = (record.chrom, record.pos)
