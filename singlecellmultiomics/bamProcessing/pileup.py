@@ -3,7 +3,7 @@
 from pysam.libcalignmentfile import IteratorColumnRegion
 from collections import Counter
 
-def pileup_truncated(bam,contig, start, stop):
+def pileup_truncated(bam,contig, start, stop,**kwargs):
     """
     Obtain Pysam columns only at selected region
 
@@ -32,7 +32,7 @@ def has_variant_reads(pysam_alignment_file, chrom, pos, alt, min_reads=2, steppe
         alt(str): base to check
     """
 
-    obs=.Counter()
+    obs = Counter()
     for pile in pileup_truncated(pysam_alignment_file,chrom,pos,pos+1,stepper=stepper):
         if pos!=pile.reference_pos:
             continue
