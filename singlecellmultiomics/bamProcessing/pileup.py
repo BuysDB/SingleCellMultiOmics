@@ -1,5 +1,45 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from pysam.libcalignmentfile import IteratorColumnRegion
+from collections import Counter
+
+def pileup_truncated(bam,contig, start, stop):
+    """
+    Obtain Pysam columns only at selected region
+
+    contig(str) : contig to perform pileup
+    start(int) : coordinate of first colummn (zero based)
+    stop(int) : coordinate of last column (exclusive)
+    **kwargs : arguments to pass to pysam.AlignmentFile.IteratorColumn
+    """
+    has_coord, rtid, rstart, rstop = bam.parse_region(contig, start, stop )
+    yield from IteratorColumnRegion(bam,
+                                    tid=rtid,
+                                    start=rstart,
+                                    stop=rstop,truncate=True,**kwargs)
+
+def has_variant_reads(pysam_alignment_file, chrom, pos, alt, min_reads=2, stepper='nofilter'):
+    """
+    Check if the alignment file contains evidence for the supplied base
+
+    Args:
+        pysam_alignment_file(pysam.AlignmentFile) : file to check location
+
+        chrom(str): name of contig
+
+        pos(int) : position to check (zero based)
+
+        alt(str): base to check
+    """
+
+    obs=.Counter()
+    for pile in pileup_truncated(pysam_alignment_file,chrom,pos,pos+1,stepper=stepper):
+        if pos!=pile.reference_pos:
+            continue
+        for read in pile.pileups:
+            if not read.is_del and not read.is_refskip:
+                obs[read.alignment.query_sequence[read.query_position]]+=1
+    return obs[alt]>=min_reads
 
 def mate_pileup(alignments, contig, position,**kwargs):
     """

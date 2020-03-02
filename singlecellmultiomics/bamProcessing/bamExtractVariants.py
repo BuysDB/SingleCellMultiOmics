@@ -1,6 +1,6 @@
 import singlecellmultiomics
 from collections import Counter
-from singlecellmultiomics.bamProcessing import sorted_bam_file
+from singlecellmultiomics.bamProcessing import sorted_bam_file, has_variant_reads
 from singlecellmultiomics.molecule import NlaIIIMolecule,MoleculeIterator,train_consensus_model,get_consensus_training_data, Molecule
 from singlecellmultiomics.fragment import NLAIIIFragment, Fragment
 import pysam
@@ -37,7 +37,7 @@ class VariantWrapper:
 
 
 
-def job_gen( induced_variants_path, germline_variants_path, germline_variants_sample, alignments_path, block_size = 100, n=None, contig=None, completed=None,min_qual=None):
+def job_gen( induced_variants_path, germline_variants_path, germline_variants_sample, alignments_path, block_size = 100, n=None, contig=None, completed=None,min_qual=None,germline_bam_path=None):
     """
     Job generator
 
@@ -71,13 +71,13 @@ def job_gen( induced_variants_path, germline_variants_path, germline_variants_sa
 
             if len(vlist)>=block_size:
                 #f'./{extraction_folder}/variants_extracted_0_NLA_{i}.bam'
-                yield (vlist, alignments_path, None, 'NLA', germline_variants_path, germline_variants_sample)
+                yield (vlist, alignments_path, None, 'NLA', germline_variants_path, germline_variants_sample, germline_bam_path)
                 vlist = []
                 i+=1
                 if n is not None and i>=n:
                     break
         if len(vlist):
-            yield (vlist, alignments_path,  None, 'NLA', germline_variants_path, germline_variants_sample)
+            yield (vlist, alignments_path,  None, 'NLA', germline_variants_path, germline_variants_sample, germline_bam_path)
 
 
 
@@ -116,9 +116,10 @@ def filter_alt_calls(alt_phased, threshold):
     ]
 
 
+
 def recall_variants(args):
 
-    variants, alignment_file_path, target_path, mode, germline_variants_path, germline_variants_sample = args
+    variants, alignment_file_path, target_path, mode, germline_variants_path, germline_variants_sample, germline_bam_path = args
 
     window_radius = 600
     MAX_REF_READS = 1_000  # Maximum amount of reference molecules to process.
@@ -137,8 +138,21 @@ def recall_variants(args):
     ###
     locations_done=set()
     alignments = pysam.AlignmentFile(alignment_file_path,threads=4)
+    if germline_bam_path is not None:
+        germline_alignments =  pysam.AlignmentFile(germline_bam_path,threads=4)
 
     for variant in variants:
+
+        # Check if the variant is present in the germline bam file (if supplied)
+        if germline_bam_path is not None and has_variant_reads(
+                                                        germline_alignments,
+                                                        variant.chrom,
+                                                        variant.pos-1,
+                                                        variant.alts[0],
+                                                        min_reads=2,
+                                                        stepper='nofilter'):
+                continue
+
         #print(variant)
         overlap = False
         reference_start = max(0, variant.pos - window_radius)
@@ -256,6 +270,7 @@ if __name__ == '__main__':
     argparser.add_argument('-extract', help="vcf file with variants to extract", required=True)
     argparser.add_argument('-germline', help="vcf file with germline variants to potentially phase with", required=False)
     argparser.add_argument('-germline_sample', help="germline sample in supplied vcf file")
+    argparser.add_argument('-germline_bam', help="germline bam file (no variant reads are allowed in this file)")
 
     argparser.add_argument(
         '-o',
@@ -285,6 +300,7 @@ if __name__ == '__main__':
             job_gen( induced_variants_path=args.extract,
                     germline_variants_path=args.germline,
                     germline_variants_sample=args.germline_sample,
+                    germline_bam_path=args.germline_bam,
                     alignments_path=args.bamfile,
                     n=args.head,
                     block_size=args.jobsize,
