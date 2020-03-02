@@ -118,7 +118,7 @@ def read_should_be_counted(read, args):
         if read.get_tag('mp')=='unique':
             return True
         return False
-    
+
     if read is None or read.is_qcfail:
         return False
 
@@ -581,7 +581,7 @@ if __name__ == '__main__':
         help="minimum mapping quality")
 
     multimapping_args.add_argument(
-        '-filterMP',
+        '--filterMP',
         action= 'store_true',
         help="Filter reads which are not uniquely mappable")
 
