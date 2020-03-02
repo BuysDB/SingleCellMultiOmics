@@ -314,6 +314,13 @@ if __name__ == '__main__':
         for cell, calls in vc.items():
             variant_calls[cell].update(calls)
         print(i)
+        if i%25==0:
+            print('writing intermediate result')
+            df = pd.DataFrame(variant_calls).T.sort_index()
+            if args.o.endswith('.csv'):
+                df.to_csv(args.o)
+            else:
+                df.to_pickle(args.o)
 
     print('Finished collecting variant calls')
     # Write variants to output pickle file:
