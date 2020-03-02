@@ -30,6 +30,7 @@ class TestCountTable(unittest.TestCase):
                 contig=None,
                 splitFeatures=False,
                 feature_delimiter=',',
+                filterMP=False,
                  noNames=False) , return_df=True)
         # !samtools idxstats ./data/mini_nla_test.bam | head -n 1 | cut -f 3
         self.assertEqual(df.loc['chr1'].sum(),563)
@@ -58,6 +59,7 @@ class TestCountTable(unittest.TestCase):
                 doNotDivideFragments=True,
                 splitFeatures=False,
                 feature_delimiter=',',
+                filterMP=False,
                  noNames=False) , return_df=True)
         # !samtools idxstats ./data/mini_nla_test.bam | head -n 1 | cut -f 3
         self.assertEqual(df.sum().sum(),0)
@@ -86,6 +88,7 @@ class TestCountTable(unittest.TestCase):
                 contig=None,
                 splitFeatures=False,
                 feature_delimiter=',',
+                filterMP=False,
                  noNames=False) , return_df=True)
         # !samtools view ./singlecellmultiomics/data/mini_nla_test.bam | grep 'RC:i:1' | wc -l
         self.assertEqual(df.loc['chr1'].sum(),383)
@@ -112,6 +115,7 @@ class TestCountTable(unittest.TestCase):
                 divideMultimapping=False,
                 contig=None,
                 keepOverBounds=False,
+                filterMP=False,
                 doNotDivideFragments=True,
 
                 splitFeatures=False,
@@ -148,7 +152,7 @@ class TestCountTable(unittest.TestCase):
                 contig='chr1',
                 keepOverBounds=False,
                 doNotDivideFragments=True,
-
+                filterMP=False,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -185,6 +189,7 @@ class TestCountTable(unittest.TestCase):
                 doNotDivideFragments=True,
                 contig=None,
                 splitFeatures=False,
+                filterMP=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
         # !samtools view ./singlecellmultiomics/data/mini_nla_test.bam | grep 'RC:i:1' | wc -l
@@ -216,6 +221,7 @@ class TestCountTable(unittest.TestCase):
                 doNotDivideFragments=True,
                 splitFeatures=False,
                 feature_delimiter=',',
+                filterMP=False,
                  noNames=False) , return_df=True)
 
         self.assertEqual( df.sum(1).sum(), 765 )
