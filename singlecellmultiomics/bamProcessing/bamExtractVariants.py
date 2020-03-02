@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import singlecellmultiomics
 from collections import Counter
 from singlecellmultiomics.bamProcessing import sorted_bam_file, has_variant_reads
@@ -151,6 +154,7 @@ def recall_variants(args):
                                                         variant.alts[0],
                                                         min_reads=2,
                                                         stepper='nofilter'):
+                print(f'FOUND IN GERMLINE {variant}')
                 continue
 
         #print(variant)
