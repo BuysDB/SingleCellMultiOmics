@@ -18,7 +18,7 @@ def create_job_file_paths(target_directory,job_alias=None, prefix=None, job_file
         os.makedirs(target_directory)
 
     if prefix is None:
-        prefix = time.strftime("%d_%m_%Y_%H_%M_%S")
+        prefix = time.strftime("%d_%m_%Y_%H_%M_%S_") + str(uuid.uuid4())
 
     if job_file_name is None:
         job_file_name = '%s-%s' % (prefix, job_alias)
