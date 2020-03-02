@@ -112,6 +112,13 @@ def read_should_be_counted(read, args):
     """
 
 # Read is empty
+    if args.filterMP:
+        if not read.has_tag('mp'):
+            return False
+        if read.get_tag('mp')=='unique':
+            return True
+        return False
+    
     if read is None or read.is_qcfail:
         return False
 
@@ -572,6 +579,12 @@ if __name__ == '__main__':
         type=int,
         default=0,
         help="minimum mapping quality")
+
+    multimapping_args.add_argument(
+        '-filterMP',
+        action= 'store_true',
+        help="Filter reads which are not uniquely mappable")
+
     multimapping_args.add_argument(
         '--filterXA',
         action='store_true',
