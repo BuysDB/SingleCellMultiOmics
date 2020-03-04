@@ -57,7 +57,7 @@ if __name__ == '__main__':
     # cell -> (allele, chromosome,   bin) -> raw_count
     fragment_read_abundance = collections.defaultdict(collections.Counter)
 
-    with pysam.AlignmentFile(args.alignmentfile) as alignments:
+    with pysam.AlignmentFile(args.alignmentfile, threads=4) as alignments:
 
         min_mq = 30
         wrote = 0

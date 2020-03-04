@@ -317,7 +317,7 @@ if __name__ == '__main__':
             print(f'\t{Fore.GREEN}{str(stra)}{Style.RESET_ALL}')
         if len(selectedStrategies) == 0:
             print(
-                f'{Fore.RED}NONE! The library will not be demultiplexed!{Style.RESET_ALL}')
+                f'{Fore.RED}NONE! The library will not be demultiplexed! The used barcodes could not be detected automatically. Please supply the desired method using the -use flag or increase the -dsize parameter to use more reads for detecting the library type.{Style.RESET_ALL}')
 
         if not args.y:
             print(f"\n{Style.BRIGHT}--y not supplied, execute the command below to run demultiplexing on the cluster:{Style.RESET_ALL}")

@@ -113,7 +113,14 @@ def read_should_be_counted(read, args, blacklist_dic = None):
     """
 
 
-    # Read is empty
+# Read is empty
+    if args.filterMP:
+        if not read.has_tag('mp'):
+            return False
+        if read.get_tag('mp')=='unique':
+            return True
+        return False
+      
     if read is None or read.is_qcfail:
         return False
 
@@ -487,8 +494,8 @@ def create_count_table(args, return_df=False):
                     for row in bfile:
 
                         parts = row.strip().split()
-                        chromo, start, end, bname = parts[0], int(
-                            parts[1]), int(parts[2]), parts[3]
+                        chromo, start, end, bname = parts[0], int(float(
+                            parts[1])), int(float(parts[2])), parts[3]
                         if args.contig is not None and chromo != args.contig:
                             continue
                         for i, read in enumerate(f.fetch(chromo, start, end)):
@@ -606,6 +613,12 @@ if __name__ == '__main__':
         type=int,
         default=0,
         help="minimum mapping quality")
+
+    multimapping_args.add_argument(
+        '--filterMP',
+        action= 'store_true',
+        help="Filter reads which are not uniquely mappable")
+
     multimapping_args.add_argument(
         '--filterXA',
         action='store_true',

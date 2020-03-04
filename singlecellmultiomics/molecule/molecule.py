@@ -108,22 +108,22 @@ def molecule_to_random_primer_dict(
     # First add all reactions without a N in the sequence:
     for fragment in molecule:
 
-        hstart, hseq = fragment.get_random_primer_hash()
+        h_contig, hstart, hseq = fragment.get_random_primer_hash()
         if hseq is None:
             # This should really not happen with freshly demultiplexed data, it means we cannot extract the random primer sequence
             # which should be present as a tag (rP) in the record
-            rp[None, None].append(fragment)
+            rp[None, None, None].append(fragment)
         elif 'N' not in hseq:
-            rp[hstart, hseq].append(fragment)
+            rp[h_contig, hstart, hseq].append(fragment)
 
     # Try to match reactions with N with reactions without a N
     for fragment in molecule:
 
-        hstart, hseq = fragment.get_random_primer_hash()
+        h_contig, hstart, hseq = fragment.get_random_primer_hash()
         if hseq is not None and 'N' in hseq:
             # find nearest
-            for other_start, other_seq in rp:
-                if other_start != hstart:
+            for other_contig, other_start, other_seq in rp:
+                if other_contig!=h_contig or other_start != hstart:
                     continue
 
                 if hseq.count('N') > max_N_distance:
@@ -133,7 +133,7 @@ def molecule_to_random_primer_dict(
                     continue
 
                 if hamming_distance(hseq, other_seq) == 0:
-                    rp[other_start, other_seq].append(fragment)
+                    rp[other_contig, other_start, other_seq].append(fragment)
     return rp
 
 
@@ -169,6 +169,7 @@ class Molecule():
                  min_max_mapping_quality: typing.Optional[int] = None,
                  mapability_reader: typing.Optional[singlecellmultiomics.bamProcessing.MapabilityReader] = None,
                  allele_resolver: typing.Optional[singlecellmultiomics.alleleTools.AlleleResolver] = None,
+                 max_associated_fragments=None,
                  **kwargs
 
                  ):
@@ -187,6 +188,8 @@ class Molecule():
 
         cache_size (int): radius of molecule assignment cache
 
+        max_associated_fragments(int) : Maximum amount of fragments associated to molecule. If more fragments are added using add_fragment() they are not added anymore to the molecule
+
         """
 
         self.reference = reference
@@ -203,6 +206,7 @@ class Molecule():
         self.fragment_match = None
         self.min_max_mapping_quality = min_max_mapping_quality
         self.umi_counter = collections.Counter()  # Observations of umis
+        self.max_associated_fragments = max_associated_fragments
         if fragments is not None:
             if isinstance(fragments, list):
                 for frag in fragments:
@@ -1380,6 +1384,11 @@ class Molecule():
         # if we already had a fragment, this fragment is a duplicate:
         if len(self.fragments) > 1:
             fragment.set_duplicate(True)
+
+        # Do not process the fragment when the max_associated_fragments threshold is exceeded
+        if self.max_associated_fragments is not None and len(self.fragments)>=(self.max_associated_fragments):
+            return
+
         self.fragments.append(fragment)
 
         # Update span:
@@ -1405,7 +1414,23 @@ class Molecule():
         """
         if self.spanStart is None or self.spanEnd is None:
             return None
-        return abs(self.spanEnd - self.spanStart)
+
+        start = None
+        end = None
+        contig = None
+        for fragment in self:
+            if contig is None:
+                contig = fragment.span[0]
+            if contig == fragment.span[0]:
+                f_start, f_end = fragment.get_safe_span()
+                if start is None:
+                    start = f_start
+                    end = f_end
+                else:
+                    start = min(f_start, start)
+                    end = min(f_end, end)
+
+        return abs(end - start)
 
     def add_fragment(self, fragment, use_hash=True):
         """Associate a fragment with this Molecule
@@ -1480,7 +1505,7 @@ class Molecule():
 
         # Obtain the fragment sizes of all RT reactions:
         rt_sizes = []
-        for (rt_end, hexamer), fragments in rt_reactions.items():
+        for (rt_contig, rt_end, hexamer), fragments in rt_reactions.items():
 
             if rt_end is None:
                 continue
@@ -1817,20 +1842,11 @@ class Molecule():
         used = 0  # some alignments yielded valid calls
         ignored = 0
         for fragment in self:
-            R1 = fragment.get_R1()
-            R2 = fragment.get_R2()
-            try:
-                start, end = pysamiterators.iterators.getPairGenomicLocations(
-                    R1=R1, R1PrimerLength=fragment.R1_primer_length, R2PrimerLength=fragment.R2_primer_length,
-                    R2=R2,
-                    allow_unsafe=(R1 is None or fragment.unsafe_trimmed))
-            except ValueError as e:
-                ignored += 1
-                continue
-            used += 1
-            for read in [R1, R2]:
+            _ ,start, end = fragment.span
+            for read in fragment:
                 if read is None:
                     continue
+
                 for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(
                         read, with_seq=False):
 
@@ -1845,6 +1861,8 @@ class Molecule():
             raise ValueError('Could not extract any safe data from molecule')
 
         return base_obs
+
+
 
     def get_base_observation_dict(self, return_refbases=False, allow_N=False,allow_unsafe=False):
         '''
@@ -1874,27 +1892,18 @@ class Molecule():
         ref_bases = {}
         used = 0  # some alignments yielded valid calls
         ignored = 0
+        error=None
         for fragment in self:
-            R1 = fragment.get_R1()
-            R2 = fragment.get_R2()
-            try:
-                start, end = pysamiterators.iterators.getPairGenomicLocations(
-                    R1=R1,
-                    R2=R2,
-                    R1PrimerLength=0, #fragment.R1_primer_length,
-                    R2PrimerLength=0, #fragment.R2_primer_length,
-                    allow_unsafe=(R1 is None or allow_unsafe))
-            except ValueError as e:
-                ignored += 1
-                continue
+            _, start, end = fragment.span
+
             used += 1
-            for read in [R1, R2]:
+            for read in fragment:
                 if read is None:
                     continue
                 for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(
                         read, with_seq=True, reference=self.reference):
 
-                    if query_pos is None or ref_pos is None or ref_pos < start or ref_pos > end:
+                    if query_pos is None or ref_pos is None: #or ref_pos < start or ref_pos > end:
                         continue
                     query_base = read.seq[query_pos]
                     #query_qual = read.qual[query_pos]
@@ -1907,7 +1916,7 @@ class Molecule():
                                   ] = ref_base.upper()
 
         if used == 0 and ignored > 0:
-            raise ValueError('Could not extract any safe data from molecule')
+            raise ValueError(f'Could not extract any safe data from molecule {error}')
 
         self.saved_base_obs = (base_obs, ref_bases)
 
@@ -2063,18 +2072,8 @@ class Molecule():
         variant_calls = collections.defaultdict(collections.Counter)
         for fragment in self:
 
-            R1 = fragment.get_R1()
-            R2 = fragment.get_R2()
-            start, end = pysamiterators.iterators.getPairGenomicLocations(
-                R1=R1,
-                R2=R2,
-                R1PrimerLength=fragment.R1_primer_length,
-                R2PrimerLength=fragment.R2_primer_length,
 
-                allow_unsafe=(R1 is None))
-            if start is None or end is None:
-                continue
-
+            _, start, end = fragment.span
             for read in fragment:
                 if read is None:
                     continue

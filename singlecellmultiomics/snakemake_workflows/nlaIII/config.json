@@ -1,5 +1,6 @@
 {
     "reference_file"  :  "/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/SNP_MASKED.fa",
+    "reference_file_for_mapper" : "/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/SNP_MASKED",
     "counting_min_mq" : 30,
     "counting_bin_sizes": [250_000],
     "counting_sliding_window_increments":[250_000],

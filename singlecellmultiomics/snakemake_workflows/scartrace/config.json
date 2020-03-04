@@ -1,0 +1,8 @@
+{
+    "reference_file"  :  "/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/SNP_MASKED.fa",
+    "reference_file_for_mapper" : "/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/SNP_MASKED",
+    "SQ_filter": 0.98,
+    "alleles": "/hpc/hub_oudenaarden/group_references/variants/mgp.v5.merged.snps_all.dbSNP142.vcf.gz",
+    "allele_samples": "C57BL_6NJ,129S1_SvImJ",
+    "mapper":"bowtie2"
+}

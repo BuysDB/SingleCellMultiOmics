@@ -114,9 +114,12 @@ rule Trim:
 
 rule map:
     input:
-        ref=config['reference_file'],
         r1="processed/{library}/trimmed.R1.fastq.gz",
         r2="processed/{library}/trimmed.R2.fastq.gz"
+
+    params:
+        ref=config['reference_file_for_mapper']
+        
     output:
         bam = temp("processed/{library}/sorted.bam"),
         bam_index = temp("processed/{library}/sorted.bam.bai")
@@ -124,7 +127,7 @@ rule map:
     log:
         stdout="log/map/{library}.stdout",
         stderr="log/map/{library}.stderr"
-
+           
     threads: 8
     params: runtime="30h"
     resources:

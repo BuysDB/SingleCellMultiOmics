@@ -6,6 +6,8 @@ from shutil import which
 from singlecellmultiomics.utils import BlockZip
 import uuid
 import os
+from collections import defaultdict
+
 
 
 def verify_and_fix_bam(bam_path):
@@ -45,6 +47,71 @@ def verify_and_fix_bam(bam_path):
             if not alignments.check_index():
                 raise ValueError(
                     f'The file {bam_path} is not sorted or damaged in some way')
+
+
+def _get_samples_from_bam(handle):
+    """Get a list of samples present in the bam_file
+    private: please use get_samples_from_bam()
+
+    Args:
+        bam_file(pysam.AlignmentFile) : path to bam file or pysam object
+
+    Returns:
+        samples (set) : set containing all sample names
+
+    """
+    return set([entry['SM'] for entry in handle.header.as_dict()['RG']])
+
+def get_sample_to_read_group_dict(bam):
+    """ Obtain a dictionary containing {'sample name' : ['read groupA', 'read group B'], ...}
+        Args:
+            bam_file(pysam.AlignmentFile) or path to bam file or pysam object
+    """
+    if isinstance(bam, str):
+        with pysam.AlignmentFile(bam) as pysam_AlignmentFile_handle:
+            return _get_sample_to_read_group_dict(pysam_AlignmentFile_handle)
+    elif isinstance(bam, pysam.AlignmentFile):
+        return _get_sample_to_read_group_dict(bam)
+
+    else:
+        raise ValueError(
+            'Supply either a path to a bam file or pysam.AlignmentFile object')
+
+
+def _get_sample_to_read_group_dict(handle):
+    """ Obtain a dictionary containing {'sample name' : ['read groupA', 'read group B']}
+        Args:
+            bam_file(pysam.AlignmentFile) : path to bam file or pysam object
+    """
+
+    sample_to_read_group_dict = defaultdict(list)
+    # Traverse the read groups;
+    for entry in handle.header.as_dict()['RG']:
+        sample_to_read_group_dict[ entry['SM'] ].append(entry['ID'])
+    return sample_to_read_group_dict
+
+
+def get_samples_from_bam(bam):
+    """Get a list of samples present in the bam_file
+
+    Args:
+        bam_file(str) or pysam.AlignmentFile : path to bam file or pysam object
+
+    Returns:
+        samples (set) : set containing all sample names
+
+    """
+
+    if isinstance(bam, str):
+        with pysam.AlignmentFile(bam) as pysam_AlignmentFile_handle:
+            return _get_samples_from_bam(pysam_AlignmentFile_handle)
+    elif isinstance(bam, pysam.AlignmentFile):
+        return _get_samples_from_bam(bam)
+
+    else:
+        raise ValueError(
+            'Supply either a path to a bam file or pysam.AlignmentFile object')
+
 
 
 def get_reference_from_pysam_alignmentFile(
@@ -166,47 +233,45 @@ def sorted_bam_file(
     unsorted_path = None
     unsorted_alignments = None
     target_dir = None
-    try:
-        unsorted_path = f'{write_path}.unsorted'
 
-        # Create output folder if it does not exists
-        target_dir = os.path.dirname(unsorted_path)
-        if not os.path.exists(target_dir) and len(target_dir)>0 and target_dir!='.':
-            try:
-                os.makedirs(target_dir, exist_ok=True)
-            except Exception as e:
-                pass
-
-        if header is not None:
+    unsorted_path = f'{write_path}.unsorted'
+    # Create output folder if it does not exists
+    target_dir = os.path.dirname(unsorted_path)
+    if not os.path.exists(target_dir) and len(target_dir)>0 and target_dir!='.':
+        try:
+            os.makedirs(target_dir, exist_ok=True)
+        except Exception as e:
             pass
-        elif origin_bam is not None:
-            header = origin_bam.header.copy()
-        else:
-            raise ValueError("Supply a header or origin_bam object")
+
+    if header is not None:
+        pass
+    elif origin_bam is not None:
+        header = origin_bam.header.copy()
+    else:
+        raise ValueError("Supply a header or origin_bam object")
+
+
+    try: # Try to open the temp unsorted file:
         unsorted_alignments = pysam.AlignmentFile(
             unsorted_path, "wb", header=header)
-        yield unsorted_alignments
     except Exception:
+        # Raise when this fails
         raise
-    finally:
-        if unsorted_path is None:
-            raise ValueError(
-                'Unsorted path is undefined, please verify that the origin bam file is valid.')
-        else:
-            if unsorted_alignments is not None:
-                unsorted_alignments.close()
-            else:
-                raise ValueError(f'Error opening target file {unsorted_path}, into dir: {target_dir}')
 
-        if read_groups is not None:
-            add_readgroups_to_header(unsorted_path, read_groups)
+    # Yield a handle to the alignments,
+    # this handle will be released when the handle runs out of scope
+    yield unsorted_alignments
+    unsorted_alignments.close()
 
-        # Write, sort and index
-        sort_and_index(
-            unsorted_path,
-            write_path,
-            remove_unsorted=True,
-            local_temp_sort=local_temp_sort)
+    if read_groups is not None:
+        add_readgroups_to_header(unsorted_path, read_groups)
+
+    # Write, sort and index
+    sort_and_index(
+        unsorted_path,
+        write_path,
+        remove_unsorted=True,
+        local_temp_sort=local_temp_sort)
 
 
 def write_program_tag(input_header,
@@ -232,6 +297,7 @@ def write_program_tag(input_header,
         input_header['PG'] = []
 
     input_header['PG'].append({
+        'ID': program_name,
         'PN': program_name,
         'CL': command_line,
         'VN': version,

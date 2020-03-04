@@ -1,0 +1,6 @@
+{
+    "reference_file"  :  "reference.fasta",
+    "tumor_bams" : ["tumor.bam","tumor2.bam"],
+    "normal_bam" : "normal.bam",
+    "gatk_path" : "gatk"
+}

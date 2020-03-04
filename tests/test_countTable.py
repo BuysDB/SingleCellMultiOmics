@@ -29,6 +29,7 @@ class TestCountTable(unittest.TestCase):
                 doNotDivideFragments=True,
                 contig=None,
                 blacklist=None,
+                filterMP=False,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -59,6 +60,7 @@ class TestCountTable(unittest.TestCase):
                 doNotDivideFragments=True,
                 splitFeatures=False,
                 blacklist=None,
+                filterMP=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
         # !samtools idxstats ./data/mini_nla_test.bam | head -n 1 | cut -f 3
@@ -87,6 +89,7 @@ class TestCountTable(unittest.TestCase):
                 doNotDivideFragments=True,
                 contig=None,
                 blacklist=None,
+                filterMP=False,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -117,6 +120,7 @@ class TestCountTable(unittest.TestCase):
                 keepOverBounds=False,
                 doNotDivideFragments=True,
                 blacklist=None,
+                filterMP=False,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -152,6 +156,7 @@ class TestCountTable(unittest.TestCase):
                 keepOverBounds=False,
                 doNotDivideFragments=True,
                 blacklist=None,
+                filterMP=False,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -188,6 +193,7 @@ class TestCountTable(unittest.TestCase):
                 doNotDivideFragments=True,
                 contig=None,
                 blacklist=None,
+                filterMP=False,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -217,6 +223,7 @@ class TestCountTable(unittest.TestCase):
                 divideMultimapping=False,
                 contig=None,
                 blacklist=None,
+                filterMP=False,
                 keepOverBounds=False,
                 doNotDivideFragments=True,
                 splitFeatures=False,

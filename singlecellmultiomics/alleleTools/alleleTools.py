@@ -25,7 +25,11 @@ class AlleleResolver:
                  lazyLoad=False,
                  select_samples=None,
                  use_cache=False,
-                 ignore_conversions=None
+                 ignore_conversions=None,
+                 verbose=False,
+                 region_start=None,
+                 region_end=None
+
 
                  # When this flag is true a cache file is generated containing
                  # usable SNPs for every chromosome in gzipped format
@@ -41,6 +45,8 @@ class AlleleResolver:
 
             uglyMode (bool) : the vcf file is invalid (not indexed) and has to be loaded to memory
 
+            verbose (bool) : Print debug information
+
             lazyLoad (bool) : the vcf file is valid and indexed and does not need to be loaded to memory
 
             select_samples (list) : Use only these samples from the VCF file
@@ -49,13 +55,20 @@ class AlleleResolver:
 
             ignore_conversions(set) : conversions to ignore {(ref, alt), ..} , for example set( ('C','T'), ('G','A') )
 
+            region_start(int) : only load variants within this range (region_start-region_end) when reading a cached variant file
+
+            region_end(int) : only load variants within this range (region_start-region_end) when reading a cached variant file
+
+
         """
         self.ignore_conversions = ignore_conversions
         self.phased = phased
-        self.verbose = False
+        self.verbose = verbose
         self.locationToAllele = collections.defaultdict(lambda: collections.defaultdict(
             lambda: collections.defaultdict(set)))  # chrom -> pos-> base -> sample(s)
         self.select_samples = select_samples
+        self.region_start = region_start
+        self.region_end = region_end
 
         self.lazyLoad = lazyLoad
 
@@ -143,8 +156,13 @@ class AlleleResolver:
         with gzip.open(path, 'rt') as f:
             for line in f:
                 position, base, samples = line.strip().split('\t', 3)
-                self.locationToAllele[chrom][int(
-                    position)][base] = set(samples.split(','))
+                position = int(position)
+                if self.region_start is not None and position<self.region_start:
+                    continue
+                if self.region_end is not None and position>self.region_end:
+                    break
+
+                self.locationToAllele[chrom][position][base] = set(samples.split(','))
 
     def fetchChromosome(self, vcffile, chrom, clear=False):
         if clear:
@@ -189,7 +207,7 @@ class AlleleResolver:
             print(f'Reading variants for {chrom} ', end='')
         with pysam.VariantFile(vcffile) as v:
             try:
-                for rec in v.fetch(chrom):
+                for rec in v.fetch(chrom, start=self.region_start, stop=self.region_end):
                     used = False
                     bad = False
                     bases_to_alleles = collections.defaultdict(
@@ -198,13 +216,15 @@ class AlleleResolver:
                     if self.phased:  # variants are phased, assign a random allele
                         samples_assigned = set()
                         most_assigned_base = 0
+                        monomorphic=False
                         for sample, sampleData in rec.samples.items():
 
                             if self.select_samples is not None and sample not in self.select_samples:
                                 continue
                             for base in sampleData.alleles:
                                 if base is None:
-                                    unTrusted.append((rec.chrom, rec.pos))
+                                    # This site is monomorphic:
+                                    monomorphic=True
                                     continue
                                 if len(base) == 1:
                                     bases_to_alleles[base].add(sample)
@@ -219,7 +239,9 @@ class AlleleResolver:
                                     self.select_samples):
                                 # The site is not informative
                                 bad = True
-                        if len(bases_to_alleles) < 2:
+                        if monomorphic and len(bases_to_alleles)>0:
+                            bad=False
+                        elif len(bases_to_alleles) < 2:
                             bad = True
                             # The site is not informative
                     else:  # not phased
@@ -241,8 +263,7 @@ class AlleleResolver:
                                                          1] = bases_to_alleles
                         added += 1
             except Exception as e:
-                print(e)
-
+                raise
         # for t in unTrusted:
         #    if t in self.locationToAllele:
         #        del self.locationToAllele[t[0]][t[1]]

@@ -1,0 +1,248 @@
+from singlecellmultiomics.libraryDetection.sequencingLibraryListing import SequencingLibraryLister
+from glob import glob
+import collections
+from singlecellmultiomics.utils import get_contig_list_from_fasta
+
+"""
+CelSeq2 pipeline based on the version of Marijn van Loenhout (2018)
+
+Dependencies:
+# STAR
+# samtools
+# umi-tools
+# cutadapt (trimgalore/atropos)
+# subread
+# colorama
+# SingleCellMultiOmics package
+
+This workflow:
+    Starts off from a folder containing all fastq files
+    - Detects libraries
+    - Demultiplexes per library, automatically detecting the right barcodes
+    - Trims using cutadapt
+    - Maps using STAR, sorts and indexes the reads per library
+    - uses featureCounting
+    - Tags and demultiplexes
+    - Creates library statistics plots for quality control
+    - Creates count tables for deduplicated and non-deduplicated counts:
+       -> Count table containing rows with gene information and columns with cell information 
+"""
+################## configuration ##################
+configfile: "config.json"
+
+# This code detects which libraries are present in the current folder:
+l = SequencingLibraryLister()
+LIBRARIES = l.detect(glob('*.fastq.gz'), merge='_')
+# Flatten to library:[fastqfile, fastqfile, ...]
+fastq_per_lib = collections.defaultdict(list)
+for lib,lane_dict in LIBRARIES.items():
+    for lane,read_dict in lane_dict.items():
+        fastq_per_lib[lib] += read_dict['R1']
+        fastq_per_lib[lib] += read_dict['R2']
+libraries =  list( fastq_per_lib.keys() )
+
+################## configuration end ##################
+
+def get_fastq_file_list(wildcards):
+    # Obtain a list of fastq files associated to wildcards.library
+    global libraries
+    return sorted( fastq_per_lib[wildcards.library] )
+
+def get_target_demux_list():
+    global libraries
+    targets = []
+    for lib in libraries:
+        targets.append('processed/' + lib + "/demultiplexedR1.fastq.gz" )
+        targets.append('processed/' + lib + "/demultiplexedR2.fastq.gz" )
+    return targets
+
+def get_target_tagged_bam_list():
+    return [f"processed/{library}/tagged.bam" for library in libraries]
+
+rule all:
+    input:
+        # get_target_demux_list() use this for demux only
+        get_target_tagged_bam_list(),
+        expand("processed/{library}/count_table_not_deduplicated.csv",
+            library=libraries),
+        expand("processed/{library}/count_table_deduplicated.csv",
+            library=libraries),
+
+        expand("processed/{library}/plots/ReadCount.png", library=libraries)
+
+
+#### 1. Demultiplexing 
+rule SCMO_demux:
+    input:
+        fastqfiles = get_fastq_file_list
+    output:
+        temp("processed/{library}/demultiplexedR1.fastq.gz"),
+        temp("processed/{library}/demultiplexedR2.fastq.gz"),
+        temp("processed/{library}/rejectsR1.fastq.gz"),
+        temp("processed/{library}/rejectsR2.fastq.gz")
+    log:
+        stdout="log/demux/{library}.stdout",
+        stderr="log/demux/{library}.stderr"
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 4000
+    
+    shell:
+        "demux.py -merge _ {input.fastqfiles} -o processed --y -use CS2C8U6 > {log.stdout} 2> {log.stderr}"
+
+#### 2. Trimming
+rule Trim:
+    input:
+        r1="processed/{library}/demultiplexedR1.fastq.gz",
+        r2="processed/{library}/demultiplexedR2.fastq.gz" 
+    output:
+        r1=temp("processed/{library}/trimmed.R1.fastq.gz"),
+        r2=temp("processed/{library}/trimmed.R2.fastq.gz")
+    log:
+        stdout="log/trim/{library}.stdout",
+        stderr="log/trim/{library}.stderr"
+    params: 
+        runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 4000
+
+    shell:
+        'cutadapt -o {output.r1} -p {output.r2} \
+        {input.r1} {input.r2} \
+        -m 3 -a "IlluminaSmallAdapterConcatBait=GGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTT" \
+        -a "IlluminaIndexAdapter=GGAATTCTCGGGTGCCAAGGAACTCCAGTCACN{{6}}ATCTCGTATGCCGTCTTCTGCTTG" \
+        -A "IlluminaPairedEndPCRPrimer2.0=AGATCGGAAGAGCGN{{6}}CAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" \
+        -A "universalPrimer=GATCGTCGGACTGTAGAACTCTGAACGTGTAGATCTCGGTGGTCGCCGTATCATT;min_overlap=5" \
+        -a  "IlluminaGEX=TTTTTAATGATACGGCGACCACCGAGATCTACACGTTCAGAGTTCTACAGTCCGACGATC;min_overlap=5" \
+        -a "IlluminaMultiplexingPCRPrimer=GGAACTCCAGTCACN{{6}}TCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" \
+        -A "Aseq=TGGCACCCGAGAATTCCA" -a "Aseq=TGGCACCCGAGAATTCCA"  \
+        -a "illuminaSmallRNAAdapter=TCGTATGCCGTCTTCTGCTTGT" > {log.stdout} 2> {log.stderr}'
+
+#### 3. Mapping with STAR 
+rule map:
+    input:
+        r2="processed/{library}/trimmed.R2.fastq.gz"
+    params:
+        ref=config['STAR_index'],
+        output_dir = "processed/{library}/"
+        
+    output:
+        bam = temp("processed/{library}/Aligned.sortedByCoord.out.bam"),
+        SJtemp = temp("processed/{library}/SJ.out.tab")
+    log:
+        stdout="log/map/{library}.stdout",
+        stderr="log/map/{library}.stderr"
+    threads: 8
+    params: 
+        runtime="30h",
+        output_dir = "processed/{library}/"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 8000
+        
+    shell:
+      "STAR --runThreadN 8 --outSAMtype BAM SortedByCoordinate --outFilterMultimapNmax 20 --outMultimapperOrder Random --outSAMattributes All --outSAMmultNmax 1 --readFilesCommand zcat  --readFilesIn {input.r2} \
+      --genomeDir {params.ref} --outFileNamePrefix {params.output_dir} > {log.stdout} 2> {log.stderr}"
+
+#### 4. Feature counting
+rule featureCounting:
+  input:
+        bam = "processed/{library}/Aligned.sortedByCoord.out.bam"
+  output:
+        bam = temp("processed/{library}/Aligned.sortedByCoord.out.bam.featureCounts.bam"),
+        log = temp("processed/{library}/fCounts.txt")
+  params:
+    GTF = config['GTF']
+  log:
+    stdout="log/featureCounts/{library}.stdout",
+    stderr="log/featureCounts/{library}.stderr"
+  threads: 4
+  params: runtime="30h"
+  resources:
+      mem_mb=lambda wildcards, attempt: attempt * 8000
+  
+  shell:
+    'featureCounts -s 1 -T 1 -R BAM -a {params.GTF} -o processed/{wildcards.library}/fCounts.txt {input.bam} > {log.stdout} 2> {log.stderr}'
+
+
+#### 5. Tagging and deduplication
+rule SCMO_tagmultiome_CS2:
+    input:
+      bam = "processed/{library}/Aligned.sortedByCoord.out.bam.featureCounts.bam"
+    output:
+      bamSorted = temp("processed/{library}/sorted.bam"),
+      bamSorted_index = temp("processed/{library}/sorted.bam.bai"),
+      bam = "processed/{library}/tagged.bam",
+      bam_index = "processed/{library}/tagged.bam.bai"
+    log:
+        stdout="log/tagging/{library}.stdout",
+        stderr="log/tagging/{library}.stderr"
+    threads: 1
+    params:
+        runtime="20h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 10000
+
+    shell:
+        "samtools sort -T processed/{wildcards.library}/temp_sort -@ {threads} {input.bam} > processed/{wildcards.library}/sorted.unfinished.bam; \
+        mv processed/{wildcards.library}/sorted.unfinished.bam {output.bamSorted}; samtools index {output.bamSorted}; \
+        bamtagmultiome.py -method cs_feature_counts -umi_hamming_distance 0 {output.bamSorted} -o {output.bam} > {log.stdout} 2> {log.stderr}"
+
+#### 6. Library statistics
+rule SCMO_library_stats:
+    input:
+        bam = "processed/{library}/tagged.bam",
+        r1="processed/{library}/demultiplexedR1.fastq.gz", # Its need these to count how many raw reads were present in the lib.
+        r2="processed/{library}/demultiplexedR2.fastq.gz",
+        r1_rejects="processed/{library}/rejectsR1.fastq.gz",
+        r2_rejects="processed/{library}/rejectsR2.fastq.gz"
+    output:
+        "processed/{library}/plots/ReadCount.png"
+
+    log:
+        stdout="log/library_stats/{library}.stdout",
+        stderr="log/library_stats/{library}.stderr"
+
+    threads: 1
+    params: runtime="30h"
+
+    shell:
+        "libraryStatistics.py processed/{wildcards.library} -tagged_bam /tagged.bam > {log.stdout} 2> {log.stderr}"
+
+#### 7. Make dedup and no dedup count tables
+#### a. Make count tables of non-deduplicated bam files
+rule SCMO_count_table_nondedup:
+    input:
+        bam = "processed/{library}/tagged.bam"
+    output:
+        countTable = "processed/{library}/count_table_not_deduplicated.csv"
+    threads: 1
+    params:
+        runtime="10h"
+    log:
+        stdout="log/count_table/{library}_not_deduplicated.stdout",
+        stderr="log/count_table/{library}_not_deduplicated.stderr"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 8000
+
+    shell:
+        "bamToCountTable.py --noNames {input.bam} -o {output.countTable} -joinedFeatureTags XT,chrom -sampleTags SM > {log.stdout} 2> {log.stderr}"
+
+#### b. Make count tables of deduplicated bam files
+# This works exactly the same as step a
+rule SCMO_count_table_filtered:
+    input:
+        bam = "processed/{library}/tagged.bam"
+    output:
+        countTable = "processed/{library}/count_table_deduplicated.csv"
+    threads: 1
+    params:
+        runtime="10h"
+    log:
+        stdout="log/count_table/{library}_deduplicated.stdout",
+        stderr="log/count_table/{library}_deduplicated.stderr"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 8000
+
+    shell:
+        "bamToCountTable.py --dedup --noNames {input.bam} -o {output.countTable} -joinedFeatureTags XT,chrom -sampleTags SM > {log.stdout} 2> {log.stderr}"
+        

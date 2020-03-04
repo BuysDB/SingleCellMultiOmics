@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import sys
 import os
 import re
@@ -7,6 +9,185 @@ import glob
 import time
 import datetime
 import subprocess
+import distutils.spawn
+import uuid
+
+def create_job_file_paths(target_directory,job_alias=None, prefix=None, job_file_name=None):
+
+    if not os.path.exists(target_directory):
+        os.makedirs(target_directory)
+
+    if prefix is None:
+        prefix = time.strftime("%d_%m_%Y_%H_%M_%S_") + str(uuid.uuid4())
+
+    if job_file_name is None:
+        job_file_name = '%s-%s' % (prefix, job_alias)
+
+    jobfile = target_directory + '/%s.sh' % job_file_name
+    stderr = target_directory + '/%s.stderr' % job_file_name
+    stdout = target_directory + '/%s.stdout' % job_file_name
+
+    if prefix is None:
+        while os.path.exists(jobfile):
+            job_file_name = '%s-%s' % (time.strftime("%d_%m_%Y_%H_%M_%S"), job_alias)
+            jobfile = target_directory + '/%s.sh' % job_file_name
+            stderr = target_directory + '/%s.stderr' % job_file_name
+            stdout = target_directory + '/%s.stdout' % job_file_name
+            time.sleep(1)
+    else:
+        if os.path.exists(jobfile):
+            print(
+                "Job %s already exists. Files might become corrupted if previous job is still running" %
+                jobfile)
+
+    return jobfile,stderr, stdout, job_file_name
+
+
+def generate_job_script(scheduler, jobfile,stderr, stdout, job_name, memory_gb, working_directory, time_h, threads_n, email, mail_when_finished=False, copy_env=True ):
+    if scheduler=='local':
+        return [f'cd {working_directory}']
+    if scheduler=='slurm':
+        jobData = [
+            '#!/bin/sh',
+            '#SBATCH -J %s' % job_name, # Sets job name
+            '#SBATCH -n %s' % threads_n,
+            '#SBATCH --time %s:00:00' % str(time_h).zfill(2),
+            '#SBATCH --mem %sG' % memory_gb,
+            '#SBATCH --chdir %s' % (working_directory),
+            '#SBATCH -o %s' % stdout,
+            '#SBATCH -e %s' % stderr
+        ]
+
+
+        if email is not None:
+            if mail_when_finished:
+                raise NotImplementedError('email when finished is not implemented for slurm')
+
+            jobData.append('#SBATCH --mail-type=FAIL')
+            jobData.append('#SBATCH --mail-user=%s' % email)
+    elif scheduler=='sge':
+        jobData = [
+            '#!/bin/sh',
+            '#$ -S /bin/bash',
+            '#$ -N %s' % job_name,
+            '#$ -l h_rt=%s:00:00' % time_h,
+            '#$ -l h_vmem=%sG' % memory_gb,
+            # '#$ -l hostname=\'!n00[18]*\'',
+            '#$ -wd %s' % (working_directory),
+            '#$ -o %s' % stdout,
+            '#$ -e %s' % stderr,
+            '#$ -q all.q'
+        ]
+
+        if email is not None:
+            jobData.append('#$ -M %s' % email)
+            jobData.append('#$ -m %sas' % ('e' if mail_when_finished else ''))
+
+        if copy_env:
+            jobData.append('#$ -V')
+
+        if threads_n > 1:
+            jobData.append('#$ -pe threaded %s' % threads_n)
+
+    # Make sure we land in the right directory
+    if working_directory is not None:
+        jobData.append(f'cd {working_directory}')
+    return jobData
+
+def write_cmd_to_submission_file(cmd, job_data, jobfile, scheduler='sge' ):
+    if scheduler in ('slurm','sge','local'):
+        job_data.append('%s' % cmd)
+    else:
+        raise NotImplementedError()
+
+    with open(jobfile, 'w') as f:
+        f.write('\n'.join(job_data) + '\n')
+
+def generate_submission_command(jobfile, hold, scheduler='sge'):
+
+    if scheduler=='slurm':
+        if hold is not None and len(hold)>0 and hold[0]!='none':
+
+            js = 'afterany:' + ':'.join( [f'{h.strip()}' for h in hold] )
+            qs = f'sbatch --dependency={js} {jobfile}'
+            print(qs)
+        else:
+            qs = 'sbatch %s' % jobfile
+    else:
+        qs = 'qsub %s %s' % ((('-hold_jid %s' % ','.join(hold))
+                              if (hold is not None and hold[0] != 'none') else ''), jobfile)
+    return qs
+
+
+def submit_job(command,  target_directory,  working_directory,
+               threads_n=1, memory_gb=8, time_h=8, scheduler='sge', copy_env=True,
+               email=None,job_alias=None, mail_when_finished=False,
+               hold=None,submit=True, prefix=None, job_file_name=None, job_name=None):
+    """
+    Submit a job
+
+    Args:
+        threads(int) : amount of requested threads
+        memory_gb(int) : amount of requested memory
+        scheduler(str): sge/slurm/local
+        hold(list): list of job depedencies
+        submit(bool) : perform the actual submission, when set to False only the submission script is written
+    Returns:
+        job_id(str) : id of sumbitted job
+    """
+
+    qsub_available = (distutils.spawn.find_executable("qsub") is not None)
+    sbatch_available = (distutils.spawn.find_executable("sbatch") is not None)
+
+    if job_alias is None and job_name is None:
+        job_name = 'J%s' % str(uuid.uuid4())
+
+    # If no file was specified, we generate a file using the supplied job name
+    if job_file_name is None:
+        job_alias = job_name
+
+
+    if working_directory is None:
+        working_directory = os.getcwd()
+
+    if submit:
+        if scheduler=='sge' and not qsub_available:
+            raise ValueError('qsub is not available on the system')
+        if scheduler=='slurm' and not sbatch_available:
+            raise ValueError('sbatch is not available on the system')
+
+    jobfile,stderr, stdout, _job_file_name = create_job_file_paths(target_directory,job_alias=job_alias,prefix=prefix,job_file_name=job_file_name)
+    if job_file_name is None:
+        job_file_name=_job_file_name
+    else:
+        if job_file_name!=_job_file_name:
+            print(f'Job file name changed from {job_file_name} to {_job_file_name}')
+
+    job_data = generate_job_script(scheduler=scheduler, jobfile=jobfile,
+    stderr=stderr, stdout=stdout,
+    job_name=job_name,
+    memory_gb=memory_gb, working_directory=working_directory,
+    time_h=time_h, threads_n=threads_n, email=email, mail_when_finished=mail_when_finished, copy_env= copy_env)
+
+    qs = generate_submission_command( jobfile, hold, scheduler)
+    write_cmd_to_submission_file(command, job_data, jobfile, scheduler)
+
+    if submit:
+        if scheduler=='slurm':
+            job_id = os.popen(qs).read().replace('Submitted batch job ','').strip()
+            return job_id
+        elif scheduler=='sge':
+            rd  = os.popen(qs).read()
+            job_id = rd.split(' ')[2]
+            return job_id.strip()
+        elif scheduler=='local':
+            # Run the job now:
+            os.system(f'bash {jobfile} 2>{stderr} >{stdout}')
+
+    else:
+        print('# use the command below to submit your job:')
+        print(qs)
+
 
 ## ##### Dependency handling  ##### ##
 if __name__ == '__main__':
@@ -14,7 +195,7 @@ if __name__ == '__main__':
     username = os.getenv('USER')
     defaultEmail = os.getenv('EMAIL')
 
-    import distutils.spawn
+
     qsub_available = (distutils.spawn.find_executable("qsub") is not None)
 
     PY36ENV = os.getenv('PY36ENV')
@@ -53,15 +234,18 @@ if __name__ == '__main__':
         help="Runtime in hours")
     argparser.add_argument('-m', type=int, default=4, help="Memory in gigs")
     argparser.add_argument('-y', action="store_true", help="Submit jobs")
+
     argparser.add_argument(
-        '-i',
-        action="store_true",
-        help="Show info on submitted and running jobs")
+        '-sched',
+        default='sge',
+        help="scheduler: sge, slurm, local")
+
+
     argparser.add_argument(
         '-e',
         type=str,
-        help="How to execute the job; qsub, local",
-        default="qsub")
+        help="How to execute the job; submit, local",
+        default="submit")
     argparser.add_argument(
         '-hold',
         type=str,
@@ -99,101 +283,12 @@ if __name__ == '__main__':
     if args.email == 'none':
         args.email = None
 
-    if args.i:
-        for job in glob.glob("%s/cluster/*.sh" % args.s):
-            jobName = os.path.basename(job).replace('.sh', '')
-            print(jobName)
-            t = datetime.datetime.strptime(
-                jobName.split('-')[0], "%d_%m_%Y_%H_%M_%S")
+    working_directory = args.w if args.w is not None else os.getcwd()
 
-            print(
-                '%s executed %s ago' %
-                (jobName.split(
-                    '-',
-                    1)[1],
-                    datetime.datetime.now() -
-                    t))
-            if os.path.exists('%s.stderr' % job.replace('.sh', '')):
-                print('Running or finished')
-            else:
-                print('Crashed or queued')
-        exit()
-    cmd = ' '.join(args.c)
-    print('Command to execute: %s' % cmd)
-
-    if not os.path.exists(args.s):
-        os.makedirs(args.s)
-    if args.jp is None:
-        jobName = '%s-%s' % (time.strftime("%d_%m_%Y_%H_%M_%S"), args.N)
-    else:
-        jobName = args.jp
-    jobfile = args.s + '/%s.sh' % jobName
-    stderr = args.s + '/%s.stderr' % jobName
-    stdout = args.s + '/%s.stdout' % jobName
-    if args.jp is None:
-        while os.path.exists(jobfile):
-            jobName = '%s-%s' % (time.strftime("%d_%m_%Y_%H_%M_%S"), args.N)
-            jobfile = args.s + '/%s.sh' % jobName
-            stderr = args.s + '/%s.stderr' % jobName
-            stdout = args.s + '/%s.stdout' % jobName
-            time.sleep(1)
-    else:
-        if os.path.exists(jobfile):
-            print(
-                "Job %s already exists. Files might become corrupted if previous job is still running" %
-                jobfile)
-    workingDirectory = args.w if args.w is not None else os.getcwd()
-
-    # '#$ -r yes', # This allows jobs to be rescheduled
-    jobData = [
-        '#!/bin/sh',
-        '#$ -S /bin/bash',
-        '#$ -N %s' % args.N,
-        '#$ -l h_rt=%s:00:00' % args.time,
-        '#$ -l h_vmem=%sG' % args.m,
-        # '#$ -l hostname=\'!n00[18]*\'',
-        '#$ -wd %s' % (workingDirectory),
-        '#$ -o %s' % stdout,
-        '#$ -e %s' % stderr,
-        '#$ -q all.q'
-    ]
-
-    if args.email is not None:
-        jobData.append('#$ -M %s' % args.email)
-        jobData.append('#$ -m %sas' % ('e' if args.mf else ''))
-
-    if not args.nenv:
-        jobData.append('#$ -V')
-
-    if args.t > 1:
-        jobData.append('#$ -pe threaded %s' % args.t)
-
-    if not args.silent:
-        print('using %s as working directory' % workingDirectory)
-    if args.py36:
-        jobData.append(PY36ENV)
-    jobData.append('cd %s' % workingDirectory)
-
-    #jobData.append( 'export PYTHONPATH="";\nsource /hpc/hub_oudenaarden/bdebarbanson/virtualEnvironments/py36/bin/activate;')
-    #jobData.append('module load python%s' % args.v)
-
-    jobData.append('%s' % cmd)
-    if not args.silent:
-        print('\n'.join(jobData))
-
-    with open(jobfile, 'w') as f:
-        f.write('\n'.join(jobData) + '\n')
-
-    qs = 'qsub %s %s' % ((('-hold_jid %s' % args.hold)
-                          if (args.hold is not None and args.hold != 'none') else ''), jobfile)
-    if not args.silent:
-        print(qs)
-    if args.y:
-
-        if args.e == 'qsub' and qsub_available:
-            os.system(qs)
-        else:
-            cmd = 'sh %s > %s 2> %s' % (jobfile, stdout, stderr)
-            if not args.silent:
-                print("Local execution: %s" % cmd)
-            subprocess.call(cmd, shell=True)
+    jid = submit_job(' '.join(args.c), job_name=args.N, target_directory=args.s,
+                    job_file_name = args.jp,
+                   working_directory=working_directory,
+                   threads_n=args.t, memory_gb=args.m, time_h=args.time, scheduler=args.sched, copy_env=not args.nenv,
+                   email=args.email, mail_when_finished=args.mf, hold=(args.hold.split(',') if args.hold is not None else None) ,submit=args.y, prefix=None)
+    if jid is not None:
+        print(jid)

@@ -15,7 +15,7 @@ class VaninsbergheQueryNameFlagger(DigestFlagger):
                 ':', 4)
             read.set_tag('MI', mi_tag)
             read.set_tag('RX', umi)
-            read.set_tag('BI', int(cell_index))
+            read.set_tag('bi', int(cell_index))
             read.set_tag('SM', cell_barcode)
 
 
