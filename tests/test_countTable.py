@@ -28,6 +28,7 @@ class TestCountTable(unittest.TestCase):
                 divideMultimapping=False,
                 doNotDivideFragments=True,
                 contig=None,
+                blacklist=None,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -57,6 +58,7 @@ class TestCountTable(unittest.TestCase):
                 divideMultimapping=False,
                 doNotDivideFragments=True,
                 splitFeatures=False,
+                blacklist=None,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
         # !samtools idxstats ./data/mini_nla_test.bam | head -n 1 | cut -f 3
@@ -84,6 +86,7 @@ class TestCountTable(unittest.TestCase):
                 divideMultimapping=False,
                 doNotDivideFragments=True,
                 contig=None,
+                blacklist=None,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -113,7 +116,7 @@ class TestCountTable(unittest.TestCase):
                 contig=None,
                 keepOverBounds=False,
                 doNotDivideFragments=True,
-
+                blacklist=None,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -148,7 +151,7 @@ class TestCountTable(unittest.TestCase):
                 contig='chr1',
                 keepOverBounds=False,
                 doNotDivideFragments=True,
-
+                blacklist=None,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -184,6 +187,7 @@ class TestCountTable(unittest.TestCase):
                 divideMultimapping=False,
                 doNotDivideFragments=True,
                 contig=None,
+                blacklist=None,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
@@ -212,6 +216,7 @@ class TestCountTable(unittest.TestCase):
                 dedup=False,
                 divideMultimapping=False,
                 contig=None,
+                blacklist=None,
                 keepOverBounds=False,
                 doNotDivideFragments=True,
                 splitFeatures=False,
