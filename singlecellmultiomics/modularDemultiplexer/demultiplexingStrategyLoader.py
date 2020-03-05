@@ -41,6 +41,7 @@ class DemultiplexingStrategyLoader:
         self.demultiplexingStrategies = []
         self.demux_classes = [
             dm.CELSeq2_c8_u8,
+            dm.CELSeq2_c8_u6_NH,
             dm.MSPJI_c8_u3,
             dm.ScartraceR1,
             dm.CELSeq2_c8_u8_NNLAIII,
