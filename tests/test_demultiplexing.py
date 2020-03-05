@@ -3,6 +3,7 @@
 import unittest
 from singlecellmultiomics.fastqProcessing.fastqIterator import FastqRecord
 from singlecellmultiomics.barcodeFileParser.barcodeFileParser import BarcodeParser
+from singlecellmultiomics.modularDemultiplexer.demultiplexModules.CELSeq2 import CELSeq2_c8_u6_NH
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod
 import pkg_resources
 
@@ -45,6 +46,37 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         self.assertEqual( demultiplexed_record[0].tags['BC'], 'ACACACTA')
         self.assertEqual( demultiplexed_record[0].tags['bi'], 0)
 
+
+    def test_CS2_NH_matching_barcode(self):
+
+        barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
+        index_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/')
+        barcode_parser = BarcodeParser(barcode_folder)
+        index_parser = BarcodeParser(index_folder)
+
+        seq = 'TATGAGCAATCACACACTATAGTCATTCAGGAGCAGGTTCTTCAGGTTCCCTGTAGTTGTGT'
+        r1 = FastqRecord(
+          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 1:N:0:GTGAAA',
+          f'ATAATATCTGGGCA{seq}',
+          '+',
+          'AAAAA#EEEEEEEEEEEAEEEEEEEAEEEEEEEEEEEEEEEEEE/EEEEEEEEEEEE/EEEEEEEEEEEEEEEEEE'
+        )
+        r2 = FastqRecord(
+          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 2:N:0:GTGAAA',
+          'ACCCCAGATCAACGTTGGACNTCNNCNTTNTNCTCNGCACCNNNNCNNNCTTATNCNNNANNNNNNNNNNTNNGN',
+          '+',
+          '6AAAAEEAEE/AEEEEEEEE#EE##<#6E#A#EEE#EAEEA####A###EE6EE#E###E##########E##A#'
+        )
+        demux = CELSeq2_c8_u6_NH(
+            barcodeFileParser=barcode_parser,
+            indexFileParser=index_parser)
+
+        demultiplexed_record = demux.demultiplex([r1,r2])
+        # The barcode sequence is ACACACTA (first barcode)
+        self.assertEqual( demultiplexed_record[0].tags['BC'], 'TCTGGGCA')
+        self.assertEqual( demultiplexed_record[0].tags['bi'], '55')
+        self.assertEqual( demultiplexed_record[0].tags['RX'], 'ATAATA')
+        self.assertEqual( demultiplexed_record[0].sequence, seq)
 
     def test_3DEC_UmiBarcodeDemuxMethod_matching_barcode(self):
 
