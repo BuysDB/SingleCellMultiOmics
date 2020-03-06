@@ -154,7 +154,11 @@ def submit_job(command,  target_directory,  working_directory,
         if scheduler=='sge' and not qsub_available:
             raise ValueError('qsub is not available on the system')
         if scheduler=='slurm' and not sbatch_available:
-            raise ValueError('sbatch is not available on the system')
+            if qsub_available:
+                print('SBATCH is not available, but QSUB is, reverting to use QSUB')
+                scheduler='sge'
+            else:
+                raise ValueError('sbatch is not available on the system')
 
     jobfile,stderr, stdout, _job_file_name = create_job_file_paths(target_directory,job_alias=job_alias,prefix=prefix,job_file_name=job_file_name)
     if job_file_name is None:
