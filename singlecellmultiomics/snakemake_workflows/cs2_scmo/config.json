@@ -1,0 +1,5 @@
+{
+    "exons":"/hpc/hub_oudenaarden/group_references/ensembl/95/danio_rerio/exons.gtf.gz",
+    "introns":"/hpc/hub_oudenaarden/group_references/ensembl/95/danio_rerio/introns.gtf.gz",
+    "STAR_index":"/hpc/hub_oudenaarden/group_references/ensembl/95/danio_rerio/star_index_100"
+}
