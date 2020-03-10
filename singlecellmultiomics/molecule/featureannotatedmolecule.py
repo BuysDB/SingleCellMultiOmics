@@ -13,12 +13,14 @@ class FeatureAnnotatedMolecule(Molecule):
             features,
             stranded=None,
             auto_set_intron_exon_features=False,
+            capture_locations=False,
             **kwargs):
         """
             Args:
                 fragments (singlecellmultiomics.fragment.Fragment): Fragments to associate to the molecule
                 features (singlecellmultiomics.features.FeatureContainer) : container to use to obtain features from
                 stranded : None; not stranded, False: same strand as R1, True: other strand
+                capture_locations (bool) : Store information about the locations of the aligned features
                 auto_set_intron_exon_features(bool) : obtain intron_exon_features upon initialising
                 **kwargs: extra args
 
@@ -28,6 +30,9 @@ class FeatureAnnotatedMolecule(Molecule):
         self.hits = collections.defaultdict(set)  # feature -> hit_bases
         self.stranded = stranded
         self.is_annotated = False
+        self.capture_locations = capture_locations
+        if capture_locations:
+            self.feature_locations = {} #feature->locations (chrom,start,end, strand)
 
         self.junctions = set()
         self.genes = set()
@@ -61,6 +66,7 @@ class FeatureAnnotatedMolecule(Molecule):
         for hit, locations in self.hits.items():
             if not isinstance(hit, tuple):
                 continue
+
             meta = dict(list(hit))
             if 'gene_id' not in meta:
                 continue
@@ -177,6 +183,11 @@ class FeatureAnnotatedMolecule(Molecule):
                         self.hits[hit_ids].add(
                             (self.chromosome, (hit_start, hit_end)))
 
+                        if self.capture_locations:
+                            if not hit_id in self.feature_locations:
+                                self.feature_locations[hit_id] = []
+                            self.feature_locations[hit_id].append( (hit_start, hit_end, hit_strand))
+
             except TypeError:
                 # This happens when no reads map
                 pass
@@ -189,3 +200,8 @@ class FeatureAnnotatedMolecule(Molecule):
                             chromosome=read.reference_name, lookupCoordinate=ref_pos, strand=strand):
                         hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
                         self.hits[hit_ids].add((read.reference_name, ref_pos))
+
+                        if self.capture_locations:
+                            if not hit_id in self.feature_locations:
+                                self.feature_locations[hit_id] = []
+                            self.feature_locations[hit_id].append( (hit_start, hit_end, hit_strand))
