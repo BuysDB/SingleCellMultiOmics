@@ -148,7 +148,7 @@ tr.add_argument('-exons', type=str, help='Exon GTF file')
 tr.add_argument(
     '-introns',
     type=str,
-    help='Intron GTF file, use exonGTF_to_intronGTF.py to create this file')
+    help='Intron GTF file, use exonGTFtoIntronGTF.py to create this file')
 
 cg = argparser.add_argument_group('molecule consensus specific settings')
 cg.add_argument(
