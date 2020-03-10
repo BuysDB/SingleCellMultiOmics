@@ -805,6 +805,14 @@ class SingleEndTranscript(Fragment):
         Fragment.__init__(self, reads, **kwargs)
 
 
+        self.match_hash = (
+            self.sample,
+            self.strand,
+            reads[1].reference_end if self.strand else reads[1].reference_start,
+            )
+
+
+
 class FeatureCountsSingleEndFragment(Fragment):
     """ Class for fragments annotated with featureCounts
 
