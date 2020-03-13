@@ -147,6 +147,7 @@ class MoleculeIterator():
                  yield_supplementary= False,
                  max_buffer_size=None,  #Limit the amount of stored reads, when this value is exceeded, a MemoryError is thrown
                  iterator_class = pysamiterators.iterators.MatePairIterator,
+                 skip_contigs=None,
                  **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
@@ -178,6 +179,8 @@ class MoleculeIterator():
 
             iterator_class : Class name of class which generates mate-pairs out of a pysam.AlignmentFile either (pysamIterators.MatePairIterator or pysamIterators.MatePairIteratorIncludingNonProper)
 
+            skip_contigs (set) : Contigs to skip
+
             **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
 
         Yields:
@@ -186,7 +189,7 @@ class MoleculeIterator():
         if queryNameFlagger is None:
             queryNameFlagger = QueryNameFlagger()
         self.queryNameFlagger = queryNameFlagger
-
+        self.skip_contigs = skip_contigs if skip_contigs is not None else set()
         self.alignments = alignments
         self.moleculeClass = moleculeClass
         self.fragmentClass = fragmentClass
@@ -265,6 +268,16 @@ class MoleculeIterator():
             else:
                 raise ValueError(
                     'Iterable not understood, supply either  pysam.AlignedSegment or lists of  pysam.AlignedSegment')
+
+            # skip_contigs
+            if len(self.skip_contigs)>0:
+                keep = False
+                for read in reads:
+                    if read is not None and read.reference_name not in self.skip_contigs:
+                        keep = True
+                if not keep:
+                    continue
+
             # Make sure the sample/umi etc tags are placed:
             if self.perform_qflag:
                 qf.digest([R1, R2])

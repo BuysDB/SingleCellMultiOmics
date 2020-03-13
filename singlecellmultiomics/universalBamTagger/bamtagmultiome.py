@@ -64,6 +64,7 @@ argparser.add_argument(
 argparser.add_argument('-umi_hamming_distance', type=int, default=1)
 argparser.add_argument('-head', type=int)
 argparser.add_argument('-contig', type=str, help='Contig to only process')
+argparser.add_argument('-skip_contig', type=str, help='Contigs not to process')
 argparser.add_argument('-region_start', type=int, help='Zero based start coordinate of region to process')
 argparser.add_argument('-region_end', type=int, help='Zero based end coordinate of region to process')
 
@@ -282,6 +283,8 @@ def run_multiome_tagging(args):
 
     MISC_ALT_CONTIGS_SCMO = 'MISC_ALT_CONTIGS_SCMO'
     every_fragment_as_molecule = args.every_fragment_as_molecule
+    skip_contig = set(args.skip_contig.split(',')) if args.skip_contig is not None else set()
+
 
     if not args.o.endswith('.bam'):
         raise ValueError(
@@ -508,7 +511,8 @@ def run_multiome_tagging(args):
         'start':region_start,
         'end':region_end,
         'contig': contig,
-        'every_fragment_as_molecule': every_fragment_as_molecule
+        'every_fragment_as_molecule': every_fragment_as_molecule,
+        'skip_contigs':skip_contig
     }
 
     if args.resolve_unproperly_paired_reads:
@@ -599,12 +603,16 @@ def run_multiome_tagging(args):
                     pass
 
             found_alts = 0
-            for ci,chrom in enumerate(list(input_bam.references) + [MISC_ALT_CONTIGS_SCMO]):
+            for ci,chrom in enumerate([_chrom  for _chrom in
+                        (list(input_bam.references) + [MISC_ALT_CONTIGS_SCMO])
+                        if not _chrom in skip_contig]):
+
                 if not is_main_chromosome(chrom):
                     found_alts += 1
                     continue
                 if chrom == MISC_ALT_CONTIGS_SCMO and found_alts == 0:
                     continue
+
                 temp_bam_path = f'{temp_prefix}_{chrom}.bam'
                 arguments = " ".join(
                     [x for x in sys.argv if not x == args.o and x != '-o']) + f" -contig {chrom} -o {temp_bam_path}"
@@ -673,6 +681,7 @@ def run_multiome_tagging(args):
     with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups) as out:
 
         for i, molecule in enumerate(molecule_iterator):
+
             # Stop when enough molecules are processed
             if args.head is not None and (i - 1) >= args.head:
                 break
