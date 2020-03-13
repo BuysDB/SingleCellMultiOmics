@@ -1,7 +1,7 @@
 from singlecellmultiomics.bamProcessing.pileup import pileup_truncated
 
 def get_pileup_vect(alignments, contig, pos, ref, alt):
-     """Create feature vector for selected variant
+    """Create feature vector for selected variant
 
      Args:
         alignments(pysam.AlignmentFile) : Handle to alignmentfile
@@ -15,7 +15,7 @@ def get_pileup_vect(alignments, contig, pos, ref, alt):
         ref_calls  : Total amount of bases matching ref
         alt_calls : Total amount of bases matching alt
         other_calls : Total amount of bases matching neither ref nor alt
-     """
+    """
     total = 0
     ref_calls = 0
     alt_calls = 0
