@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 from setuptools import setup
 import os
 import sys
@@ -70,6 +69,7 @@ setup(
 
         # Bam processing:
         'singlecellmultiomics/bamProcessing/bamTabulator.py',
+        'singlecellmultiomics/bamProcessing/bamSplitByTag.py',
         'singlecellmultiomics/bamProcessing/bamToCountTable.py',
         'singlecellmultiomics/bamProcessing/bamExtractSamples.py',
         'singlecellmultiomics/bamProcessing/bamToMethylationAndCopyNumber.py',
