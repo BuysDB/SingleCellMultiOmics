@@ -1,6 +1,6 @@
 from singlecellmultiomics.bamProcessing.pileup import pileup_truncated
 
- def get_pileup_vect(alignments, contig, pos, ref, alt):
+def get_pileup_vect(alignments, contig, pos, ref, alt):
      """Create feature vector for selected variant
 
      Args:
