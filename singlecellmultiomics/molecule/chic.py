@@ -67,6 +67,52 @@ class CHICMolecule(Molecule):
             self.set_meta('RZ', self.ligation_motif)
 
 
+class CHICNLAMolecule(Molecule):
+    """CHIC NLA Molecule class
+
+    Args:
+        fragments (singlecellmultiomics.fragment.Fragment): Fragments to associate to the molecule
+        **kwargs: extra args
+
+    """
+    def get_upstream_site(self):
+        read = None
+        for fragment in self:
+            if fragment[0] is not None:
+                read = fragment[0]
+                break
+
+        if read is None:
+            raise ValueError() # Read 1 is not mapped
+
+        if self.strand==1:
+            start = read.reference_start
+            return self.reference.fetch( self.chromosome, start-4, start)
+        else:
+            start = read.reference_end
+            return self.reference.fetch( self.chromosome, start, start+4)
+
+
+    def __init__(self, fragment, reference, **kwargs):
+        self.reference = reference
+        CHICMolecule.__init__(self, fragment, reference=reference, **kwargs)
+
+    def write_tags(self):
+        try:
+            site = self.get_upstream_site()
+            if 'N' in site:
+                self.set_meta('dt','UNK')
+            elif site=='CATG':
+                self.set_meta('dt','NLA')
+            else:
+                self.set_meta('dt','CHIC')
+        except ValueError:
+            self.set_meta('dt','UNK')
+            self.set_meta('RR','No_R1')
+
+
+
+
 class AnnotatedCHICMolecule(FeatureAnnotatedMolecule, CHICMolecule):
     """Chic Molecule which is annotated with features (genes/exons/introns, .. )
 
