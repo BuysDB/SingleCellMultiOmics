@@ -138,13 +138,13 @@ rule map:
         if config['mapper']=='bwa':
             # The sorting and mapping has been disconnected
             shell(
-                "bwa mem -t {threads} {input.ref} {input.r1} {input.r2}  2> {log.stderr} |  samtools view -bS - > processed/{wildcards.library}/unsorted.bam; \
+                "bwa mem -t {threads} {params.ref} {input.r1} {input.r2}  2> {log.stderr} |  samtools view -bS - > processed/{wildcards.library}/unsorted.bam; \
                 samtools sort -T processed/{wildcards.library}/temp_sort -@ {threads} processed/{wildcards.library}/unsorted.bam > processed/{wildcards.library}/sorted.unfinished.bam; \
                 mv processed/{wildcards.library}/sorted.unfinished.bam {output.bam}; rm processed/{wildcards.library}/unsorted.bam; samtools index {output.bam} > {log.stdout}"
                 )
         elif config['mapper']=='bowtie2':
             shell(
-                "bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1 -x {input.ref} -1 {input.r1} -2 {input.r2} | samtools view -Sb > processed/{wildcards.library}/unsorted.bam; \
+                "bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1 -x {params.ref} -1 {input.r1} -2 {input.r2} | samtools view -Sb > processed/{wildcards.library}/unsorted.bam; \
                 samtools sort -T processed/{wildcards.library}/temp_sort -@ {threads} processed/{wildcards.library}/unsorted.bam > processed/{wildcards.library}/sorted.unfinished.bam; \
                 mv processed/{wildcards.library}/sorted.unfinished.bam {output.bam}; rm processed/{wildcards.library}/unsorted.bam; samtools index {output.bam} > {log.stdout} 2> {log.stderr} "
                 )
