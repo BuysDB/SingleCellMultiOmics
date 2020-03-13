@@ -40,21 +40,25 @@ class DemultiplexingStrategyLoader:
         #print(f'Looking for modules in {moduleSearchPath}{Style.RESET_ALL}')
         self.demultiplexingStrategies = []
         self.demux_classes = [
-            dm.CELSeq2_c8_u8,
-            dm.CELSeq2_c8_u6_NH,
-            dm.MSPJI_c8_u3,
-            dm.ScartraceR1,
-            dm.CELSeq2_c8_u8_NNLAIII,
-            dm.ScartraceR2,
-            dm.NLAIII_384w_c8_u3,
+            IlluminaBaseDemultiplexer,
+
             dm.CELSeq1_c8_u4,
+            dm.CELSeq2_c8_u6,
+            dm.CELSeq2_c8_u6_NH,
+            dm.CELSeq2_c8_u8,
+            dm.CELSeq2_c8_u8_NNLAIII,
+            dm.CELSeq2_c8_u6_swapped_reads,
+
+            dm.NLAIII_384w_c8_u3,
             dm.NLAIII_96w_c8_u3,
             dm.Nla_384w_u8_c8_ad3_is15,
-            dm.CELSeq2_c8_u6,
-            IlluminaBaseDemultiplexer,
-            dm.CELSeq2_c8_u6_swapped_reads,
+
             dm.SCCHIC_384w_c8_u3,
-            dm.SCCHIC_384w_c8_u3_cs2
+            dm.SCCHIC_384w_c8_u3_cs2,
+            dm.MSPJI_c8_u3,
+            dm.ScartraceR2,
+            dm.ScartraceR1
+
         ]
         for c in self.demux_classes:
             self.demultiplexingStrategies.append(c(
@@ -63,45 +67,6 @@ class DemultiplexingStrategyLoader:
                 indexFileAlias=indexFileAlias)
             )
 
-        """
-        for modulePath in glob.glob(f'{moduleSearchPath}/*.py'):
-            #print(f"Found {modulePath}")
-            try:
-                module = (modulePath.split('/')[-1].replace('.py',''))
-                #print(f"Module:{module}, package:{package}")
-
-                if ignoreMethods is not None and module in ignoreMethods:
-                    print(f"{Style.DIM}Ignoring demultiplex method {module}, use -ignoreMethods none to re-enable{Style.RESET_ALL}")
-                    continue
-                if module=='__init__':
-                    continue
- #modulePath.replace('\\','/').replace('/','.').replace('..','').replace('.py','').lstrip('.').split('.')[-1]
-
-                loadedModule = importlib.import_module(f'.{module}', package)
-                # Only obtain classes defined in the module, not imported ones:
-                is_class_member = lambda member: inspect.isclass(member) and member.__module__ == f'{package}.{module}'
-                for className, classDetails in inspect.getmembers(sys.modules[f'{package}.{module}'], is_class_member):
-                    # Obtain a handle to the class and instatiate the strategy
-                    if 'Base_' in className:
-                        continue
-
-                    class_ = getattr(loadedModule, className)
-                    initiatedDemultiplexingStrategy = class_( barcodeFileParser=barcodeParser, indexFileParser=indexParser,indexFileAlias=indexFileAlias)
-                    self.demultiplexingStrategies.append(initiatedDemultiplexingStrategy)
-                    #print(initiatedDemultiplexingStrategy.name)
-
-            except Exception as e:
-
-                print(f"{Fore.RED}{Style.BRIGHT}FAILED LOADING {module} at {modulePath}\nException: {e}{Style.RESET_ALL}\nTraceback for the error:\n")
-                import traceback
-                traceback.print_exc()
-
-                from os import stat
-                from pwd import getpwuid
-
-                print(f'Contact {Style.BRIGHT}%s{Style.RESET_ALL} for help\n' % getpwuid(stat(modulePath).st_uid).pw_name)
-                print('The error only affects this module.\nProceeding to load more modules...\n')
-        """
 
     def getSelectedStrategiesFromStringList(self, strList, verbose=True):
         selectedStrategies = []
@@ -192,8 +157,10 @@ class DemultiplexingStrategyLoader:
             barcodeParser=self.barcodeParser,
             probe=probe)
 
-        for processedReadPairs, reads in enumerate(
+        for p, reads in enumerate(
                 fastqIterator.FastqIterator(*fastqfiles)):
+            processedReadPairs = p+1
+
             for strategy in useStrategies:
                 try:
                     recodedRecords = strategy.demultiplex(
@@ -237,7 +204,7 @@ class DemultiplexingStrategyLoader:
                 # print(recodedRecord)
                 strategyYields[strategy.shortName] += 1
             if (maxReadPairs is not None and (
-                    1 + processedReadPairs) >= maxReadPairs):
+                    processedReadPairs) >= maxReadPairs):
                 break
         # write yields to log file if applicable:
         if log_handle is not None:
@@ -246,7 +213,7 @@ class DemultiplexingStrategyLoader:
             log_handle.write(f'Strategy\tReads\n')
             for strategy, used_reads in strategyYields.items():
                 log_handle.write(f'{strategy}\t{used_reads}\n')
-        return processedReadPairs + 1, strategyYields
+        return processedReadPairs, strategyYields
 
     def detectLibYields(
             self,
