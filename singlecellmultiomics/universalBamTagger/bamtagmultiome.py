@@ -223,6 +223,7 @@ def run_multiome_tagging(args):
             cs_feature_counts (deduplicate using a bam file tagged using featurecounts)
             nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
             chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
+            chic_nla
             scartrace  (lineage tracing protocol)
 
 
@@ -305,6 +306,7 @@ def run_multiome_tagging(args):
         try:
             reference = CachedFasta(
                 pysam.FastaFile(args.ref))
+            print(f'Loaded reference from {args.ref}')
         except Exception as e:
             print("Error when loading the reference file, continuing without a reference")
             reference = None
@@ -409,6 +411,14 @@ def run_multiome_tagging(args):
                     'reference': reference,
                     'no_overhang': True
                 })
+
+    elif args.method == 'chic_nla':
+        moleculeClass=singlecellmultiomics.molecule.CHICNLAMolecule
+        fragmentClass=singlecellmultiomics.fragment.CHICFragment
+        assert reference is not None, 'Supply a reference fasta using -ref!'
+        molecule_class_args.update({
+                'reference': reference,
+        })
 
     elif args.method == 'cs_feature_counts' :
         moleculeClass = singlecellmultiomics.molecule.Molecule
