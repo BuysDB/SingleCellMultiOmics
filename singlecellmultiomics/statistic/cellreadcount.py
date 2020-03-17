@@ -44,7 +44,8 @@ class CellReadCount(StatisticHistogram):
 
     def plot(self, target_path, title=None):
         fig, ax = plt.subplots()
-        ax.hist(self.read_counts.values())
+        print(self.read_counts)
+        ax.hist(list(self.read_counts.values()))
 
         if title is not None:
             ax.set_title(title)
@@ -56,7 +57,7 @@ class CellReadCount(StatisticHistogram):
         plt.close()
 
         fig, ax = plt.subplots()
-        ax.hist(self.molecule_counts.values())
+        ax.hist(list(self.molecule_counts.values()))
         if title is not None:
             plt.title(title)
 
