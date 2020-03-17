@@ -208,9 +208,17 @@ class TaggedRecord():
             'CN': controlNumber
         })
 
+
+
+
         if indexFileParser is not None and indexFileAlias is not None:
-            indexIdentifier, correctedIndex, hammingDistance = indexFileParser.getIndexCorrectedBarcodeAndHammingDistance(
-                alias=indexFileAlias, barcode=indexSequence)
+            # Check if the index is an integer:
+            try:
+                indexInteger = int(indexSequence)
+                indexIdentifier, correctedIndex, hammingDistance = indexSequence, indexSequence, 0
+            except Exception:
+                indexIdentifier, correctedIndex, hammingDistance = indexFileParser.getIndexCorrectedBarcodeAndHammingDistance(
+                    alias=indexFileAlias, barcode=indexSequence)
 
             self.addTagByTag('aa', indexSequence, isPhred=False)
             if correctedIndex is not None:
