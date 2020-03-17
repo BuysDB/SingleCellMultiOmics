@@ -4,6 +4,7 @@ import unittest
 from singlecellmultiomics.fastqProcessing.fastqIterator import FastqRecord
 from singlecellmultiomics.barcodeFileParser.barcodeFileParser import BarcodeParser
 from singlecellmultiomics.modularDemultiplexer.demultiplexModules.CELSeq2 import CELSeq2_c8_u6_NH
+from singlecellmultiomics.modularDemultiplexer.demultiplexModules.scCHIC import SCCHIC_384w_c8_u3_cs2
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod
 import pkg_resources
 
@@ -77,6 +78,68 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         self.assertEqual( demultiplexed_record[0].tags['bi'], '55')
         self.assertEqual( demultiplexed_record[0].tags['RX'], 'ATAATA')
         self.assertEqual( demultiplexed_record[0].sequence, seq)
+
+    def test_CHICT(self):
+
+        barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
+        index_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/')
+        barcode_parser = BarcodeParser(barcode_folder)
+        index_parser = BarcodeParser(index_folder)
+
+        seq = 'TATGAGCAATCACACACTATAGTCATTCAGGAGCAGGTTCTTCAGGTTCCCTGTAGTTGTGT'
+        r1 = FastqRecord(
+          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 1:N:0:GTGAAA',
+          f'ATAATATCTGGGCA{seq}',
+          '+',
+          'AAAAA#EEEEEEEEEEEAEEEEEEEAEEEEEEEEEEEEEEEEEE/EEEEEEEEEEEE/EEEEEEEEEEEEEEEEEE'
+        )
+        r2 = FastqRecord(
+          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 2:N:0:GTGAAA',
+          'ACCCCAGATCAACGTTGGACNTCNNCNTTNTNCTCNGCACCNNNNCNNNCTTATNCNNNANNNNNNNNNNTNNGN',
+          '+',
+          '6AAAAEEAEE/AEEEEEEEE#EE##<#6E#A#EEE#EAEEA####A###EE6EE#E###E##########E##A#'
+        )
+        demux = SCCHIC_384w_c8_u3_cs2(
+            barcodeFileParser=barcode_parser,
+            indexFileParser=index_parser)
+
+        demultiplexed_record = demux.demultiplex([r1,r2])
+        # The barcode sequence is ACACACTA (first barcode)
+        self.assertEqual( demultiplexed_record[0].tags['BC'], 'TCTGGGCA')
+        self.assertEqual( demultiplexed_record[0].tags['bi'], '55')
+        self.assertEqual( demultiplexed_record[0].tags['MX'], 'CS2C8U6')
+        self.assertEqual( demultiplexed_record[0].tags['RX'], 'ATAATA')
+        self.assertEqual( demultiplexed_record[0].sequence, seq)
+
+
+
+        seq = 'TATGAGCAATCACACACTATAGTCATTCAGGAGCAGGTTCTTCAGGTTCCCTGTAGTTGTGT'
+
+        R1_seq = f'AAAAGAGCGCGT{seq}'
+        r1 = FastqRecord(
+          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 1:N:0:GTGAAA',
+          R1_seq,
+          '+',
+          'E'*len(R1_seq)
+        )
+        r2 = FastqRecord(
+          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 2:N:0:GTGAAA',
+          'ACCCCAGATCAACGTTGGACNTCNNCNTTNTNCTCNGCACCNNNNCNNNCTTATNCNNNANNNNNNNNNNTNNGN',
+          '+',
+          '6AAAAEEAEE/AEEEEEEEE#EE##<#6E#A#EEE#EAEEA####A###EE6EE#E###E##########E##A#'
+        )
+        demux = SCCHIC_384w_c8_u3_cs2(
+            barcodeFileParser=barcode_parser,
+            indexFileParser=index_parser)
+
+        demultiplexed_record = demux.demultiplex([r1,r2])
+        # The barcode sequence is ACACACTA (first barcode)
+        self.assertEqual( demultiplexed_record[0].tags['BC'], 'AGAGCGCG')
+        self.assertEqual( demultiplexed_record[0].tags['bi'], 25)
+        self.assertEqual( demultiplexed_record[0].tags['MX'], 'scCHIC384C8U3')
+        self.assertEqual( demultiplexed_record[0].tags['RX'], 'AAA')
+        self.assertEqual( demultiplexed_record[0].sequence, seq)
+
 
     def test_3DEC_UmiBarcodeDemuxMethod_matching_barcode(self):
 
