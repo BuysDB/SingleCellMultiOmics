@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import pysam
 from collections import Counter
 import argparse
