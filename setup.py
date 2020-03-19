@@ -89,6 +89,7 @@ setup(
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py',
         'singlecellmultiomics/libraryDetection/archivestats.py',
+        'singlecellmultiomics/alleleTools/heterozygousSNPedit.py',
 
         # Feature conversion:
         'singlecellmultiomics/features/exonGTFtoIntronGTF.py',
