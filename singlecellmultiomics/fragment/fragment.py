@@ -868,6 +868,50 @@ class FeatureCountsSingleEndFragment(Fragment):
                 return self.gene
 
 
+
+class FeatureCountsFullLengthFragment(FeatureCountsSingleEndFragment):
+    """ Class for fragments annotated with featureCounts, with multiple reads covering a gene
+
+    Extracts annotated gene from the XT tag.
+    Deduplicates using XT tag and UMI
+    Reads without XT tag are flagged as invalid
+
+    """
+
+    def __init__(self,
+                 reads,
+                 R1_primer_length=4,
+                 R2_primer_length=6,
+                 assignment_radius=10_000,
+                 umi_hamming_distance=1,
+                 invert_strand=False
+                 ):
+
+        FeatureCountsSingleEndFragment.__init__(self,
+                          reads,
+                          assignment_radius=assignment_radius,
+                          R1_primer_length=R1_primer_length,
+                          R2_primer_length=R2_primer_length,
+                          umi_hamming_distance=umi_hamming_distance)
+
+    def __eq__(self, other):
+        # Make sure fragments map to the same strand, cheap comparisons
+        if self.match_hash != other.match_hash:
+            return False
+
+        #Calculate distance
+        if min(abs(self.span[1] -
+                   other.span[1]), abs(self.span[2] -
+                                       other.span[2])) > self.assignment_radius:
+            return False
+
+        # Make sure UMI's are similar enough, more expensive hamming distance
+        # calculation
+        return self.umi_eq(other)
+
+
+
+
 class FragmentWithoutUMI(Fragment):
     """
     Use this class when no UMI information is available
