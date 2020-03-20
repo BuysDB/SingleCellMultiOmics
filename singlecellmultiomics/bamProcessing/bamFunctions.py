@@ -97,6 +97,9 @@ def get_contig_size(bam, contig):
     Args:
         bam (str or pysam.AlignmentFile) : handle to bam file or path to bam file
         contig (str)
+
+    Returns:
+        length (int)
     """
     if type(bam) is str:
         with pysam.AlignmentFile(alignments_path) as a:
@@ -111,6 +114,26 @@ def get_contig_size(bam, contig):
             'Supply either a path to a bam file or pysam.AlignmentFile object')
 
     return None
+
+def get_contig_sizes(bam):
+    """Extract lengths of all contigs from a bam file
+
+    Args:
+        bam (str or pysam.AlignmentFile) : handle to bam file or path to bam file
+
+    Returns:
+        contig_lengths : dict (contig:length (int) )
+    """
+
+    if type(bam) is str:
+        with pysam.AlignmentFile(alignments_path) as a:
+            sizes = get_contig_sizes(a)
+        return sizes
+    elif type(bam) is pysam.AlignmentFile:
+        return dict(zip(bam.references, bam.lengths))
+    else:
+        raise ValueError(
+            'Supply either a path to a bam file or pysam.AlignmentFile object')
 
 
 def get_samples_from_bam(bam):
@@ -133,7 +156,6 @@ def get_samples_from_bam(bam):
     else:
         raise ValueError(
             'Supply either a path to a bam file or pysam.AlignmentFile object')
-
 
 
 def get_reference_from_pysam_alignmentFile(
