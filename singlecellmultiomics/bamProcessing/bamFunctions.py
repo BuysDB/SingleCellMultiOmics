@@ -91,6 +91,28 @@ def _get_sample_to_read_group_dict(handle):
     return sample_to_read_group_dict
 
 
+def get_contig_size(bam, contig):
+    """Extract the length of a contig from a bam file
+
+    Args:
+        bam (str or pysam.AlignmentFile) : handle to bam file or path to bam file
+        contig (str)
+    """
+    if type(bam) is str:
+        with pysam.AlignmentFile(alignments_path) as a:
+            size = get_contig_size(a, contig)
+        return size
+    elif type(bam) is pysam.AlignmentFile:
+        for c,length in zip(bam.references, bam.lengths):
+            if c==contig:
+                return length
+    else:
+        raise ValueError(
+            'Supply either a path to a bam file or pysam.AlignmentFile object')
+
+    return None
+
+
 def get_samples_from_bam(bam):
     """Get a list of samples present in the bam_file
 
