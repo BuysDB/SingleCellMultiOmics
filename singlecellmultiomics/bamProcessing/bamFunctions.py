@@ -102,7 +102,7 @@ def get_contig_size(bam, contig):
         length (int)
     """
     if type(bam) is str:
-        with pysam.AlignmentFile(alignments_path) as a:
+        with pysam.AlignmentFile(bam) as a:
             size = get_contig_size(a, contig)
         return size
     elif type(bam) is pysam.AlignmentFile:
@@ -126,7 +126,7 @@ def get_contig_sizes(bam):
     """
 
     if type(bam) is str:
-        with pysam.AlignmentFile(alignments_path) as a:
+        with pysam.AlignmentFile(bam) as a:
             sizes = get_contig_sizes(a)
         return sizes
     elif type(bam) is pysam.AlignmentFile:
