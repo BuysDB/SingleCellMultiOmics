@@ -40,19 +40,18 @@ def generate_jobs(alignments_path, bin_size = 1_000_000, bins_per_job = 10):
                 get_contig_sizes(alignments_path).items()):
         yield from job_group
 
-def generate_commands(alignments_path, bin_size = 1_000_000, bins_per_job = 10,alt_spans=None, min_mq=50,max_fragment_size=1000, head=None):
+def generate_commands(alignments_path, bin_size = 1_000_000, bins_per_job = 10,alt_spans=None, min_mq=50,max_fragment_size=1000, head=None,key_tags=None):
     for i,(contig,start,end) in enumerate(generate_jobs(alignments_path=alignments_path,bin_size=bin_size,bins_per_job=bins_per_job)):
         yield (alignments_path, bin_size, max_fragment_size, \
                                contig, start, end, \
-                               min_mq,alt_spans)
+                               min_mq,alt_spans,key_tags)
         if head is not None and i>=(head-1):
             break
 
 def count_fragments_binned(args):
     (alignments_path, bin_size, max_fragment_size, \
                            contig, start, end, \
-                           min_mq,alt_spans) = args
-
+                           min_mq,alt_spans, key_tags) = args
 
 
     counts = {} # Sample->(contig,bin_start,bin_end)->counts
@@ -78,8 +77,9 @@ def count_fragments_binned(args):
 
             sample = read.get_tag('SM')
 
-
             site = int(read.get_tag('DS'))
+
+
             if site<start or site>=end:
                 continue
 
@@ -91,7 +91,11 @@ def count_fragments_binned(args):
             bin_start = bin_size*bin_i
             bin_end = min( bin_size*(bin_i+1), contig_size )
 
-            bin_id = (contig, bin_start, bin_end)
+            if key_tags is not None:
+                tag_values = [ (read.get_tag(tag) if read.has_tag(tag) else None) for tag in key_tags ]
+                bin_id = (*tag_values, contig, bin_start, bin_end)
+            else:
+                bin_id = (contig, bin_start, bin_end)
 
             if not bin_id in counts:
                 counts[bin_id] = {}
