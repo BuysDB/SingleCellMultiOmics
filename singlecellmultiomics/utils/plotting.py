@@ -61,6 +61,7 @@ class GenomicPlot():
         ax.clear()
         ax.set_yticklabels([])
         ax.set_yticks([],[])
+        ax.set_xticks([],[])
         ax.set_xlabel(contig.replace('chr',''))
         ax.set_xlim(0,self.lengths[contig])
 
@@ -71,7 +72,7 @@ class GenomicPlot():
         gs_kw = dict(width_ratios=widths)
         figure = plt.figure(figsize =figsize)
         figure.subplots_adjust(bottom=0.25, top=0.75)
-        gplot_gc[contig].set_xticks([],[])
+
 
         self.gridspec = gridspec.GridSpec(1, len(widths), figure=figure, wspace=0.1, width_ratios=widths)
         self.axis = {}
