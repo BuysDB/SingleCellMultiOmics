@@ -29,6 +29,12 @@ def sort_chromosome_names(l):
 
 class GenomicPlot():
     def __init__(self, ref_path, contigs=None):
+        """
+        Initialise genomic plot
+
+        ref_path(str or pysam.FastaFile) : Path or handle to reference
+
+        """
 
         if contigs is None:
             self.contigs = sort_chromosome_names(list(filter(is_main_chromosome, get_contig_list_from_fasta(ref_path))))
@@ -36,9 +42,11 @@ class GenomicPlot():
             self.contigs = contigs
 
         # Obtain the lengths:
-
-        with pysam.FastaFile(ref_path) as reference:
-            self.lengths = {r:l for r,l in  zip(reference.references,reference.lengths) if r in self.contigs}
+        if type(ref_path) is str:
+            with pysam.FastaFile(ref_path) as reference:
+                self.lengths = {r:l for r,l in  zip(reference.references,reference.lengths) if r in self.contigs}
+        else:
+            self.lengths = {r:l for r,l in  zip(ref_path.references,ref_path.lengths) if r in self.contigs}
 
         self.total_bp = sum(self.lengths.values())
         # Prune contigs with no length:
@@ -47,6 +55,20 @@ class GenomicPlot():
 
     def get_relative_widths(self):
         return [self.lengths[contig]/self.total_bp for contig in self.contigs]
+
+    def reset_axis(self, contig):
+        ax = self[contig]
+        ax.clear()
+
+        #plt.axis('on')
+        #ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_yticks([],[])
+
+        #ax.set_aspect('equal')
+
+        ax.set_xlabel(contig.replace('chr',''))
+        ax.set_xlim(0,self.lengths[contig])
 
     def get_figure(self, figsize=(20,1)):
 
@@ -63,15 +85,12 @@ class GenomicPlot():
            # i = i + 1 # grid spec indexes from 0
 
             ax = plt.subplot(self.gridspec[i], sharey=prev_ax)
-            plt.axis('on')
-            ax.set_xticklabels([])
-            ax.set_yticklabels([])
-            #ax.set_aspect('equal')
             self.axis[contig] = ax
-            ax.set_xlabel(contig.replace('chr',''))
-            ax.set_xlim(0,self.lengths[contig])
+
+            self.reset_axis(contig)
             prev_ax=ax
         sns.despine()
+        figure.canvas.draw()
         return figure
 
     def __getitem__(self, contig):
