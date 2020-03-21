@@ -20,22 +20,38 @@ def get_contig_list_from_fasta(fasta_path, with_length=False):
     """Obtain list of contigs froma  fasta file,
         all alternative contigs are pooled into the string MISC_ALT_CONTIGS_SCMO
 
+    Args:
+        fasta_path (str or pysam.FastaFile) : Path or handle to fasta file
+
+        with_length(bool): return list of lengths
+
     Returns:
-        contig_list (list) : List of contigs + ['MISC_ALT_CONTIGS_SCMO'] if any alt contig is present in the fasta file
+        contig_list (list ) : List of contigs + ['MISC_ALT_CONTIGS_SCMO'] if any alt contig is present in the fasta file
         """
 
     contig_list = []
     has_alt = False
     if with_length:
         lens = []
-    with FastaFile(fasta_path) as fa:
-        for reference, length in zip(fa.references, fa.lengths):
-            if is_main_chromosome(reference):
-                contig_list.append(reference)
-                if with_length:
-                    lens.append(length)
-            else:
-                has_alt = True
+
+    if type(fasta_path) is str:
+        fa = FastaFile(fasta_path)
+    elif type(fasta_path) is pysam.FastaFile:
+        fa = fasta_path
+    else:
+        raise TypeError('Supply pysam.FastaFile or str')
+
+    for reference, length in zip(fa.references, fa.lengths):
+        if is_main_chromosome(reference):
+            contig_list.append(reference)
+            if with_length:
+                lens.append(length)
+        else:
+            has_alt = True
+
+    # Close handle if we just opened one
+    if type(fasta_path) is str:
+        fa.close()
 
     if has_alt:
         contig_list.append('MISC_ALT_CONTIGS_SCMO')
