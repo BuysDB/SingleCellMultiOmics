@@ -1,5 +1,7 @@
 import math
 from pysam import FastaFile
+
+
 def is_main_chromosome(chrom):
     """ Returns True when the chromsome is a main chromsome,
     not an alternative or other
@@ -36,7 +38,7 @@ def get_contig_list_from_fasta(fasta_path, with_length=False):
 
     if type(fasta_path) is str:
         fa = FastaFile(fasta_path)
-    elif type(fasta_path) is pysam.FastaFile:
+    elif type(fasta_path) is FastaFile:
         fa = fasta_path
     else:
         raise TypeError('Supply pysam.FastaFile or str')
