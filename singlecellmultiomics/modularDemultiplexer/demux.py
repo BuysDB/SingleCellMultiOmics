@@ -10,10 +10,7 @@ import singlecellmultiomics.barcodeFileParser.barcodeFileParser as barcodeFilePa
 from singlecellmultiomics.fastqProcessing.fastqHandle import FastqHandle
 import argparse
 from colorama import Style
-from colorama import Back
 from colorama import Fore
-import gzip
-import re
 import sys
 import os
 f"!!! PLEASE USE PYTHON 3.6 OR HIGHER !!!"
