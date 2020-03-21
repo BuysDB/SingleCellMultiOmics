@@ -9,7 +9,7 @@ import pickle
 import gzip
 import pandas as pd
 import multiprocessing
-from singlecellmultiomics.bamProcessing import get_contig_size
+from singlecellmultiomics.bamProcessing import get_contig_sizes, get_contig_size
 
 def obtain_approximate_reference_cut_position(site, contig, alt_spans):
     #contig, cut_start, strand = molecule.get_cut_site()
@@ -29,25 +29,6 @@ def read_counts(read,min_mq):
     #    return False
     return True
 
-def get_contig_sizes(bam):
-  """Extract lengths of all contigs from a bam file
-
-  Args:
-      bam (str or pysam.AlignmentFile) : handle to bam file or path to bam file
-
-  Returns:
-      contig_lengths : dict (contig:length (int) )
-  """
-
-  if type(bam) is str:
-      with pysam.AlignmentFile(bam) as a:
-          sizes = get_contig_sizes(a)
-      return sizes
-  elif type(bam) is pysam.AlignmentFile:
-      return dict(zip(bam.references, bam.lengths))
-  else:
-      raise ValueError(
-          'Supply either a path to a bam file or pysam.AlignmentFile object')
 
 
 from singlecellmultiomics.utils import is_main_chromosome
@@ -96,8 +77,7 @@ def count_fragments_binned(args):
                 continue
 
             sample = read.get_tag('SM')
-            if not sample in counts:
-                counts[sample] = {}
+
 
             site = int(read.get_tag('DS'))
             if site<start or site>=end:
@@ -113,10 +93,13 @@ def count_fragments_binned(args):
 
             bin_id = (contig, bin_start, bin_end)
 
-            if not bin_id in counts[sample]:
-                counts[sample][bin_id] = 1
+            if not bin_id in counts:
+                counts[bin_id] = {}
+
+            if not sample in counts[bin_id]:
+                counts[bin_id][sample] = 1
             else:
-                counts[sample][bin_id] += 1
+                counts[bin_id][sample] += 1
 
     return counts
 
