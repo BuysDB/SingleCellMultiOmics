@@ -16,10 +16,10 @@ def obtain_approximate_reference_cut_position(site, contig, alt_spans):
     alt_contig, alt_start, alt_end = alt_spans[contig]
     return contig, site + alt_start
 
-def read_counts(read,min_mq):
+def read_counts(read,min_mq, dedup=True):
     if not read.is_read1 or read is None:
         return False
-    if read.is_duplicate:
+    if dedup and read.is_duplicate:
         return False
     if read.has_tag('mp') and read.get_tag('mp') != 'unique':
         return False
@@ -40,18 +40,18 @@ def generate_jobs(alignments_path, bin_size = 1_000_000, bins_per_job = 10):
                 get_contig_sizes(alignments_path).items()):
         yield from job_group
 
-def generate_commands(alignments_path, bin_size = 1_000_000, bins_per_job = 10,alt_spans=None, min_mq=50,max_fragment_size=1000, head=None,key_tags=None):
+def generate_commands(alignments_path, bin_size = 1_000_000, bins_per_job = 10,alt_spans=None, min_mq=50,max_fragment_size=1000, head=None,key_tags=None,dedup=True):
     for i,(contig,start,end) in enumerate(generate_jobs(alignments_path=alignments_path,bin_size=bin_size,bins_per_job=bins_per_job)):
         yield (alignments_path, bin_size, max_fragment_size, \
                                contig, start, end, \
-                               min_mq,alt_spans,key_tags)
+                               min_mq,alt_spans,key_tags,dedup)
         if head is not None and i>=(head-1):
             break
 
 def count_fragments_binned(args):
     (alignments_path, bin_size, max_fragment_size, \
                            contig, start, end, \
-                           min_mq,alt_spans, key_tags) = args
+                           min_mq,alt_spans, key_tags,dedup) = args
 
 
     counts = {} # Sample->(contig,bin_start,bin_end)->counts
@@ -72,7 +72,7 @@ def count_fragments_binned(args):
         for p,read in enumerate(alignments.fetch(contig=contig,start=f_start,
                                                  stop=f_end)):
 
-            if not read_counts(read,min_mq=min_mq):
+            if not read_counts(read,min_mq=min_mq, dedup=dedup):
                 continue
 
             sample = read.get_tag('SM')
@@ -112,7 +112,7 @@ def count_fragments_binned_wrap(args):
 
     (alignments_path, bin_size, max_fragment_size, \
                            contig, start, end, \
-                           min_mq,alt_spans) = args
+                           min_mq,alt_spans,dedup) = args
 
     tp = f'./TEMP_{contig}_{start}.pickle.gz'
     res = os.system(f'bamBinCounts.py {alignments_path} -o {tp} -start {start} -end {end} -contig {contig}')
