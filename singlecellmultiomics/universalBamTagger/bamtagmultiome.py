@@ -44,7 +44,8 @@ argparser.add_argument(
     nla_transcriptome (Data with transcriptome and genome digested by Nla III )
     vasa (VASA transcriptomic data)
     cs (CELseq data, 1 and 2)
-    cs_feature_counts (deduplicate using a bam file tagged using featurecounts)
+    cs_feature_counts (Single end, deduplicate using a bam file tagged using featurecounts, deduplicates a umi per gene)
+    fl_feature_counts (deduplicate using a bam file tagged using featurecounts, deduplicates based on fragment position)
     nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
     chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
     nla_no_overhang (Data with digested by Nla III enzyme, without the CATG present in the reads)
@@ -221,7 +222,8 @@ def run_multiome_tagging(args):
             nla_transcriptome (Data with transcriptome and genome digested by Nla III )
             vasa (VASA transcriptomic data)
             cs (CELseq data, 1 and 2)
-            cs_feature_counts (deduplicate using a bam file tagged using featurecounts)
+            cs_feature_counts (Single end, deduplicate using a bam file tagged using featurecounts, deduplicates a umi per gene)
+            fl_feature_counts (deduplicate using a bam file tagged using featurecounts, deduplicates based on fragment position)
             nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
             chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
             chic_nla
@@ -424,6 +426,15 @@ def run_multiome_tagging(args):
         })
 
     elif args.method == 'cs_feature_counts' :
+        moleculeClass = singlecellmultiomics.molecule.Molecule
+        fragmentClass = singlecellmultiomics.fragment.FeatureCountsSingleEndFragment
+
+    elif args.method == 'fl_feature_counts':
+
+        moleculeClass = singlecellmultiomics.molecule.Molecule
+        fragmentClass = singlecellmultiomics.fragment.FeatureCountsFullLengthFragment
+
+    elif args.method == 'episeq' :
         moleculeClass = singlecellmultiomics.molecule.Molecule
         fragmentClass = singlecellmultiomics.fragment.FeatureCountsSingleEndFragment
 
