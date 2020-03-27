@@ -9,6 +9,7 @@ import matplotlib
 import numpy as np
 matplotlib.rcParams['figure.dpi'] = 160
 matplotlib.use('Agg')
+import seaborn as sns
 
 
 def readIsDuplicate(read):
@@ -45,19 +46,23 @@ class CellReadCount(StatisticHistogram):
     def plot(self, target_path, title=None):
         fig, ax = plt.subplots()
         print(self.read_counts)
-        ax.hist(list(self.read_counts.values()))
+        ax.hist(list(self.read_counts.values()), bins=25, zorder=1)
 
         if title is not None:
             ax.set_title(title)
 
         ax.set_xlabel("# Reads")
         ax.set_ylabel("# Cells")
+        ax.grid(zorder=0)
+        sns.despine()
         plt.tight_layout()
         plt.savefig(target_path)
         plt.close()
 
         fig, ax = plt.subplots()
-        ax.hist(list(self.molecule_counts.values()))
+        ax.hist(list(self.molecule_counts.values()), bins=25,zorder=1)
+        ax.grid(zorder=0)
+        sns.despine()
         if title is not None:
             plt.title(title)
 

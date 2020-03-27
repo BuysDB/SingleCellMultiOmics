@@ -13,3 +13,4 @@ from .methylation import *
 from .scchicligation import *
 from .conversions import *
 from .cellreadcount import CellReadCount
+from .lorenz import Lorenz

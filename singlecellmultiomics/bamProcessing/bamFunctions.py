@@ -7,8 +7,9 @@ from singlecellmultiomics.utils import BlockZip
 import uuid
 import os
 from collections import defaultdict
-
-
+from singlecellmultiomics.bamProcessing.pileup import pileup_truncated
+import numpy as np
+import pandas as pd
 
 def verify_and_fix_bam(bam_path):
     """
@@ -501,6 +502,83 @@ def GATK_indel_realign(origin_bam, target_bam,
     -maxReads 2000000'
     os.system(realign_cmd)
     return target_bam
+
+def get_random_locations(bam, n):
+    """Select random locations in the supplied bam file
+
+    bam(str or pysam.AlignmentFile)
+
+    n(int) : amount of locations to generate
+
+    returns: generator of (contig,position) tuples
+    """
+
+    cs = get_contig_sizes(bam)
+    # Obtain cumulative amount of bases per contig:
+    cumulative_size = np.cumsum([size for contig,size in cs.items()])
+    cs_contigs = np.array( list(cs.keys()) )
+
+    random_locations = np.random.randint(0, cumulative_size[-1], n)
+    indices = np.searchsorted(cumulative_size, random_locations)
+    random_positions = random_locations-np.concatenate( ([0], cumulative_size))[indices]
+    random_contigs = cs_contigs[indices]
+
+    return zip(random_contigs, random_positions)
+
+
+
+def sample_location(handle, contig, pos,dedup=True, qc=True):
+    """
+    Obtain dictionary containing the coverage for every sample
+
+    Args:
+        handle (pysam.AlignmentFile)  : File to obtain reads from
+
+        contig (str) : contig to sample
+
+        pos (int) : coordinate to sample (zero based)
+
+        dedup(bool) : ignore duplicated reads
+
+        qc(bool) : ignore qc failed reads
+
+    Returns:
+        samples (dict) : dictionary with amount of reads at the selected locations
+
+    """
+    overlap = {} # sample -> coverage
+    for column in pileup_truncated(handle, contig, pos, pos+1):
+        for pileread in column.pileups:
+            if not pileread.is_del and not pileread.is_refskip:
+                sample = pileread.alignment.get_tag('SM')
+                if dedup and pileread.alignment.is_duplicate:
+                    continue
+                if qc and pileread.alignment.is_qcfail:
+                    continue
+
+                if not sample in overlap:
+                    overlap[sample]=1
+                else:
+                    overlap[sample]+=1
+    return overlap
+
+def random_sample_bam(bam,n,**sample_location_args):
+    """Sample a bam file at random locations
+
+    Args:
+        bam (pysam.AlignmentFile) : bam to sample from
+
+        n (int) : Amount of locations to sample
+
+        *sample_location_args : arguments to pass to sample_location
+
+    Returns:
+        samples (dict) : dictionary with amount of reads at the selected locations
+
+    """
+    r = [sample_location(bam, contig, pos,**sample_location_args)
+    for contig, pos in get_random_locations(bam, n)]
+    return pd.DataFrame(r)
 
 
 def add_readgroups_to_header(

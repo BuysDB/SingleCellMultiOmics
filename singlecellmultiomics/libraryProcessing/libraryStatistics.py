@@ -79,6 +79,7 @@ if __name__ == '__main__':
         help='Alias of subpath to tagged bam file. For example /tagged/sorted.bam')
     argparser.add_argument('--v', action='store_true')
     argparser.add_argument('--nort', action='store_true')
+    argparser.add_argument('--nolorenz', action='store_true')
     args = argparser.parse_args()
 
     for library in args.libraries:
@@ -103,6 +104,13 @@ if __name__ == '__main__':
             OversequencingHistogram(args),
             CellReadCount(args)
         ]
+
+
+        full_file_statistics = []
+
+        if not args.nolorenz:
+            full_file_statistics.append( Lorenz(args) )
+
         if(args.t in ['meth-stats', 'all-stats']):
             statistics.extend([
                 MethylationContextHistogram(args),
@@ -262,6 +270,17 @@ if __name__ == '__main__':
                 if args.v:
                     print(e)
 
+        if bamFile is not None:
+            for statistic in full_file_statistics:
+                try:
+                    with pysam.AlignmentFile(bamFile ) as alignments:
+                        statistic.process_file(alignments)
+                except Exception as e:
+                    if args.v:
+                        print(e)
+
+
+
         # Make plots:
         if args.o is None:
             plot_dir = f'{library}/plots'
@@ -274,10 +293,9 @@ if __name__ == '__main__':
 
         if not args.tablesOnly:
 
-
             if not os.path.exists(plot_dir):
                 os.makedirs(plot_dir)
-            for statistic in statistics:
+            for statistic in statistics + full_file_statistics:
                 if not hasattr(statistic, 'plot'):
                     print(
                         f'Not making a plot for {statistic.__class__.__name__} as no plot method is defined')
@@ -304,7 +322,7 @@ if __name__ == '__main__':
 
             if not os.path.exists(table_dir):
                 os.makedirs(table_dir)
-            for statistic in statistics:
+            for statistic in statistics + full_file_statistics:
                 if not hasattr(statistic, 'to_csv'):
                     print(
                         f'Not making a table for {statistic.__class__.__name__} as to_csv method is not defined')
