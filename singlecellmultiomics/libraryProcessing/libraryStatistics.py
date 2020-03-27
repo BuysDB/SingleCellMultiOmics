@@ -9,6 +9,8 @@ import pysam
 import collections
 import argparse
 
+from singlecellmultiomics.bamProcessing import bam_is_processed_by_program
+
 from colorama import Fore
 from colorama import Back
 from colorama import Style
@@ -18,6 +20,7 @@ import pysamiterators.iterators as pysamIterators
 import gzip
 import pickle
 import subprocess
+from glob import glob
 
 import matplotlib
 matplotlib.rcParams['figure.dpi'] = 160
@@ -26,9 +29,10 @@ matplotlib.use('Agg')
 
 def select_bam_file(lookup):
     for l in lookup:
-        print(f'Found file at {l}')
         if os.path.exists(l):
+            print(f'Found file at {l}')
             return l
+
     return None
 
 
@@ -170,11 +174,28 @@ if __name__ == '__main__':
         # Check if the bam file is present
         if bamFile is None:
             bamFile = select_bam_file(taggedFilesLookup)
-            if bamFile is None:
-                print(f'{Fore.RED}BAM FILE MISSING{library}{Style.RESET_ALL}')
-                exit()
-            else:
-                print(f'{Fore.GREEN}Bam file at {bamFile}{Style.RESET_ALL}')
+
+        if bamFile is None:
+            # Perform glob expansion
+            bams = list(glob(f'{library}/*.bam'))+list(glob(f'{library}/*/*.bam'))
+            for bam_path in bams:
+                print(f"Trying {bam_path}",end="\t")
+                try:
+                    with pysam.AlignmentFile(bam_path) as a:
+                        if bam_is_processed_by_program(a, program='bamtagmultiome'):
+                            bamFile = bam_path
+                            print("[TAGGED]")
+                            break
+                        else:
+                            print("[NOT TAGGED]")
+                except Exception as e:
+                    print(f"[ERROR] {e}")
+
+        if bamFile is None:
+            print(f'{Fore.RED}BAM FILE MISSING {library}{Style.RESET_ALL}')
+            exit()
+        else:
+            print(f'{Fore.GREEN}Bam file at {bamFile}{Style.RESET_ALL}')
 
         demuxFastqFiles = select_fastq_file(demuxFastqFilesLookup)
         rejectFastqFiles = select_fastq_file(rejectFilesLookup)
