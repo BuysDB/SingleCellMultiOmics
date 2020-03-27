@@ -350,6 +350,26 @@ def write_program_tag(input_header,
     })
 
 
+def bam_is_processed_by_program(alignments, program='bamtagmultiome'):
+    """Check if bam file has been processed by the supplied program
+
+    This function checks if there is an entry available in the 'PG'
+    block in header of the bam file where PN matches the program supplied.
+
+    Args:
+        alignments(pysam.AlignmentFile) : handle to bam file
+        program(str) : program to look for
+
+    Returns:
+        program_present(bool) : the program was used to process the bam file
+
+    """
+    for program_dict in alignments.header.as_dict()['PG']:
+        if program_dict.get('PN','') ==  program:
+            return True
+    return False
+
+
 def sort_and_index(
         unsorted_path,
         sorted_path,
@@ -561,6 +581,7 @@ def sample_location(handle, contig, pos,dedup=True, qc=True):
                 else:
                     overlap[sample]+=1
     return overlap
+
 
 def random_sample_bam(bam,n,**sample_location_args):
     """Sample a bam file at random locations
