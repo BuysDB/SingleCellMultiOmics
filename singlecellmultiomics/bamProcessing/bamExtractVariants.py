@@ -303,31 +303,44 @@ if __name__ == '__main__':
     variant_calls = collections.defaultdict(dict)
 
     print(f'Initialising {args.t} workers')
-    workers = multiprocessing.Pool( args.jobsize )
 
-    print('Collecting variant calls')
-    for i,(vc,done) in enumerate(
-        workers.imap_unordered(recall_variants,
-            job_gen( induced_variants_path=args.extract,
-                    germline_variants_path=args.germline,
-                    germline_variants_sample=args.germline_sample,
-                    germline_bam_path=args.germline_bam,
-                    alignments_path=args.bamfile,
-                    n=args.head,
-                    block_size=args.jobsize,
-                    min_qual=args.minqual
-                    ))):
+    jobs = job_gen( induced_variants_path=args.extract,
+            germline_variants_path=args.germline,
+            germline_variants_sample=args.germline_sample,
+            germline_bam_path=args.germline_bam,
+            alignments_path=args.bamfile,
+            n=args.head,
+            block_size=args.jobsize,
+            min_qual=args.minqual
+            )
+    if args.t==1:
 
-        for cell, calls in vc.items():
-            variant_calls[cell].update(calls)
-        print(i)
-        if i%25==0:
-            print('writing intermediate result')
-            df = pd.DataFrame(variant_calls).T.sort_index()
-            if args.o.endswith('.csv'):
-                df.to_csv(args.o)
-            else:
-                df.to_pickle(args.o)
+        def dummy_imap(func, args):
+            for arg in args:
+                yield func(arg)
+
+        for i,(vc,done) in enumerate(dummy_imap(recall_variants, jobs )):
+
+            for cell, calls in vc.items():
+                variant_calls[cell].update(calls)
+
+    else:
+        with multiprocessing.Pool( args.t  ) as workers:
+
+            print('Collecting variant calls')
+            for i,(vc,done) in enumerate(
+                workers.imap_unordered(recall_variants,jobs)):
+
+                for cell, calls in vc.items():
+                    variant_calls[cell].update(calls)
+            print(i)
+            if i%25==0:
+                print('writing intermediate result')
+                df = pd.DataFrame(variant_calls).T.sort_index()
+                if args.o.endswith('.csv'):
+                    df.to_csv(args.o)
+                else:
+                    df.to_pickle(args.o)
 
     print('Finished collecting variant calls')
     # Write variants to output pickle file:
