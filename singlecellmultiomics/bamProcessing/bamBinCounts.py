@@ -115,8 +115,43 @@ def read_counts(read,min_mq, dedup=True):
     return True
 
 
+def gc_correct(args):
+    observations, gc_vector,MAXCP = args
+    correction = lowess(observations, gc_vector)
+    return np.clip(observations / np.interp( gc_vector, correction[:,0], correction[:,1] ) , 0,MAXCP)
 
-from singlecellmultiomics.utils import is_main_chromosome
+def gc_correct_cn_frame(df, reference, MAXCP, threads):
+
+    # Perform GC correction
+    chrom_sizes= dict( zip(reference.references, reference.lengths))
+    # Extract GC percentage from reference for the selected bin size:
+    bins_to_gc = {}
+
+    for contig,start,end in df.columns:
+        k =  (contig,start,end)
+        if not k in bins_to_gc:
+            sequence = reference.fetch(contig, start,end ).upper()
+            gc = sequence.count('G')+sequence.count('C')
+            gcrat = (gc) / ((sequence.count('A')+sequence.count('T')+gc))
+            bins_to_gc[ k ] = gcrat
+
+    # Join the GC table with the count matrix
+    gc_matched = df.T.join( pd.DataFrame({'gc':bins_to_gc}), how='left')['gc']
+
+        # This performs GC correction for every cell using loess regression
+    with multiprocessing.Pool(threads) as workers:
+        keep_bins=df.columns
+        gc_vector = gc_matched[keep_bins]
+
+        corrected_cells = list( workers.imap(
+            gc_correct, [(row,gc_vector.values,MAXCP) for cell,row in df.iterrows()] ))
+
+    corrected_cells = pd.concat(corrected_cells,axis=1).T
+    corrected_cells = ((corrected_cells.T/corrected_cells.median(1))*2).T
+
+    return corrected_cells
+
+
 
 def generate_jobs(alignments_path, bin_size = 1_000_000, bins_per_job = 10):
     for job_group in (((contig, start, start+bin_size*bins_per_job)
@@ -160,7 +195,7 @@ def count_fragments_binned(args):
             if not read_counts(read,min_mq=min_mq, dedup=dedup):
                 continue
 
-            # Extract the site                
+            # Extract the site
             site = int(read.get_tag('DS'))
 
             # Don't count sites outside the selected bounds
