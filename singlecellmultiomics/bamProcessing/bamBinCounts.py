@@ -75,28 +75,33 @@ def count_fragments_binned(args):
             if not read_counts(read,min_mq=min_mq, dedup=dedup):
                 continue
 
-            sample = read.get_tag('SM')
-
+            # Extract the site                
             site = int(read.get_tag('DS'))
 
-
+            # Don't count sites outside the selected bounds
             if site<start or site>=end:
                 continue
 
+            sample = read.get_tag('SM')
+
+            # Process alternative contig counts:
             if alt_spans is not None and contig in alt_spans:
                 contig, site = obtain_approximate_reference_cut_position(
                     site, contig, alt_spans)
 
+            # Obtain the bin index
             bin_i = int(site / bin_size)
             bin_start = bin_size*bin_i
             bin_end = min( bin_size*(bin_i+1), contig_size )
 
+            # Add additional tag information: (For example the allele tag)
             if key_tags is not None:
                 tag_values = [ (read.get_tag(tag) if read.has_tag(tag) else None) for tag in key_tags ]
                 bin_id = (*tag_values, contig, bin_start, bin_end)
             else:
                 bin_id = (contig, bin_start, bin_end)
 
+            # Add a (single) count tot the dictionary:
             if not bin_id in counts:
                 counts[bin_id] = {}
 
