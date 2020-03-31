@@ -1,7 +1,6 @@
 import matplotlib
 import numpy as np
-matplotlib.rcParams['figure.dpi'] = 160
-matplotlib.use('Agg')
+
 from singlecellmultiomics.utils import is_main_chromosome, get_contig_list_from_fasta
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -90,7 +89,7 @@ class GenomicPlot():
         xtick_pos = []
         xtick_label = []
         last_idx = 0
-        for idx, (contig, start, end) in enumerate(df.columns):
+        for idx, (contig, start, end) in enumerate(df.sort_index(1)[self.contigs].columns):
             if prev is not None and prev != contig:
                 clmap.ax_heatmap.axvline(idx-0.5, c='k',lw=1.5, zorder=10)
                 xtick_pos.append( (idx+last_idx) / 2)
