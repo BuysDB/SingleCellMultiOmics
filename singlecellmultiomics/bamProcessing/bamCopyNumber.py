@@ -16,7 +16,7 @@ from singlecellmultiomics.utils.plotting import GenomicPlot
 from singlecellmultiomics.bamProcessing.bamBinCounts import count_fragments_binned, generate_commands, gc_correct_cn_frame, obtain_counts
 import os
 import argparse
-
+from colorama import Fore, Style
 
 
 if __name__ == '__main__':
@@ -63,6 +63,7 @@ if __name__ == '__main__':
     h=GenomicPlot(reference)
     contigs = GenomicPlot(reference).contigs
 
+    print("Creating count matrix ... ", end="")
     commands = generate_commands(
                 alignments_path=alignments_path,
                 bin_size=bin_size,key_tags=None,
@@ -74,9 +75,10 @@ if __name__ == '__main__':
                             live_update=False,
                             show_n_cells=None,
                             update_interval=None )
+    print(f"\rCreating count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
     if histplot is not None:
-        print("Creating molecule histogram ... ")
+        print("Creating molecule histogram ... ",end="")
         df = pd.DataFrame(counts).T.fillna(0)
         fig, ax = plt.subplots()
         cell_sums = df.sum()
@@ -87,6 +89,8 @@ if __name__ == '__main__':
         ax.axvline(molecule_threshold, c='r', label='Threshold')
         plt.legend()
         plt.savefig(histplot)
+        print(f"\rCreating molecule histogram [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
+
 
 
     # Convert the count dictionary to a dataframe
@@ -99,36 +103,41 @@ if __name__ == '__main__':
     df = df / np.percentile(df,pct_clip,axis=0)
     df = np.clip(0,MAXCP,(df / df.median())*2)
     df = df.T
-    print("Filtering count matrix [ OK ] ")
-    print( f'{df.shape[0]} cells, and {df.shape[1]} bins remaining' )
+    if df.shape[0]==0:
+        print(f"\rExporting raw count matrix [ {Fore.RED}FAIL{Style.RESET_ALL} ] ")
+        raise ValueError('Resulting count matrix is empty, review the filter settings')
+    else:
+        print(f"Filtering count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
+        print( f'{df.shape[0]} cells, and {df.shape[1]} bins remaining' )
     del counts
 
     if rawmat is not None:
-        print("Exporting raw count matrix ... ")
+        print("Exporting raw count matrix ... ", end="")
         if rawmat.endswith('.pickle.gz'):
             df.to_pickle(rawmat)
         else:
             df.to_csv(rawmat)
-        print("\rExporting raw count matrix [ OK ] ")
+
+        print(f"\rExporting raw count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
     if rawmatplot is not None:
         print("Creating raw heatmap ...", end="")
         h.cn_heatmap(df, figsize=(15,15))
         plt.savefig(f'./molecule_matrix_{bin_size}bp.png')
-        print("\rCreating raw heatmap [ OK ] ")
+        print(f"\rCreating raw heatmap [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
         plt.close('all')
 
     if gcmatplot is not None or gcmatplot is not None:
         print("Performing GC correction ...", end="")
         corrected_cells = gc_correct_cn_frame(df, reference, MAXCP, threads)
-        print("\rPerforming GC correction [ OK ]")
+        print(f"\rPerforming GC correction [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
     if gcmatplot is not None:
         print("Creating heatmap ...", end="")
         h.cn_heatmap(corrected_cells,figsize=(15,15))
         plt.savefig(f'./gc_corrected_matrix_{bin_size}bp.png')
         plt.close('all')
-        print("\rCreating heatmap [ OK ] ")
+        print(f"\rCreating heatmap [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
     if gcmat is not None:
         print("Exporting corrected count matrix ... ")
@@ -136,4 +145,4 @@ if __name__ == '__main__':
             corrected_cells.to_pickle(gcmat)
         else:
             corrected_cells.to_csv(gcmat)
-        print("\rExporting corrected count matrix [ OK ] ")
+        print(f"\rExporting corrected count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
