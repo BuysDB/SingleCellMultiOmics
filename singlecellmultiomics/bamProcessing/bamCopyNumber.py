@@ -107,7 +107,7 @@ if __name__ == '__main__':
         print(f"\rExporting raw count matrix [ {Fore.RED}FAIL{Style.RESET_ALL} ] ")
         raise ValueError('Resulting count matrix is empty, review the filter settings')
     else:
-        print(f"Filtering count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
+        print(f"Filtering count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ", end="")
         print( f'{df.shape[0]} cells, and {df.shape[1]} bins remaining' )
     del counts
 
