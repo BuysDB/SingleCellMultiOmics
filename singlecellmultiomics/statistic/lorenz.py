@@ -10,7 +10,7 @@ matplotlib.rcParams['figure.dpi'] = 160
 matplotlib.use('Agg')
 
 def plot_lorentz(cdf, per_sample=False):
-    fig, ax = plt.subplots(figsize=(6,6),zorder=1)
+    fig, ax = plt.subplots(figsize=(6,6))
     if per_sample:
         for cell in cdf:
             ax.plot(np.linspace(0,1,cdf.shape[0]), np.cumsum(cdf[cell].fillna(0).sort_values(ascending=True))/cdf[cell].sum(),label=cell,zorder=1)
