@@ -40,7 +40,10 @@ class VariantWrapper:
 
 
 
-def job_gen( induced_variants_path, germline_variants_path, germline_variants_sample, alignments_path, block_size = 100, n=None, contig=None, completed=None,min_qual=None,germline_bam_path=None):
+def job_gen( induced_variants_path, germline_variants_path,
+        germline_variants_sample, alignments_path, block_size = 100, n=None,
+        contig=None, completed=None,min_qual=None,germline_bam_path=None,
+        MAX_REF_MOLECULES=1000,window_radius=600,max_buffer_size=100_000 ):
     """
     Job generator
 
@@ -74,14 +77,18 @@ def job_gen( induced_variants_path, germline_variants_path, germline_variants_sa
 
             if len(vlist)>=block_size:
                 #f'./{extraction_folder}/variants_extracted_0_NLA_{i}.bam'
-                yield (vlist, alignments_path, None, 'NLA', germline_variants_path, germline_variants_sample, germline_bam_path)
+                yield (vlist, alignments_path, None, 'NLA', germline_variants_path,
+                    germline_variants_sample, germline_bam_path,
+                    window_radius, MAX_REF_MOLECULES,max_buffer_size)
+
                 vlist = []
                 i+=1
                 if n is not None and i>=n:
                     break
         if len(vlist):
-            yield (vlist, alignments_path,  None, 'NLA', germline_variants_path, germline_variants_sample, germline_bam_path)
-
+            yield (vlist, alignments_path, None, 'NLA', germline_variants_path,
+                germline_variants_sample, germline_bam_path,
+                window_radius, MAX_REF_MOLECULES,max_buffer_size)
 
 
 def get_molecule_base_calls(molecule, variant):
@@ -122,10 +129,10 @@ def filter_alt_calls(alt_phased, threshold):
 
 def recall_variants(args):
 
-    variants, alignment_file_path, target_path, mode, germline_variants_path, germline_variants_sample, germline_bam_path = args
+    variants, alignment_file_path, target_path, mode, germline_variants_path, germline_variants_sample, germline_bam_path, window_radius, MAX_REF_MOLECULES,max_buffer_size = args
 
     window_radius = 600
-    MAX_REF_READS = 1_000  # Maximum amount of reference molecules to process.
+    MAX_REF_MOLECULES = 1_000  # Maximum amount of reference molecules to process.
     # This is capped for regions to which many reads map (mapping artefact)
 
     variant_calls = dict() # cell->(chrom,pos) +/- ?
@@ -202,7 +209,7 @@ def recall_variants(args):
                    'allele_resolver':unphased_allele_resolver,
                     'max_associated_fragments':20,
                 },
-                max_buffer_size=100_000
+                max_buffer_size=max_buffer_size
             )
 
             reference_called_molecules = [] # molecule, phase
@@ -235,7 +242,7 @@ def recall_variants(args):
                 if call=='R' and len(phased)>0:
                     # If we can phase the alternative allele to a germline variant
                     # the reference calls can indicate absence
-                    if len(reference_called_molecules) < MAX_REF_READS:
+                    if len(reference_called_molecules) < MAX_REF_MOLECULES:
                         reference_called_molecules.append((molecule, phased))
 
                 for chrom,pos,base in phased:
@@ -274,7 +281,7 @@ if __name__ == '__main__':
     argparser.add_argument('-extract', help="vcf file with variants to extract", required=True)
     argparser.add_argument('-germline', help="vcf file with germline variants to potentially phase with", required=False)
     argparser.add_argument('-germline_sample', help="germline sample in supplied vcf file")
-    argparser.add_argument('-germline_bam', help="germline bam file (no variant reads are allowed in this file)")
+    argparser.add_argument('-germline_bam', help="germline bam file (no variant reads are allowed in this file)", default=None)
 
     argparser.add_argument(
         '-o',
@@ -296,31 +303,44 @@ if __name__ == '__main__':
     variant_calls = collections.defaultdict(dict)
 
     print(f'Initialising {args.t} workers')
-    workers = multiprocessing.Pool( args.jobsize )
 
-    print('Collecting variant calls')
-    for i,(vc,done) in enumerate(
-        workers.imap_unordered(recall_variants,
-            job_gen( induced_variants_path=args.extract,
-                    germline_variants_path=args.germline,
-                    germline_variants_sample=args.germline_sample,
-                    germline_bam_path=args.germline_bam,
-                    alignments_path=args.bamfile,
-                    n=args.head,
-                    block_size=args.jobsize,
-                    min_qual=args.minqual
-                    ))):
+    jobs = job_gen( induced_variants_path=args.extract,
+            germline_variants_path=args.germline,
+            germline_variants_sample=args.germline_sample,
+            germline_bam_path=args.germline_bam,
+            alignments_path=args.bamfile,
+            n=args.head,
+            block_size=args.jobsize,
+            min_qual=args.minqual
+            )
+    if args.t==1:
 
-        for cell, calls in vc.items():
-            variant_calls[cell].update(calls)
-        print(i)
-        if i%25==0:
-            print('writing intermediate result')
-            df = pd.DataFrame(variant_calls).T.sort_index()
-            if args.o.endswith('.csv'):
-                df.to_csv(args.o)
-            else:
-                df.to_pickle(args.o)
+        def dummy_imap(func, args):
+            for arg in args:
+                yield func(arg)
+
+        for i,(vc,done) in enumerate(dummy_imap(recall_variants, jobs )):
+
+            for cell, calls in vc.items():
+                variant_calls[cell].update(calls)
+
+    else:
+        with multiprocessing.Pool( args.t  ) as workers:
+
+            print('Collecting variant calls')
+            for i,(vc,done) in enumerate(
+                workers.imap_unordered(recall_variants,jobs)):
+
+                for cell, calls in vc.items():
+                    variant_calls[cell].update(calls)
+            print(i)
+            if i%25==0:
+                print('writing intermediate result')
+                df = pd.DataFrame(variant_calls).T.sort_index()
+                if args.o.endswith('.csv'):
+                    df.to_csv(args.o)
+                else:
+                    df.to_pickle(args.o)
 
     print('Finished collecting variant calls')
     # Write variants to output pickle file:

@@ -1,3 +1,6 @@
+import matplotlib
+import numpy as np
+
 from singlecellmultiomics.utils import is_main_chromosome, get_contig_list_from_fasta
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -27,6 +30,8 @@ def sort_chromosome_names(l):
     indices = sorted(range(len(chrom_values)),key=lambda x:chrom_values[x])
     return [l[idx] for idx in indices]
 
+
+
 class GenomicPlot():
     def __init__(self, ref_path, contigs=None):
         """
@@ -52,6 +57,52 @@ class GenomicPlot():
         # Prune contigs with no length:
         self.contigs = [contig for contig in self.contigs if contig in self.lengths]
 
+    def cn_heatmap(self, df,cell_font_size=3, max_cn=4, method='ward', cmap='bwr',
+            figsize=(15,20), xlabel = 'Contigs', ylabel='Cells', **kwargs ):
+        """
+        Create a heatmap from a copy number matrix
+
+        df: triple indexed dataframe with as columns ('contig', start, end ), as rows cells/samples
+
+        cell_font_size (int): font size of the cell labels
+
+        max_cn (int) : dataframe will be clipped to this value. (Maximum copy number shown)
+
+        method (str) : clustering metric
+
+        cmap (str) : colormap used
+
+        figsize(tuple) : Size of the figure
+
+        xlabel (str) : Label for the x-axis, by default this is Contigs
+
+        ylabel (str) : Label for the x-axis, by default this is Cells
+
+        **kwargs : Arguments which will be passed to seaborn.clustermap
+
+        """
+
+        clmap = sns.clustermap(df.sort_index(1)[self.contigs],col_cluster=False,method=method,cmap=cmap, vmax=max_cn,vmin=0, yticklabels=True, figsize=figsize, **kwargs)
+        clmap.ax_heatmap.set_yticklabels(clmap.ax_heatmap.get_ymajorticklabels(), fontsize = cell_font_size)
+
+        prev = None
+        xtick_pos = []
+        xtick_label = []
+        last_idx = 0
+        for idx, (contig, start, end) in enumerate(df.sort_index(1)[self.contigs].columns):
+            if prev is not None and prev != contig:
+                clmap.ax_heatmap.axvline(idx-0.5, c='k',lw=1.5, zorder=10)
+                xtick_pos.append( (idx+last_idx) / 2)
+                xtick_label.append(prev)
+                last_idx=idx
+            prev = contig
+
+        clmap.ax_heatmap.set_xticks(xtick_pos)
+        clmap.ax_heatmap.set_xticklabels(xtick_label,rotation=0, fontsize=8)
+        clmap.ax_heatmap.set_xlabel(xlabel,labelpad=20)
+        clmap.ax_heatmap.set_ylabel(ylabel,labelpad=20)
+
+        return clmap
 
     def get_relative_widths(self):
         return [self.lengths[contig]/self.total_bp for contig in self.contigs]
