@@ -127,7 +127,7 @@ if __name__ == '__main__':
         print(f"\rCreating raw heatmap [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
         plt.close('all')
 
-    if gcmatplot is not None or gcmatplot is not None:
+    if gcmatplot is not None or gcmat is not None:
         print("Performing GC correction ...", end="")
         corrected_cells = gc_correct_cn_frame(df, reference, MAXCP, threads)
         print(f"\rPerforming GC correction [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
