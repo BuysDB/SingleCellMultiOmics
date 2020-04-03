@@ -32,6 +32,12 @@ argparser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     description='Assign molecules, set sample tags, set alleles')
 argparser.add_argument('bamin', type=str)
+argparser.add_argument(
+    '-ref',
+    type=str,
+    default=None,
+    help="Path to reference fast (autodected if not supplied)")
+
 argparser.add_argument('-o', type=str, help="output bam file", required=True)
 argparser.add_argument(
     '-method',
@@ -56,18 +62,18 @@ argparser.add_argument(
     type=str,
     default=None,
     help="Query flagging algorithm")
-argparser.add_argument('-custom_flags', type=str, default="MI,RX,bi,SM")
 argparser.add_argument(
-    '-ref',
-    type=str,
-    default=None,
-    help="Path to reference fast (autodected if not supplied)")
-argparser.add_argument('-umi_hamming_distance', type=int, default=1)
-argparser.add_argument('-head', type=int)
-argparser.add_argument('-contig', type=str, help='Contig to only process')
-argparser.add_argument('-skip_contig', type=str, help='Contigs not to process')
-argparser.add_argument('-region_start', type=int, help='Zero based start coordinate of region to process')
-argparser.add_argument('-region_end', type=int, help='Zero based end coordinate of region to process')
+    '--ignore_bam_issues',
+    action='store_true',
+    help='Ignore truncation')
+argparser.add_argument('-custom_flags', type=str, default="MI,RX,bi,SM")
+
+r_select = argparser.add_argument_group('Region selection')
+r_select.add_argument('-head', type=int)
+r_select.add_argument('-contig', type=str, help='Contig to only process')
+r_select.add_argument('-skip_contig', type=str, help='Contigs not to process')
+r_select.add_argument('-region_start', type=int, help='Zero based start coordinate of region to process')
+r_select.add_argument('-region_end', type=int, help='Zero based end coordinate of region to process')
 
 allele_gr = argparser.add_argument_group('alleles')
 allele_gr.add_argument('-alleles', type=str, help="Phased allele file (VCF)")
@@ -90,10 +96,6 @@ allele_gr.add_argument(
     action='store_true',
     help='Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not available. Once they are available there is not thread safety issue anymore')
 
-argparser.add_argument(
-    '--ignore_bam_issues',
-    action='store_true',
-    help='Ignore truncation')
 
 
 fragment_settings = argparser.add_argument_group('Fragment settings')
@@ -104,16 +106,18 @@ fragment_settings.add_argument(
     action='store_true',
     help='When enabled bamtagmultiome will look through the complete bam file in a hunt for the mate, the two mates will always end up in 1 molecule if both present in the bam file. This also works when the is_proper_pair bit is not set. Use this option when you want to find the breakpoints of genomic re-arrangements.')
 
-argparser.add_argument(
+molecule_settings = argparser.add_argument_group('Fragment settings')
+molecule_settings.add_argument(
     '-mapfile',
     type=str,
     help='Path to *.safe.bgzf file, used to decide if molecules are uniquely mappable, generate one using createMapabilityIndex.py ')
-
-argparser.add_argument(
+molecule_settings.add_argument('-umi_hamming_distance', type=int, default=1)
+molecule_settings.add_argument(
     '-annotmethod',
     type=int,
     default=1,
     help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base")
+
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument(
     '--cluster',
@@ -337,6 +341,9 @@ def run_multiome_tagging(args):
 
     fragment_class_args = {}
     yield_invalid = True  # if invalid reads should be written
+
+    if args.max_fragment_size is not None:
+        fragment_class_args['max_fragment_size'] = args.max_fragment_size
 
     if args.no_rejects:
         yield_invalid = False
@@ -713,7 +720,7 @@ def run_multiome_tagging(args):
 
             # Update read groups
             for fragment in molecule:
-                read_groups.add(fragment.get_read_group())
+                read_groups.add(fragment.get_read_group(args.read_group_setting))
 
             # Calculate molecule consensus
             if args.consensus:
@@ -725,7 +732,8 @@ def run_multiome_tagging(args):
                         NUC_RADIUS=args.consensus_k_rad
                         )
                     for consensus_read in consensus_reads:
-                        consensus_read.set_tag('RG', molecule[0].get_read_group())
+                        consensus_read.set_tag('RG', molecule[0].get_read_group(
+                                                args.read_group_setting))
                         consensus_read.set_tag('mi', i)
                         out.write(consensus_read)
                 except Exception as e:
