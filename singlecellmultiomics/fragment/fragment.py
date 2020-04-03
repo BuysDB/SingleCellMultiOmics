@@ -325,6 +325,9 @@ class Fragment():
             self.set_meta('fe', self.span[1])
             self.set_meta('fs', self.span[2])
 
+        else:
+            self.set_rejection_reason('FS', set_qcfail=True)
+
         # Set qcfail bit when the fragment is not valid
 
         if not self.is_valid():
