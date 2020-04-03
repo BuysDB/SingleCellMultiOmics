@@ -105,6 +105,12 @@ fragment_settings.add_argument(
     '--resolve_unproperly_paired_reads',
     action='store_true',
     help='When enabled bamtagmultiome will look through the complete bam file in a hunt for the mate, the two mates will always end up in 1 molecule if both present in the bam file. This also works when the is_proper_pair bit is not set. Use this option when you want to find the breakpoints of genomic re-arrangements.')
+fragment_settings.add_argument(
+    '--allow_cycle_shift',
+    action='store_true',
+    help='NlaIII: Allow fragments to be shifted slightly around the cut site.')
+
+
 
 molecule_settings = argparser.add_argument_group('Fragment settings')
 molecule_settings.add_argument(
@@ -117,6 +123,8 @@ molecule_settings.add_argument(
     type=int,
     default=1,
     help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base")
+
+
 
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument(
@@ -184,6 +192,7 @@ cg.add_argument(
     help='consensus model k radius',
     default=3)
 
+
 cg.add_argument('--no_source_reads', action='store_true',
                 help='Do not write original reads, only consensus ')
 
@@ -202,6 +211,8 @@ ma.add_argument(
     '--no_umi_cigar_processing',
     action='store_true',
     help='Do not use the alignment during deduplication')
+
+
 
 
 def run_multiome_tagging_cmd(commandline):
@@ -504,6 +515,9 @@ def run_multiome_tagging(args):
     else:
         raise ValueError("Supply a valid method")
 
+    # Allow or disallow cycle shift:
+    if args.allow_cycle_shift and fragmentClass is singlecellmultiomics.fragment.NLAIIIFragment:
+        fragment_class_args['allow_cycle_shift'] = True
 
     # This disables umi_cigar_processing:
     if args.no_umi_cigar_processing:
