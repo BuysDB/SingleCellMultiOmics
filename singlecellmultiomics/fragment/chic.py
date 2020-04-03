@@ -10,7 +10,8 @@ class CHICFragment(Fragment):
                  assignment_radius=1_000,
                  umi_hamming_distance=1,
                  invert_strand=True,
-                 no_umi_cigar_processing=False
+                 no_umi_cigar_processing=False,
+                 **kwargs
                  ):
         self.invert_strand = invert_strand
         Fragment.__init__(self,
@@ -18,7 +19,8 @@ class CHICFragment(Fragment):
                           assignment_radius=assignment_radius,
                           R1_primer_length=R1_primer_length,
                           R2_primer_length=R2_primer_length,
-                          umi_hamming_distance=umi_hamming_distance
+                          umi_hamming_distance=umi_hamming_distance,
+                          **kwargs
 
                           )
         # set CHIC cut site given reads
@@ -115,6 +117,13 @@ class CHICFragment(Fragment):
                 is_trimmed=False)
 
     def is_valid(self):
+        if self.max_fragment_size is not None:
+            try:
+                size = self.get_fragment_size()
+                if size>self.max_fragment_size:
+                    return False
+            except Exception:
+                pass
         return self.site_location is not None
 
     def get_site_location(self):

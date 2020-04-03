@@ -12,7 +12,7 @@ class NLAIIIFragment(Fragment):
                  invert_strand=False,
                  no_overhang =False, # CATG is present OUTSIDE the fragment
                  reference=None, #Reference is required when no_overhang=True
-                 no_umi_cigar_processing=False
+                 no_umi_cigar_processing=False, **kwargs
                  ):
         self.invert_strand = invert_strand
         self.no_overhang = no_overhang
@@ -26,7 +26,7 @@ class NLAIIIFragment(Fragment):
                           assignment_radius=assignment_radius,
                           R1_primer_length=R1_primer_length,
                           R2_primer_length=R2_primer_length,
-                          umi_hamming_distance=umi_hamming_distance)
+                          umi_hamming_distance=umi_hamming_distance, **kwargs)
         # set NLAIII cut site given reads
         self.strand = None
         self.site_location = None
@@ -66,7 +66,7 @@ class NLAIIIFragment(Fragment):
     # Output: (E is emitted)
     #           R1 HEEEEEEE----------------->
     #   <------------------HH R2
-    
+
 
         if self.R1_primer_length==0 and self.R2_primer_length==0:
             starts = tuple( read.reference_start for read in self if read is not None and not read.is_unmapped )

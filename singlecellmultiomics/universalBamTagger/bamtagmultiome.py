@@ -95,7 +95,11 @@ argparser.add_argument(
     action='store_true',
     help='Ignore truncation')
 
-argparser.add_argument(
+
+fragment_settings = argparser.add_argument_group('Fragment settings')
+fragment_settings.add_argument('-read_group_setting', type=int, default=0, help="0: Every cell/sequencing unit gets a read group, 1: Every library/sequencing unit gets a read group")
+fragment_settings.add_argument('-max_fragment_size', type=int, default=None, help='Reject fragments with a fragment size higher the specified value')
+fragment_settings.add_argument(
     '--resolve_unproperly_paired_reads',
     action='store_true',
     help='When enabled bamtagmultiome will look through the complete bam file in a hunt for the mate, the two mates will always end up in 1 molecule if both present in the bam file. This also works when the is_proper_pair bit is not set. Use this option when you want to find the breakpoints of genomic re-arrangements.')
