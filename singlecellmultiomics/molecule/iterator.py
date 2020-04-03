@@ -148,6 +148,7 @@ class MoleculeIterator():
                  max_buffer_size=None,  #Limit the amount of stored reads, when this value is exceeded, a MemoryError is thrown
                  iterator_class = pysamiterators.iterators.MatePairIterator,
                  skip_contigs=None,
+                 progress_callback_function=None,
                  **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
@@ -202,7 +203,7 @@ class MoleculeIterator():
         self.pooling_method = pooling_method
         self.yield_invalid = yield_invalid
         self.every_fragment_as_molecule = every_fragment_as_molecule
-
+        self.progress_callback_function = progress_callback_function
         self.iterator_class = iterator_class
         self.max_buffer_size=max_buffer_size
 
@@ -255,7 +256,10 @@ class MoleculeIterator():
             # If an iterable is provided use this as read source:
             self.matePairIterator = self.alignments
 
-        for reads in self.matePairIterator:
+        for iteration,reads in enumerate(self.matePairIterator):
+
+            if self.progress_callback_function is not None and iteration%100==0:
+                self.progress_callback_function(iteration, self, reads)
 
             if isinstance(reads, pysam.AlignedSegment):
                 R1 = reads
