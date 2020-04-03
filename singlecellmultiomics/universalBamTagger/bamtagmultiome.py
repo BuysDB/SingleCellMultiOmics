@@ -99,7 +99,7 @@ allele_gr.add_argument(
 
 
 fragment_settings = argparser.add_argument_group('Fragment settings')
-fragment_settings.add_argument('-read_group_setting', type=int, default=0, help="0: Every cell/sequencing unit gets a read group, 1: Every library/sequencing unit gets a read group")
+fragment_settings.add_argument('-read_group_format', type=int, default=0, help="0: Every cell/sequencing unit gets a read group, 1: Every library/sequencing unit gets a read group")
 fragment_settings.add_argument('-max_fragment_size', type=int, default=None, help='Reject fragments with a fragment size higher the specified value')
 fragment_settings.add_argument(
     '--resolve_unproperly_paired_reads',
@@ -339,7 +339,10 @@ def run_multiome_tagging(args):
         'reference': reference
     }
 
-    fragment_class_args = {}
+    fragment_class_args = {
+        'read_group_format' : args.read_group_format
+
+    }
     yield_invalid = True  # if invalid reads should be written
 
     if args.max_fragment_size is not None:
@@ -347,6 +350,7 @@ def run_multiome_tagging(args):
 
     if args.no_rejects:
         yield_invalid = False
+
 
     ignore_conversions = None
     if args.method == 'nla_taps' or args.method == 'chic_taps':
@@ -720,7 +724,7 @@ def run_multiome_tagging(args):
 
             # Update read groups
             for fragment in molecule:
-                read_groups.add(fragment.get_read_group(args.read_group_setting))
+                read_groups.add(fragment.get_read_group())
 
             # Calculate molecule consensus
             if args.consensus:
@@ -732,8 +736,7 @@ def run_multiome_tagging(args):
                         NUC_RADIUS=args.consensus_k_rad
                         )
                     for consensus_read in consensus_reads:
-                        consensus_read.set_tag('RG', molecule[0].get_read_group(
-                                                args.read_group_setting))
+                        consensus_read.set_tag('RG', molecule[0].get_read_group())
                         consensus_read.set_tag('mi', i)
                         out.write(consensus_read)
                 except Exception as e:

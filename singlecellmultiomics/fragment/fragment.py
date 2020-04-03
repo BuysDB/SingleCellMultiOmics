@@ -47,7 +47,8 @@ class Fragment():
                  R2_primer_length=6,
                  tag_definitions=None,
                  max_fragment_size = None,
-                 mapping_dir=(False, True)  # R1 forward, R2 reverse
+                 mapping_dir=(False, True),
+                 read_group_format=0  # R1 forward, R2 reverse
                  ):
         """
         Initialise Fragment
@@ -78,6 +79,7 @@ class Fragment():
                     expected mapping direction of mates,
                     True for reverse, False for forward. This parameter is used in dovetail detection
 
+                read_group_format(int) : see get_read_group()
             Returns:
                 html(string) : html representation of the fragment
         """
@@ -101,6 +103,7 @@ class Fragment():
         self.unsafe_trimmed = False  # wether primers have been trimmed off
         self.random_primer_sequence = None
         self.max_fragment_size = max_fragment_size
+        self.read_group_format = read_group_format
 
         # Span:\
         self.span = [None, None, None]
@@ -281,12 +284,12 @@ class Fragment():
         else:
             return ri + index_start + 1
 
-    def get_read_group(self, format=0):
+    def get_read_group(self):
         """
         Obtain read group for this fragment
 
-        Args:
-            format(int) : 0, every cell gets a read group,
+        Uses
+            self.read_group_format (int) : 0, every cell gets a read group,
                           1: every library gets a read group
 
         Returns:
@@ -296,11 +299,14 @@ class Fragment():
         rg = None
         for read in self.reads:
             if read is not None:
-                if format==0:
+                if self.read_group_format==0:
                     rg = f"{read.get_tag('Fc') if read.has_tag('Fc') else 'NONE'}.{read.get_tag('La') if read.has_tag('La') else 'NONE'}.{read.get_tag('SM') if read.has_tag('SM') else 'NONE'}"
-                else:
+                elif self.read_group_format==1:
                     rg = f"{read.get_tag('Fc') if read.has_tag('Fc') else 'NONE'}.{read.get_tag('La') if read.has_tag('La') else 'NONE'}.{read.get_tag('LY') if read.has_tag('LY') else 'NONE'}"
+                else:
+                    raise ValueError(f'{format} is an unknown read group format')
                 break
+
         return rg
 
     def set_duplicate(self, is_duplicate):
