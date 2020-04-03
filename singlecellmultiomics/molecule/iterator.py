@@ -299,16 +299,24 @@ class MoleculeIterator():
                 continue
 
             added = False
-            if self.pooling_method == 0:
-                for molecule in self.molecules:
-                    if molecule.add_fragment(fragment, use_hash=False):
-                        added = True
-                        break
-            elif self.pooling_method == 1:
-                for molecule in self.molecules_per_cell[fragment.match_hash]:
-                    if molecule.add_fragment(fragment, use_hash=True):
-                        added = True
-                        break
+            try:
+                if self.pooling_method == 0:
+                    for molecule in self.molecules:
+                        if molecule.add_fragment(fragment, use_hash=False):
+                            added = True
+                            break
+                elif self.pooling_method == 1:
+                    for molecule in self.molecules_per_cell[fragment.match_hash]:
+                        if molecule.add_fragment(fragment, use_hash=True):
+                            added = True
+                            break
+            except OverflowError:
+                # This means the fragment does belong to a molecule, but the molecule does not accept any more fragments.
+                m = self.moleculeClass(fragment, **self.molecule_class_args)
+                m.set_rejection_reason('overflow')
+                m.__finalise__()
+                yield m
+                continue
 
             if not added:
                 if self.pooling_method == 0:
