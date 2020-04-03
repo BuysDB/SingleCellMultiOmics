@@ -211,7 +211,7 @@ ma.add_argument(
     '--no_umi_cigar_processing',
     action='store_true',
     help='Do not use the alignment during deduplication')
-
+ma.add_argument('-max_associated_fragments',type=int, default=None, help="Limit the maximum amount of reads associated to a single molecule.")
 
 
 
@@ -523,6 +523,8 @@ def run_multiome_tagging(args):
     if args.no_umi_cigar_processing:
         fragment_class_args['no_umi_cigar_processing'] = True
 
+    if args.max_associated_fragments is not None:
+        molecule_class_args['max_associated_fragments'] = args.max_associated_fragments
 
     # This decides what molecules we will traverse
     if args.contig == MISC_ALT_CONTIGS_SCMO:
