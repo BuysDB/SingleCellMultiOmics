@@ -12,7 +12,7 @@ class NLAIIIFragment(Fragment):
                  invert_strand=False,
                  no_overhang =False, # CATG is present OUTSIDE the fragment
                  reference=None, #Reference is required when no_overhang=True
-                 allow_cycle_shift=True,
+                 allow_cycle_shift=False,
                  no_umi_cigar_processing=False, **kwargs
                  ):
         self.invert_strand = invert_strand
