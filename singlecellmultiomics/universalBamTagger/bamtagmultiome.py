@@ -96,7 +96,8 @@ allele_gr.add_argument(
     action='store_true',
     help='Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not available. Once they are available there is not thread safety issue anymore')
 
-
+argparser.add_argument('-molecule_iterator_verbosity_interval',type=int,default=None,help='Show real time molecule iterator information')
+argparser.add_argument('-stats_file_path',type=str,default=None,help='Path to logging file')
 
 fragment_settings = argparser.add_argument_group('Fragment settings')
 fragment_settings.add_argument('-read_group_format', type=int, default=0, help="0: Every cell/sequencing unit gets a read group, 1: Every library/sequencing unit gets a read group")
@@ -542,6 +543,44 @@ def run_multiome_tagging(args):
         region_start = None
         region_end = None
 
+
+
+    last_update = datetime.now()
+    init_time = datetime.now()
+    print(last_update)
+    if args.molecule_iterator_verbosity_interval is not None:
+
+        stats_handle = None
+        if args.stats_file_path is not None:
+            stats_handle = open(args.stats_file_path,'w')
+
+        def progress_callback_function( iteration, mol_iter, reads ):
+            nonlocal last_update
+            nonlocal init_time
+            nonlocal stats_handle
+
+            now = datetime.now()
+            diff = (datetime.now()-last_update).total_seconds()
+            if diff>args.molecule_iterator_verbosity_interval:
+
+                diff_from_init = (datetime.now()-init_time).total_seconds()
+                _contig, _pos = None, None
+                for read in reads:
+                    if read is not None:
+                        _contig, _pos = read.reference_name, read.reference_start
+                print( f'{mol_iter.waiting_fragments} fragments waiting, {mol_iter.yielded_fragments} fragments written, current pos: {_contig}, {_pos}             ' , end='\r')
+                if stats_handle is not None:
+                    stats_handle.write(f'{diff_from_init}\t{mol_iter.waiting_fragments}\t{mol_iter.yielded_fragments}\t{_contig}\t{_pos}\n')
+                    stats_handle.flush()
+                last_update = now
+
+
+
+    else:
+        progress_callback_function = None
+
+
+
     molecule_iterator_args = {
         'alignments': input_bam,
         'queryNameFlagger': queryNameFlagger,
@@ -554,7 +593,8 @@ def run_multiome_tagging(args):
         'end':region_end,
         'contig': contig,
         'every_fragment_as_molecule': every_fragment_as_molecule,
-        'skip_contigs':skip_contig
+        'skip_contigs':skip_contig,
+        'progress_callback_function':progress_callback_function
     }
 
     if args.resolve_unproperly_paired_reads:
