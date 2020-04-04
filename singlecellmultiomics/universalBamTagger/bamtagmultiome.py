@@ -556,7 +556,6 @@ def run_multiome_tagging(args):
 
     last_update = datetime.now()
     init_time = datetime.now()
-    print(last_update)
     if args.molecule_iterator_verbosity_interval is not None:
 
         stats_handle = None
@@ -577,13 +576,11 @@ def run_multiome_tagging(args):
                 for read in reads:
                     if read is not None:
                         _contig, _pos = read.reference_name, read.reference_start
-                print( f'{mol_iter.waiting_fragments} fragments waiting, {mol_iter.yielded_fragments} fragments written, current pos: {_contig}, {_pos}             ' , end='\r')
+                print( f'{mol_iter.yielded_fragments} fragments written, {mol_iter.deleted_fragments} fragments deleted ({(mol_iter.deleted_fragments/(mol_iter.deleted_fragments + mol_iter.yielded_fragments))*100:.2f} %), current pos: {_contig}, {_pos}, {mol_iter.waiting_fragments} fragments waiting             ' , end='\r')
                 if stats_handle is not None:
-                    stats_handle.write(f'{diff_from_init}\t{mol_iter.waiting_fragments}\t{mol_iter.yielded_fragments}\t{_contig}\t{_pos}\n')
+                    stats_handle.write(f'{diff_from_init}\t{mol_iter.waiting_fragments}\t{mol_iter.yielded_fragments}\t{mol_iter.deleted_fragments}\t{_contig}\t{_pos}\n')
                     stats_handle.flush()
                 last_update = now
-
-
 
     else:
         progress_callback_function = None
