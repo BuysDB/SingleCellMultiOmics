@@ -96,8 +96,9 @@ allele_gr.add_argument(
     action='store_true',
     help='Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not available. Once they are available there is not thread safety issue anymore')
 
-argparser.add_argument('-molecule_iterator_verbosity_interval',type=int,default=None,help='Show real time molecule iterator information')
-argparser.add_argument('-stats_file_path',type=str,default=None,help='Path to logging file')
+argparser.add_argument('-molecule_iterator_verbosity_interval',type=int,default=None,help='Molecule iterator information interval in seconds')
+argparser.add_argument('--molecule_iterator_verbose', action='store_true', help='Show progress indication on command line')
+argparser.add_argument('-stats_file_path',type=str,default=None,help='Path to logging file, ends with ".tsv"')
 
 fragment_settings = argparser.add_argument_group('Fragment settings')
 fragment_settings.add_argument('-read_group_format', type=int, default=0, help="0: Every cell/sequencing unit gets a read group, 1: Every library/sequencing unit gets a read group")
@@ -219,6 +220,10 @@ ma.add_argument(
     help='Do not use the alignment during deduplication')
 ma.add_argument('-max_associated_fragments',type=int, default=None, help="Limit the maximum amount of reads associated to a single molecule.")
 
+def write_status(output_path, message):
+    status_path = output_path.replace('.bam','.status.txt')
+    with open(status_path,'w') as o:
+        o.write(message+'\n')
 
 
 def run_multiome_tagging_cmd(commandline):
@@ -316,14 +321,17 @@ def run_multiome_tagging(args):
     if not args.o.endswith('.bam'):
         raise ValueError(
             "Supply an output which ends in .bam, for example -o output.bam")
+            
+    write_status(args.o,'unfinished')
 
     # Verify wether the input file is indexed and sorted...
     if not args.ignore_bam_issues:
         verify_and_fix_bam(args.bamin)
 
-    if os.path.exists(args.o):
-        print(f"Removing existing file {args.o}")
-        os.remove(args.o)
+    for remove_existing_path in [args.o, f'{args.o}.bai']:
+        if os.path.exists(remove_existing_path):
+            print(f"Removing existing file {remove_existing_path}")
+            os.remove(remove_existing_path)
 
     input_bam = pysam.AlignmentFile(args.bamin, "rb", ignore_truncation=args.ignore_bam_issues, threads=4)
 
@@ -556,7 +564,7 @@ def run_multiome_tagging(args):
 
     last_update = datetime.now()
     init_time = datetime.now()
-    if args.molecule_iterator_verbosity_interval is not None:
+    if args.molecule_iterator_verbosity_interval is not None and (args.molecule_iterator_verbose or (args.stats_file_path is not None )):
 
         stats_handle = None
         if args.stats_file_path is not None:
@@ -576,7 +584,9 @@ def run_multiome_tagging(args):
                 for read in reads:
                     if read is not None:
                         _contig, _pos = read.reference_name, read.reference_start
-                print( f'{mol_iter.yielded_fragments} fragments written, {mol_iter.deleted_fragments} fragments deleted ({(mol_iter.deleted_fragments/(mol_iter.deleted_fragments + mol_iter.yielded_fragments))*100:.2f} %), current pos: {_contig}, {_pos}, {mol_iter.waiting_fragments} fragments waiting             ' , end='\r')
+
+                if args.molecule_iterator_verbose:
+                    print( f'{mol_iter.yielded_fragments} fragments written, {mol_iter.deleted_fragments} fragments deleted ({(mol_iter.deleted_fragments/(mol_iter.deleted_fragments + mol_iter.yielded_fragments))*100:.2f} %), current pos: {_contig}, {_pos}, {mol_iter.waiting_fragments} fragments waiting             ' , end='\r')
                 if stats_handle is not None:
                     stats_handle.write(f'{diff_from_init}\t{mol_iter.waiting_fragments}\t{mol_iter.yielded_fragments}\t{mol_iter.deleted_fragments}\t{_contig}\t{_pos}\n')
                     stats_handle.flush()
@@ -669,8 +679,10 @@ def run_multiome_tagging(args):
 
     # We needed to check if every argument is properly placed. If so; the jobs
     # can be sent to the cluster
+
     if args.cluster:
         if args.contig is None:
+            write_status(args.o,'Submitting jobs. If this file remains, a job failed.')
             # Create jobs for all chromosomes:
             unique_id = str(uuid.uuid4())
             temp_prefix = os.path.abspath(os.path.dirname(
@@ -692,6 +704,7 @@ def run_multiome_tagging(args):
                     pass
 
             found_alts = 0
+            files_to_merge = []
             for ci,chrom in enumerate([_chrom  for _chrom in
                         (list(input_bam.references) + [MISC_ALT_CONTIGS_SCMO])
                         if not _chrom in skip_contig]):
@@ -703,21 +716,37 @@ def run_multiome_tagging(args):
                     continue
 
                 temp_bam_path = f'{temp_prefix}_{chrom}.bam'
+
+                if os.path.exists(temp_bam_path):
+                    print(f"Removing existing temporary file {temp_bam_path}")
+                    os.remove(temp_bam_path)
+
                 arguments = " ".join(
                     [x for x in sys.argv if not x == args.o and x != '-o']) + f" -contig {chrom} -o {temp_bam_path}"
+                files_to_merge.append(temp_bam_path)
                 if consensus_model_path is not None:
                     arguments += f' -consensus_model {consensus_model_path}'
                 job = f'SCMULTIOMICS_{ci}_{unique_id}'
+                write_status(temp_bam_path,'SUBMITTED')
                 job_id = submit_job(f'{arguments};', job_name=job, target_directory=cluster_file_folder,  working_directory=None,
                                threads_n=1, memory_gb=args.mem, time_h=args.time, scheduler=args.sched, copy_env=True,
                                email=None, mail_when_finished=False, hold=None,submit=True)
+
+
                 print(f'Job for contig {chrom} submitted with job id: {job_id}')
                 hold_merge.append(job_id)
 
             hold = hold_merge
 
             job = f'SCMULTIOMICS_MERGE_{unique_id}'
-            command = f'samtools merge -@ 4 -c {args.o} {temp_prefix}*.bam; samtools index {args.o}; rm {temp_prefix}*.ba*'
+
+            if args.sched == 'local':
+                hold = None
+
+            final_status = args.o.replace('.bam','.status.txt')
+            # Create list of output files
+            command = f'samtools merge -@ 4 -c {args.o} {" ".join(files_to_merge)} && samtools index {args.o} && rm {temp_prefix}*.ba* && rm {temp_prefix}*.status.txt && echo "All done" > {final_status}'
+
             final_job_id = submit_job(f'{command};', job_name=job, target_directory=cluster_file_folder,  working_directory=None,
                            threads_n=4, memory_gb=10, time_h=args.time, scheduler=args.sched, copy_env=True,
                            email=None, mail_when_finished=False, hold=hold,submit=True)
@@ -767,52 +796,61 @@ def run_multiome_tagging(args):
 
     print(f'Started writing to {out_bam_path}')
     read_groups = set()  # Store unique read groups in this set
+
+
     with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups) as out:
 
-        for i, molecule in enumerate(molecule_iterator):
+        try:
+            for i, molecule in enumerate(molecule_iterator):
 
-            # Stop when enough molecules are processed
-            if args.head is not None and (i - 1) >= args.head:
-                break
+                # Stop when enough molecules are processed
+                if args.head is not None and (i - 1) >= args.head:
+                    break
 
-            # set unique molecule identifier
-            molecule.set_meta('mi', f'{molecule.get_a_reference_id()}_{i}')
+                # set unique molecule identifier
+                molecule.set_meta('mi', f'{molecule.get_a_reference_id()}_{i}')
 
-            # Write tag values
-            molecule.write_tags()
+                # Write tag values
+                molecule.write_tags()
 
-            if unphased_allele_resolver is not None:  # write unphased allele tag:
-                molecule.write_allele_phasing_information_tag(
-                    unphased_allele_resolver, 'ua')
+                if unphased_allele_resolver is not None:  # write unphased allele tag:
+                    molecule.write_allele_phasing_information_tag(
+                        unphased_allele_resolver, 'ua')
 
-            # Update read groups
-            for fragment in molecule:
-                read_groups.add(fragment.get_read_group())
+                # Update read groups
+                for fragment in molecule:
+                    read_groups.add(fragment.get_read_group())
 
-            # Calculate molecule consensus
-            if args.consensus:
-                try:
-                    consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
-                        out,
-                        f'consensus_{molecule.get_a_reference_id()}_{i}',
-                        consensus_model,
-                        NUC_RADIUS=args.consensus_k_rad
-                        )
-                    for consensus_read in consensus_reads:
-                        consensus_read.set_tag('RG', molecule[0].get_read_group())
-                        consensus_read.set_tag('mi', i)
-                        out.write(consensus_read)
-                except Exception as e:
+                # Calculate molecule consensus
+                if args.consensus:
+                    try:
+                        consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
+                            out,
+                            f'consensus_{molecule.get_a_reference_id()}_{i}',
+                            consensus_model,
+                            NUC_RADIUS=args.consensus_k_rad
+                            )
+                        for consensus_read in consensus_reads:
+                            consensus_read.set_tag('RG', molecule[0].get_read_group())
+                            consensus_read.set_tag('mi', i)
+                            out.write(consensus_read)
+                    except Exception as e:
 
-                    #traceback.print_exc()
-                    #print(e)
-                    molecule.set_rejection_reason('CONSENSUS_FAILED',set_qcfail=True)
+                        #traceback.print_exc()
+                        #print(e)
+                        molecule.set_rejection_reason('CONSENSUS_FAILED',set_qcfail=True)
+                        molecule.write_pysam(out)
+
+
+                # Write the reads to the output file
+                if not args.no_source_reads:
                     molecule.write_pysam(out)
+        except Exception as e:
+            write_status(args.o,'FAIL, The file is not complete')
+            raise e
 
-
-            # Write the reads to the output file
-            if not args.no_source_reads:
-                molecule.write_pysam(out)
+        # Reached the end of the generator
+        write_status(args.o,'Reached end. All ok!')
 
 
 if __name__ == '__main__':
