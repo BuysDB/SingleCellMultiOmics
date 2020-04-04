@@ -1379,15 +1379,17 @@ class Molecule():
         return True
 
     def _add_fragment(self, fragment):
+
+        # Do not process the fragment when the max_associated_fragments threshold is exceeded
+        if self.max_associated_fragments is not None and len(self.fragments)>=(self.max_associated_fragments):
+            raise OverflowError()
+
         self.match_hash = fragment.match_hash
 
         # if we already had a fragment, this fragment is a duplicate:
         if len(self.fragments) > 1:
             fragment.set_duplicate(True)
 
-        # Do not process the fragment when the max_associated_fragments threshold is exceeded
-        if self.max_associated_fragments is not None and len(self.fragments)>=(self.max_associated_fragments):
-            return
 
         self.fragments.append(fragment)
 
@@ -1405,6 +1407,7 @@ class Molecule():
         self.umi_hamming_distance = fragment.umi_hamming_distance
         self.saved_base_obs = None
         self.update_umi()
+        return True
 
     def get_safely_aligned_length(self):
         """Get the amount of safely aligned bases (excludes primers)
@@ -1439,6 +1442,10 @@ class Molecule():
             fragment (singlecellmultiomics.fragment.Fragment) : Fragment to associate
         Returns:
             has_been_added (bool) : Returns False when the fragments which have already been associated to the molecule refuse the fragment
+
+        Raises:
+            OverflowError : when too many fragments have been associated already
+                            control this with .max_associated_fragments attribute
         """
 
         if len(self.fragments) == 0:
@@ -1450,12 +1457,14 @@ class Molecule():
             if self == fragment:
                 self._add_fragment(fragment)
                 return True
+
         else:
             for f in self.fragments:
                 if f == fragment:
                     # it matches this molecule:
                     self._add_fragment(fragment)
                     return True
+
         return False
 
     def can_be_yielded(self, chromosome, position):

@@ -12,11 +12,13 @@ class NLAIIIFragment(Fragment):
                  invert_strand=False,
                  no_overhang =False, # CATG is present OUTSIDE the fragment
                  reference=None, #Reference is required when no_overhang=True
-                 no_umi_cigar_processing=False
+                 allow_cycle_shift=False,
+                 no_umi_cigar_processing=False, **kwargs
                  ):
         self.invert_strand = invert_strand
         self.no_overhang = no_overhang
         self.reference = reference
+        self.allow_cycle_shift = allow_cycle_shift
         self.no_umi_cigar_processing= no_umi_cigar_processing
         if self.no_overhang and reference  is None:
             raise ValueError('Supply a reference handle when no_overhang=True')
@@ -26,7 +28,7 @@ class NLAIIIFragment(Fragment):
                           assignment_radius=assignment_radius,
                           R1_primer_length=R1_primer_length,
                           R2_primer_length=R2_primer_length,
-                          umi_hamming_distance=umi_hamming_distance)
+                          umi_hamming_distance=umi_hamming_distance, **kwargs)
         # set NLAIII cut site given reads
         self.strand = None
         self.site_location = None
@@ -66,7 +68,7 @@ class NLAIIIFragment(Fragment):
     # Output: (E is emitted)
     #           R1 HEEEEEEE----------------->
     #   <------------------HH R2
-    
+
 
         if self.R1_primer_length==0 and self.R2_primer_length==0:
             starts = tuple( read.reference_start for read in self if read is not None and not read.is_unmapped )
@@ -162,12 +164,12 @@ class NLAIIIFragment(Fragment):
             return(rpos)
 
         # Sometimes the cycle is off, this is dangerous though because the cell barcode and UMI might be shifted too!
-        elif forward_motif.startswith( 'ATG') and not R1.is_reverse:
+        elif self.allow_cycle_shift and  forward_motif.startswith( 'ATG') and not R1.is_reverse:
             rpos = (R1.reference_name, R1.reference_start - 1)
             self.set_site(site_strand=1, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('ATG')
             return(rpos)
-        elif rev_motif.startswith( 'ATG') and R1.is_reverse:  # First base was trimmed or lost
+        elif self.allow_cycle_shift and rev_motif.startswith( 'ATG') and R1.is_reverse:  # First base was trimmed or lost
             rpos = (R1.reference_name, R1.reference_end - 3)
             self.set_site(site_strand=0, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('CAT')
@@ -175,12 +177,13 @@ class NLAIIIFragment(Fragment):
 
         else:
             if forward_motif == 'CATG' and R1.is_reverse:
-                self.set_rejection_reason('found CATG R1 REV exp FWD')
+                self.set_rejection_reason('found CATG R1 REV exp FWD', set_qcfail=True)
 
             elif rev_motif == 'CATG' and not R1.is_reverse:
-                self.set_rejection_reason('found CATG R1 FWD exp REV')
+                self.set_rejection_reason('found CATG R1 FWD exp REV', set_qcfail=True)
             else:
-                self.set_rejection_reason('no CATG')
+                self.set_rejection_reason('no CATG', set_qcfail=True)
+
             return None
 
     def get_undigested_site_count(self, reference_handle):
@@ -210,6 +213,13 @@ class NLAIIIFragment(Fragment):
         return total
 
     def is_valid(self):
+
+        try:
+            if self.max_fragment_size is not None and self.get_fragment_size()>self.max_fragment_size:
+                self.set_rejection_reason('FS', set_qcfail=True)
+                return False
+        except TypeError:
+            pass
         return self.site_location is not None
 
     def get_site_location(self):

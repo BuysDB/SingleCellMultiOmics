@@ -46,7 +46,9 @@ class Fragment():
                  R1_primer_length=0,
                  R2_primer_length=6,
                  tag_definitions=None,
-                 mapping_dir=(False, True)  # R1 forward, R2 reverse
+                 max_fragment_size = None,
+                 mapping_dir=(False, True),
+                 read_group_format=0  # R1 forward, R2 reverse
                  ):
         """
         Initialise Fragment
@@ -70,10 +72,14 @@ class Fragment():
                 tag_definitions(list):
                     sam TagDefinitions
 
+                max_fragment_size (int):
+                    When specified, fragments with a fragment size larger than the specified value are flagged as qcfail
+
                 mapping_dir( tuple ):
                     expected mapping direction of mates,
                     True for reverse, False for forward. This parameter is used in dovetail detection
 
+                read_group_format(int) : see get_read_group()
             Returns:
                 html(string) : html representation of the fragment
         """
@@ -96,6 +102,9 @@ class Fragment():
         self.safe_span = None  # wether the span of the fragment could be determined
         self.unsafe_trimmed = False  # wether primers have been trimmed off
         self.random_primer_sequence = None
+        self.max_fragment_size = max_fragment_size
+        self.read_group_format = read_group_format
+
         # Span:\
         self.span = [None, None, None]
 
@@ -278,14 +287,26 @@ class Fragment():
     def get_read_group(self):
         """
         Obtain read group for this fragment
+
+        Uses
+            self.read_group_format (int) : 0, every cell gets a read group,
+                          1: every library gets a read group
+
         Returns:
             read_group(str) : Read group containing flow cell lane and unique sample id
+
         """
         rg = None
         for read in self.reads:
             if read is not None:
-                rg = f"{read.get_tag('Fc') if read.has_tag('Fc') else 'NONE'}.{read.get_tag('La') if read.has_tag('La') else 'NONE'}.{read.get_tag('SM') if read.has_tag('SM') else 'NONE'}"
+                if self.read_group_format==0:
+                    rg = f"{read.get_tag('Fc') if read.has_tag('Fc') else 'NONE'}.{read.get_tag('La') if read.has_tag('La') else 'NONE'}.{read.get_tag('SM') if read.has_tag('SM') else 'NONE'}"
+                elif self.read_group_format==1:
+                    rg = f"{read.get_tag('Fc') if read.has_tag('Fc') else 'NONE'}.{read.get_tag('La') if read.has_tag('La') else 'NONE'}.{read.get_tag('LY') if read.has_tag('LY') else 'NONE'}"
+                else:
+                    raise ValueError(f'{format} is an unknown read group format')
                 break
+
         return rg
 
     def set_duplicate(self, is_duplicate):
@@ -297,17 +318,24 @@ class Fragment():
             if read is not None:
                 read.is_duplicate = is_duplicate
 
+    def get_fragment_size(self):
+        return abs(self.span[2] - self.span[1])
+
     def write_tags(self):
         self.set_meta('MQ', self.mapping_quality)
         self.set_meta('MM', self.is_multimapped)
         self.set_meta('RG', self.get_read_group())
         if self.has_valid_span():
             # Write fragment size:
-            self.set_meta('fS', abs(self.span[2] - self.span[1]))
+            self.set_meta('fS', self.get_fragment_size())
             self.set_meta('fe', self.span[1])
             self.set_meta('fs', self.span[2])
 
+        else:
+            self.set_rejection_reason('FS', set_qcfail=True)
+
         # Set qcfail bit when the fragment is not valid
+
         if not self.is_valid():
             for read in self:
                 if read is not None:
@@ -468,7 +496,17 @@ class Fragment():
         return self.span
 
     def has_valid_span(self):
-        return not any([x is None for x in self.get_span()])
+
+        # Check if the span could be calculated:
+        defined_span = not any([x is None for x in self.get_span()])
+        if not defined_span:
+            return False
+
+        if self.max_fragment_size is not None and self.get_fragment_size()>self.max_fragment_size:
+            return False
+
+
+        return True
 
     def set_sample(self, sample=None):
         """Force sample name or obtain sample name from associated reads"""

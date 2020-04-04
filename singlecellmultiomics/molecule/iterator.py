@@ -141,6 +141,7 @@ class MoleculeIterator():
                  perform_qflag=True,
                  pooling_method=1,
                  yield_invalid=False,
+                 yield_overflow=True,
                  queryNameFlagger=None,
                  every_fragment_as_molecule=False,
                  yield_secondary =  False,
@@ -148,6 +149,7 @@ class MoleculeIterator():
                  max_buffer_size=None,  #Limit the amount of stored reads, when this value is exceeded, a MemoryError is thrown
                  iterator_class = pysamiterators.iterators.MatePairIterator,
                  skip_contigs=None,
+                 progress_callback_function=None,
                  **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
@@ -170,6 +172,8 @@ class MoleculeIterator():
             pooling_method(int) : 0: no  pooling, 1: only compare molecules with the same sample id and hash
 
             yield_invalid (bool) : When true all fragments which are invalid will be yielded as a molecule
+
+            yield_overflow(bool) : When true overflow fragments are yielded as separate molecules
 
             queryNameFlagger(class) : class which contains the method digest(self, reads) which accepts pysam.AlignedSegments and adds at least the SM and RX tags
 
@@ -201,8 +205,9 @@ class MoleculeIterator():
         self.matePairIterator = None
         self.pooling_method = pooling_method
         self.yield_invalid = yield_invalid
+        self.yield_overflow = yield_overflow
         self.every_fragment_as_molecule = every_fragment_as_molecule
-
+        self.progress_callback_function = progress_callback_function
         self.iterator_class = iterator_class
         self.max_buffer_size=max_buffer_size
 
@@ -213,7 +218,7 @@ class MoleculeIterator():
         """Clear cache containing non yielded molecules"""
         self.waiting_fragments = 0
         self.yielded_fragments = 0
-        self.yielded_molecules = 0
+        self.deleted_fragments = 0
         self.check_ejection_iter = 0
         if self.pooling_method == 0:
             self.molecules = []
@@ -225,7 +230,7 @@ class MoleculeIterator():
 
     def __repr__(self):
         return f"""Molecule Iterator, generates fragments from {self.fragmentClass} into molecules based on {self.moleculeClass}.
-        Yielded {self.yielded_fragments} fragments, {self.waiting_fragments} fragments are waiting to be ejected.
+        Yielded {self.yielded_fragments} fragments, {self.waiting_fragments} fragments are waiting to be ejected. {self.deleted_fragments} fragments rejected.
         {self.get_molecule_cache_size()} molecules cached.
         Mate pair iterator: {str(self.matePairIterator)}"""
 
@@ -255,7 +260,10 @@ class MoleculeIterator():
             # If an iterable is provided use this as read source:
             self.matePairIterator = self.alignments
 
-        for reads in self.matePairIterator:
+        for iteration,reads in enumerate(self.matePairIterator):
+
+            if self.progress_callback_function is not None and iteration%100==0:
+                self.progress_callback_function(iteration, self, reads)
 
             if isinstance(reads, pysam.AlignedSegment):
                 R1 = reads
@@ -290,6 +298,8 @@ class MoleculeIterator():
                         fragment, **self.molecule_class_args)
                     m.__finalise__()
                     yield m
+                else:
+                    self.deleted_fragments+=1
                 continue
 
             if self.every_fragment_as_molecule:
@@ -299,16 +309,27 @@ class MoleculeIterator():
                 continue
 
             added = False
-            if self.pooling_method == 0:
-                for molecule in self.molecules:
-                    if molecule.add_fragment(fragment, use_hash=False):
-                        added = True
-                        break
-            elif self.pooling_method == 1:
-                for molecule in self.molecules_per_cell[fragment.match_hash]:
-                    if molecule.add_fragment(fragment, use_hash=True):
-                        added = True
-                        break
+            try:
+                if self.pooling_method == 0:
+                    for molecule in self.molecules:
+                        if molecule.add_fragment(fragment, use_hash=False):
+                            added = True
+                            break
+                elif self.pooling_method == 1:
+                    for molecule in self.molecules_per_cell[fragment.match_hash]:
+                        if molecule.add_fragment(fragment, use_hash=True):
+                            added = True
+                            break
+            except OverflowError:
+                # This means the fragment does belong to a molecule, but the molecule does not accept any more fragments.
+                if self.yield_overflow:
+                    m = self.moleculeClass(fragment, **self.molecule_class_args)
+                    m.set_rejection_reason('overflow')
+                    m.__finalise__()
+                    yield m
+                else:
+                    self.deleted_fragments+=1
+                continue
 
             if not added:
                 if self.pooling_method == 0:

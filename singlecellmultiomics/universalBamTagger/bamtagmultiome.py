@@ -32,6 +32,12 @@ argparser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     description='Assign molecules, set sample tags, set alleles')
 argparser.add_argument('bamin', type=str)
+argparser.add_argument(
+    '-ref',
+    type=str,
+    default=None,
+    help="Path to reference fast (autodected if not supplied)")
+
 argparser.add_argument('-o', type=str, help="output bam file", required=True)
 argparser.add_argument(
     '-method',
@@ -56,18 +62,18 @@ argparser.add_argument(
     type=str,
     default=None,
     help="Query flagging algorithm")
-argparser.add_argument('-custom_flags', type=str, default="MI,RX,bi,SM")
 argparser.add_argument(
-    '-ref',
-    type=str,
-    default=None,
-    help="Path to reference fast (autodected if not supplied)")
-argparser.add_argument('-umi_hamming_distance', type=int, default=1)
-argparser.add_argument('-head', type=int)
-argparser.add_argument('-contig', type=str, help='Contig to only process')
-argparser.add_argument('-skip_contig', type=str, help='Contigs not to process')
-argparser.add_argument('-region_start', type=int, help='Zero based start coordinate of region to process')
-argparser.add_argument('-region_end', type=int, help='Zero based end coordinate of region to process')
+    '--ignore_bam_issues',
+    action='store_true',
+    help='Ignore truncation')
+argparser.add_argument('-custom_flags', type=str, default="MI,RX,bi,SM")
+
+r_select = argparser.add_argument_group('Region selection')
+r_select.add_argument('-head', type=int)
+r_select.add_argument('-contig', type=str, help='Contig to only process')
+r_select.add_argument('-skip_contig', type=str, help='Contigs not to process')
+r_select.add_argument('-region_start', type=int, help='Zero based start coordinate of region to process')
+r_select.add_argument('-region_end', type=int, help='Zero based end coordinate of region to process')
 
 allele_gr = argparser.add_argument_group('alleles')
 allele_gr.add_argument('-alleles', type=str, help="Phased allele file (VCF)")
@@ -90,35 +96,51 @@ allele_gr.add_argument(
     action='store_true',
     help='Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not available. Once they are available there is not thread safety issue anymore')
 
-argparser.add_argument(
-    '--ignore_bam_issues',
-    action='store_true',
-    help='Ignore truncation')
+argparser.add_argument('-molecule_iterator_verbosity_interval',type=int,default=None,help='Show real time molecule iterator information')
+argparser.add_argument('-stats_file_path',type=str,default=None,help='Path to logging file')
 
-argparser.add_argument(
+fragment_settings = argparser.add_argument_group('Fragment settings')
+fragment_settings.add_argument('-read_group_format', type=int, default=0, help="0: Every cell/sequencing unit gets a read group, 1: Every library/sequencing unit gets a read group")
+fragment_settings.add_argument('-max_fragment_size', type=int, default=None, help='Reject fragments with a fragment size higher the specified value')
+fragment_settings.add_argument(
     '--resolve_unproperly_paired_reads',
     action='store_true',
     help='When enabled bamtagmultiome will look through the complete bam file in a hunt for the mate, the two mates will always end up in 1 molecule if both present in the bam file. This also works when the is_proper_pair bit is not set. Use this option when you want to find the breakpoints of genomic re-arrangements.')
+fragment_settings.add_argument(
+    '--allow_cycle_shift',
+    action='store_true',
+    help='NlaIII: Allow fragments to be shifted slightly around the cut site.')
 
-argparser.add_argument(
+fragment_settings.add_argument(
+    '--no_rejects',
+    action='store_true',
+    help='Do not write rejected reads to output file')
+fragment_settings.add_argument(
+    '--no_overflow',
+    action='store_true',
+    help='Do not write overflow reads to output file. Overflow reads are reads which are discarded because the molecule reached the maximum capacity of associated fragments')
+
+
+molecule_settings = argparser.add_argument_group('Fragment settings')
+molecule_settings.add_argument(
     '-mapfile',
     type=str,
     help='Path to *.safe.bgzf file, used to decide if molecules are uniquely mappable, generate one using createMapabilityIndex.py ')
-
-argparser.add_argument(
+molecule_settings.add_argument('-umi_hamming_distance', type=int, default=1)
+molecule_settings.add_argument(
     '-annotmethod',
     type=int,
     default=1,
     help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base")
+
+
+
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument(
     '--cluster',
     action='store_true',
     help='split by chromosomes and submit the job on cluster')
-cluster.add_argument(
-    '--no_rejects',
-    action='store_true',
-    help='Do not write rejected reads to output file')
+
 cluster.add_argument(
     '-mem',
     default=40,
@@ -176,6 +198,7 @@ cg.add_argument(
     help='consensus model k radius',
     default=3)
 
+
 cg.add_argument('--no_source_reads', action='store_true',
                 help='Do not write original reads, only consensus ')
 
@@ -194,6 +217,8 @@ ma.add_argument(
     '--no_umi_cigar_processing',
     action='store_true',
     help='Do not use the alignment during deduplication')
+ma.add_argument('-max_associated_fragments',type=int, default=None, help="Limit the maximum amount of reads associated to a single molecule.")
+
 
 
 def run_multiome_tagging_cmd(commandline):
@@ -331,11 +356,22 @@ def run_multiome_tagging(args):
         'reference': reference
     }
 
-    fragment_class_args = {}
+    fragment_class_args = {
+        'read_group_format' : args.read_group_format
+
+    }
     yield_invalid = True  # if invalid reads should be written
+    yield_overflow = True  # if overflow reads should be written
+
+    if args.max_fragment_size is not None:
+        fragment_class_args['max_fragment_size'] = args.max_fragment_size
 
     if args.no_rejects:
         yield_invalid = False
+
+    if args.no_overflow:
+        yield_overflow = False
+
 
     ignore_conversions = None
     if args.method == 'nla_taps' or args.method == 'chic_taps':
@@ -489,11 +525,16 @@ def run_multiome_tagging(args):
     else:
         raise ValueError("Supply a valid method")
 
+    # Allow or disallow cycle shift:
+    if args.allow_cycle_shift and fragmentClass is singlecellmultiomics.fragment.NLAIIIFragment:
+        fragment_class_args['allow_cycle_shift'] = True
 
     # This disables umi_cigar_processing:
     if args.no_umi_cigar_processing:
         fragment_class_args['no_umi_cigar_processing'] = True
 
+    if args.max_associated_fragments is not None:
+        molecule_class_args['max_associated_fragments'] = args.max_associated_fragments
 
     # This decides what molecules we will traverse
     if args.contig == MISC_ALT_CONTIGS_SCMO:
@@ -511,6 +552,41 @@ def run_multiome_tagging(args):
         region_start = None
         region_end = None
 
+
+
+    last_update = datetime.now()
+    init_time = datetime.now()
+    if args.molecule_iterator_verbosity_interval is not None:
+
+        stats_handle = None
+        if args.stats_file_path is not None:
+            stats_handle = open(args.stats_file_path,'w')
+
+        def progress_callback_function( iteration, mol_iter, reads ):
+            nonlocal last_update
+            nonlocal init_time
+            nonlocal stats_handle
+
+            now = datetime.now()
+            diff = (datetime.now()-last_update).total_seconds()
+            if diff>args.molecule_iterator_verbosity_interval:
+
+                diff_from_init = (datetime.now()-init_time).total_seconds()
+                _contig, _pos = None, None
+                for read in reads:
+                    if read is not None:
+                        _contig, _pos = read.reference_name, read.reference_start
+                print( f'{mol_iter.yielded_fragments} fragments written, {mol_iter.deleted_fragments} fragments deleted ({(mol_iter.deleted_fragments/(mol_iter.deleted_fragments + mol_iter.yielded_fragments))*100:.2f} %), current pos: {_contig}, {_pos}, {mol_iter.waiting_fragments} fragments waiting             ' , end='\r')
+                if stats_handle is not None:
+                    stats_handle.write(f'{diff_from_init}\t{mol_iter.waiting_fragments}\t{mol_iter.yielded_fragments}\t{mol_iter.deleted_fragments}\t{_contig}\t{_pos}\n')
+                    stats_handle.flush()
+                last_update = now
+
+    else:
+        progress_callback_function = None
+
+
+
     molecule_iterator_args = {
         'alignments': input_bam,
         'queryNameFlagger': queryNameFlagger,
@@ -519,11 +595,13 @@ def run_multiome_tagging(args):
         'molecule_class_args': molecule_class_args,
         'fragment_class_args': fragment_class_args,
         'yield_invalid': yield_invalid,
+        'yield_overflow': yield_overflow,
         'start':region_start,
         'end':region_end,
         'contig': contig,
         'every_fragment_as_molecule': every_fragment_as_molecule,
-        'skip_contigs':skip_contig
+        'skip_contigs':skip_contig,
+        'progress_callback_function':progress_callback_function
     }
 
     if args.resolve_unproperly_paired_reads:
