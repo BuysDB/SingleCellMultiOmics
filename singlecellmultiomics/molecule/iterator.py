@@ -141,6 +141,7 @@ class MoleculeIterator():
                  perform_qflag=True,
                  pooling_method=1,
                  yield_invalid=False,
+                 yield_overflow=True,
                  queryNameFlagger=None,
                  every_fragment_as_molecule=False,
                  yield_secondary =  False,
@@ -172,6 +173,8 @@ class MoleculeIterator():
 
             yield_invalid (bool) : When true all fragments which are invalid will be yielded as a molecule
 
+            yield_overflow(bool) : When true overflow fragments are yielded as separate molecules
+
             queryNameFlagger(class) : class which contains the method digest(self, reads) which accepts pysam.AlignedSegments and adds at least the SM and RX tags
 
             every_fragment_as_molecule(bool): When set to true all valid fragments are emitted as molecule with one associated fragment, this is a way to disable deduplication.
@@ -202,6 +205,7 @@ class MoleculeIterator():
         self.matePairIterator = None
         self.pooling_method = pooling_method
         self.yield_invalid = yield_invalid
+        self.yield_overflow = yield_overflow
         self.every_fragment_as_molecule = every_fragment_as_molecule
         self.progress_callback_function = progress_callback_function
         self.iterator_class = iterator_class
@@ -214,7 +218,7 @@ class MoleculeIterator():
         """Clear cache containing non yielded molecules"""
         self.waiting_fragments = 0
         self.yielded_fragments = 0
-        self.yielded_molecules = 0
+        self.deleted_fragments = 0
         self.check_ejection_iter = 0
         if self.pooling_method == 0:
             self.molecules = []
@@ -226,7 +230,7 @@ class MoleculeIterator():
 
     def __repr__(self):
         return f"""Molecule Iterator, generates fragments from {self.fragmentClass} into molecules based on {self.moleculeClass}.
-        Yielded {self.yielded_fragments} fragments, {self.waiting_fragments} fragments are waiting to be ejected.
+        Yielded {self.yielded_fragments} fragments, {self.waiting_fragments} fragments are waiting to be ejected. {self.deleted_fragments} fragments rejected.
         {self.get_molecule_cache_size()} molecules cached.
         Mate pair iterator: {str(self.matePairIterator)}"""
 
@@ -294,6 +298,8 @@ class MoleculeIterator():
                         fragment, **self.molecule_class_args)
                     m.__finalise__()
                     yield m
+                else:
+                    self.deleted_fragments+=1
                 continue
 
             if self.every_fragment_as_molecule:
@@ -316,11 +322,13 @@ class MoleculeIterator():
                             break
             except OverflowError:
                 # This means the fragment does belong to a molecule, but the molecule does not accept any more fragments.
-                if self.yield_invalid:
+                if self.yield_overflow:
                     m = self.moleculeClass(fragment, **self.molecule_class_args)
                     m.set_rejection_reason('overflow')
                     m.__finalise__()
                     yield m
+                else:
+                    self.deleted_fragments+=1
                 continue
 
             if not added:
