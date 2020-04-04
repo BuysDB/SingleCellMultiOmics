@@ -111,6 +111,14 @@ fragment_settings.add_argument(
     action='store_true',
     help='NlaIII: Allow fragments to be shifted slightly around the cut site.')
 
+fragment_settings.add_argument(
+    '--no_rejects',
+    action='store_true',
+    help='Do not write rejected reads to output file')
+fragment_settings.add_argument(
+    '--no_overflow',
+    action='store_true',
+    help='Do not write overflow reads to output file. Overflow reads are reads which are discarded because the molecule reached the maximum capacity of associated fragments')
 
 
 molecule_settings = argparser.add_argument_group('Fragment settings')
@@ -132,10 +140,7 @@ cluster.add_argument(
     '--cluster',
     action='store_true',
     help='split by chromosomes and submit the job on cluster')
-cluster.add_argument(
-    '--no_rejects',
-    action='store_true',
-    help='Do not write rejected reads to output file')
+
 cluster.add_argument(
     '-mem',
     default=40,
@@ -356,12 +361,16 @@ def run_multiome_tagging(args):
 
     }
     yield_invalid = True  # if invalid reads should be written
+    yield_overflow = True  # if overflow reads should be written
 
     if args.max_fragment_size is not None:
         fragment_class_args['max_fragment_size'] = args.max_fragment_size
 
     if args.no_rejects:
         yield_invalid = False
+
+    if args.no_overflow:
+        yield_overflow = False
 
 
     ignore_conversions = None
@@ -589,6 +598,7 @@ def run_multiome_tagging(args):
         'molecule_class_args': molecule_class_args,
         'fragment_class_args': fragment_class_args,
         'yield_invalid': yield_invalid,
+        'yield_overflow': yield_overflow,
         'start':region_start,
         'end':region_end,
         'contig': contig,
