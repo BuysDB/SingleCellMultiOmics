@@ -96,8 +96,9 @@ allele_gr.add_argument(
     action='store_true',
     help='Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not available. Once they are available there is not thread safety issue anymore')
 
-argparser.add_argument('-molecule_iterator_verbosity_interval',type=int,default=None,help='Show real time molecule iterator information')
-argparser.add_argument('-stats_file_path',type=str,default=None,help='Path to logging file')
+argparser.add_argument('-molecule_iterator_verbosity_interval',type=int,default=None,help='Molecule iterator information interval in seconds')
+argparser.add_argument('--molecule_iterator_verbose', action='store_true', help='Show progress indication on command line')
+argparser.add_argument('-stats_file_path',type=str,default=None,help='Path to logging file, ends with ".tsv"')
 
 fragment_settings = argparser.add_argument_group('Fragment settings')
 fragment_settings.add_argument('-read_group_format', type=int, default=0, help="0: Every cell/sequencing unit gets a read group, 1: Every library/sequencing unit gets a read group")
@@ -576,7 +577,9 @@ def run_multiome_tagging(args):
                 for read in reads:
                     if read is not None:
                         _contig, _pos = read.reference_name, read.reference_start
-                print( f'{mol_iter.yielded_fragments} fragments written, {mol_iter.deleted_fragments} fragments deleted ({(mol_iter.deleted_fragments/(mol_iter.deleted_fragments + mol_iter.yielded_fragments))*100:.2f} %), current pos: {_contig}, {_pos}, {mol_iter.waiting_fragments} fragments waiting             ' , end='\r')
+
+                if args.molecule_iterator_verbose:
+                    print( f'{mol_iter.yielded_fragments} fragments written, {mol_iter.deleted_fragments} fragments deleted ({(mol_iter.deleted_fragments/(mol_iter.deleted_fragments + mol_iter.yielded_fragments))*100:.2f} %), current pos: {_contig}, {_pos}, {mol_iter.waiting_fragments} fragments waiting             ' , end='\r')
                 if stats_handle is not None:
                     stats_handle.write(f'{diff_from_init}\t{mol_iter.waiting_fragments}\t{mol_iter.yielded_fragments}\t{mol_iter.deleted_fragments}\t{_contig}\t{_pos}\n')
                     stats_handle.flush()
@@ -669,8 +672,10 @@ def run_multiome_tagging(args):
 
     # We needed to check if every argument is properly placed. If so; the jobs
     # can be sent to the cluster
+
     if args.cluster:
         if args.contig is None:
+            write_status(args.o,'Submitting jobs. If this file remains, a job failed.')
             # Create jobs for all chromosomes:
             unique_id = str(uuid.uuid4())
             temp_prefix = os.path.abspath(os.path.dirname(
