@@ -321,7 +321,7 @@ def run_multiome_tagging(args):
     if not args.o.endswith('.bam'):
         raise ValueError(
             "Supply an output which ends in .bam, for example -o output.bam")
-            
+
     write_status(args.o,'unfinished')
 
     # Verify wether the input file is indexed and sorted...
@@ -795,9 +795,8 @@ def run_multiome_tagging(args):
         description=f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
 
     print(f'Started writing to {out_bam_path}')
-    read_groups = set()  # Store unique read groups in this set
 
-
+    read_groups = dict()  # Store unique read groups in this dict
     with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups) as out:
 
         try:
@@ -819,7 +818,9 @@ def run_multiome_tagging(args):
 
                 # Update read groups
                 for fragment in molecule:
-                    read_groups.add(fragment.get_read_group())
+                    rgid = fragment.get_read_group()
+                    if not rgid in read_groups:
+                        read_groups[rgid] = fragment.get_read_group(True)[1]
 
                 # Calculate molecule consensus
                 if args.consensus:

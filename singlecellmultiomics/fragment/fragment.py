@@ -3,6 +3,7 @@ from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 from singlecellmultiomics.utils import style_str
+from singlecellmultiomics.bamProcessing import get_read_group_from_read
 complement = str.maketrans('ATCGN', 'TAGCN')
 
 
@@ -284,30 +285,23 @@ class Fragment():
         else:
             return ri + index_start + 1
 
-    def get_read_group(self):
-        """
-        Obtain read group for this fragment
 
-        Uses
-            self.read_group_format (int) : 0, every cell gets a read group,
-                          1: every library gets a read group
+    def get_read_group(self, with_attr_dict=False):
 
-        Returns:
-            read_group(str) : Read group containing flow cell lane and unique sample id
 
-        """
-        rg = None
+        rg_id=None
         for read in self.reads:
-            if read is not None:
-                if self.read_group_format==0:
-                    rg = f"{read.get_tag('Fc') if read.has_tag('Fc') else 'NONE'}.{read.get_tag('La') if read.has_tag('La') else 'NONE'}.{read.get_tag('SM') if read.has_tag('SM') else 'NONE'}"
-                elif self.read_group_format==1:
-                    rg = f"{read.get_tag('Fc') if read.has_tag('Fc') else 'NONE'}.{read.get_tag('La') if read.has_tag('La') else 'NONE'}.{read.get_tag('LY') if read.has_tag('LY') else 'NONE'}"
-                else:
-                    raise ValueError(f'{format} is an unknown read group format')
-                break
+            if read is None:
+                continue
 
-        return rg
+            r = get_read_group_from_read(read,
+                    format=self.read_group_format,
+                    with_attr_dict=with_attr_dict)
+
+            break
+
+        return r
+
 
     def set_duplicate(self, is_duplicate):
         """Define this fragment as duplicate, sets the corresponding bam bit flag
