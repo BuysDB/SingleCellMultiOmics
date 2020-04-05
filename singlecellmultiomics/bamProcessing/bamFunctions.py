@@ -346,8 +346,19 @@ def write_program_tag(input_header,
     if 'PG' not in input_header:
         input_header['PG'] = []
 
+    blocked = set()
+    for prog_entry in input_header['PG']:
+        if prog_entry.get('PN','') == program_name:
+            blocked.append( prog_entry.get('ID','') )
+
+    proposed_id = program_name
+    i = 0
+    while proposed_id in blocked:
+        proposed_id= f'{program_name}_{i}'
+        i+=1
+
     input_header['PG'].append({
-        'ID': program_name,
+        'ID': proposed_id,
         'PN': program_name,
         'CL': command_line,
         'VN': version,
