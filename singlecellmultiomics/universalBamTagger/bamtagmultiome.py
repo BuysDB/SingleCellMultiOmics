@@ -766,7 +766,7 @@ def run_multiome_tagging(args):
         description=f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
 
     print(f'Started writing to {out_bam_path}')
-    read_groups = set()  # Store unique read groups in this set
+    read_groups = dict()  # Store unique read groups in this set
     with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups) as out:
 
         for i, molecule in enumerate(molecule_iterator):
@@ -787,7 +787,9 @@ def run_multiome_tagging(args):
 
             # Update read groups
             for fragment in molecule:
-                read_groups.add(fragment.get_read_group())
+                rgid, rgdict = fragment.get_read_group(with_attr_dict=True)
+                if not rgid in read_groups:
+                    read_groups[rgid] = rgdict
 
             # Calculate molecule consensus
             if args.consensus:
