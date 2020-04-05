@@ -20,11 +20,11 @@ class FastqHandle:
                     gzip.open(
                         path +
                         'R1.fastq.gz',
-                        'wt'),
+                        'wt',compresslevel=1),
                     gzip.open(
                         path +
                         'R2.fastq.gz',
-                        'wt')]
+                        'wt',compresslevel=1)]
             else:
                 self.handles = [gzip.open(path + 'reads.fastq.gz', 'wt')]
         else:
