@@ -588,6 +588,35 @@ def sample_location(handle, contig, pos,dedup=True, qc=True):
     return overlap
 
 
+def get_read_group_from_read(read, format, with_attr_dict=False):
+    rg_id=None
+    platform = read.get_tag('Fc') if read.has_tag('Fc') else 'NONE'
+    lane = read.get_tag('La') if read.has_tag('La') else 'NONE'
+    library = read.get_tag('LY') if read.has_tag('LY') else 'NONE'
+    if format==0:
+        sample = read.get_tag('SM')
+    elif format==1:
+        sample = read.get_tag('LY')
+    else:
+        raise ValueError(f'{format} is an unknown read group format')
+
+    rg_id =  f'{platform}.{lane}.{sample}'
+    if with_attr_dict:
+        rg_dict = {
+                'ID':rg_id,
+                'LB':library,
+                'PL':platform,
+                'SM':sample,
+                'PU': rg_id }
+
+    if rg_id is None:
+        raise ValueError('No read group information could be extracted')
+
+    if with_attr_dict:
+        return rg_id, rg_dict
+    return rg_id
+
+
 def random_sample_bam(bam,n,**sample_location_args):
     """Sample a bam file at random locations
 
