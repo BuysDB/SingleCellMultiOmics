@@ -7,7 +7,7 @@ import sys
 from datetime import datetime
 import singlecellmultiomics
 from singlecellmultiomics.fragment import Fragment
-from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, write_program_tag
+from singlecellmultiomics.bamProcessing.bamFunctions import get_read_group_from_read, sorted_bam_file, write_program_tag
 
 def set_read_group_format( in_bam_path, out_bam_path, format, threads=4  ):
     """
@@ -44,15 +44,13 @@ def set_read_group_format( in_bam_path, out_bam_path, format, threads=4  ):
             version=singlecellmultiomics.__version__,
             description=f'SingleCellMultiOmics read group formatting, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
 
-        f = Fragment([None,None], read_group_format=format)
         with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups, input_is_sorted=True) as out:
             print('Started writing')
             for read in input_bam:
 
-                f.reads = [read]
-                rg_id, rg_data = f.get_read_group( with_attr_dict=True  )
-
+                rg_id = get_read_group_from_read(read, format=format,  with_attr_dict=False  )
                 if not rg_id in read_groups:
+                    rg_id, rg_data = get_read_group_from_read(read, format=format, with_attr_dict=True  )
                     read_groups[rg_id] = rg_data
 
                 read.set_tag('RG',rg_id)

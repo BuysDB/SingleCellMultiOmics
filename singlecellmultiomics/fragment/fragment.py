@@ -3,6 +3,7 @@ from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 from singlecellmultiomics.utils import style_str
+from singlecellmultiomics.bamProcessing import get_read_group_from_read
 complement = str.maketrans('ATCGN', 'TAGCN')
 
 
@@ -285,42 +286,21 @@ class Fragment():
             return ri + index_start + 1
 
 
-
     def get_read_group(self, with_attr_dict=False):
+
 
         rg_id=None
         for read in self.reads:
             if read is None:
                 continue
 
-            platform = read.get_tag('Fc') if read.has_tag('Fc') else 'NONE'
-            lane = read.get_tag('La') if read.has_tag('La') else 'NONE'
-            library = read.get_tag('LY') if read.has_tag('LY') else 'NONE'
-            if self.read_group_format==0:
-                sample = read.get_tag('SM')
-            elif self.read_group_format==1:
-                sample = read.get_tag('LY')
-
-            else:
-                raise ValueError(f'{format} is an unknown read group format')
-
-            rg_id =  f'{platform}.{lane}.{sample}'
-            if with_attr_dict:
-                rg_dict = {
-                        'ID':rg_id,
-                        'LB':library,
-                        'PL':platform,
-                        'SM':sample,
-                        'PU': rg_id }
+            r = get_read_group_from_read(read,
+                    format=self.read_group_format,
+                    with_attr_dict=with_attr_dict)
 
             break
-        if rg_id is None:
-            raise ValueError('No read group information could be extracted')
 
-        if with_attr_dict:
-            return rg_id, rg_dict
-        return rg_id
-
+        return r
 
 
     def set_duplicate(self, is_duplicate):
