@@ -6,10 +6,11 @@ from shutil import which
 from singlecellmultiomics.utils import BlockZip
 import uuid
 import os
-from collections import defaultdict
+from collections import defaultdict, Counter
 from singlecellmultiomics.bamProcessing.pileup import pileup_truncated
 import numpy as np
 import pandas as pd
+
 
 def verify_and_fix_bam(bam_path):
     """
@@ -77,6 +78,33 @@ def get_sample_to_read_group_dict(bam):
     else:
         raise ValueError(
             'Supply either a path to a bam file or pysam.AlignmentFile object')
+
+
+def get_read_group_format(bam):
+    """Obtain read group format
+
+    Args:
+        bam (str) : path to bam file
+
+    Returns:
+        type (int) : read group format
+
+    Raises:
+        ValueError : when read group format cannot be determined
+    """
+    with pysam.AlignmentFile(bam) as f:
+        d = f.header.as_dict()
+        format_type_obs = Counter()
+        for read_group_dict in d['RG']:
+
+            if read_group_dict.get('LB','')==read_group_dict.get('SM',''):
+                format_type_obs[1]+=1
+            else:
+                format_type_obs[0]+=1
+
+        if len(format_type_obs)==1:
+            return format_type_obs.most_common(1)[0][0]
+        raise ValueError('Failed to indentify read group format ')
 
 
 def _get_sample_to_read_group_dict(handle):
@@ -349,7 +377,7 @@ def write_program_tag(input_header,
     blocked = set()
     for prog_entry in input_header['PG']:
         if prog_entry.get('PN','') == program_name:
-            blocked.append( prog_entry.get('ID','') )
+            blocked.add( prog_entry.get('ID','') )
 
     proposed_id = program_name
     i = 0
