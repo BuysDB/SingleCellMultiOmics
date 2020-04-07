@@ -916,7 +916,8 @@ class FeatureCountsFullLengthFragment(FeatureCountsSingleEndFragment):
                  R2_primer_length=6,
                  assignment_radius=10_000,
                  umi_hamming_distance=1,
-                 invert_strand=False
+                 invert_strand=False,
+                 **kwargs
                  ):
 
         FeatureCountsSingleEndFragment.__init__(self,
@@ -924,7 +925,10 @@ class FeatureCountsFullLengthFragment(FeatureCountsSingleEndFragment):
                           assignment_radius=assignment_radius,
                           R1_primer_length=R1_primer_length,
                           R2_primer_length=R2_primer_length,
-                          umi_hamming_distance=umi_hamming_distance)
+                          umi_hamming_distance=umi_hamming_distance,
+                          **kwargs
+
+                          )
 
     def __eq__(self, other):
         # Make sure fragments map to the same strand, cheap comparisons
