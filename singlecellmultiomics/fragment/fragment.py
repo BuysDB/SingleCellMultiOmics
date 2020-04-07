@@ -860,7 +860,8 @@ class FeatureCountsSingleEndFragment(Fragment):
                  R2_primer_length=6,
                  assignment_radius=100_000,
                  umi_hamming_distance=1,
-                 invert_strand=False
+                 invert_strand=False,
+                 **kwargs
                  ):
 
         Fragment.__init__(self,
@@ -868,7 +869,7 @@ class FeatureCountsSingleEndFragment(Fragment):
                           assignment_radius=assignment_radius,
                           R1_primer_length=R1_primer_length,
                           R2_primer_length=R2_primer_length,
-                          umi_hamming_distance=umi_hamming_distance)
+                          umi_hamming_distance=umi_hamming_distance,**kwargs)
 
         self.strand = None
         self.gene = None
