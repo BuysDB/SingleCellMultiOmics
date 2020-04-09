@@ -159,7 +159,7 @@ def recall_variants(args):
                                                         variant.chrom,
                                                         variant.pos-1,
                                                         variant.alts[0],
-                                                        min_reads=2,
+                                                        min_reads=1,
                                                         stepper='nofilter'):
                 print(f'FOUND IN GERMLINE {variant}')
                 continue
@@ -169,6 +169,8 @@ def recall_variants(args):
         reference_start = max(0, variant.pos - window_radius)
         reference_end = variant.pos + window_radius
         contig = variant.contig
+
+        variant_key = (contig, variant.pos, variant.ref, variant.alts[0] )
 
         #print(contig,reference_start,reference_end,variant.alts[0],variant.ref)
         ### Set up allele resolver
@@ -228,7 +230,7 @@ def recall_variants(args):
                     alt_call_count+=1
                     if molecule.sample not in variant_calls:
                         variant_calls[molecule.sample] = {}
-                    variant_calls[molecule.sample][(variant.chrom, variant.pos)] = 1
+                    variant_calls[molecule.sample][variant_key] = 1
 
                 elif base==variant.ref:
                     call='R'
@@ -264,9 +266,9 @@ def recall_variants(args):
                     if p in alt_phased_filtered:
                         if not molecule.sample in variant_calls:
                             variant_calls[molecule.sample] = {}
-                        variant_calls[molecule.sample][variant.chrom, variant.pos] = 0
+                        variant_calls[molecule.sample][variant_key] = 0
                         break
-        locations_done.add((variant.contig, variant.pos))
+        locations_done.add(variant_key)
     alignments.close()
     return variant_calls, locations_done
 
