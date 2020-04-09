@@ -198,7 +198,7 @@ rule SCMO_maxInsert_filtering:
         stderr="log/insertSizeFilter/{library}.stderr"
 
     shell:
-        '''bamFilter.py {input.bam} -o {output.bam} 'r.has_tag("fe") and r.has_tag("fs") and (r.get_tag("fs") - r.get_tag("fe") < {params.insertSizeFilter})' > {log.stdout} 2> {log.stderr} '''
+        '''bamFilter.py {input.bam} -o {output.bam} 'r.has_tag("fS") and (r.get_tag("fS") < {params.insertSizeFilter})' > {log.stdout} 2> {log.stderr} '''
 
 #### 7. Librarystatistics
 rule SCMO_library_stats:

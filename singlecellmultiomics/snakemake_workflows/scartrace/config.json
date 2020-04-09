@@ -1,9 +1,8 @@
 {
-    "reference_file"  :  "/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/SNP_MASKED.fa",
-    "reference_file_for_mapper" : "/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/SNP_MASKED.fa",
-    "mapper":"bwa", #bowtie2 or bwa
-    "alleles": "/hpc/hub_oudenaarden/group_references/variants/mgp.v5.merged.snps_all.dbSNP142.vcf.gz",
+    "reference_file_for_mapper" : "/hpc/hub_oudenaarden/Marloes/bin/masked_genome/primary_assembly_97_129B6Masked_ERCC92.fa",
+    "mapper": "bwa", #bowtie2 or bwa
+    "alleles": "/hpc/hub_oudenaarden/Marloes/bin/vcf/edited_hr_dbSNP_chr12-11468-11492_129Ola_129Sv_Bl6.vcf.gz",
     "allele_samples": "C57BL_6NJ,129S1_SvImJ",
     "SQ_filter": 0.98, # the minimum average phred score for each read - this discards low quality reads
-    "maxInsertSize":1000 # the maximum allowed distance between R1 and R2. This discards all read pairs where R1 and R2 are mapped to different amplicons
+    "maxInsertSize": 1000 # the maximum allowed distance between R1 and R2. This discards all read pairs where R1 and R2 are mapped to different amplicons
 }
