@@ -70,6 +70,27 @@ class TestSorted(unittest.TestCase):
         except Exception as e:
             pass
 
+    def test_write_to_sorted_custom_compression(self):
+        write_path = './data/write_test.bam'
+        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
+            with sorted_bam_file(write_path, origin_bam=f,fast_compression=True) as out:
+                for molecule in singlecellmultiomics.molecule.MoleculeIterator(
+                    alignments=f,
+                    moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
+                    fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                    fragment_class_args={'umi_hamming_distance':0},
+                    pooling_method=0,
+                    yield_invalid=True
+                ):
+                    molecule.write_pysam(out)
+
+        self.assertTrue(os.path.exists(write_path))
+        try:
+            os.remove(write_path)
+            os.remove(write_path+'.bai')
+        except Exception as e:
+            pass
+
     def test_write_to_sorted_non_existing_folder(self):
         write_folder =  './data/non_yet_existing_folder/'
         write_path = write_folder + 'write_test.bam'
