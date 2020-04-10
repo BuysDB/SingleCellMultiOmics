@@ -43,6 +43,7 @@ setup(
         'singlecellmultiomics.modularDemultiplexer',
         'singlecellmultiomics.molecule',
         'singlecellmultiomics.pyutils',
+        'singlecellmultiomics.variants',
         'singlecellmultiomics.tags',
         'singlecellmultiomics.statistic',
         'singlecellmultiomics.tagtools',
@@ -97,6 +98,8 @@ setup(
         # Feature conversion:
         'singlecellmultiomics/features/exonGTFtoIntronGTF.py',
 
+        # Variants:
+        'singlecellmultiomics/variants/postProcessVariants.py',
 
         # Utility: (SGE wrapper)
         'singlecellmultiomics/utils/submission.py',
