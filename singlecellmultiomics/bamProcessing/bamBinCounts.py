@@ -160,8 +160,21 @@ def generate_jobs(alignments_path, bin_size = 1_000_000, bins_per_job = 10):
                 get_contig_sizes(alignments_path).items()):
         yield from job_group
 
-def generate_commands(alignments_path, bin_size = 1_000_000, bins_per_job = 10,alt_spans=None, min_mq=50,max_fragment_size=1000, head=None,key_tags=None,dedup=True):
-    for i,(contig,start,end) in enumerate(generate_jobs(alignments_path=alignments_path,bin_size=bin_size,bins_per_job=bins_per_job)):
+
+
+def generate_commands(alignments_path,
+                      bin_size = 1_000_000,
+                      bins_per_job = 10,
+                      alt_spans=None,
+                      min_mq=50,
+                      max_fragment_size=1000,
+                      head=None,
+                      key_tags=None,
+                      dedup=True,
+                      ):
+
+    for i,(contig,start,end) in enumerate(
+                generate_jobs(alignments_path=alignments_path,bin_size=bin_size,bins_per_job=bins_per_job)):
         yield (alignments_path, bin_size, max_fragment_size, \
                                contig, start, end, \
                                min_mq,alt_spans,key_tags,dedup)
