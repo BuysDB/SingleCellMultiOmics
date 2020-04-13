@@ -43,6 +43,7 @@ setup(
         'singlecellmultiomics.modularDemultiplexer',
         'singlecellmultiomics.molecule',
         'singlecellmultiomics.pyutils',
+        'singlecellmultiomics.variants',
         'singlecellmultiomics.tags',
         'singlecellmultiomics.statistic',
         'singlecellmultiomics.tagtools',
@@ -62,6 +63,7 @@ setup(
 
         # Tagging
         'singlecellmultiomics/universalBamTagger/universalBamTagger.py',
+        'singlecellmultiomics/universalBamTagger/bamtagmultiome_multi.py',
         'singlecellmultiomics/universalBamTagger/bamtagmultiome.py',
         'singlecellmultiomics/universalBamTagger/tapsTagger.py',
         'singlecellmultiomics/universalBamTagger/tapsTabulator.py',
@@ -97,6 +99,8 @@ setup(
         # Feature conversion:
         'singlecellmultiomics/features/exonGTFtoIntronGTF.py',
 
+        # Variants:
+        'singlecellmultiomics/variants/postProcessVariants.py',
 
         # Utility: (SGE wrapper)
         'singlecellmultiomics/utils/submission.py',

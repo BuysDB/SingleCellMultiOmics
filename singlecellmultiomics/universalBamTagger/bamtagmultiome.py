@@ -122,7 +122,7 @@ fragment_settings.add_argument(
     help='Do not write overflow reads to output file. Overflow reads are reads which are discarded because the molecule reached the maximum capacity of associated fragments')
 
 
-molecule_settings = argparser.add_argument_group('Fragment settings')
+molecule_settings = argparser.add_argument_group('Molecule settings')
 molecule_settings.add_argument(
     '-mapfile',
     type=str,
