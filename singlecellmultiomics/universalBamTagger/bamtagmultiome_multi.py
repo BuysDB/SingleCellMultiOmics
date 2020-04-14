@@ -53,6 +53,13 @@ argparser.add_argument(
 
 argparser.add_argument('-o', type=str, help="output bam file", required=True)
 
+
+argparser.add_argument('-job_bin_size', type=int, default=250_000, help='How large are the job bins in bp')
+argparser.add_argument('-timeout', type=int, default=600, help='How long do we try to resolve a bin')
+argparser.add_argument('-fragment_length', type=int, default=500, help='Maximum fragment length')
+argparser.add_argument('-chunksize', type=int, default=150, help='Amount of bins per chunk')
+
+
 def run_multiome_tagging_cmd(commandline):
     args = argparser.parse_args(commandline)
     run_multiome_tagging(args)
@@ -77,14 +84,13 @@ def run_tagging(args):
 
 
     alignments_path, contig, start, end, fragment_size, temp_dir, molecule_class, fragment_class, molecule_iterator_args, \
-        fragment_class_args, molecule_class_args = args
+        fragment_class_args, molecule_class_args, timeout_time = args
 
     i = 0
     tid = 0
 
 
     time_start = datetime.now()
-    timeout_time = 5*60 #  minutes for one bin max
     kill = False # kill signal
 
 
@@ -157,9 +163,15 @@ def run_multiome_tagging(args):
     alignments_path = args.bamin
     out_name = args.o
     temp_dir = args.temp
-    fragment_size = 500
+    fragment_size = args.fragment_length
     blacklist_path = 'blacklist.bed'
     blacklist = open(blacklist_path,'w')
+
+
+    for remove_existing_path in [args.o, f'{args.o}.bai']:
+        if os.path.exists(remove_existing_path):
+            print(f"Removing existing file {remove_existing_path}")
+            os.remove(remove_existing_path)
 
     if os.path.exists(temp_dir):
         shutil.rmtree(temp_dir)
@@ -216,13 +228,14 @@ def run_multiome_tagging(args):
                                      molecule_class, fragment_class,
                                      molecule_iterator_args,
                                      fragment_class_args,
-                                     molecule_class_args,bin_size = 500_000 ):
+                                     molecule_class_args,timeout_time, bin_size ):
         yield from  (
             ( alignments_path, contig, start, end, fragment_size, temp_dir,
                  molecule_class, fragment_class,
                  molecule_iterator_args,
                  fragment_class_args,
                  molecule_class_args,
+                 timeout_time
             )
               for contig,start,end in
                 generate_jobs(alignments, bin_size = bin_size,  bins_per_job=1)
@@ -244,9 +257,9 @@ def run_multiome_tagging(args):
                                     CHICMolecule, CHICFragment,
                                      molecule_iterator_args,
                                      fragment_class_args,
-                                     molecule_class_args)
+                                     molecule_class_args, args.timeout, args.job_bin_size)
 
-            )))), 100))
+            )))), args.chunksize))
             ]
         merge_bams( intermediate_bams, out_name )
         pysam.index(out_name)
