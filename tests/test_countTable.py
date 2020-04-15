@@ -4,6 +4,21 @@ import unittest
 from types import SimpleNamespace
 import singlecellmultiomics.bamProcessing.bamToCountTable
 
+from singlecellmultiomics.bamProcessing.bamBinCounts import range_contains_overlap,blacklisted_binning
+
+class TestIterables(unittest.TestCase):
+
+    def test_blacklisted_binning(self):
+        bin_size = 250
+        blacklist = [(450,1001),(1007,1019),(1550,1600),(2300,2510)]
+        blacklist = sorted(blacklist)
+
+        self.assertFalse(
+            range_contains_overlap( list( blacklisted_binning(0,2000,bin_size,blacklist) ) + blacklist)
+        )
+
+
+
 class TestCountTable(unittest.TestCase):
 
     def test_total_read_counting(self):
