@@ -96,6 +96,25 @@ def trim_rangelist(rangelist, start, end):
         yield max(s,start), min(e,end)
 
 
+def get_bins_from_bed_iter(path, contig=None):
+    with open(path) as f:
+        for line in f:
+            c, start, end = line.strip().split(None,3)[:3]
+            start, end = int(start), int(end)
+            if contig is None or c == contig:
+                yield c, start, end
+
+
+def get_bins_from_bed_dict(path, contig=None):
+    bd = {}
+    for c, start, end  in get_bins_from_bed_iter(path,contig=contig):
+        if not c in bd:
+            bd[c] = list()
+        bd[c].append( (start,end) )
+
+    return bd
+
+
 def _merge_overlapping_ranges(clist):
     for (start,end),(next_start,next_end) in windowed(clist,2):
         if start>next_start or end>next_start:
@@ -109,6 +128,88 @@ def merge_overlapping_ranges(clist):
     while range_contains_overlap(clist):
         clist = list(_merge_overlapping_ranges(clist))
     return clist
+
+
+def blacklisted_binning_contigs(contig_length_resource, bin_size, fragment_size, blacklist_path=None):
+
+    if blacklist_path is not None:
+        blacklist_dict = get_bins_from_bed_dict(blacklist_path)
+    else:
+        blacklist_dict = {}
+
+    for contig,length in get_contig_sizes(contig_length_resource).items():
+
+        for bin_start, bin_end, fetch_start, fetch_end in \
+                blacklisted_binning(
+                    start_coord = 0,
+                    end_coord = length,
+                    bin_size=bin_size,
+                    blacklist=blacklist_dict.get(contig,[]),
+                    fragment_size=fragment_size):
+            yield contig, bin_start, bin_end, fetch_start, fetch_end
+
+
+
+def blacklisted_binning(start_coord, end_coord, bin_size, blacklist=None, fragment_size=None):
+    """
+    Obtain a list of regions to fetch between start coord and end_coord with given bin_size and excluding the regions in the blacklist
+    Optimizes the bin size and allows for a fragment_size parameter to be set which expands the bins with fragment size without overlap with blacklist regions and start_coord, end_coord boundaries
+
+    Args:
+        start_coord(int)
+
+        end_coord(int)
+
+        bin_size(int)
+
+        blacklist(list) : format (start,end), (start,end)
+
+        fragment_size(int)
+
+    Yields:
+        bin_start, bin_end when fragment_size is None, bin_start, bin_end, fetch_start, fetch_end otherwise
+
+    """
+    if blacklist is None:
+        blacklist = []
+    elif len(blacklist)>1:
+        blacklist= merge_overlapping_ranges(blacklist)
+
+    current=start_coord
+    for i, (start, end) in enumerate( chain( trim_rangelist(blacklist,start_coord, end_coord), [(end_coord,end_coord+1),])):
+
+        # Fill from current to start:
+        if start==current:
+            current=end
+            continue
+
+        total_bins = len(list(fill_range(current,start,bin_size)))
+        if total_bins==0:
+            total_bins=1
+        local_bin_size = int((start-current) / total_bins)
+
+        for fi, (pos_s, pos_e) in enumerate(fill_range(current,start,local_bin_size)):
+
+            if fragment_size is None:
+                yield pos_s,pos_e
+            else:
+                fs = pos_s-fragment_size
+                fe = pos_e+fragment_size
+                if fi==0:
+                    # Left clip, no available bins on the left
+                    fs = pos_s
+
+                if fi == total_bins-1:
+                    fe = pos_e
+
+
+                yield pos_s,pos_e, fs, fe
+            current = pos_e
+
+        current=end
+
+
+
 
 def obtain_approximate_reference_cut_position(site, contig, alt_spans):
     #contig, cut_start, strand = molecule.get_cut_site()
