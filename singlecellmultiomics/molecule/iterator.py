@@ -150,6 +150,8 @@ class MoleculeIterator():
                  iterator_class = pysamiterators.iterators.MatePairIterator,
                  skip_contigs=None,
                  progress_callback_function=None,
+                 min_mapping_qual = None,
+
                  **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
 
@@ -185,6 +187,8 @@ class MoleculeIterator():
 
             skip_contigs (set) : Contigs to skip
 
+            min_mapping_qual(int) : Dont process reads with a mapping quality lower than this value. These reads are not yielded as molecules!
+
             **kwargs: arguments to pass to the pysam.AlignmentFile.fetch function
 
         Yields:
@@ -210,7 +214,7 @@ class MoleculeIterator():
         self.progress_callback_function = progress_callback_function
         self.iterator_class = iterator_class
         self.max_buffer_size=max_buffer_size
-
+        self.min_mapping_qual = min_mapping_qual
 
         self._clear_cache()
 
@@ -262,7 +266,7 @@ class MoleculeIterator():
 
         for iteration,reads in enumerate(self.matePairIterator):
 
-            if self.progress_callback_function is not None and iteration%100==0:
+            if self.progress_callback_function is not None and iteration%500==0:
                 self.progress_callback_function(iteration, self, reads)
 
             if isinstance(reads, pysam.AlignedSegment):
@@ -283,6 +287,15 @@ class MoleculeIterator():
                 for read in reads:
                     if read is not None and read.reference_name not in self.skip_contigs:
                         keep = True
+                if not keep:
+                    continue
+
+            if self.min_mapping_qual is not None:
+                keep = True
+                for read in reads:
+                    if read is not None and read.mapping_quality<self.min_mapping_qual:
+                        self.deleted_fragments+=1
+                        keep=False
                 if not keep:
                     continue
 
