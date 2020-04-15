@@ -37,6 +37,8 @@ import pickle
 from datetime import datetime
 import traceback
 
+import colorama
+
 from datetime import datetime
 
 available_consensus_models = pkg_resources.resource_listdir('singlecellmultiomics','molecule/consensus_model')
@@ -54,9 +56,11 @@ argparser.add_argument(
 argparser.add_argument('-o', type=str, help="output bam file", required=True)
 argparser.add_argument('-job_bin_size', type=int, default=5_000_000, help='How large are the job bins in bp')
 argparser.add_argument('-timeout', type=int, default=60*15, help='How long do we try to resolve a bin (seconds)')
+argparser.add_argument('-min_mapping_qual', type=int, default=40, help='Mapping quality pre-filter. All reads with a lower mapping quality are discarded immediately ')
 argparser.add_argument('-fragment_length', type=int, default=500, help='Maximum fragment length')
 argparser.add_argument('-chunksize', type=int, default=50, help='Amount of bins per chunk')
 argparser.add_argument('-blacklist', type=str, help='blacklist (bed file), with contig start end')
+argparser.add_argument('-debug_job_bin_bed', type=str, help='Path to write a bed file')
 
 
 def run_multiome_tagging_cmd(commandline):
@@ -99,7 +103,7 @@ def run_tagging(args):
             raise TimeoutError()
 
     molecule_iterator_args['progress_callback_function'] = timeout_check_function
-
+    i = 0
     with pysam.AlignmentFile(alignments_path) as alignments:
         tid = alignments.get_tid(contig)
         target_file = f"{temp_dir}/{tid}_{start}_{end}.bam"
@@ -136,10 +140,10 @@ def run_tagging(args):
             except Exception as e:
                 pass
 
-            return None, (tid, start,end, 'timeout')
+            return None, (tid, contig, start,end, i, 'timeout')
 
     if i>0:
-        return target_file, (tid, start,end, 'ok')
+        return target_file, (tid, contig, start,end, i, 'ok')
     else:
         # Clean up ?
         try:
@@ -148,7 +152,7 @@ def run_tagging(args):
         except Exception as e:
                 pass
 
-        return None, (tid, start,end, 'empty')
+        return None, (tid, contig, start,end, i, 'empty')
 
 
 
@@ -179,7 +183,8 @@ def run_multiome_tagging(args):
 
     molecule_iterator_args = {
         'yield_overflow' : False,
-        'yield_invalid' : False
+        'yield_invalid' : False,
+        'min_mapping_qual':args.min_mapping_qual
     }
 
     molecule_class_args = {
@@ -197,20 +202,21 @@ def run_multiome_tagging(args):
     total_commands=0
 
 
-    def register_status(*qargs):
-        tid,start,end,status = qargs
+    def register_status(contig,start,end,status):
         if status=='timeout':
-            contig = alignments.get_reference_name(tid)
             failed_bins.add( (contig, start, end ) )
             blacklist_generated_path.write(f'{contig}\t{start}\t{end}\n')
 
 
     def cli_update(iteration, contig, start, end, status):
+        if status=='timeout':
+            print('\n'+colorama.Style.BRIGHT + colorama.Fore.RED + f"The bin {contig}:{start}-{end} timed out and will not be tagged " + colorama.Style.RESET_ALL)
+
         print(f'time:{(datetime.now()-time_start)}, completion: { ((iteration/total_commands)*100):.2f} % , {contig}:{start}-{end} {status}             ', end='\r')
 
     def filter_func( args ):
 
-        iteration, (target,(contig, start, end, status)) = args
+        iteration, (target,(tid, contig, start, end, wrote_molecules, status)) = args
         # Register:
         register_status(contig, start, end, status)
         cli_update(iteration, contig, start, end, status)
@@ -246,13 +252,15 @@ def run_multiome_tagging(args):
 
     # Dry run:
     total_commands = 0
-    with pysam.AlignmentFile(alignments_path) as alignments:
-        for cmd in get_commands(alignments_path, fragment_size, temp_dir,
-                CHICMolecule, CHICFragment,
-                 molecule_iterator_args,
-                 fragment_class_args,
-                 molecule_class_args, args.timeout, args.job_bin_size, args.blacklist):
-                total_commands+=1
+    if args.debug_job_bin_bed:
+        with pysam.AlignmentFile(alignments_path) as alignments, open(args.debug_job_bin_bed,'w') as jbo:
+            for cmd in get_commands(alignments_path, fragment_size, temp_dir,
+                    CHICMolecule, CHICFragment,
+                     molecule_iterator_args,
+                     fragment_class_args,
+                     molecule_class_args, args.timeout, args.job_bin_size, args.blacklist):
+                    total_commands+=1
+                    jbo.write(f'{cmd[1]}\t{cmd[2]}\t{cmd[3]}\n')
 
     with Pool() as workers, pysam.AlignmentFile(alignments_path) as alignments:
 
