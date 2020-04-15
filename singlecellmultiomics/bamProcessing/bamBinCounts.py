@@ -13,6 +13,73 @@ from singlecellmultiomics.bamProcessing import get_contig_sizes, get_contig_size
 from singlecellmultiomics.utils import is_main_chromosome
 from statsmodels.nonparametric.smoothers_lowess import lowess
 from datetime import datetime
+from itertools import chain
+from more_itertools import windowed
+
+def fill_range(start,end,step):
+    """
+    range iterator from start to end with stepsize step
+    but generates a final step which steps to end
+
+    Args:
+        start (int) : start
+
+        end (int)
+
+        step (int) : step
+
+
+    Example:
+        >>> list(fill_range(0,10,4))
+        [(0, 4), (4, 8), (8, 10)]
+
+
+    """
+
+    e=start
+    for s in range(start,end,step):
+        e = s+step
+        if e>end:
+            e = e-step
+            break
+        yield s,e
+
+    if e<end:
+        yield e, end
+
+
+def range_contains_overlap(clist):
+    """
+    Check if the supplied iteratorof start,end coordinates contains an overlap
+
+    Args:
+        clist (list) : sorted list of start,end coordinates of regions
+    """
+    clist=sorted(clist)
+    # check for overlaps...
+    if len(clist)<2:
+        return False
+
+    for (start,end),(next_start,next_end) in windowed(clist,2):
+        if start>next_start or end>next_start:
+            #print(f'Overlap between {start}:{end} and {next_start}:{next_end}')
+            return True
+    return False
+
+
+def _merge_overlapping_ranges(clist):
+    for (start,end),(next_start,next_end) in windowed(clist,2):
+        if start>next_start or end>next_start:
+            yield (min(start,next_start),max(next_end, end))
+
+        else:
+            yield start, end
+
+def merge_overlapping_ranges(clist):
+    clist = sorted(clist)
+    while range_contains_overlap(clist):
+        clist = list(_merge_overlapping_ranges(clist))
+    return clist
 
 def obtain_approximate_reference_cut_position(site, contig, alt_spans):
     #contig, cut_start, strand = molecule.get_cut_site()
