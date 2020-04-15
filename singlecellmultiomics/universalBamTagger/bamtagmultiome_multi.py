@@ -184,17 +184,13 @@ def run_multiome_tagging(args):
 
     molecule_class_args = {
 
-
         'max_associated_fragments':1
 
     }
 
+    fragment_class_args = { 'umi_hamming_distance':0 }
 
     time_start = datetime.now()
-
-    fragment_class_args = {}
-    time_start = datetime.now()
-
 
     failed_bins = set()
 
@@ -210,7 +206,7 @@ def run_multiome_tagging(args):
 
 
     def cli_update(iteration, contig, start, end, status):
-        print(f'completion: { ((iteration/total_commands)*100):.2f} % , {contig}:{start}-{end} {status}              ', end='\r')
+        print(f'time:{(datetime.now()-time_start)}, completion: { ((iteration/total_commands)*100):.2f} % , {contig}:{start}-{end} {status}             ', end='\r')
 
     def filter_func( args ):
 
@@ -277,10 +273,15 @@ def run_multiome_tagging(args):
 
             )))), args.chunksize))
             ]
+
+
+        print(f'\nJobs are completed, now merging the results into {out_name}')
         merge_bams( intermediate_bams, out_name )
+        print(f'Indexing the final bam at {out_name}')
         pysam.index(out_name)
 
     print('All done' + ' '*99)
+    print(f'Took: {datetime.now() - time_start}')
 
 if __name__ == '__main__':
     args = argparser.parse_args()
