@@ -329,11 +329,18 @@ def gc_correct_cn_frame(df, reference, MAXCP, threads):
         if not k in bins_to_gc:
             sequence = reference.fetch(contig, start,end ).upper()
             gc = sequence.count('G')+sequence.count('C')
-            gcrat = (gc) / ((sequence.count('A')+sequence.count('T')+gc))
-            bins_to_gc[ k ] = gcrat
+            div = ((sequence.count('A')+sequence.count('T')+gc))
+            if div==0:
+                # There is no data, plop the mean gc in later
+                bins_to_gc[ k ] = np.nan
+            else:
+                gcrat = (gc) / div
+                bins_to_gc[ k ] = gcrat
 
+    qf =  pd.DataFrame({'gc':bins_to_gc})
+    qf = qf.fillna(qf['gc'].mean())
     # Join the GC table with the count matrix
-    gc_matched = df.T.join( pd.DataFrame({'gc':bins_to_gc}), how='left')['gc']
+    gc_matched = df.T.join( qf, how='left')['gc']
 
         # This performs GC correction for every cell using loess regression
     with multiprocessing.Pool(threads) as workers:
