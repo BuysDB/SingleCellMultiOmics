@@ -193,7 +193,7 @@ def run_multiome_tagging(args):
 
     }
 
-    fragment_class_args = { 'umi_hamming_distance':0 }
+    fragment_class_args = { 'umi_hamming_distance':1 }
 
     time_start = datetime.now()
 
@@ -212,7 +212,8 @@ def run_multiome_tagging(args):
         if status=='timeout':
             print('\n'+colorama.Style.BRIGHT + colorama.Fore.RED + f"The bin {contig}:{start}-{end} timed out and will not be tagged " + colorama.Style.RESET_ALL)
 
-        print(f'time:{(datetime.now()-time_start)}, completion: { ((iteration/total_commands)*100):.2f} % , {contig}:{start}-{end} {status}             ', end='\r')
+        if total_commands>0:
+            print(f'time:{(datetime.now()-time_start)}, completion: { ((iteration/total_commands)*100):.2f} % , {contig}:{start}-{end} {status}             ', end='\r')
 
     def filter_func( args ):
 
@@ -253,14 +254,21 @@ def run_multiome_tagging(args):
     # Dry run:
     total_commands = 0
     if args.debug_job_bin_bed:
-        with pysam.AlignmentFile(alignments_path) as alignments, open(args.debug_job_bin_bed,'w') as jbo:
-            for cmd in get_commands(alignments_path, fragment_size, temp_dir,
-                    CHICMolecule, CHICFragment,
-                     molecule_iterator_args,
-                     fragment_class_args,
-                     molecule_class_args, args.timeout, args.job_bin_size, args.blacklist):
-                    total_commands+=1
+        jbo = open(args.debug_job_bin_bed,'w')
+    else:
+        jbo = None
+
+    with pysam.AlignmentFile(alignments_path) as alignments:
+        for cmd in get_commands(alignments_path, fragment_size, temp_dir,
+                CHICMolecule, CHICFragment,
+                 molecule_iterator_args,
+                 fragment_class_args,
+                 molecule_class_args, args.timeout, args.job_bin_size, args.blacklist):
+                total_commands+=1
+                if jbo is not None:
                     jbo.write(f'{cmd[1]}\t{cmd[2]}\t{cmd[3]}\n')
+    if jbo is not None:
+        jbo.close()
 
     with Pool() as workers, pysam.AlignmentFile(alignments_path) as alignments:
 
