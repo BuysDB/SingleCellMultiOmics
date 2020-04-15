@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from singlecellmultiomics.bamProcessing.bamBinCounts import generate_jobs
+from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs
 from singlecellmultiomics.bamProcessing import sorted_bam_file
 import pysam
 import os
@@ -37,6 +37,8 @@ import pickle
 from datetime import datetime
 import traceback
 
+import colorama
+
 from datetime import datetime
 
 available_consensus_models = pkg_resources.resource_listdir('singlecellmultiomics','molecule/consensus_model')
@@ -52,12 +54,13 @@ argparser.add_argument(
     help="Temp folder")
 
 argparser.add_argument('-o', type=str, help="output bam file", required=True)
-
-
-argparser.add_argument('-job_bin_size', type=int, default=250_000, help='How large are the job bins in bp')
-argparser.add_argument('-timeout', type=int, default=600, help='How long do we try to resolve a bin')
+argparser.add_argument('-job_bin_size', type=int, default=5_000_000, help='How large are the job bins in bp')
+argparser.add_argument('-timeout', type=int, default=60*15, help='How long do we try to resolve a bin (seconds)')
+argparser.add_argument('-min_mapping_qual', type=int, default=40, help='Mapping quality pre-filter. All reads with a lower mapping quality are discarded immediately ')
 argparser.add_argument('-fragment_length', type=int, default=500, help='Maximum fragment length')
-argparser.add_argument('-chunksize', type=int, default=150, help='Amount of bins per chunk')
+argparser.add_argument('-chunksize', type=int, default=50, help='Amount of bins per chunk')
+argparser.add_argument('-blacklist', type=str, help='blacklist (bed file), with contig start end')
+argparser.add_argument('-debug_job_bin_bed', type=str, help='Path to write a bed file')
 
 
 def run_multiome_tagging_cmd(commandline):
@@ -82,13 +85,11 @@ def merge_bams( bams, output_path ):
 
 def run_tagging(args):
 
-
-    alignments_path, contig, start, end, fragment_size, temp_dir, molecule_class, fragment_class, molecule_iterator_args, \
+    alignments_path, contig, start, end, fetch_start,fetch_end, temp_dir, molecule_class, fragment_class, molecule_iterator_args, \
         fragment_class_args, molecule_class_args, timeout_time = args
 
     i = 0
     tid = 0
-
 
     time_start = datetime.now()
     kill = False # kill signal
@@ -102,15 +103,13 @@ def run_tagging(args):
             raise TimeoutError()
 
     molecule_iterator_args['progress_callback_function'] = timeout_check_function
-
+    i = 0
     with pysam.AlignmentFile(alignments_path) as alignments:
         tid = alignments.get_tid(contig)
         target_file = f"{temp_dir}/{tid}_{start}_{end}.bam"
         try:
             with sorted_bam_file(target_file, origin_bam=alignments, mode='wbu',fast_compression=True) as output:
 
-                fetch_start = max(0, start - fragment_size )
-                fetch_end = end+fragment_size
                 #print(fetch_start, fetch_end)
                 for i,molecule in enumerate(
                         MoleculeIterator(alignments, molecule_class, fragment_class, contig=contig, start=fetch_start, end=fetch_end,
@@ -141,10 +140,10 @@ def run_tagging(args):
             except Exception as e:
                 pass
 
-            return None, (tid, start,end, 'timeout')
+            return None, (tid, contig, start,end, i, 'timeout')
 
     if i>0:
-        return target_file, (tid, start,end, 'ok')
+        return target_file, (tid, contig, start,end, i, 'ok')
     else:
         # Clean up ?
         try:
@@ -153,7 +152,7 @@ def run_tagging(args):
         except Exception as e:
                 pass
 
-        return None, (tid, start,end, 'empty')
+        return None, (tid, contig, start,end, i, 'empty')
 
 
 
@@ -164,8 +163,10 @@ def run_multiome_tagging(args):
     out_name = args.o
     temp_dir = args.temp
     fragment_size = args.fragment_length
-    blacklist_path = 'blacklist.bed'
-    blacklist = open(blacklist_path,'w')
+
+
+    blacklist_generated_path = 'blacklist.bed'
+    blacklist_generated_path = open(blacklist_generated_path,'w')
 
 
     for remove_existing_path in [args.o, f'{args.o}.bai']:
@@ -182,41 +183,43 @@ def run_multiome_tagging(args):
 
     molecule_iterator_args = {
         'yield_overflow' : False,
-        'yield_invalid' : False
+        'yield_invalid' : False,
+        'min_mapping_qual':args.min_mapping_qual
     }
 
     molecule_class_args = {
-
 
         'max_associated_fragments':1
 
     }
 
+    fragment_class_args = { 'umi_hamming_distance':0 }
 
     time_start = datetime.now()
-
-    fragment_class_args = {}
-    time_start = datetime.now()
-
 
     failed_bins = set()
 
-    def register_status(*qargs):
-        tid,start,end,status = qargs
-        if status=='timeout':
-            contig = alignments.get_reference_name(tid)
-            failed_bins.add( (contig, start, end ) )
-            print(contig, start, end)
-            blacklist.write(f'{contig}\t{start}\t{end}\n')
+    total_commands=0
 
+
+    def register_status(contig,start,end,status):
+        if status=='timeout':
+            failed_bins.add( (contig, start, end ) )
+            blacklist_generated_path.write(f'{contig}\t{start}\t{end}\n')
+
+
+    def cli_update(iteration, contig, start, end, status):
+        if status=='timeout':
+            print('\n'+colorama.Style.BRIGHT + colorama.Fore.RED + f"The bin {contig}:{start}-{end} timed out and will not be tagged " + colorama.Style.RESET_ALL)
+
+        print(f'time:{(datetime.now()-time_start)}, completion: { ((iteration/total_commands)*100):.2f} % , {contig}:{start}-{end} {status}             ', end='\r')
 
     def filter_func( args ):
 
-        iteration, (target,(contig, start, end, status)) = args
-
+        iteration, (target,(tid, contig, start, end, wrote_molecules, status)) = args
         # Register:
         register_status(contig, start, end, status)
-
+        cli_update(iteration, contig, start, end, status)
         # Force update:
         #force_update( iteration, tid=contig, bin_start=start, bin_end=end, status=status )
 
@@ -228,19 +231,36 @@ def run_multiome_tagging(args):
                                      molecule_class, fragment_class,
                                      molecule_iterator_args,
                                      fragment_class_args,
-                                     molecule_class_args,timeout_time, bin_size ):
+                                     molecule_class_args,timeout_time, bin_size ,blacklist_path):
         yield from  (
-            ( alignments_path, contig, start, end, fragment_size, temp_dir,
+            ( alignments_path, contig, start, end, fetch_start,fetch_end, temp_dir,
                  molecule_class, fragment_class,
                  molecule_iterator_args,
                  fragment_class_args,
                  molecule_class_args,
                  timeout_time
             )
-              for contig,start,end in
-                generate_jobs(alignments, bin_size = bin_size,  bins_per_job=1)
+              for contig,start,end,fetch_start,fetch_end in
+                blacklisted_binning_contigs(
+                        contig_length_resource = alignments,
+                        bin_size = bin_size,
+                        fragment_size=fragment_size,
+                        blacklist_path=blacklist_path
+                         ) #
         )
 
+
+    # Dry run:
+    total_commands = 0
+    if args.debug_job_bin_bed:
+        with pysam.AlignmentFile(alignments_path) as alignments, open(args.debug_job_bin_bed,'w') as jbo:
+            for cmd in get_commands(alignments_path, fragment_size, temp_dir,
+                    CHICMolecule, CHICFragment,
+                     molecule_iterator_args,
+                     fragment_class_args,
+                     molecule_class_args, args.timeout, args.job_bin_size, args.blacklist):
+                    total_commands+=1
+                    jbo.write(f'{cmd[1]}\t{cmd[2]}\t{cmd[3]}\n')
 
     with Pool() as workers, pysam.AlignmentFile(alignments_path) as alignments:
 
@@ -257,14 +277,19 @@ def run_multiome_tagging(args):
                                     CHICMolecule, CHICFragment,
                                      molecule_iterator_args,
                                      fragment_class_args,
-                                     molecule_class_args, args.timeout, args.job_bin_size)
+                                     molecule_class_args, args.timeout, args.job_bin_size, args.blacklist)
 
             )))), args.chunksize))
             ]
+
+
+        print(f'\nJobs are completed, now merging the results into {out_name}')
         merge_bams( intermediate_bams, out_name )
+        print(f'Indexing the final bam at {out_name}')
         pysam.index(out_name)
 
-    print('All done')
+    print('All done' + ' '*99)
+    print(f'Took: {datetime.now() - time_start}')
 
 if __name__ == '__main__':
     args = argparser.parse_args()
