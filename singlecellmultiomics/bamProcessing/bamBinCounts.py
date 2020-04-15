@@ -48,23 +48,6 @@ def fill_range(start,end,step):
         yield e, end
 
 
-def range_contains_overlap(clist):
-    """
-    Check if the supplied iteratorof start,end coordinates contains an overlap
-
-    Args:
-        clist (list) : sorted list of start,end coordinates of regions
-    """
-    clist=sorted(clist)
-    # check for overlaps...
-    if len(clist)<2:
-        return False
-
-    for (start,end),(next_start,next_end) in windowed(clist,2):
-        if start>next_start or end>next_start:
-            #print(f'Overlap between {start}:{end} and {next_start}:{next_end}')
-            return True
-    return False
 
 def trim_rangelist(rangelist, start, end):
     """
@@ -115,19 +98,47 @@ def get_bins_from_bed_dict(path, contig=None):
     return bd
 
 
-def _merge_overlapping_ranges(clist):
+def range_contains_overlap(clist):
+    """
+    Check if the supplied iteratorof start,end coordinates contains an overlap
+
+    Args:
+        clist (list) : sorted list of start,end coordinates of regions
+    """
+    clist=sorted(clist)
+    # check for overlaps...
+    if len(clist)<2:
+        return False
+
     for (start,end),(next_start,next_end) in windowed(clist,2):
-        if start>next_start or end>next_start:
+        if start>next_start or end>next_start or end>next_end or start>next_end:
+            #print(f'Overlap between {start}:{end} and {next_start}:{next_end}')
+            return True
+    return False
+
+def _merge_overlapping_ranges(clist):
+
+    merged = False
+    for (start,end),(next_start,next_end) in windowed(clist,2):
+        if merged:
+            merged = False
+            continue
+
+        if start>next_start or end>next_start or end>next_end or start>next_end:
             yield (min(start,next_start),max(next_end, end))
+            merged = True
 
         else:
             yield start, end
+    if not merged:
+        yield clist[-1]
 
 def merge_overlapping_ranges(clist):
     clist = sorted(clist)
     while range_contains_overlap(clist):
-        clist = list(_merge_overlapping_ranges(clist))
+        clist = sorted(list(_merge_overlapping_ranges(clist)))
     return clist
+
 
 
 def blacklisted_binning_contigs(contig_length_resource, bin_size, fragment_size, blacklist_path=None):
@@ -139,14 +150,23 @@ def blacklisted_binning_contigs(contig_length_resource, bin_size, fragment_size,
 
     for contig,length in get_contig_sizes(contig_length_resource).items():
 
-        for bin_start, bin_end, fetch_start, fetch_end in \
-                blacklisted_binning(
-                    start_coord = 0,
-                    end_coord = length,
-                    bin_size=bin_size,
-                    blacklist=blacklist_dict.get(contig,[]),
-                    fragment_size=fragment_size):
-            yield contig, bin_start, bin_end, fetch_start, fetch_end
+        if fragment_size is not None:
+            for bin_start, bin_end, fetch_start, fetch_end in \
+                    blacklisted_binning(
+                        start_coord = 0,
+                        end_coord = length,
+                        bin_size=bin_size,
+                        blacklist=sorted(blacklist_dict.get(contig,[])),
+                        fragment_size=fragment_size):
+                yield contig, bin_start, bin_end, fetch_start, fetch_end
+        else:
+            for bin_start, bin_end in \
+                    blacklisted_binning(
+                        start_coord = 0,
+                        end_coord = length,
+                        bin_size=bin_size,
+                        blacklist=sorted(blacklist_dict.get(contig,[]))):
+                yield contig, bin_start, bin_end
 
 
 
@@ -174,7 +194,6 @@ def blacklisted_binning(start_coord, end_coord, bin_size, blacklist=None, fragme
         blacklist = []
     elif len(blacklist)>1:
         blacklist= merge_overlapping_ranges(blacklist)
-
     current=start_coord
     for i, (start, end) in enumerate( chain( trim_rangelist(blacklist,start_coord, end_coord), [(end_coord,end_coord+1),])):
 
@@ -184,6 +203,8 @@ def blacklisted_binning(start_coord, end_coord, bin_size, blacklist=None, fragme
             continue
 
         total_bins = len(list(fill_range(current,start,bin_size)))
+        if total_bins<0:
+            continue
         if total_bins==0:
             total_bins=1
         local_bin_size = int((start-current) / total_bins)
