@@ -66,6 +66,35 @@ def range_contains_overlap(clist):
             return True
     return False
 
+def trim_rangelist(rangelist, start, end):
+    """
+    Trim list of start, end coordinates to only keep ranges within start and end, and trim ranges which overlap with start/end.
+
+    Args:
+
+        rangelist(list) : list of tuples (start,end)
+
+        start(int) : inclusive start coordiante
+
+        end(int) : exclusive end coordinate
+
+    Yields:
+        (range_start, range_end)
+
+    """
+    for s,e in rangelist:
+
+        overlap = False
+        if s>=start and s<end:
+            overlap = True
+        if e>=start and e<end:
+            overlap = True
+
+        if not overlap:
+            continue
+
+        yield max(s,start), min(e,end)
+
 
 def _merge_overlapping_ranges(clist):
     for (start,end),(next_start,next_end) in windowed(clist,2):
