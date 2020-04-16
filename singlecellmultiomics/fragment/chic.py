@@ -20,9 +20,11 @@ class CHICFragment(Fragment):
                           R1_primer_length=R1_primer_length,
                           R2_primer_length=R2_primer_length,
                           umi_hamming_distance=umi_hamming_distance,
+                          max_NUC_stretch = 18,
                           **kwargs
 
-                          )
+                )
+
         # set CHIC cut site given reads
         self.no_umi_cigar_processing = no_umi_cigar_processing
         self.strand = None
@@ -117,6 +119,9 @@ class CHICFragment(Fragment):
                 is_trimmed=False)
 
     def is_valid(self):
+        if self.qcfail:
+            return False
+
         if self.max_fragment_size is not None:
             try:
                 size = self.get_fragment_size()

@@ -49,6 +49,7 @@ class Fragment():
                  tag_definitions=None,
                  max_fragment_size = None,
                  mapping_dir=(False, True),
+                 max_NUC_stretch = None,
                  read_group_format=0  # R1 forward, R2 reverse
                  ):
         """
@@ -105,6 +106,8 @@ class Fragment():
         self.random_primer_sequence = None
         self.max_fragment_size = max_fragment_size
         self.read_group_format = read_group_format
+        self.max_NUC_stretch = max_NUC_stretch
+        self.qcfail = False
 
         # Span:\
         self.span = [None, None, None]
@@ -112,10 +115,21 @@ class Fragment():
         self.umi = None
 
         # Force R1=read1 R2=read2:
+
         for i, read in enumerate(self.reads):
 
             if read is None:
                 continue
+
+            if self.max_NUC_stretch is not None and (
+                self.max_NUC_stretch*'A' in read.seq or \
+                self.max_NUC_stretch*'G' in read.seq or \
+                self.max_NUC_stretch*'T' in read.seq or \
+                self.max_NUC_stretch*'C' in read.seq ):
+                self.set_rejection_reason('HomoPolymer', set_qcfail=True)
+                self.qcfail=True
+                break
+
             if read.has_tag('rS'):
                 self.random_primer_sequence = read.get_tag('rS')
                 self.unsafe_trimmed = True
@@ -136,6 +150,8 @@ class Fragment():
                 read.is_read2 = True
 
         self.set_sample()
+        if self.qcfail:
+            return
         self.set_strand(self.identify_strand())
         self.update_span()
         self.update_umi()
@@ -727,6 +743,8 @@ class Fragment():
         return self.reads[index]
 
     def is_valid(self):
+        if self.qcfail:
+            return False
         return self.has_valid_span()
 
     def get_strand_repr(self):
