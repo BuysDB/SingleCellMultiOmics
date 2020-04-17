@@ -80,6 +80,9 @@ def run_tagging(args):
 
     target_file = f"{temp_dir}/{uuid.uuid4()}.bam"
 
+
+    timeouts = 0
+    total_molecules = 0
     with pysam.AlignmentFile(alignments_path) as alignments:
 
         with sorted_bam_file(target_file, origin_bam=alignments, mode='wbu',fast_compression=True) as output:
@@ -105,14 +108,16 @@ def run_tagging(args):
                         if cut_site_contig!=contig or cut_site_pos<start or cut_site_pos>=end: # End is exclusive
                             continue
 
+                        total_molecules+=1
                         molecule.write_tags()
                         molecule.write_pysam(output)
 
                 except TimeoutError:
                     # Clean up?
+                    timeouts+=1
                     pass
 
-    if i>0:
+    if total_molecules>0:
         return target_file, (tid, contig, start,end, len(arglist), 'ok')
     else:
         # Clean up ?
