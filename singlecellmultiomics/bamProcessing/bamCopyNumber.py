@@ -25,14 +25,14 @@ if __name__ == '__main__':
         description="""Export and plot copy number profiles
     """)
     argparser.add_argument('bamfile', metavar='bamfile', type=str)
-    argparser.add_argument('-ref', help='path to reference fasta', type=str)
+    argparser.add_argument('-ref', help='path to reference fasta', type=str, required=True)
     argparser.add_argument('-bin_size', default=500_000, type=int)
     argparser.add_argument('-max_cp', default=5, type=int)
     argparser.add_argument('-threads', default=16, type=int)
     argparser.add_argument('-bins_per_job', default=5, type=int)
     argparser.add_argument('-pct_clip', default=99.999, type=float)
     argparser.add_argument('-min_mapping_qual', default=40, type=int)
-    argparser.add_argument('-molecule_threshold', default=10_000, type=int)
+    argparser.add_argument('-molecule_threshold', default=5_000, type=int)
 
     argparser.add_argument('-rawmatplot', type=str, help='Path to raw matrix, plot is not made when this path is not supplied ')
     argparser.add_argument('-gcmatplot', type=str, help='Path to gc corrected matrix, plot is not made when this path is not supplied ')
@@ -92,7 +92,6 @@ if __name__ == '__main__':
         print(f"\rCreating molecule histogram [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
 
-
     # Convert the count dictionary to a dataframe
     print("Filtering count matrix ... ", end="")
     df = pd.DataFrame(counts).T.fillna(0)
@@ -123,7 +122,7 @@ if __name__ == '__main__':
     if rawmatplot is not None:
         print("Creating raw heatmap ...", end="")
         h.cn_heatmap(df, figsize=(15,15))
-        plt.savefig(f'./molecule_matrix_{bin_size}bp.png')
+        plt.savefig(rawmatplot)
         print(f"\rCreating raw heatmap [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
         plt.close('all')
 
@@ -135,7 +134,7 @@ if __name__ == '__main__':
     if gcmatplot is not None:
         print("Creating heatmap ...", end="")
         h.cn_heatmap(corrected_cells,figsize=(15,15))
-        plt.savefig(f'./gc_corrected_matrix_{bin_size}bp.png')
+        plt.savefig(gcmatplot)
         plt.close('all')
         print(f"\rCreating heatmap [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
