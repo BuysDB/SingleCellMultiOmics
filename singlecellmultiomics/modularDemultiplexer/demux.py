@@ -339,7 +339,7 @@ if __name__ == '__main__':
 
                     print(
                         'submission.py' +
-                        f' -y --py36 -time 50 -t 1 -m 8 -N {job_name} "%s  -g {group_id} -use {",".join([x.shortName for x in selectedStrategies])}"\n' %
+                        f' -y -sched auto --py36 -time 50 -t 1 -m 8 -N {job_name} "%s  -g {group_id} -use {",".join([x.shortName for x in selectedStrategies])}"\n' %
                         ('%s %s' %
                          (arguments,
                           " ".join(files_to_submit))))
@@ -350,7 +350,7 @@ if __name__ == '__main__':
                 job_name = f'DMX_{library}'
                 print(
                     'submission.py' +
-                    f' -y --py36 -time 50 -t 1 -m 8 -N {job_name} "%s -use {",".join([x.shortName for x in selectedStrategies])}"\n' %
+                    f' -y --py36 -time 50 -t 1 -m 8 -sched auto -N {job_name} "%s -use {",".join([x.shortName for x in selectedStrategies])}"\n' %
                     ('%s %s' %
                      (arguments,
                       " ".join(filesForLib))))
@@ -362,22 +362,25 @@ if __name__ == '__main__':
                 cmds = [
                     f'cat {args.o}/{library}/*_TEMP_demultiplexedR1.fastq.gz  > {args.o}/{library}/demultiplexedR1.fastq.gz && rm {args.o}/{library}/*_TEMP_demultiplexedR1.fastq.gz',
                     f'cat {args.o}/{library}/*_TEMP_demultiplexedR2.fastq.gz  > {args.o}/{library}/demultiplexedR2.fastq.gz && rm {args.o}/{library}/*_TEMP_demultiplexedR2.fastq.gz',
-                    f'cat {args.o}/{library}/*_TEMP_rejectsR1.fastq.gz  > {args.o}/{library}/rejectsR1.fastq.gz && rm {args.o}/{library}/*_TEMP_rejectsR1.fastq.gz',
-                    f'cat {args.o}/{library}/*_TEMP_rejectsR2.fastq.gz  > {args.o}/{library}/rejectsR2.fastq.gz && rm {args.o}/{library}/*_TEMP_rejectsR2.fastq.gz',
                     f'cat {args.o}/{library}/*_TEMP_demultiplexing.log  > {args.o}/{library}/demultiplexing.log && rm {args.o}/{library}/*_TEMP_demultiplexing.log']
+                if not args.norejects:
+                    cmds += [
+                        f'cat {args.o}/{library}/*_TEMP_rejectsR1.fastq.gz  > {args.o}/{library}/rejectsR1.fastq.gz && rm {args.o}/{library}/*_TEMP_rejectsR1.fastq.gz',
+                        f'cat {args.o}/{library}/*_TEMP_rejectsR2.fastq.gz  > {args.o}/{library}/rejectsR2.fastq.gz && rm {args.o}/{library}/*_TEMP_rejectsR2.fastq.gz'
+                    ]
 
                 for i, cmd in enumerate(cmds):
                     job_name = f'glue_{library}_{i}'
                     print(
                         'submission.py' +
-                        f' -y --silent --py36 -time 4 -t 1 -m 2 -N "glue_{library}" "{cmd}" -hold {",".join(submitted_jobs)}')
+                        f' -y -sched auto --silent --py36 -time 4 -t 1 -m 2 -N "glue_{library}" "{cmd}" -hold {",".join(submitted_jobs)}')
                     final_jobs.append(job_name)
 
             # Execute last command if applicable
             if args.nextcmd is not None:
                 print(
                     'submission.py' +
-                    f' -y --silent -time 1 -t 1 -m 1 -N "NEXT_{library}" "{cmd}" -hold {",".join(final_jobs)}')
+                    f' -y --silent -sched auto -time 1 -t 1 -m 1 -N "NEXT_{library}" "{cmd}" -hold {",".join(final_jobs)}')
 
         if args.y:
 
@@ -394,8 +397,11 @@ if __name__ == '__main__':
                 True,
                 single_cell=args.scsepf,
                 maxHandles=args.fh)
-            rejectHandle = FastqHandle(
-                f'{args.o}/{library}/{prefix}rejects', True)
+            if args.norejects:
+                rejectHandle = None
+            else:
+                rejectHandle = FastqHandle(
+                    f'{args.o}/{library}/{prefix}rejects', True)
             """Set up statistic file"""
 
             log_location = os.path.abspath(
@@ -431,5 +437,6 @@ if __name__ == '__main__':
                     if args.n and processedReadPairsForThisLib >= args.n:
                         break
             handle.close()
-            rejectHandle.close()
+            if not args.norejects:
+                rejectHandle.close()
             log_handle.write(f'Demultiplexing finished\n')
