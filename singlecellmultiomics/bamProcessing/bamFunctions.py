@@ -80,6 +80,18 @@ def get_sample_to_read_group_dict(bam):
         raise ValueError(
             'Supply either a path to a bam file or pysam.AlignmentFile object')
 
+def get_read_group_to_sample_dict(bam):
+    """ Obtain a dictionary containing {'read_group' : 'sample' , ...}
+        Args:
+            bam_file(pysam.AlignmentFile) or path to bam file or pysam object
+    """
+    d = get_sample_to_read_group_dict(bam)
+    r2s = {}
+    for sample, read_groups in d.items():
+        for rg in read_groups:
+            r2s[rg] = sample
+
+    return r2s
 
 def get_read_group_format(bam):
     """Obtain read group format
