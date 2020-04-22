@@ -399,7 +399,7 @@ def run_multiome_tagging(args):
             args.mapfile)
 
     ### Transcriptome configuration ###
-    if args.method in ('nla_transcriptome', 'cs', 'vasa'):
+    if args.method in ('nla_transcriptome', 'cs', 'vasa',  'chict'):
         print(
             colorama.Style.BRIGHT +
             'Running in transcriptome annotation mode' +
@@ -490,6 +490,10 @@ def run_multiome_tagging(args):
             'pooling_method': 1,  # all data from the same cell can be dealt with separately
             'stranded': None  # data is not stranded
         })
+    elif args.method == 'chict' :
+
+        moleculeClass = singlecellmultiomics.molecule.AnnotatedCHICMolecule
+        fragmentClass = singlecellmultiomics.fragment.CHICFragment
 
     elif args.method == 'nla_taps':
         moleculeClass = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
