@@ -48,9 +48,10 @@ tags = [
     #Those are insertion/deletion base qualities, where N=45, which is the default quality score for indels assigned by the BaseRecalibrator
     SamTag('BI', 'gatk_insert_deletion_base_qualities'),
     SamTag('BD', 'gatk_insert_deletion_base_qualities'),
-    
+
     SamTag('QT', 'sampleBarcodeQuality', isPhred=True),
     SamTag('RX', 'umi'),
+    SamTag('tu', 'second_umi'),
     SamTag('uL', 'umiLength'),
     SamTag('RQ', 'umiQual', isPhred=True),
     SamTag('BX', 'umiCorrected'),
