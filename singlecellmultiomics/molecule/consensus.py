@@ -3,6 +3,38 @@ import numpy as np
 import pandas as pd
 import time
 
+def calculate_consensus(molecule, consensus_model, molecular_identifier, out, **model_kwargs ):
+    """
+    Create consensus read for molecule
+
+    Args:
+        molecule (singlecellmultiomics.molecule.Molecule)
+
+        consensus_model
+
+        molecular_identifier (str) : identier for this molecule, will be suffixed to the reference_id
+
+        out(pysam.AlingmentFile) : target bam file
+
+        **model_kwargs : arguments passed to the consensus model
+
+    """
+    try:
+        consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
+            out,
+            f'c_{molecule.get_a_reference_id()}_{molecular_identifier}',
+            consensus_model,
+            NUC_RADIUS=model_kwargs['consensus_k_rad']
+            )
+        for consensus_read in consensus_reads:
+            consensus_read.set_tag('RG', molecule[0].get_read_group())
+            consensus_read.set_tag('mi', molecular_identifier)
+            out.write(consensus_read)
+    except Exception as e:
+
+        molecule.set_rejection_reason('CONSENSUS_FAILED',set_qcfail=True)
+        molecule.write_pysam(out)
+
 def base_calling_matrix_to_df(
         x,
         ref_info=None,
