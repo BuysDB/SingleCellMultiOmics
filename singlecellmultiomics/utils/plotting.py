@@ -82,8 +82,18 @@ class GenomicPlot():
 
         """
 
-        clmap = sns.clustermap(df.sort_index(1)[self.contigs],col_cluster=False,method=method,cmap=cmap, vmax=max_cn,vmin=0, yticklabels=True, figsize=figsize, **kwargs)
-        clmap.ax_heatmap.set_yticklabels(clmap.ax_heatmap.get_ymajorticklabels(), fontsize = cell_font_size)
+        try:
+            clmap = sns.clustermap(df.sort_index(1)[self.contigs],
+                col_cluster=False,method=method,
+                cmap=cmap, vmax=max_cn,vmin=0,
+                yticklabels=True, figsize=figsize, **kwargs)
+            ax_heatmap = clmap.ax_heatmap
+        except Exception as e:
+            print('Falling back on heatmap without clustering')
+            fig, ax_heatmap = plt.subplots(figsize=figsize)
+            clmap = sns.heatmap(df.sort_index(1)[self.contigs],cmap=cmap,
+                vmax=max_cn,vmin=0, yticklabels=True, ax=ax_heatmap)
+
 
         prev = None
         xtick_pos = []
@@ -91,16 +101,16 @@ class GenomicPlot():
         last_idx = 0
         for idx, (contig, start, end) in enumerate(df.sort_index(1)[self.contigs].columns):
             if prev is not None and prev != contig:
-                clmap.ax_heatmap.axvline(idx-0.5, c='k',lw=1.5, zorder=10)
+                ax_heatmap.axvline(idx-0.5, c='k',lw=1.5, zorder=10)
                 xtick_pos.append( (idx+last_idx) / 2)
                 xtick_label.append(prev)
                 last_idx=idx
             prev = contig
 
-        clmap.ax_heatmap.set_xticks(xtick_pos)
-        clmap.ax_heatmap.set_xticklabels(xtick_label,rotation=0, fontsize=8)
-        clmap.ax_heatmap.set_xlabel(xlabel,labelpad=20)
-        clmap.ax_heatmap.set_ylabel(ylabel,labelpad=20)
+        ax_heatmap.set_xticks(xtick_pos)
+        ax_heatmap.set_xticklabels(xtick_label,rotation=0, fontsize=8)
+        ax_heatmap.set_xlabel(xlabel,labelpad=20)
+        ax_heatmap.set_ylabel(ylabel,labelpad=20)
 
         return clmap
 
