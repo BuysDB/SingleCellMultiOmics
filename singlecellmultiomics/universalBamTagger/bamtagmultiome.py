@@ -5,7 +5,7 @@ import pysam
 from singlecellmultiomics.molecule import MoleculeIterator
 import singlecellmultiomics
 import singlecellmultiomics.molecule
-from singlecellmultiomics.consensus import calculate_consensus
+from singlecellmultiomics.molecule.consensus import calculate_consensus
 import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam
 
@@ -220,6 +220,77 @@ ma.add_argument(
     action='store_true',
     help='Do not use the alignment during deduplication')
 ma.add_argument('-max_associated_fragments',type=int, default=None, help="Limit the maximum amount of reads associated to a single molecule.")
+
+def tag_multiome_single_thread(
+        input_bam_path,
+        out_bam_path,
+        molecule_iterator = None,
+        molecule_iterator_args = None,
+        consensus_model = None,
+        consensus_model_args={},
+        ignore_bam_issues=False,
+        head=None,
+        no_source_reads=False
+        ):
+
+    input_bam = pysam.AlignmentFile(input_bam_path, "rb", ignore_truncation=ignore_bam_issues, threads=4)
+    input_header = input_bam.header.as_dict()
+
+    # Write provenance information to BAM header
+    write_program_tag(
+        input_header,
+        program_name='bamtagmultiome',
+        command_line=" ".join(
+            sys.argv),
+        version=singlecellmultiomics.__version__,
+        description=f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
+
+    print(f'Started writing to {out_bam_path}')
+
+    read_groups = dict()  # Store unique read groups in this dict
+    with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups) as out:
+        try:
+            for i, molecule in enumerate(molecule_iterator):
+
+                # Stop when enough molecules are processed
+                if head is not None and (i - 1) >= head:
+                    break
+
+                # set unique molecule identifier
+                molecule.set_meta('mi', f'{molecule.get_a_reference_id()}_{i}')
+
+                # Write tag values
+                molecule.write_tags()
+
+                """
+                if unphased_allele_resolver is not None:  # write unphased allele tag:
+                    molecule.write_allele_phasing_information_tag(
+                        unphased_allele_resolver, 'ua')
+                """
+
+                # Update read groups
+                for fragment in molecule:
+                    rgid = fragment.get_read_group()
+                    if not rgid in read_groups:
+                        read_groups[rgid] = fragment.get_read_group(True)[1]
+
+                # Calculate molecule consensus
+                if consensus_model is not None:
+                    calculate_consensus(molecule,
+                                        consensus_model,
+                                        i,
+                                        out,
+                                        **consensus_model_args)
+
+                # Write the reads to the output file
+                if not no_source_reads:
+                    molecule.write_pysam(out)
+        except Exception as e:
+            write_status(out_bam_path,'FAIL, The file is not complete')
+            raise e
+
+        # Reached the end of the generator
+        write_status(out_bam_path,'Reached end. All ok!')
 
 def write_status(output_path, message):
     status_path = output_path.replace('.bam','.status.txt')
@@ -760,6 +831,7 @@ def run_multiome_tagging(args):
 
     #####
     # Load unphased variants to memory
+    """
     unphased_allele_resolver = None
     if args.unphased_alleles is not None:
         unphased_allele_resolver = singlecellmultiomics.alleleTools.AlleleResolver(
@@ -785,82 +857,22 @@ def run_multiome_tagging(args):
                     variant.alleles[0]: {'U'}, variant.alleles[1]: {'V'}}
         except Exception as e:  # todo catch this more nicely
             print(e)
-    out_bam_path = args.o
+    """
 
-
-
-
-
-    def tag_multiome_single_thread(
-            input_bam_path,
-            out_bam_path,
-            fragment_class,
-            fragment_class_args,
-            molecule_class,
-            molecule_class_args,
-            molecule_iterator = None,
+    tag_multiome_single_thread(
+            args.bamin,
+            args.o,
+            molecule_iterator = molecule_iterator,
             molecule_iterator_args = None,
-            consensus_model_args,
+            consensus_model = None ,
+            consensus_model_args={},
             ignore_bam_issues=False,
-            head=None
-            ):
+            head=args.head,
+            no_source_reads=args.no_source_reads
+            )
 
-        input_bam = pysam.AlignmentFile(input_bam_path, "rb", ignore_truncation=ignore_bam_issues, threads=4)
-        input_header = input_bam.header.as_dict()
 
-        # Write provenance information to BAM header
-        write_program_tag(
-            input_header,
-            program_name='bamtagmultiome',
-            command_line=" ".join(
-                sys.argv),
-            version=singlecellmultiomics.__version__,
-            description=f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
 
-        print(f'Started writing to {out_bam_path}')
-
-        read_groups = dict()  # Store unique read groups in this dict
-        with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups) as out:
-            try:
-                for i, molecule in enumerate(molecule_iterator):
-
-                    # Stop when enough molecules are processed
-                    if head is not None and (i - 1) >= head:
-                        break
-
-                    # set unique molecule identifier
-                    molecule.set_meta('mi', f'{molecule.get_a_reference_id()}_{i}')
-
-                    # Write tag values
-                    molecule.write_tags()
-
-                    if unphased_allele_resolver is not None:  # write unphased allele tag:
-                        molecule.write_allele_phasing_information_tag(
-                            unphased_allele_resolver, 'ua')
-
-                    # Update read groups
-                    for fragment in molecule:
-                        rgid = fragment.get_read_group()
-                        if not rgid in read_groups:
-                            read_groups[rgid] = fragment.get_read_group(True)[1]
-
-                    # Calculate molecule consensus
-                    if args.consensus:
-                        calculate_consensus(molecule,
-                                            consensus_model,
-                                            molecular_identifier,
-                                            out,
-                                            **consensus_model_args)
-
-                    # Write the reads to the output file
-                    if not args.no_source_reads:
-                        molecule.write_pysam(out)
-            except Exception as e:
-                write_status(args.o,'FAIL, The file is not complete')
-                raise e
-
-            # Reached the end of the generator
-            write_status(args.o,'Reached end. All ok!')
 
 
 if __name__ == '__main__':
