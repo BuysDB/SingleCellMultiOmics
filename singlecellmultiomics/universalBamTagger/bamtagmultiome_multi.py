@@ -86,9 +86,11 @@ def run_tagging(args):
     timeouts = 0
     timeout_bins = []
     total_molecules = 0
-    with pysam.AlignmentFile(alignments_path) as alignments:
 
-        with sorted_bam_file(target_file, origin_bam=alignments, mode='wbu',fast_compression=True) as output:
+    read_groups = dict()
+    with pysam.AlignmentFile(alignments_path) as alignments:
+        with sorted_bam_file(target_file, origin_bam=alignments, mode='wbu',
+            fast_compression=True, read_groups=read_groups) as output:
 
             for contig, start, end, fetch_start,fetch_end, molecule_class, fragment_class, molecule_iterator_args, \
                         fragment_class_args, molecule_class_args in arglist:
@@ -113,6 +115,12 @@ def run_tagging(args):
 
                         total_molecules+=1
                         molecule.write_tags()
+                        # Update read groups
+                        for fragment in molecule:
+                            rgid = fragment.get_read_group()
+                            if not rgid in read_groups:
+                                read_groups[rgid] = fragment.get_read_group(True)[1]
+
                         molecule.write_pysam(output)
 
                 except TimeoutError:
@@ -210,7 +218,9 @@ def run_multiome_tagging(args):
                                      molecule_class, fragment_class,
                                      molecule_iterator_args,
                                      fragment_class_args,
-                                     molecule_class_args,timeout_time, bin_size ,blacklist_path,alignments,min_size):
+                                     molecule_class_args,
+                                     timeout_time, bin_size ,
+                                     blacklist_path,alignments,min_size):
         yield from  (
 
              (contig, start, end, fetch_start,fetch_end,
