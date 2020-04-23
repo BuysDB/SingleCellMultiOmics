@@ -5,6 +5,7 @@ import pysam
 from singlecellmultiomics.molecule import MoleculeIterator
 import singlecellmultiomics
 import singlecellmultiomics.molecule
+from singlecellmultiomics.consensus import calculate_consensus
 import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam
 
@@ -787,37 +788,7 @@ def run_multiome_tagging(args):
     out_bam_path = args.o
 
 
-    def calculate_consensus(molecule, consensus_model, molecular_identifier, out, **model_kwargs ):
-        """
-        Create consensus read for molecule
 
-        Args:
-            molecule (singlecellmultiomics.molecule.Molecule)
-
-            consensus_model
-
-            molecular_identifier (str) : identier for this molecule, will be suffixed to the reference_id
-
-            out(pysam.AlingmentFile) : target bam file
-
-        """
-        try:
-            consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
-                out,
-                f'c_{molecule.get_a_reference_id()}_{molecular_identifier}',
-                consensus_model,
-                NUC_RADIUS=model_kwargs['consensus_k_rad']
-                )
-            for consensus_read in consensus_reads:
-                consensus_read.set_tag('RG', molecule[0].get_read_group())
-                consensus_read.set_tag('mi', molecular_identifier)
-                out.write(consensus_read)
-        except Exception as e:
-
-            #traceback.print_exc()
-            #print(e)
-            molecule.set_rejection_reason('CONSENSUS_FAILED',set_qcfail=True)
-            molecule.write_pysam(out)
 
 
     def tag_multiome_single_thread(
@@ -829,6 +800,7 @@ def run_multiome_tagging(args):
             molecule_class_args,
             molecule_iterator = None,
             molecule_iterator_args = None,
+            consensus_model_args,
             ignore_bam_issues=False,
             head=None
             ):
@@ -874,8 +846,11 @@ def run_multiome_tagging(args):
 
                     # Calculate molecule consensus
                     if args.consensus:
-
-
+                        calculate_consensus(molecule,
+                                            consensus_model,
+                                            molecular_identifier,
+                                            out,
+                                            **consensus_model_args)
 
                     # Write the reads to the output file
                     if not args.no_source_reads:
