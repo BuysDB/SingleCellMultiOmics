@@ -786,76 +786,106 @@ def run_multiome_tagging(args):
             print(e)
     out_bam_path = args.o
 
-    # Copy the header
-    input_header = input_bam.header.as_dict()
 
-    # Write provenance information to BAM header
-    write_program_tag(
-        input_header,
-        program_name='bamtagmultiome',
-        command_line=" ".join(
-            sys.argv),
-        version=singlecellmultiomics.__version__,
-        description=f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
+    def calculate_consensus(molecule, consensus_model, molecular_identifier, out, **model_kwargs ):
+        """
+        Create consensus read for molecule
 
-    print(f'Started writing to {out_bam_path}')
+        Args:
+            molecule (singlecellmultiomics.molecule.Molecule)
 
-    read_groups = dict()  # Store unique read groups in this dict
-    with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups) as out:
+            consensus_model
 
+            molecular_identifier (str) : identier for this molecule, will be suffixed to the reference_id
+
+            out(pysam.AlingmentFile) : target bam file
+
+        """
         try:
-            for i, molecule in enumerate(molecule_iterator):
-
-                # Stop when enough molecules are processed
-                if args.head is not None and (i - 1) >= args.head:
-                    break
-
-                # set unique molecule identifier
-                molecule.set_meta('mi', f'{molecule.get_a_reference_id()}_{i}')
-
-                # Write tag values
-                molecule.write_tags()
-
-                if unphased_allele_resolver is not None:  # write unphased allele tag:
-                    molecule.write_allele_phasing_information_tag(
-                        unphased_allele_resolver, 'ua')
-
-                # Update read groups
-                for fragment in molecule:
-                    rgid = fragment.get_read_group()
-                    if not rgid in read_groups:
-                        read_groups[rgid] = fragment.get_read_group(True)[1]
-
-                # Calculate molecule consensus
-                if args.consensus:
-                    try:
-                        consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
-                            out,
-                            f'consensus_{molecule.get_a_reference_id()}_{i}',
-                            consensus_model,
-                            NUC_RADIUS=args.consensus_k_rad
-                            )
-                        for consensus_read in consensus_reads:
-                            consensus_read.set_tag('RG', molecule[0].get_read_group())
-                            consensus_read.set_tag('mi', i)
-                            out.write(consensus_read)
-                    except Exception as e:
-
-                        #traceback.print_exc()
-                        #print(e)
-                        molecule.set_rejection_reason('CONSENSUS_FAILED',set_qcfail=True)
-                        molecule.write_pysam(out)
-
-
-                # Write the reads to the output file
-                if not args.no_source_reads:
-                    molecule.write_pysam(out)
+            consensus_reads = molecule.deduplicate_to_single_CIGAR_spaced(
+                out,
+                f'c_{molecule.get_a_reference_id()}_{molecular_identifier}',
+                consensus_model,
+                NUC_RADIUS=model_kwargs['consensus_k_rad']
+                )
+            for consensus_read in consensus_reads:
+                consensus_read.set_tag('RG', molecule[0].get_read_group())
+                consensus_read.set_tag('mi', molecular_identifier)
+                out.write(consensus_read)
         except Exception as e:
-            write_status(args.o,'FAIL, The file is not complete')
-            raise e
 
-        # Reached the end of the generator
-        write_status(args.o,'Reached end. All ok!')
+            #traceback.print_exc()
+            #print(e)
+            molecule.set_rejection_reason('CONSENSUS_FAILED',set_qcfail=True)
+            molecule.write_pysam(out)
+
+
+    def tag_multiome_single_thread(
+            input_bam_path,
+            out_bam_path,
+            fragment_class,
+            fragment_class_args,
+            molecule_class,
+            molecule_class_args,
+            molecule_iterator = None,
+            molecule_iterator_args = None,
+            ignore_bam_issues=False,
+            head=None
+            ):
+
+        input_bam = pysam.AlignmentFile(input_bam_path, "rb", ignore_truncation=ignore_bam_issues, threads=4)
+        input_header = input_bam.header.as_dict()
+
+        # Write provenance information to BAM header
+        write_program_tag(
+            input_header,
+            program_name='bamtagmultiome',
+            command_line=" ".join(
+                sys.argv),
+            version=singlecellmultiomics.__version__,
+            description=f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
+
+        print(f'Started writing to {out_bam_path}')
+
+        read_groups = dict()  # Store unique read groups in this dict
+        with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups) as out:
+            try:
+                for i, molecule in enumerate(molecule_iterator):
+
+                    # Stop when enough molecules are processed
+                    if head is not None and (i - 1) >= head:
+                        break
+
+                    # set unique molecule identifier
+                    molecule.set_meta('mi', f'{molecule.get_a_reference_id()}_{i}')
+
+                    # Write tag values
+                    molecule.write_tags()
+
+                    if unphased_allele_resolver is not None:  # write unphased allele tag:
+                        molecule.write_allele_phasing_information_tag(
+                            unphased_allele_resolver, 'ua')
+
+                    # Update read groups
+                    for fragment in molecule:
+                        rgid = fragment.get_read_group()
+                        if not rgid in read_groups:
+                            read_groups[rgid] = fragment.get_read_group(True)[1]
+
+                    # Calculate molecule consensus
+                    if args.consensus:
+
+
+
+                    # Write the reads to the output file
+                    if not args.no_source_reads:
+                        molecule.write_pysam(out)
+            except Exception as e:
+                write_status(args.o,'FAIL, The file is not complete')
+                raise e
+
+            # Reached the end of the generator
+            write_status(args.o,'Reached end. All ok!')
 
 
 if __name__ == '__main__':
