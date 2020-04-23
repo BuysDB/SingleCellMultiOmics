@@ -41,6 +41,7 @@ if __name__ == '__main__':
     argparser.add_argument('-rawmat', type=str)
     argparser.add_argument('-gcmat', type=str)
 
+    argparser.add_argument('-norm_method', default='median', type=str)
 
     args = argparser.parse_args()
 
@@ -96,14 +97,31 @@ if __name__ == '__main__':
     print("Filtering count matrix ... ", end="")
     df = pd.DataFrame(counts).T.fillna(0)
     # remove cells were the median is zero
-    df = df.T[df.median()>0].T
-    # Remove rows with little counts
-    df = df.T[df.sum()>molecule_threshold].T
-    df = df / np.percentile(df,pct_clip,axis=0)
-    df = np.clip(0,MAXCP,(df / df.median())*2)
-    df = df.T
+    if args.norm_method=='median':
+        shape_before_median_filter = df.shape
+        df = df.T[df.median()>0].T
+        shape_after_median_filter = df.shape
+        print(shape_before_median_filter,shape_after_median_filter )
+        # Remove rows with little counts
+        df = df.T[df.sum()>molecule_threshold].T
+        df = df / np.percentile(df,pct_clip,axis=0)
+        df = np.clip(0,MAXCP,(df / df.median())*2)
+        df = df.T
+
+    else:
+        shape_before_median_filter = df.shape
+        df = df.T[df.mean()>0].T
+        shape_after_median_filter = df.shape
+        # Remove rows with little counts
+        df = df.T[df.sum()>molecule_threshold].T
+        df = df / np.percentile(df,pct_clip,axis=0)
+        df = np.clip(0,MAXCP,(df / df.mean())*2)
+        df = df.T
+
+
+
     if df.shape[0]==0:
-        print(f"\rExporting raw count matrix [ {Fore.RED}FAIL{Style.RESET_ALL} ] ")
+        print(f"\rRaw count matrix [ {Fore.RED}FAIL{Style.RESET_ALL} ] ")
         raise ValueError('Resulting count matrix is empty, review the filter settings')
     else:
         print(f"\rFiltering count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
@@ -128,7 +146,7 @@ if __name__ == '__main__':
 
     if gcmatplot is not None or gcmat is not None:
         print("Performing GC correction ...", end="")
-        corrected_cells = gc_correct_cn_frame(df, reference, MAXCP, threads)
+        corrected_cells = gc_correct_cn_frame(df, reference, MAXCP, threads, norm_method=args.norm_method)
         print(f"\rPerforming GC correction [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
     if gcmatplot is not None:

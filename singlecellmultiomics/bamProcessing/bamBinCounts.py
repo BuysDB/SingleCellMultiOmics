@@ -338,7 +338,7 @@ def gc_correct(args):
     correction = lowess(observations, gc_vector)
     return np.clip(observations / np.interp( gc_vector, correction[:,0], correction[:,1] ) , 0,MAXCP)
 
-def gc_correct_cn_frame(df, reference, MAXCP, threads):
+def gc_correct_cn_frame(df, reference, MAXCP, threads, norm_method='median'):
 
     # Perform GC correction
     chrom_sizes= dict( zip(reference.references, reference.lengths))
@@ -372,7 +372,13 @@ def gc_correct_cn_frame(df, reference, MAXCP, threads):
             gc_correct, [(row,gc_vector.values,MAXCP) for cell,row in df.iterrows()] ))
 
     corrected_cells = pd.concat(corrected_cells,axis=1).T
-    corrected_cells = ((corrected_cells.T/corrected_cells.median(1))*2).T
+    if norm_method == 'median':
+        corrected_cells = ((corrected_cells.T/corrected_cells.median(1))*2).T
+    elif norm_method == 'mean':
+        corrected_cells = ((corrected_cells.T/corrected_cells.mean(1))*2).T
+    else:
+        raise ValueError('norm_method not understood')
+
 
     return corrected_cells
 
