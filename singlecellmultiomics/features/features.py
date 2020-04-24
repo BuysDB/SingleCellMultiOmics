@@ -62,7 +62,7 @@ class FeatureContainer:
 
     def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'],
                 ignChr=False, select_feature_type=None, exon_select=None,
-                head=None, store_all=False, contig=None):
+                head=None, store_all=False, contig=None, offset=-1):
         """Load annotations from a GTF file.
         ignChr: ignore the chr part of the Annotation chromosome
         """
@@ -145,16 +145,16 @@ class FeatureContainer:
                         self.addFeature(
                             self.remapKeys.get(
                                 chromosome, chromosome), int(
-                                parts[3]), int(
-                                parts[4]), strand=parts[6], name=featureName, data=tuple(
+                                parts[3])+offset, int(
+                                parts[4])+offset, strand=parts[6], name=featureName, data=tuple(
                                 keyValues.items()))
 
                     else:
                         self.addFeature(
                             self.remapKeys.get(
                                 chromosome, chromosome), int(
-                                parts[3]), int(
-                                parts[4]), strand=parts[6], name=featureName, data=','.join(
+                                parts[3])+offset, int(
+                                parts[4])+offset, strand=parts[6], name=featureName, data=','.join(
                                 (':'.join(
                                     ('type', parts[2])), ':'.join(
                                     ('gene_id', keyValues['gene_id'])))))
