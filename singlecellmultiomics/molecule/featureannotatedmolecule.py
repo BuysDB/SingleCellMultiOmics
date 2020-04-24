@@ -138,11 +138,20 @@ class FeatureAnnotatedMolecule(Molecule):
 
         if len(self.exons) > 0:
             self.set_meta('EX', ','.join(sorted([str(x) for x in self.exons])))
+        else:
+            self.set_meta('EX',None)
+
         if len(self.introns) > 0:
             self.set_meta('IN', ','.join(
                 sorted([str(x) for x in self.introns])))
+        else:
+            self.set_meta('IN',None)
+
         if len(self.genes) > 0:
             self.set_meta('GN', ','.join(sorted([str(x) for x in self.genes])))
+        else:
+            self.set_meta('GN',None)
+
         if len(self.junctions) > 0:
             self.set_meta('JN', ','.join(
                 sorted([str(x) for x in self.junctions])))
@@ -154,13 +163,16 @@ class FeatureAnnotatedMolecule(Molecule):
         else:
             # Doesn't map to gene
             self.set_meta('IT', 0)
+
         if self.is_spliced is True:
             self.set_meta('SP', True)
         elif self.is_spliced is False:
             self.set_meta('SP', False)
         if len(self.exon_hit_gene_names):
             self.set_meta('gn', ';'.join(list(self.exon_hit_gene_names)))
-
+        else:
+            self.set_meta('gn',None)
+            
     def annotate(self, method=0):
         """
             Args:
