@@ -860,19 +860,16 @@ def run_multiome_tagging(args):
     """
 
     tag_multiome_single_thread(
-            args.bamin,
-            args.o,
-            molecule_iterator = molecule_iterator,
-            molecule_iterator_args = None,
-            consensus_model = None ,
-            consensus_model_args={},
-            ignore_bam_issues=False,
-            head=args.head,
-            no_source_reads=args.no_source_reads
-            )
-
-
-
+        args.bamin,
+        args.o,
+        molecule_iterator = molecule_iterator,
+        molecule_iterator_args = None,
+        consensus_model = None ,
+        consensus_model_args={},
+        ignore_bam_issues=False,
+        head=args.head,
+        no_source_reads=args.no_source_reads
+        )
 
 
 if __name__ == '__main__':
