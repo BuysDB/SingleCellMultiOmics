@@ -6,7 +6,7 @@ def coordinate_to_sliding_bin_locations(dp, bin_size, sliding_increment):
     Convert a single value to a list of overlapping bins
 
     Parameters
-    ----------
+    -----   -----
     point : int
         coordinate to look up
 
@@ -60,3 +60,29 @@ def coordinate_to_bins(point, bin_size, sliding_increment):
         point, bin_size, sliding_increment)
     return [(i * sliding_increment, i * sliding_increment + bin_size)
             for i in range(start_id, end_id + 1)]
+
+
+def bp_chunked(job_generator, bp_per_job):
+    """ Chunk an iterator containing coordinate sorted tasks in chunks of a total size of roughly bp_per_job
+
+    Args:
+        job_generator : iterable of commands, format (contig, start, end, *task)
+        bp_per_job (int) : Amount of bp per chunk of jobs/tasks
+
+    Yields:
+        chunk(list) :  [(contig, start, end, *task),(contig, start, end, *task),..]
+
+    @todo: contig is not used, this function expects that only bins on a single contig are supplied
+    """
+    bp_current = 0
+    current_tasks = []
+    for job in job_generator:
+        start,end = job[1],job[2]
+        bp_current += abs(end-start)
+        current_tasks.append(job)
+
+        if bp_current>=bp_per_job:
+            yield current_tasks
+            bp_current=0
+            current_tasks=[]
+    yield current_tasks

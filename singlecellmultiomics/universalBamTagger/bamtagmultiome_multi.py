@@ -21,6 +21,8 @@ import traceback
 import colorama
 from datetime import datetime
 
+from singlecellmultiomics.utils import  bp_chunked
+
 session_id = uuid.uuid4()
 
 argparser = argparse.ArgumentParser(
@@ -66,8 +68,6 @@ def merge_bams( bams, output_path ):
 def run_tagging(args):
 
     (alignments_path, temp_dir, timeout_time), arglist = args
-
-
     i = 0
     tid = 0
     contig = 'None'
@@ -185,9 +185,6 @@ def run_multiome_tagging(args):
     molecule_iterator_args['fragment_class_args'] = fragment_class_args
     molecule_iterator_args['molecule_class_args'] = molecule_class_args
 
-
-
-
     time_start = datetime.now()
 
     failed_bins = set()
@@ -248,20 +245,7 @@ def run_multiome_tagging(args):
     else:
         jbo = None
 
-    def bp_chunked(job_generator, bp_per_job):
 
-        bp_current = 0
-        current_tasks = []
-        for job in job_generator:
-            start,end = job[1],job[2]
-            bp_current += abs(end-start)
-            current_tasks.append(job)
-
-            if bp_current>=bp_per_job:
-                yield current_tasks
-                bp_current=0
-                current_tasks=[]
-        yield current_tasks
 
     def command_gen(alignments):
         yield from ( ((alignments_path,temp_dir,args.timeout),command_list)
