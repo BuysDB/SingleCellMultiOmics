@@ -21,17 +21,22 @@ class BlockZip():
 
             prev_contig = line_contig
             prev_pos = line_pos
+
+    def __init__(self, path, mode='r', read_all=False):
         """
         Store tabular information tied to genomic locations in a bgzipped file
         Args:
             path (str) : path to file
             mode (str) : mode, r: read, w: write
+
+            read_all(bool) : when enabled all data is read from the file and the handles are closed
         """
         self.path = path
         self.index_path = f'{path}.idx'
         self.prev_contig = None
         self.mode = mode
         self.index = {}
+        self.cache = {}
 
         if self.mode == 'w':
             self.bgzf_handle = bgzf.BgzfWriter(self.path, 'w')
@@ -48,9 +53,28 @@ class BlockZip():
             for line in self.index_handle:
                 contig, start = line.strip().split()
                 self.index[contig] = int(start)
+
+            if read_all:
+
+                for line in self.bgzf_handle:
+                    if len(line) == 0:
+                        continue
+                    line_contig, line_pos, line_strand, rest = self.read_file_line(line)
+                    #print((line_pos, line_strand,rest))
+                    if not line_contig in self.cache:
+                        self.cache[line_contig] = {}
+                    self.cache[line_contig][(line_pos, line_strand)] = rest
+                    cpos = line_pos
+                self.bgzf_handle.close()
+                self.bgzf_handle=None
+                self.index_handle.close()
+                self.index_handle=None
+
         else:
             raise ValueError('Mode can be r or w')
-        self.cache = {}
+
+
+
 
     def __enter__(self):
         return self
