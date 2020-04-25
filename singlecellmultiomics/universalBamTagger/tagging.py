@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from singlecellmultiomics.molecule import MoleculeIterator
 from datetime import datetime
+from os import remove
+from pysam import AlignmentFile
+from singlecellmultiomics.bamProcessing import sorted_bam_file
+from uuid import uuid4
 
 def run_tagging_task(alignments, output,
                     contig, start, end, fetch_start, fetch_end,
                     molecule_iterator_class=None,  molecule_iterator_args={},
-                    read_groups=None ):
+                    read_groups=None, timeout_time=None ):
     """ Run tagging task for the supplied region
 
     Args:
@@ -31,32 +34,44 @@ def run_tagging_task(alignments, output,
     # Check some of the input arguments:
     assert alignments is not None
     assert output is not None
+    assert molecule_iterator_class is not None
     # There is two options: either supply start and end coordinates, or not supplying any coordinates:
     fetching = all((x is None for x in (contig, start, end, fetch_start, fetch_end)))
     if fetching:
         assert not any((x is not None for x in (contig, start, end, fetch_start, fetch_end))), 'supply all these: contig, start, end, fetch_start, fetch_end'
 
-    if molecule_iterator_class is None:
-        molecule_iterator_class = MoleculeIterator
 
     time_start = datetime.now()
+
+    def timeout_check_function(iteration, mol_iter, reads ):
+        nonlocal time_start
+        nonlocal timeout_time
+        if timeout_time is None:
+            return
+        if (datetime.now()-time_start).total_seconds() > timeout_time:
+            raise TimeoutError()
+
+
     total_molecules_written = 0
     for i,molecule in enumerate(
             molecule_iterator_class(alignments,  # Input alignments
                             contig=contig, start=fetch_start, end=fetch_end, # Region
+                            # Set a callback function used to check if a problematic region is reached
+                            progress_callback_function = timeout_check_function,
                             **molecule_iterator_args
                             )
         ):
 
-        cut_site_contig, cut_site_pos = molecule[0].get_site_location() # @todo: refactor to molecule function
+        if fetching:
+            cut_site_contig, cut_site_pos = molecule[0].get_site_location() # @todo: refactor to molecule function
 
-        # Stopping criteria:
-        if cut_site_pos>=fetch_end:
-            break
+            # Stopping criteria:
+            if cut_site_pos>=fetch_end:
+                break
 
-        # Skip molecules outside the desired region:
-        if cut_site_contig!=contig or cut_site_pos<start or cut_site_pos>=end: # End is exclusive
-            continue
+            # Skip molecules outside the desired region:
+            if cut_site_contig!=contig or cut_site_pos<start or cut_site_pos>=end: # End is exclusive
+                continue
 
         molecule.write_tags()
 
@@ -72,3 +87,45 @@ def run_tagging_task(alignments, output,
 
     return {'total_molecules_written':total_molecules_written,
             'time_start':time_start}
+
+
+
+def run_tagging_tasks(args):
+    """ Run tagging for one or more tasks
+
+    """
+
+    (alignments_path, temp_dir, timeout_time), arglist = args
+
+    target_file = f"{temp_dir}/{uuid4()}.bam"
+
+    timeout_tasks = []
+    total_molecules = 0
+    read_groups = dict()
+    with AlignmentFile(alignments_path) as alignments:
+        with sorted_bam_file(target_file, origin_bam=alignments, mode='wbu',
+            fast_compression=True, read_groups=read_groups) as output:
+            for task  in arglist:
+                try:
+                    statistics = run_tagging_task(alignments, output, read_groups=read_groups, **task)
+                    total_molecules += statistics.get('total_molecules_written',0)
+                except TimeoutError:
+                    timeout_tasks.append( task )
+
+
+    meta = {
+        'timeout_tasks' : timeout_tasks,
+        'total_molecules' : total_molecules,
+    }
+
+    if total_molecules>0:
+        return target_file, meta
+    else:
+        # Clean up ?
+        try:
+            remove(target_file)
+            remove(f'{target_file}.bai')
+        except Exception as e:
+                pass
+
+        return None, meta

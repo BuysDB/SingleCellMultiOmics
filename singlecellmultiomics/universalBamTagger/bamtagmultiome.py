@@ -9,7 +9,8 @@ from singlecellmultiomics.molecule.consensus import calculate_consensus
 import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam
 
-from singlecellmultiomics.utils import is_main_chromosome
+
+from singlecellmultiomics.utils import is_main_chromosome, bp_chunked
 from singlecellmultiomics.utils.submission import submit_job
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger
@@ -221,13 +222,38 @@ ma.add_argument(
     help='Do not use the alignment during deduplication')
 ma.add_argument('-max_associated_fragments',type=int, default=None, help="Limit the maximum amount of reads associated to a single molecule.")
 
+def tag_multiome_multi_processing(
+        input_bam_path,
+        out_bam_path,
+        molecule_iterator = None,
+        molecule_iterator_args = None,
+        ignore_bam_issues=False,
+        head=None,
+        no_source_reads=False,
+        # One extra parameter is the fragment size:
+        fragment_size=None,
+        # And the blacklist is optional:
+        blacklist_path=None
+    ):
+
+    # Generate the jobs (groups of segments to perform tagging on)
+
+    # Write header to first block<tricky, because some blocks are empty,
+    # Maybe force the first block of the first job to be emitted regardless?
+
+    # Prefetch the genomic resources with the defined genomic interval reducing I/O load during processing of the region
+    pass
+
+    # Merge the results
+
+
 def tag_multiome_single_thread(
         input_bam_path,
         out_bam_path,
         molecule_iterator = None,
         molecule_iterator_args = None,
         consensus_model = None,
-        consensus_model_args={},
+        consensus_model_args={}, # Clearly the consensus model class and arguments should be part of molecule
         ignore_bam_issues=False,
         head=None,
         no_source_reads=False
