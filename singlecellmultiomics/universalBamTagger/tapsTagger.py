@@ -237,20 +237,20 @@ if __name__ == '__main__':
 
     if args.transcriptome:
         if args.method == 'nla':
-            moleculeClass = singlecellmultiomics.molecule.AnnotatedTAPSNlaIIIMolecule
-            fragmentClass = singlecellmultiomics.fragment.NLAIIIFragment
+            molecule_class = singlecellmultiomics.molecule.AnnotatedTAPSNlaIIIMolecule
+            fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
         elif args.method == 'chic':
-            moleculeClass = singlecellmultiomics.molecule.AnnotatedTAPSCHICMolecule
-            fragmentClass = singlecellmultiomics.fragment.CHICFragment
+            molecule_class = singlecellmultiomics.molecule.AnnotatedTAPSCHICMolecule
+            fragment_class = singlecellmultiomics.fragment.CHICFragment
         else:
             raise ValueError("Supply 'nla' or 'chic' for -method")
     else:
         if args.method == 'nla':
-            moleculeClass = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
-            fragmentClass = singlecellmultiomics.fragment.NLAIIIFragment
+            molecule_class = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
+            fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
         elif args.method == 'chic':
-            moleculeClass = singlecellmultiomics.molecule.TAPSCHICMolecule
-            fragmentClass = singlecellmultiomics.fragment.CHICFragment
+            molecule_class = singlecellmultiomics.molecule.TAPSCHICMolecule
+            fragment_class = singlecellmultiomics.fragment.CHICFragment
         else:
             raise ValueError("Supply 'nla' or 'chic' for -method")
 
@@ -267,8 +267,8 @@ if __name__ == '__main__':
         for i, molecule in enumerate(
                 singlecellmultiomics.molecule.MoleculeIterator(
                     alignments=alignments,
-                    moleculeClass=moleculeClass,
-                    fragmentClass=fragmentClass,
+                    molecule_class=molecule_class,
+                    fragment_class=fragment_class,
                     fragment_class_args=fragment_class_args,
                     yield_invalid=True,
                     molecule_class_args=molecule_class_args,
@@ -432,9 +432,9 @@ if __name__ == '__main__':
                 # plug in the possible_transcripts as read source
                 alignments=rejected_reads,
                 # Drop the TAPS and NLAIII checks
-                moleculeClass=singlecellmultiomics.molecule.FeatureAnnotatedMolecule,
+                molecule_class=singlecellmultiomics.molecule.FeatureAnnotatedMolecule,
                 # Plain fragment, no NLAIII
-                fragmentClass=singlecellmultiomics.fragment.Fragment,
+                fragment_class=singlecellmultiomics.fragment.Fragment,
                 fragment_class_args={
                     'umi_hamming_distance': args.uhd,
                     # this is the amount of bases R1 can shift to be assigned to the same molecule

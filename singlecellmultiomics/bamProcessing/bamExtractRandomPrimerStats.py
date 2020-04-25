@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import singlecellmultiomics
 from singlecellmultiomics.molecule import MoleculeIterator, NlaIIIMolecule
-from singlecellmultiomics.fragment import NLAIIIFragment
+from singlecellmultiomics.fragment import NlaIIIFragment
 import pysam
 import collections
 import pysamiterators
@@ -94,8 +94,8 @@ if __name__ == "__main__":
     with pysam.AlignmentFile(args.bamfile) as alignments:
         molecule_source = MoleculeIterator(
             alignments,
-            moleculeClass=NlaIIIMolecule,
-            fragmentClass=NLAIIIFragment,
+            molecule_class=NlaIIIMolecule,
+            fragment_class=NlaIIIFragment,
         )
 
         qf = get_random_primer_histogram(

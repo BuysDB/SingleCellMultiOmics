@@ -5,7 +5,7 @@ import singlecellmultiomics
 from collections import Counter
 from singlecellmultiomics.bamProcessing import sorted_bam_file, has_variant_reads
 from singlecellmultiomics.molecule import NlaIIIMolecule,MoleculeIterator,train_consensus_model,get_consensus_training_data, Molecule
-from singlecellmultiomics.fragment import NLAIIIFragment, Fragment
+from singlecellmultiomics.fragment import NlaIIIFragment, Fragment
 from singlecellmultiomics.variant import VariantWrapper
 import pysam
 import collections
@@ -122,7 +122,7 @@ def recall_variants(args):
     ### Set up molecule iterator (1/2)
     if mode== 'NLA':
         mc = NlaIIIMolecule
-        fc = NLAIIIFragment
+        fc = NlaIIIFragment
     else:
         mc = Molecule
         fc = Fragment

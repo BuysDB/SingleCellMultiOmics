@@ -2,7 +2,7 @@ import os
 import pysam
 import time
 import contextlib
-from shutil import which
+from shutil import which, move
 from singlecellmultiomics.utils import BlockZip
 import uuid
 import os

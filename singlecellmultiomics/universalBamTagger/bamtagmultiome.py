@@ -449,10 +449,10 @@ def run_multiome_tagging(args):
 
     ##### Define fragment and molecule class arguments and instances: ####
 
-    queryNameFlagger = None
+    query_name_flagger = None
     if args.qflagger is not None:
         if args.qflagger == 'custom_flags':
-            queryNameFlagger = CustomAssingmentQueryNameFlagger(
+            query_name_flagger = CustomAssingmentQueryNameFlagger(
                 args.custom_flags.split(','))
         else:
             raise ValueError("Select from 'custom_flags, ..' ")
@@ -539,18 +539,18 @@ def run_multiome_tagging(args):
 
     ### Method specific configuration ###
     if args.method == 'qflag':
-        moleculeClass = singlecellmultiomics.molecule.Molecule
-        fragmentClass = singlecellmultiomics.fragment.Fragment
+        molecule_class = singlecellmultiomics.molecule.Molecule
+        fragment_class = singlecellmultiomics.fragment.Fragment
         # Write all reads
         yield_invalid = True
 
     elif args.method == 'chic':
-        moleculeClass = singlecellmultiomics.molecule.CHICMolecule
-        fragmentClass = singlecellmultiomics.fragment.CHICFragment
+        molecule_class = singlecellmultiomics.molecule.CHICMolecule
+        fragment_class = singlecellmultiomics.fragment.CHICFragment
 
     elif args.method == 'nla' or args.method == 'nla_no_overhang':
-        moleculeClass = singlecellmultiomics.molecule.NlaIIIMolecule
-        fragmentClass = singlecellmultiomics.fragment.NLAIIIFragment
+        molecule_class = singlecellmultiomics.molecule.NlaIIIMolecule
+        fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
 
         if args.method == 'nla_no_overhang':
             assert reference is not None, 'Supply a reference fasta using -ref!'
@@ -560,29 +560,29 @@ def run_multiome_tagging(args):
                 })
 
     elif args.method == 'chic_nla':
-        moleculeClass=singlecellmultiomics.molecule.CHICNLAMolecule
-        fragmentClass=singlecellmultiomics.fragment.CHICFragment
+        molecule_class=singlecellmultiomics.molecule.CHICNLAMolecule
+        fragment_class=singlecellmultiomics.fragment.CHICFragment
         assert reference is not None, 'Supply a reference fasta using -ref!'
         molecule_class_args.update({
                 'reference': reference,
         })
 
     elif args.method == 'cs_feature_counts' :
-        moleculeClass = singlecellmultiomics.molecule.Molecule
-        fragmentClass = singlecellmultiomics.fragment.FeatureCountsSingleEndFragment
+        molecule_class = singlecellmultiomics.molecule.Molecule
+        fragment_class = singlecellmultiomics.fragment.FeatureCountsSingleEndFragment
 
     elif args.method == 'fl_feature_counts':
 
-        moleculeClass = singlecellmultiomics.molecule.Molecule
-        fragmentClass = singlecellmultiomics.fragment.FeatureCountsFullLengthFragment
+        molecule_class = singlecellmultiomics.molecule.Molecule
+        fragment_class = singlecellmultiomics.fragment.FeatureCountsFullLengthFragment
 
     elif args.method == 'episeq' :
-        moleculeClass = singlecellmultiomics.molecule.Molecule
-        fragmentClass = singlecellmultiomics.fragment.FeatureCountsSingleEndFragment
+        molecule_class = singlecellmultiomics.molecule.Molecule
+        fragment_class = singlecellmultiomics.fragment.FeatureCountsSingleEndFragment
 
     elif args.method == 'nla_transcriptome':
-        moleculeClass = singlecellmultiomics.molecule.AnnotatedNLAIIIMolecule
-        fragmentClass = singlecellmultiomics.fragment.NLAIIIFragment
+        molecule_class = singlecellmultiomics.molecule.AnnotatedNLAIIIMolecule
+        fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
 
         molecule_class_args.update({
             'pooling_method': 1,  # all data from the same cell can be dealt with separately
@@ -590,12 +590,12 @@ def run_multiome_tagging(args):
         })
     elif args.method == 'chict' :
 
-        moleculeClass = singlecellmultiomics.molecule.AnnotatedCHICMolecule
-        fragmentClass = singlecellmultiomics.fragment.CHICFragment
+        molecule_class = singlecellmultiomics.molecule.AnnotatedCHICMolecule
+        fragment_class = singlecellmultiomics.fragment.CHICFragment
 
     elif args.method == 'nla_taps':
-        moleculeClass = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
-        fragmentClass = singlecellmultiomics.fragment.NLAIIIFragment
+        molecule_class = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
+        fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
 
         molecule_class_args.update({
             'reference': reference,
@@ -608,12 +608,12 @@ def run_multiome_tagging(args):
             'reference': reference,
             'taps': singlecellmultiomics.molecule.TAPS(reference=reference)
         })
-        moleculeClass = singlecellmultiomics.molecule.TAPSCHICMolecule
-        fragmentClass = singlecellmultiomics.fragment.CHICFragment
+        molecule_class = singlecellmultiomics.molecule.TAPSCHICMolecule
+        fragment_class = singlecellmultiomics.fragment.CHICFragment
 
     elif args.method == 'vasa' or args.method == 'cs':
-        moleculeClass = singlecellmultiomics.molecule.VASA
-        fragmentClass = singlecellmultiomics.fragment.SingleEndTranscript
+        molecule_class = singlecellmultiomics.molecule.VASA
+        fragment_class = singlecellmultiomics.fragment.SingleEndTranscript
 
         molecule_class_args.update({
             'pooling_method': 1,  # all data from the same cell can be dealt with separately
@@ -622,8 +622,8 @@ def run_multiome_tagging(args):
 
     elif args.method == 'scartrace':
 
-        moleculeClass = singlecellmultiomics.molecule.ScarTraceMolecule
-        fragmentClass = singlecellmultiomics.fragment.ScarTraceFragment
+        molecule_class = singlecellmultiomics.molecule.ScarTraceMolecule
+        fragment_class = singlecellmultiomics.fragment.ScarTraceFragment
 
         r1_primers = args.scartrace_r1_primers.split(',')
         fragment_class_args.update({
@@ -636,7 +636,7 @@ def run_multiome_tagging(args):
         raise ValueError("Supply a valid method")
 
     # Allow or disallow cycle shift:
-    if args.allow_cycle_shift and fragmentClass is singlecellmultiomics.fragment.NLAIIIFragment:
+    if args.allow_cycle_shift and fragment_class is singlecellmultiomics.fragment.NlaIIIFragment:
         fragment_class_args['allow_cycle_shift'] = True
 
     # This disables umi_cigar_processing:
@@ -701,9 +701,9 @@ def run_multiome_tagging(args):
 
     molecule_iterator_args = {
         'alignments': input_bam,
-        'queryNameFlagger': queryNameFlagger,
-        'moleculeClass': moleculeClass,
-        'fragmentClass': fragmentClass,
+        'query_name_flagger': query_name_flagger,
+        'molecule_class': molecule_class,
+        'fragment_class': fragment_class,
         'molecule_class_args': molecule_class_args,
         'fragment_class_args': fragment_class_args,
         'yield_invalid': yield_invalid,

@@ -95,8 +95,8 @@ def run_multiome_tagging(args):
     fragment_class_args = { 'umi_hamming_distance':1 }
 
 
-    molecule_iterator_args['fragmentClass'] = CHICFragment
-    molecule_iterator_args['moleculeClass'] = CHICMolecule
+    molecule_iterator_args['fragment_class'] = CHICFragment
+    molecule_iterator_args['molecule_class'] = CHICMolecule
     molecule_iterator_args['fragment_class_args'] = fragment_class_args
     molecule_iterator_args['molecule_class_args'] = molecule_class_args
 

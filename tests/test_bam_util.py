@@ -55,8 +55,8 @@ class TestSorted(unittest.TestCase):
             with sorted_bam_file(write_path, origin_bam=f) as out:
                 for molecule in singlecellmultiomics.molecule.MoleculeIterator(
                     alignments=f,
-                    moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
-                    fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                    molecule_class=singlecellmultiomics.molecule.NlaIIIMolecule,
+                    fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
                     fragment_class_args={'umi_hamming_distance':0},
                     pooling_method=0,
                     yield_invalid=True
@@ -76,8 +76,8 @@ class TestSorted(unittest.TestCase):
             with sorted_bam_file(write_path, origin_bam=f,fast_compression=True) as out:
                 for molecule in singlecellmultiomics.molecule.MoleculeIterator(
                     alignments=f,
-                    moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
-                    fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                    molecule_class=singlecellmultiomics.molecule.NlaIIIMolecule,
+                    fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
                     fragment_class_args={'umi_hamming_distance':0},
                     pooling_method=0,
                     yield_invalid=True
@@ -103,8 +103,8 @@ class TestSorted(unittest.TestCase):
             with sorted_bam_file(write_path, origin_bam=f) as out:
                 for molecule in singlecellmultiomics.molecule.MoleculeIterator(
                     alignments=f,
-                    moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
-                    fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                    molecule_class=singlecellmultiomics.molecule.NlaIIIMolecule,
+                    fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
                     fragment_class_args={'umi_hamming_distance':0},
                     pooling_method=0,
                     yield_invalid=True
@@ -152,8 +152,8 @@ class TestSorted(unittest.TestCase):
             with sorted_bam_file(write_path, header=input_header,read_groups=read_groups) as out:
                 for molecule in singlecellmultiomics.molecule.MoleculeIterator(
                     alignments=f,
-                    moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
-                    fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                    molecule_class=singlecellmultiomics.molecule.NlaIIIMolecule,
+                    fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
                     fragment_class_args={'umi_hamming_distance':0},
                     pooling_method=0,
                     yield_invalid=True

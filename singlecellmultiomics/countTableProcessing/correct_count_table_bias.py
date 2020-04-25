@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import singlecellmultiomics
 from singlecellmultiomics.molecule import MoleculeIterator, NlaIIIMolecule
-from singlecellmultiomics.fragment import NLAIIIFragment
+from singlecellmultiomics.fragment import NlaIIIFragment
 import pysam
 import collections
 import pysamiterators
