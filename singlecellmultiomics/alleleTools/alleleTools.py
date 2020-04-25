@@ -8,6 +8,13 @@ import gzip
 import os
 from singlecellmultiomics.utils import Prefetcher
 
+def get_allele_dict():
+    return collections.defaultdict(nested_set_defaultdict)
+def nested_set_defaultdict():
+    return collections.defaultdict( set_defaultdict )
+def set_defaultdict():
+    return collections.defaultdict (set)
+
 class AlleleResolver(Prefetcher):
 
     def clean_vcf_name(self, vcffile):
@@ -67,8 +74,7 @@ class AlleleResolver(Prefetcher):
         self.ignore_conversions = ignore_conversions
         self.phased = phased
         self.verbose = verbose
-        self.locationToAllele = collections.defaultdict(lambda: collections.defaultdict(
-            lambda: collections.defaultdict(set)))  # chrom -> pos-> base -> sample(s)
+        self.locationToAllele = get_allele_dict()  # chrom -> pos-> base -> sample(s)
         self.select_samples = select_samples
         self.region_start = region_start
         self.region_end = region_end
@@ -98,7 +104,7 @@ class AlleleResolver(Prefetcher):
                 raise NotImplementedError(
                     "Sample selection is not implemented for non proper VCF")
             lazyLoad = False
-        # self.locationToAllele = collections.defaultdict( lambda:
+
         # collections.defaultdict(set) ) #(chrom, pos)-> base -> sample(s)
 
         if uglyMode:
@@ -190,8 +196,7 @@ class AlleleResolver(Prefetcher):
 
     def fetchChromosome(self, vcffile, chrom, clear=False):
         if clear:
-            self.locationToAllele = collections.defaultdict(lambda: collections.defaultdict(
-                lambda: collections.defaultdict(set)))  # chrom -> pos-> base -> sample(s)
+            self.locationToAllele = get_allele_dict()  # chrom -> pos-> base -> sample(s)
 
         vcffile = self.clean_vcf_name(vcffile)
         # allocate:
