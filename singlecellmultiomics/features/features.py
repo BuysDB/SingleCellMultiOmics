@@ -6,7 +6,8 @@ import itertools
 import re
 import functools
 import pysam
-
+from singlecellmultiomics.utils import Prefetcher
+from copy import copy
 
 def get_gene_id_to_gene_name_conversion_table(annotation_path_exons,
                                               featureTypes=['gene_name']):
@@ -19,7 +20,7 @@ def get_gene_id_to_gene_name_conversion_table(annotation_path_exons,
 
     Returns:
         conversion_dict(dict) : { gene_id : 'firstFeature_secondFeature'}
-        """
+    """
     conversion_table = {}
     with (gzip.open(annotation_path_exons, 'rt') if annotation_path_exons.endswith('.gz') else open(annotation_path_exons, 'r')) as t:
         for i, line in enumerate(t):
@@ -41,9 +42,10 @@ def get_gene_id_to_gene_name_conversion_table(annotation_path_exons,
     return conversion_table
 
 
-class FeatureContainer:
+class FeatureContainer(Prefetcher):
 
     def __init__(self):
+        self.args = locals().copy()
         self.startCoordinates = {}  # dict of np.array()
         self.features = {}
         self.endCoordinates = {}
@@ -52,20 +54,62 @@ class FeatureContainer:
         self.debug = False
         self.remapKeys = {}  # {'chrMT':'chrM','MT':'chrM'}  Use this to convert chromosome names between the GTF and requested locations
         self.verbose = False
+        self.preload_list = []
 
     def debugMsg(self, msg):
         if self.verbose:
             print(msg)
 
+    def __repr__(self):
+        s= 'FeatureContainer,'
+        if len(self.preload_list):
+            s+= ' Preloaded files:\n'
+            for f in self.preload_list:
+                s+=str(f)+'\n'
+        if len(self.features):
+            s+=f'Features in memory for {len(self.features)} contigs\n'
+        else:
+            s+='No features in memory\n'
+        return s
+
     def __len__(self):
         return sum(len(f) for f in self.features.values())
 
+
+    def preload_GTF(self, **kwargs):
+        self.preload_list.append( {'gtf':kwargs} )
+
+
+    def instance(self, arg_update):
+        if 'self' in self.args:
+            del self.args['self']
+        clone = FeatureContainer(**self.args)
+        for cmd in self.preload_list:
+            for preload_type, kwargs in cmd.items():
+                kwargs_copy = copy(kwargs)
+                kwargs_copy.update(arg_update)
+                if preload_type=='gtf':
+                    clone.loadGTF(**kwargs_copy)
+                else:
+                    raise ValueError()
+        return clone
+
+
+    def prefetch(self, contig, start, end):
+        return self.instance( {'contig':contig, 'region_start':start,  'region_end':end})
+
+
     def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'],
                 ignChr=False, select_feature_type=None, exon_select=None,
-                head=None, store_all=False, contig=None, offset=-1):
+                head=None, store_all=False, contig=None, offset=-1,
+                region_start=False, region_end=False):
         """Load annotations from a GTF file.
         ignChr: ignore the chr part of the Annotation chromosome
         """
+
+        if region_end is not None or region_start is not None:
+            assert contig is not None and region_end is not None and region_start is not None
+
         self.loadedGtfFeatures = thirdOnly
         #pattern = '^(.*) "(.*).*"'
         #prog = re.compile(pattern)
@@ -140,21 +184,24 @@ class FeatureContainer:
                         featureName = ','.join(
                             [keyValues.get(i, 'none') for i in identifierFields if i in keyValues])
 
+
+                    start = int( parts[3] ) + offset
+                    end = int( parts[4] ) + offset
+
+                    if region_end is not None and end<region_start or start>region_end:
+                        continue
+
                     if store_all:
                         keyValues['type'] = parts[2]
                         self.addFeature(
                             self.remapKeys.get(
-                                chromosome, chromosome), int(
-                                parts[3])+offset, int(
-                                parts[4])+offset, strand=parts[6], name=featureName, data=tuple(
+                                chromosome, chromosome),start,end, strand=parts[6], name=featureName, data=tuple(
                                 keyValues.items()))
 
                     else:
                         self.addFeature(
                             self.remapKeys.get(
-                                chromosome, chromosome), int(
-                                parts[3])+offset, int(
-                                parts[4])+offset, strand=parts[6], name=featureName, data=','.join(
+                                chromosome, chromosome), start,end, strand=parts[6], name=featureName, data=','.join(
                                 (':'.join(
                                     ('type', parts[2])), ':'.join(
                                     ('gene_id', keyValues['gene_id'])))))

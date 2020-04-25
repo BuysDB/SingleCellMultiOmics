@@ -5,6 +5,7 @@ from os import remove
 from pysam import AlignmentFile
 from singlecellmultiomics.bamProcessing import sorted_bam_file
 from uuid import uuid4
+from copy import copy
 
 
 def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
@@ -15,7 +16,10 @@ def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
     if 'molecule_class_args' in molecule_iterator_args:
 
         if 'allele_resolver' in molecule_iterator_args['molecule_class_args']:
-            molecule_iterator_args['molecule_class_args']['allele_resolver'].prefetch(contig,start,end)
+            molecule_iterator_args['molecule_class_args']['allele_resolver'] = molecule_iterator_args['molecule_class_args']['allele_resolver']
+        if 'features' in molecule_iterator_args['molecule_class_args']:
+            molecule_iterator_args['molecule_class_args']['features'].prefetch(contig,start,end)
+
 
 
 def run_tagging_task(alignments, output,

@@ -61,6 +61,9 @@ class AlleleResolver(Prefetcher):
 
 
         """
+        self.args = locals().copy()
+        del self.args['self']
+
         self.ignore_conversions = ignore_conversions
         self.phased = phased
         self.verbose = verbose
@@ -164,15 +167,26 @@ class AlleleResolver(Prefetcher):
 
                 self.locationToAllele[chrom][position][base] = set(samples.split(','))
 
+
+
+    def instance(self, arg_update):
+        if 'self' in self.args:
+            del self.args['self']
+        clone = AlleleResolver(**self.args)
+        return clone
+
+
     def prefetch(self, contig, start, end):
-        self.region_start = start
-        self.region_end = end
+
+        clone = self.instance({'region_start':start, 'region_end':end})
+
         #print(f'Prefetching {contig}:{start}-{end}')
         try:
             self.fetchChromosome(self.vcffile, contig, True)
         except ValueError:
             # This means the chromosome is not available
             pass
+        return clone
 
     def fetchChromosome(self, vcffile, chrom, clear=False):
         if clear:
