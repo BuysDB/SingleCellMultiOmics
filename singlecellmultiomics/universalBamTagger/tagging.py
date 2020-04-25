@@ -6,8 +6,20 @@ from pysam import AlignmentFile
 from singlecellmultiomics.bamProcessing import sorted_bam_file
 from uuid import uuid4
 
+
+def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
+    """ Prefetch selected region
+    Prefetches
+        AlleleResolver
+    """
+    if 'molecule_class_args' in molecule_iterator_args:
+
+        if 'allele_resolver' in molecule_iterator_args['molecule_class_args']:
+            molecule_iterator_args['molecule_class_args']['allele_resolver'].prefetch(contig,start,end)
+
+
 def run_tagging_task(alignments, output,
-                    contig, start, end, fetch_start, fetch_end,
+                    contig=None, start =None, end=None, fetch_start=None, fetch_end=None,
                     molecule_iterator_class=None,  molecule_iterator_args={},
                     read_groups=None, timeout_time=None ):
     """ Run tagging task for the supplied region
@@ -16,6 +28,7 @@ def run_tagging_task(alignments, output,
         alignments (pysam.AlignmentFile) : handle to fetch reads from
         output (pysam.AlignmentFile or similar) : handle to write tagged reads to
         contig : (str)  : Contig to run the tagging for
+
         start (int) : only return molecules with a site identifier (DS) falling between start and end
         end (int) : see start
         fetch_start (int) : Start fetching reads from this coordinate onwards
@@ -36,10 +49,14 @@ def run_tagging_task(alignments, output,
     assert output is not None
     assert molecule_iterator_class is not None
     # There is two options: either supply start and end coordinates, or not supplying any coordinates:
-    fetching = all((x is None for x in (contig, start, end, fetch_start, fetch_end)))
+    fetching = not all((x is None for x in ( start, end, fetch_start, fetch_end)))
     if fetching:
-        assert not any((x is not None for x in (contig, start, end, fetch_start, fetch_end))), 'supply all these: contig, start, end, fetch_start, fetch_end'
-
+        if start is not None and end is not None and fetch_start is None and fetch_end is None:
+            fetch_start = start
+            fetch_end = end
+        else:
+            assert not any((x is not None for x in (contig, start, end, fetch_start, fetch_end))), 'supply all these: contig, start, end, fetch_start, fetch_end'
+        prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args)
 
     time_start = datetime.now()
 

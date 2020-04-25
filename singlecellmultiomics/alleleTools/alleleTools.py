@@ -6,9 +6,9 @@ import collections
 import functools
 import gzip
 import os
+from singlecellmultiomics.utils import Prefetcher
 
-
-class AlleleResolver:
+class AlleleResolver(Prefetcher):
 
     def clean_vcf_name(self, vcffile):
         # Convert file name to string if it is not
@@ -163,6 +163,16 @@ class AlleleResolver:
                     break
 
                 self.locationToAllele[chrom][position][base] = set(samples.split(','))
+
+    def prefetch(self, contig, start, end):
+        self.region_start = start
+        self.region_end = end
+        #print(f'Prefetching {contig}:{start}-{end}')
+        try:
+            self.fetchChromosome(self.vcffile, contig, True)
+        except ValueError:
+            # This means the chromosome is not available
+            pass
 
     def fetchChromosome(self, vcffile, chrom, clear=False):
         if clear:
