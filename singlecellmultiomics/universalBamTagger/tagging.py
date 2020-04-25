@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+from singlecellmultiomics.molecule import MoleculeIterator
+from datetime import datetime
+
+def run_tagging_task(alignments, output,
+                    contig, start, end, fetch_start, fetch_end,
+                    molecule_iterator_class=None,  molecule_iterator_args={},
+                    read_groups=None ):
+    """ Run tagging task for the supplied region
+
+    Args:
+        alignments (pysam.AlignmentFile) : handle to fetch reads from
+        output (pysam.AlignmentFile or similar) : handle to write tagged reads to
+        contig : (str)  : Contig to run the tagging for
+        start (int) : only return molecules with a site identifier (DS) falling between start and end
+        end (int) : see start
+        fetch_start (int) : Start fetching reads from this coordinate onwards
+        fetch_end (int) : Stop fetching reads at this coordinate (exclusive)
+
+        molecule_iterator_class (class) : Class of the molecule iterator (not initialised, will be constructed using **molecule_iterator_args )
+        molecule_iterator_args  (dict) : Arguments for the molecule iterator
+
+    Returns:
+        statistics : {'molecules_written':molecules_written}
+
+    Raises:
+        TimeoutError when the molecule_iterator_class decides tagging is taking too long
+
+    """
+    # Check some of the input arguments:
+    assert alignments is not None
+    assert output is not None
+    # There is two options: either supply start and end coordinates, or not supplying any coordinates:
+    fetching = all((x is None for x in (contig, start, end, fetch_start, fetch_end)))
+    if fetching:
+        assert not any((x is not None for x in (contig, start, end, fetch_start, fetch_end))), 'supply all these: contig, start, end, fetch_start, fetch_end'
+
+    if molecule_iterator_class is None:
+        molecule_iterator_class = MoleculeIterator
+
+    time_start = datetime.now()
+    total_molecules_written = 0
+    for i,molecule in enumerate(
+            molecule_iterator_class(alignments,  # Input alignments
+                            contig=contig, start=fetch_start, end=fetch_end, # Region
+                            **molecule_iterator_args
+                            )
+        ):
+
+        cut_site_contig, cut_site_pos = molecule[0].get_site_location() # @todo: refactor to molecule function
+
+        # Stopping criteria:
+        if cut_site_pos>=fetch_end:
+            break
+
+        # Skip molecules outside the desired region:
+        if cut_site_contig!=contig or cut_site_pos<start or cut_site_pos>=end: # End is exclusive
+            continue
+
+        molecule.write_tags()
+
+        # Update read groups @todo: reduce LOC here?
+        if read_groups is not None:
+            for fragment in molecule:
+                rgid = fragment.get_read_group()
+                if not rgid in read_groups:
+                    read_groups[rgid] = fragment.get_read_group(True)[1]
+
+        molecule.write_pysam(output)
+        total_molecules_written+=1
+
+    return {'total_molecules_written':total_molecules_written,
+            'time_start':time_start}

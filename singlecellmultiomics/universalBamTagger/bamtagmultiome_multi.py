@@ -54,13 +54,16 @@ def run_multiome_tagging_cmd(commandline):
 
 
 
-def run_tagging(args):
+
+
+def run_tagging_tasks(args):
+    """ Run tagging for one or more tasks
+
+    """
 
     (alignments_path, temp_dir, timeout_time), arglist = args
-    i = 0
-    tid = 0
-    contig = 'None'
 
+    target_file = f"{temp_dir}/{uuid.uuid4()}.bam"
 
     def timeout_check_function(iteration, mol_iter, reads ):
         nonlocal time_start
@@ -68,55 +71,30 @@ def run_tagging(args):
         if (datetime.now()-time_start).total_seconds() > timeout_time:
             raise TimeoutError()
 
-    target_file = f"{temp_dir}/{uuid.uuid4()}.bam"
-
-    timeouts = 0
-    timeout_bins = []
+    timeout_tasks = []
     total_molecules = 0
-
     read_groups = dict()
     with pysam.AlignmentFile(alignments_path) as alignments:
         with sorted_bam_file(target_file, origin_bam=alignments, mode='wbu',
             fast_compression=True, read_groups=read_groups) as output:
+            for task  in arglist:
+                # Set a callback function used to check if a problematic region is reached
+                task['molecule_iterator_args']['progress_callback_function'] = timeout_check_function
 
-            for contig, start, end, fetch_start,fetch_end, molecule_iterator_args  in arglist:
-
-                molecule_iterator_args['progress_callback_function'] = timeout_check_function
-                time_start = datetime.now()
                 try:
-                    #print(fetch_start, fetch_end)
-                    for i,molecule in enumerate(
-                            MoleculeIterator(alignments,contig=contig, start=fetch_start, end=fetch_end,
-                                            **molecule_iterator_args
-                                            )
-                        ):
-
-                        cut_site_contig, cut_site_pos = molecule[0].get_site_location()
-
-                        if cut_site_pos>=fetch_end:
-                            #print('Forcing exit')
-                            break
-
-                        if cut_site_contig!=contig or cut_site_pos<start or cut_site_pos>=end: # End is exclusive
-                            continue
-
-                        total_molecules+=1
-                        molecule.write_tags()
-                        # Update read groups
-                        for fragment in molecule:
-                            rgid = fragment.get_read_group()
-                            if not rgid in read_groups:
-                                read_groups[rgid] = fragment.get_read_group(True)[1]
-
-                        molecule.write_pysam(output)
-
+                    statistics = run_tagging_task(alingments, output, read_groups=read_groups, **task)
+                    total_molecules += statistics.get('total_molecules_written',0)
                 except TimeoutError:
-                    # Clean up?
-                    timeouts+=1
-                    timeout_bins.append( (contig, start, end ))
+                    timeout_tasks.append( task )
+
+
+    meta = {
+        'timeout_tasks' : timeout_tasks,
+        'total_molecules' : total_molecules,
+    }
 
     if total_molecules>0:
-        return target_file, (tid, contig, start,end, len(arglist), 'ok', timeout_bins)
+        return target_file, meta
     else:
         # Clean up ?
         try:
@@ -125,9 +103,7 @@ def run_tagging(args):
         except Exception as e:
                 pass
 
-        return None, (tid, contig, start,end, len(arglist), 'empty', timeout_bins)
-
-
+        return None, meta
 
 
 def run_multiome_tagging(args):
