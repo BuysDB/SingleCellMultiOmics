@@ -90,6 +90,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamExtractVariants.py',
         'singlecellmultiomics/bamProcessing/bamMatchGATKBQSRReport.py',
         'singlecellmultiomics/bamProcessing/bamBinCounts.py',
+        'singlecellmultiomics/bamProcessing/split_double_BAM.py',
 
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py',
