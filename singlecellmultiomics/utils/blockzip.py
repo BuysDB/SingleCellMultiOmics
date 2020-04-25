@@ -6,7 +6,21 @@ import os
 
 class BlockZip():
 
-    def __init__(self, path, mode='r'):
+
+    def verify(self):
+
+        prev_contig = None
+        prev_pos = None
+        for line in self.bgzf_handle:
+            if len(line) == 0:
+                continue
+            line_contig, line_pos, line_strand, rest = self.read_file_line(line)
+
+            if prev_pos is not None and line_pos<prev_pos and line_contig==prev_contig:
+                raise ValueError('Corrupted mapfile')
+
+            prev_contig = line_contig
+            prev_pos = line_pos
         """
         Store tabular information tied to genomic locations in a bgzipped file
         Args:
