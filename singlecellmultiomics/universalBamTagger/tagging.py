@@ -59,7 +59,11 @@ def run_tagging_task(alignments, output,
             fetch_start = start
             fetch_end = end
         else:
-            assert not any((x is not None for x in (contig, start, end, fetch_start, fetch_end))), 'supply all these: contig, start, end, fetch_start, fetch_end'
+            if any((x is not None for x in (contig, start, end, fetch_start, fetch_end))):
+                for variable in  ('contig', 'start', 'end', 'fetch_start', 'fetch_end'):
+                    if not variable in locals() or locals()[variable] is None:
+                        raise ValueError(f'{variable} has to be supplied')
+            #assert not any((x is not None for x in (contig, start, end, fetch_start, fetch_end))), 'supply all these: contig, start, end, fetch_start, fetch_end'
         prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args)
 
     time_start = datetime.now()
@@ -123,6 +127,7 @@ def run_tagging_tasks(args):
     timeout_tasks = []
     total_molecules = 0
     read_groups = dict()
+
     with AlignmentFile(alignments_path) as alignments:
         with sorted_bam_file(target_file, origin_bam=alignments, mode='wbu',
             fast_compression=True, read_groups=read_groups) as output:
