@@ -12,6 +12,31 @@ import numpy as np
 import pandas as pd
 
 
+def merge_bams( bams, output_path ):
+    """Merge bamfiles to output_path
+
+    When a single bam file is supplied, the bam file is moved to  output_path
+    All input bam files are removed
+
+    Args:
+        bams : list or tuple containing paths to bam files to merge
+        output_path (str): target path
+
+    Returns:
+        output_path (str)
+
+    """
+    if len(bams)==1:
+        move(bams[0], output_path)
+        move(bams[0]+'.bai', output_path+'.bai')
+    else:
+        pysam.merge(output_path, *bams, '-@ 4 -f -l 1 -c')
+        pysam.index(output_path, '-@ 4')
+        for o in bams:
+            os.remove(o)
+            os.remove(o+'.bai')
+    return output_path
+
 def verify_and_fix_bam(bam_path):
     """
     Check if the bam file is not truncated and indexed.

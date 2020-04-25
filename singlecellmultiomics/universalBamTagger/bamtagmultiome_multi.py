@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs
-from singlecellmultiomics.bamProcessing import sorted_bam_file
+from singlecellmultiomics.bamProcessing import sorted_bam_file, merge_bams
 import pysam
 import os
 from shutil import move
@@ -52,17 +52,6 @@ def run_multiome_tagging_cmd(commandline):
     args = argparser.parse_args(commandline)
     run_multiome_tagging(args)
 
-def merge_bams( bams, output_path ):
-    if len(bams)==1:
-        move(bams[0], output_path)
-        move(bams[0]+'.bai', output_path+'.bai')
-    else:
-        pysam.merge(output_path, *bams, '-@ 4 -f -l 1 -c')
-        pysam.index(output_path, '-@ 4')
-        for o in bams:
-            os.remove(o)
-            os.remove(o+'.bai')
-    return output_path
 
 
 def run_tagging(args):
@@ -219,7 +208,6 @@ def run_multiome_tagging(args):
 
 
     def get_commands(alignments_path,fragment_size, temp_dir,
-
                                      molecule_iterator_args,
                                      timeout_time, bin_size ,
                                      blacklist_path,alignments,min_size):
@@ -244,7 +232,6 @@ def run_multiome_tagging(args):
         jbo = open(args.debug_job_bin_bed,'w')
     else:
         jbo = None
-
 
 
     def command_gen(alignments):
