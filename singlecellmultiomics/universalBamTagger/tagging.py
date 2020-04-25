@@ -19,6 +19,8 @@ def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
             molecule_iterator_args['molecule_class_args']['allele_resolver'] = molecule_iterator_args['molecule_class_args']['allele_resolver']
         if 'features' in molecule_iterator_args['molecule_class_args']:
             molecule_iterator_args['molecule_class_args']['features'].prefetch(contig,start,end)
+        if 'mappability_reader' in molecule_iterator_args['molecule_class_args']:
+            molecule_iterator_args['molecule_class_args']['mappability_reader'].prefetch(contig,start,end)
 
 
 

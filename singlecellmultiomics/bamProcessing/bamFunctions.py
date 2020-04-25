@@ -3,13 +3,14 @@ import pysam
 import time
 import contextlib
 from shutil import which, move
-from singlecellmultiomics.utils import BlockZip
+from singlecellmultiomics.utils import BlockZip, Prefetcher
 import uuid
 import os
 from collections import defaultdict, Counter
 from singlecellmultiomics.bamProcessing.pileup import pileup_truncated
 import numpy as np
 import pandas as pd
+
 
 
 def merge_bams( bams, output_path ):
@@ -516,15 +517,33 @@ def sort_and_index(
         os.remove(unsorted_path)
 
 
-class MapabilityReader():
+class MapabilityReader(Prefetcher):
 
-    def __init__(self, mapability_safe_file_path):
+    def __init__(self, mapability_safe_file_path, read_all=False, dont_open=True):
+        self.args = locals().copy()
+        del self.args['self']
         self.mapability_safe_file_path = mapability_safe_file_path
-        self.handle = BlockZip(mapability_safe_file_path, 'r')
+        if not dont_open:
+            self.handle = BlockZip(mapability_safe_file_path, 'r')
+
+
+    def instance(self, arg_update):
+        if 'self' in self.args:
+            del self.args['self']
+        clone = MapabilityReader(**self.args, dont_open=False)
+        return clone
 
         # Todo: exit statements
+    def prefetch(self, contig, start, end):
+        clone = self.instance()
+        clone.handle.read_contig_to_cache( contig, region_start=start, region_end=end)
+        return clone
 
     def site_is_mapable(self, contig, ds, strand):
+
+        if self.handle is None:
+            self.handle = BlockZip(self.mapability_safe_file_path, 'r')
+
         """ Obtain if a restriction site is mapable or not
         Args:
             contig (str) : contig of site to look up
