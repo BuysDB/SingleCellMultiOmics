@@ -91,7 +91,9 @@ class BlockZip():
         if contig in self.cache:
             return self.cache[contig].get((position, strand), None)
 
-    def read_contig_to_cache(self, contig):
+
+
+    def read_contig_to_cache(self, contig, region_start=None, region_end=None):
         if contig not in self.index:
             return
 
@@ -106,7 +108,13 @@ class BlockZip():
                     break
                 line_contig, line_pos, line_strand, rest = self.read_file_line(
                     line)
+                if line_contig != contig:
+                    break
                 #print((line_pos, line_strand,rest))
+                if region_start is not None and line_pos<region_start:
+                    continue
+                if region_end is not None and line_pos>region_end:
+                    break
                 self.cache[contig][(line_pos, line_strand)] = rest
 
             except Exception as e:
