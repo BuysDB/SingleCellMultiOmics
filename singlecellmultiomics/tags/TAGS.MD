@@ -110,5 +110,6 @@
 | sh    | Total CHH unmethylated                       | No         | No                   |
 | sx    | Total CHG unmethylated                       | No         | No                   |
 | sz    | Total CPG unmethylated                       | No         | No                   |
+| tu    | second_umi                                   | No         | No                   |
 | uC    | totalUnmethylated                            | No         | No                   |
 | uL    | umiLength                                    | No         | No                   |

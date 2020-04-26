@@ -151,6 +151,11 @@ class TestMolecule(unittest.TestCase):
             self.assertEqual(max( (len(m) for m in molecules) ),2)
             self.assertEqual(min( (len(m) for m in molecules) ),1)
 
+            # Test tags:
+            a = molecules[0]
+            a.write_tags()
+            self.assertEqual(a[0][0].get_tag('TF') , 2)
+
         os.remove('test.sam')
     def test_NLA_Molecule_repr_stability(self):
         """Test if the molecule representation function is stable"""
