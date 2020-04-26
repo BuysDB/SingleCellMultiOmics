@@ -142,7 +142,7 @@ def merge_overlapping_ranges(clist):
 
 
 
-def blacklisted_binning_contigs(contig_length_resource: str, bin_size: int, fragment_size: int,
+def blacklisted_binning_contigs(contig_length_resource: str or list, bin_size: int, fragment_size: int,
                                 blacklist_path: str = None) -> Generator:
 
     if blacklist_path is not None:
@@ -150,7 +150,8 @@ def blacklisted_binning_contigs(contig_length_resource: str, bin_size: int, frag
     else:
         blacklist_dict = {}
 
-    for contig,length in get_contig_sizes(contig_length_resource).items():
+    for contig,length in (get_contig_sizes(contig_length_resource).items()
+                            if type(contig_length_resource) is str else contig_length_resource):
 
         if fragment_size is not None:
             for bin_start, bin_end, fetch_start, fetch_end in \
