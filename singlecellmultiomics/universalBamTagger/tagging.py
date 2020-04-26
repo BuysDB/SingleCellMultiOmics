@@ -27,7 +27,7 @@ def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
 def run_tagging_task(alignments, output,
                     contig=None, start =None, end=None, fetch_start=None, fetch_end=None,
                     molecule_iterator_class=None,  molecule_iterator_args={},
-                    read_groups=None, timeout_time=None ):
+                    read_groups=None, timeout_time=None, enable_prefetch=True ):
     """ Run tagging task for the supplied region
 
     Args:
@@ -66,7 +66,8 @@ def run_tagging_task(alignments, output,
                     if not variable in locals() or locals()[variable] is None:
                         raise ValueError(f'{variable} has to be supplied')
             #assert not any((x is not None for x in (contig, start, end, fetch_start, fetch_end))), 'supply all these: contig, start, end, fetch_start, fetch_end'
-        prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args)
+        if enable_prefetch:
+            prefetch(contig, start, end, fetch_start,fetch_end, molecule_iterator_args)
 
     time_start = datetime.now()
 
@@ -77,7 +78,6 @@ def run_tagging_task(alignments, output,
             return
         if (datetime.now()-time_start).total_seconds() > timeout_time:
             raise TimeoutError()
-
 
     total_molecules_written = 0
     for i,molecule in enumerate(
