@@ -9,13 +9,18 @@ from singlecellmultiomics.molecule.consensus import calculate_consensus
 import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam
 
-
 from singlecellmultiomics.utils import is_main_chromosome, bp_chunked
 from singlecellmultiomics.utils.submission import submit_job
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
 from pysamiterators import CachedFasta,MatePairIteratorIncludingNonProper,MatePairIterator
+from singlecellmultiomics.universalBamTagger.tagging import generate_tasks
+from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs
+from singlecellmultiomics.utils.binning import bp_chunked
+from singlecellmultiomics.universalBamTagger.tagging import run_tagging_tasks
+from multiprocessing import Pool
+from singlecellmultiomics.bamProcessing import merge_bams
 
 import argparse
 import uuid
@@ -76,6 +81,7 @@ r_select.add_argument('-contig', type=str, help='Contig to only process')
 r_select.add_argument('-skip_contig', type=str, help='Contigs not to process')
 r_select.add_argument('-region_start', type=int, help='Zero based start coordinate of region to process')
 r_select.add_argument('-region_end', type=int, help='Zero based end coordinate of region to process')
+r_select.add_argument('-blacklist', type=str, help='BED file containing regions to skip')
 
 allele_gr = argparser.add_argument_group('alleles')
 allele_gr.add_argument('-alleles', type=str, help="Phased allele file (VCF)")
@@ -96,11 +102,18 @@ allele_gr.add_argument(
 allele_gr.add_argument(
     '--use_allele_cache',
     action='store_true',
-    help='Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not available. Once they are available there is not thread safety issue anymore')
+    help='''Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not yet available.
+        Once they are available there is not thread safety issue anymore''')
 
 argparser.add_argument('-molecule_iterator_verbosity_interval',type=int,default=None,help='Molecule iterator information interval in seconds')
 argparser.add_argument('--molecule_iterator_verbose', action='store_true', help='Show progress indication on command line')
 argparser.add_argument('-stats_file_path',type=str,default=None,help='Path to logging file, ends with ".tsv"')
+
+argparser.add_argument(
+    '--multiprocess',
+    action='store_true',
+    help="Use all the CPUs of you system to achieve (much) faster tagging")
+
 
 fragment_settings = argparser.add_argument_group('Fragment settings')
 fragment_settings.add_argument('-read_group_format', type=int, default=0, help="0: Every cell/sequencing unit gets a read group, 1: Every library/sequencing unit gets a read group")
@@ -222,29 +235,74 @@ ma.add_argument(
     help='Do not use the alignment during deduplication')
 ma.add_argument('-max_associated_fragments',type=int, default=None, help="Limit the maximum amount of reads associated to a single molecule.")
 
+
 def tag_multiome_multi_processing(
-        input_bam_path,
-        out_bam_path,
-        molecule_iterator = None,
-        molecule_iterator_args = None,
-        ignore_bam_issues=False,
-        head=None,
-        no_source_reads=False,
+        input_bam_path: str,
+        out_bam_path: str,
+        molecule_iterator=None,
+        molecule_iterator_args=None,
+        ignore_bam_issues: bool =False,
+        head: int = None,
+        no_source_reads: bool=False,
         # One extra parameter is the fragment size:
-        fragment_size=None,
+        fragment_size:int =None,
         # And the blacklist is optional:
-        blacklist_path=None
+        blacklist_path:str =None,
+        bp_per_job: int = None,
+        bp_per_segment: int  = None,
+        temp_folder: str='/tmp/scmo',
+        max_time_per_segment: int = None,
+        use_pool: bool = True
+
     ):
 
-    # Generate the jobs (groups of segments to perform tagging on)
+    # @todo: use prefetched and Uninit classes for input
+    assert bp_per_job is not None
+    assert fragment_size is not None
+    assert bp_per_segment is not None
 
-    # Write header to first block<tricky, because some blocks are empty,
+    iteration_args = {
+        'molecule_iterator_args': molecule_iterator_args,
+        'molecule_iterator_class': MoleculeIterator
+    }
+
+    # Define the regions to be processed and group into segments to perform tagging on
+    regions = blacklisted_binning_contigs(
+            contig_length_resource=input_bam_path,
+            bin_size=bp_per_segment,
+            fragment_size=fragment_size,
+            blacklist_path=blacklist_path
+        )
+
+    # Chunk into jobs of roughly equal size: (A single job will process multiple segments)
+    job_gen = bp_chunked(regions, bp_per_job)
+
+    tasks = generate_tasks(input_bam_path=input_bam_path,
+                           job_gen=job_gen,
+                           iteration_args=iteration_args,
+                           temp_folder=temp_folder,
+                           max_time_per_segment=max_time_per_segment)
+
+    # @todo Write header to first block<tricky, because some blocks are empty,
     # Maybe force the first block of the first job to be emitted regardless?
 
     # Prefetch the genomic resources with the defined genomic interval reducing I/O load during processing of the region
-    pass
+    # this is now done automatically
+
+    # @todo : Obtain auto blacklisted regions if applicable
+    # @todo : Progress indication
+
+    if use_pool:
+        with Pool() as workers:
+            tagged_bam_generator = list((bam for bam, meta in workers.imap_unordered(run_tagging_tasks, tasks) if
+                                         bam is not None))
+            # Changing this to generator and casting to list later makes this not work. I don't understand it
+    else:
+        tagged_bam_generator = (bam for bam, meta in (run_tagging_tasks(task) for task in tasks) if
+                                bam is not None)
 
     # Merge the results
+    merge_bams(list(tagged_bam_generator), out_bam_path)
 
 
 def tag_multiome_single_thread(
@@ -493,6 +551,7 @@ def run_multiome_tagging(args):
             ignore_conversions=ignore_conversions)
 
     if args.mapfile is not None:
+        assert args.mapfile.endswith('safe.bgzf'), 'the mapfile name should end with safe.bgzf '
         molecule_class_args['mapability_reader'] = MapabilityReader(
             args.mapfile)
 
