@@ -6,7 +6,7 @@ from pysam import AlignmentFile
 from singlecellmultiomics.bamProcessing import sorted_bam_file
 from uuid import uuid4
 from copy import copy
-
+from typing import Generator
 
 def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
     """ Prefetch selected region
@@ -117,8 +117,11 @@ def run_tagging_task(alignments, output,
 
 
 
-def run_tagging_tasks(args):
+def run_tagging_tasks(args: tuple):
     """ Run tagging for one or more tasks
+
+    Args:
+        args (tuple): (alignments_path, temp_dir, timeout_time), arglist
 
     """
 
@@ -157,3 +160,21 @@ def run_tagging_tasks(args):
                 pass
 
         return None, meta
+
+
+def generate_tasks(input_bam_path: str, temp_folder: str, job_gen: Generator, iteration_args: dict,
+                   max_time_per_segment: int = None) -> Generator:
+    # Task generator:
+    return (
+        (
+            (input_bam_path, temp_folder, max_time_per_segment),
+
+            [{
+                'contig': contig,
+                'start': start,
+                'end': end,
+                'fetch_start': fetch_start,
+                'fetch_end': fetch_end,
+                **iteration_args
+
+            } for contig, start, end, fetch_start, fetch_end in job]) for job in job_gen)

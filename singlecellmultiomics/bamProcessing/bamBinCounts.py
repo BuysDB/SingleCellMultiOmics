@@ -15,6 +15,7 @@ from statsmodels.nonparametric.smoothers_lowess import lowess
 from datetime import datetime
 from itertools import chain
 from more_itertools import windowed
+from typing import Generator
 
 def fill_range(start,end,step):
     """
@@ -141,7 +142,8 @@ def merge_overlapping_ranges(clist):
 
 
 
-def blacklisted_binning_contigs(contig_length_resource, bin_size, fragment_size, blacklist_path=None):
+def blacklisted_binning_contigs(contig_length_resource: str, bin_size: int, fragment_size: int,
+                                blacklist_path: str = None) -> Generator:
 
     if blacklist_path is not None:
         blacklist_dict = get_bins_from_bed_dict(blacklist_path)
@@ -170,7 +172,7 @@ def blacklisted_binning_contigs(contig_length_resource, bin_size, fragment_size,
 
 
 
-def blacklisted_binning(start_coord, end_coord, bin_size, blacklist=None, fragment_size=None):
+def blacklisted_binning(start_coord: int, end_coord: int, bin_size: int, blacklist: list = None, fragment_size:int =None):
     """
     Obtain a list of regions to fetch between start coord and end_coord with given bin_size and excluding the regions in the blacklist
     Optimizes the bin size and allows for a fragment_size parameter to be set which expands the bins with fragment size without overlap with blacklist regions and start_coord, end_coord boundaries
@@ -230,10 +232,7 @@ def blacklisted_binning(start_coord, end_coord, bin_size, blacklist=None, fragme
         current=end
 
 
-
-
-def obtain_approximate_reference_cut_position(site, contig, alt_spans):
-    #contig, cut_start, strand = molecule.get_cut_site()
+def obtain_approximate_reference_cut_position(site: int, contig: str, alt_spans: dict) -> tuple:
     alt_contig, alt_start, alt_end = alt_spans[contig]
     return contig, site + alt_start
 
