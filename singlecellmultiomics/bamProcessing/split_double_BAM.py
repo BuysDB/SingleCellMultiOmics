@@ -2,12 +2,11 @@
 import sys, argparse, datetime
 import collections
 import os
-
+import singlecellmultiomics
 import collections
 import itertools
 import numpy as np
 import random
-import networkx as nx
 import pysam
 import pysamiterators
 import matplotlib.colors
@@ -38,7 +37,7 @@ def main():
                         help='Makes a linear interpolation of the bins in your probability matrix (no interpolation across chromosomes).')
     parser.add_argument('--quiet', '-q', action='store_true',
                         help='Suppress some print statements')
-    parser.add_argument('--logfile', '-l', metavar='LOGFILE', default = None,
+    parser.add_argument('--logfile', '-l', metavar='LOGFILE', default=None,
                         help='Write arguments to logfile')
     args = parser.parse_args()
 
@@ -57,7 +56,7 @@ def main():
         print(datetime.datetime.now().strftime('Code output on %c'))
         print('Command line inputs:')
         print(CMD_INPUTS)
-        print ('Argparse variables:')
+        print('Argparse variables:')
         print(ARG_INPUTS)
 
 
@@ -69,7 +68,7 @@ def main():
         return chrname, int(start), int(end)
 
     if not args.interpolation:
-            prob=p
+        prob = p
 
     if args.interpolation:
 
@@ -81,17 +80,17 @@ def main():
                 binA = binA_orign #parse_bin_name(binA_orign)
                 binB = binB_orign #parse_bin_name(binB_orign)
 
-                if binA[0]!=binB[0]:
+                if binA[0] != binB[0]:
                     continue
 
-                if binA[2]>binB[1]:
+                if binA[2] > binB[1]:
                     raise ValueError('The input is not sorted')
 
                 contig = binA[0]
 
                 binSize = binA[2] - binA[1]
 
-                new_rows.append( p.loc[binA_orign,:] )
+                new_rows.append(p.loc[binA_orign, :])
 
                 start, end = binA[2], binB[1]
 
@@ -101,33 +100,33 @@ def main():
                     new_bin_centroid = new_bin_start + binSize*0.5
 
                     # for every cell do interpolation
-                    dx= end-start
+                    dx = end-start
                     d = (new_bin_centroid-start)
-                    dy = p.loc[binB_orign,:] - p.loc[binA_orign,:]
+                    dy = p.loc[binB_orign, :] - p.loc[binA_orign, :]
 
-                    interpolated = (dy/dx)*d + p.loc[binA_orign,:]
+                    interpolated = (dy/dx)*d + p.loc[binA_orign, :]
                     interpolated.name = (contig, new_bin_start, new_bin_end)
 
                     new_rows.append(interpolated)
 
             prob = pd.DataFrame(new_rows)
 
-            indexNames = [f'{chromosomes}:{starts}-{ends}' for chromosomes,starts,ends in prob.index]
+            indexNames = [f'{chromosomes}:{starts}-{ends}' for chromosomes, starts, ends in prob.index]
             prob.index = indexNames
 
             return prob
 
         p.index = pd.MultiIndex.from_tuples([parse_bin_name(t) for t in p.index])
-        p= p.sort_index(0)
+        p = p.sort_index(0)
 
         prob = interpolate_prob_mat(p)
 
-        prob.to_csv(os.path.join(args.outdir, "probabilityMatrix_linearInterpolated.csv"), sep = '\t')
+        prob.to_csv(os.path.join(args.outdir, "probabilityMatrix_linearInterpolated.csv"), sep='\t')
 
-        #==========End interpolation============================================
+    #==========End interpolation============================================
 
-    prob.index = pd.MultiIndex.from_tuples([parse_bin_name(t) for t in prob.index])
-    prob.index.set_names(["chr","start","end"],inplace=True)
+    prob.index = pd.MultiIndex.from_tuples([parse_bin_name(t.replace('chr', '')) for t in prob.index])
+    prob.index.set_names(["chr", "start", "end"], inplace=True)
 
     bamFile = args.inbam
     wrote = 0
@@ -137,8 +136,8 @@ def main():
     infB = os.path.join(args.outdir, "splitted_B.bam")
 
     with pysam.AlignmentFile(bamFile) as f:
-        with sorted_bam_file(infboth, f) as both, sorted_bam_file(infA,origin_bam=f) as a, sorted_bam_file(infB,origin_bam=f) as b:
-            for readId,(R1,R2) in enumerate(pysamiterators.MatePairIterator(f)):
+        with sorted_bam_file(infboth, f) as both, sorted_bam_file(infA, origin_bam=f) as a, sorted_bam_file(infB, origin_bam=f) as b:
+            for readId, (R1, R2) in enumerate(pysamiterators.MatePairIterator(f)):
                 if R1.mapping_quality < args.mapq & R2.mapping_quality < args.mapq:
                     continue  # one of two reads should have sufficient MAPQ. Less stringent. Should be OK?
 
@@ -148,17 +147,17 @@ def main():
                 bin_start, bin_end = coordinate_to_bins(R1.get_tag('DS'), args.binsize, args.binsize)[0]
 
 	    # Obtain prob:
-                bin_name = (f'chr{R1.reference_name}',str(bin_start),str(bin_end))
+                bin_name = (R1.reference_name, bin_start, bin_end)
                 if not bin_name in prob.index:
                     continue
                 if R1.get_tag('SM') not in prob.columns:
                     continue
                 p = prob.loc[bin_name, R1.get_tag('SM')]
-                wrote+=1
-                group = 'A' if np.random.random()<=p else 'B'
-                R1.set_tag('Gr',group)
-                R2.set_tag('Gr',group)
-                if group=='A':
+                wrote += 1
+                group = 'A' if np.random.random() <= p else 'B'
+                R1.set_tag('Gr', group)
+                R2.set_tag('Gr', group)
+                if group == 'A':
                     a.write(R1)
                     a.write(R2)
                 else:
