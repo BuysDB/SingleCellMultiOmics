@@ -10,7 +10,7 @@ complement = str.maketrans('ATGC', 'TACG')
 
 class TAPS():
     # Methylated Cs get converted into T readout
-    def __init__(self, reference, reference_variants=None, **kwargs):
+    def __init__(self, reference=None, reference_variants=None, **kwargs):
         """
         Intialise the TAPS class
 
@@ -20,13 +20,11 @@ class TAPS():
             reference_variants(pysam.VariantFile) : variants in comparison to supplied reference. @todo
 
         """
+        assert reference is None, 'reference is now supplied by the molecule'
         if reference_variants is not None:
             raise NotImplementedError()
 
         self.overlap_tag = 'XM'
-        self.reference = reference
-        if self.reference is None:
-            raise ValueError('A reference fasta file is required!')
 
         """
         z unmethylated C in CpG context (CG)
@@ -60,7 +58,9 @@ class TAPS():
             chromosome,
             position,
             observed_base='N',
-            strand=0):
+            strand=0,
+            reference=None
+        ):
         """Extract bismark call letter from a chromosomal location given the observed base
 
         Args:
@@ -78,9 +78,11 @@ class TAPS():
             bismark_letter(str) : bismark call
         """
 
+        assert reference is not None
+
         qbase = observed_base.upper()
 
-        ref_base = self.reference.fetch(
+        ref_base = reference.fetch(
             chromosome, position, position + 1).upper()
 
         # if a vcf file is supplied  we can extract the possible reference bases
@@ -90,7 +92,7 @@ class TAPS():
         methylated = False
         rpos = position
         if ref_base == 'C' and strand == 0:
-            context = self.reference.fetch(chromosome, rpos, rpos + 3).upper()
+            context = reference.fetch(chromosome, rpos, rpos + 3).upper()
 
             if qbase == 'T':
                 methylated = True
@@ -98,7 +100,7 @@ class TAPS():
                                                                           methylated])
 
         elif ref_base == 'G' and strand == 1:
-            origin = self.reference.fetch(
+            origin = reference.fetch(
                 chromosome, rpos - 2, rpos + 1).upper()
             context = origin.translate(complement)[::-1]
             if qbase == 'A':
@@ -119,6 +121,7 @@ class TAPS():
         for (chrom, pos), base in molecule.get_consensus().items():
             context, letter = self.position_to_context(chromosome=molecule.chromosome,
                                                        position=pos,
+                                                       reference=molecule.reference,
                                                        observed_base=base,
                                                        strand=molecule.get_strand())
             if letter is not None:
@@ -218,6 +221,7 @@ class TAPSMolecule(Molecule):
              'reference_base': conversions[location]['ref'],
              'context': self.taps.position_to_context(
                 *location,
+                reference=self.reference,
                 observed_base=observations['obs'],
                 strand=self.strand)[1]}
             for location, observations in conversions.items()}
