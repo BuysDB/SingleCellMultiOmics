@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from singlecellmultiomics.molecule import Molecule
 from singlecellmultiomics.fragment import Fragment
+from singlecellmultiomics.utils.prefetch import initialise_dict, initialise
 from singlecellmultiomics.universalBamTagger import QueryNameFlagger
 import pysamiterators.iterators
 import collections
@@ -202,8 +203,8 @@ class MoleculeIterator():
         self.molecule_class = molecule_class
         self.fragment_class = fragment_class
         self.check_eject_every = check_eject_every
-        self.molecule_class_args = molecule_class_args
-        self.fragment_class_args = fragment_class_args
+        self.molecule_class_args = initialise_dict(molecule_class_args)
+        self.fragment_class_args = initialise_dict(fragment_class_args)
         self.perform_qflag = perform_qflag
         self.pysamArgs = pysamArgs
         self.matePairIterator = None
