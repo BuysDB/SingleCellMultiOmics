@@ -21,6 +21,7 @@ from singlecellmultiomics.utils.binning import bp_chunked
 from singlecellmultiomics.universalBamTagger.tagging import run_tagging_tasks
 from multiprocessing import Pool
 from singlecellmultiomics.bamProcessing import merge_bams
+from singlecellmultiomics.fastaProcessing import CachedFastaNoHandle
 
 import argparse
 import uuid
@@ -256,11 +257,9 @@ def tag_multiome_multi_processing(
 
     ):
 
-    # @todo: use prefetched and Uninit classes for input
     assert bp_per_job is not None
     assert fragment_size is not None
     assert bp_per_segment is not None
-
 
     # Prune: @todo make sure these are taken into account, maybe using a whitelist or so?
     for prune in ['start','end','contig','progress_callback_function']:
@@ -507,7 +506,7 @@ def run_multiome_tagging(args):
 
     if args.ref is not None:
         try:
-            reference = CachedFasta(
+            reference = CachedFastaNoHandle(
                 pysam.FastaFile(args.ref))
             print(f'Loaded reference from {args.ref}')
         except Exception as e:
@@ -561,8 +560,7 @@ def run_multiome_tagging(args):
 
     if args.mapfile is not None:
         assert args.mapfile.endswith('safe.bgzf'), 'the mapfile name should end with safe.bgzf '
-        molecule_class_args['mapability_reader'] = MapabilityReader(
-            args.mapfile)
+        molecule_class_args['mapability_reader'] = MapabilityReader(args.mapfile)
 
     ### Transcriptome configuration ###
     if args.method in ('nla_transcriptome', 'cs', 'vasa',  'chict'):
@@ -578,7 +576,7 @@ def run_multiome_tagging(args):
 
         transcriptome_features = singlecellmultiomics.features.FeatureContainer()
         print("Loading exons", end='\r')
-        transcriptome_features.loadGTF(
+        transcriptome_features.preload_GTF(
             args.exons,
             select_feature_type=['exon'],
             identifierFields=(
@@ -590,7 +588,7 @@ def run_multiome_tagging(args):
 
         if args.introns is not None:
             print("Loading introns", end='\r')
-            transcriptome_features.loadGTF(
+            transcriptome_features.preload_GTF(
                 args.introns,
                 select_feature_type=['intron'],
                 identifierFields=['transcript_id'],
@@ -667,14 +665,14 @@ def run_multiome_tagging(args):
 
         molecule_class_args.update({
             'reference': reference,
-            'taps': singlecellmultiomics.molecule.TAPS(reference=reference)
+            'taps': singlecellmultiomics.molecule.TAPS()
         })
 
     elif args.method == 'chic_taps':
 
         molecule_class_args.update({
             'reference': reference,
-            'taps': singlecellmultiomics.molecule.TAPS(reference=reference)
+            'taps': singlecellmultiomics.molecule.TAPS()
         })
         molecule_class = singlecellmultiomics.molecule.TAPSCHICMolecule
         fragment_class = singlecellmultiomics.fragment.CHICFragment
