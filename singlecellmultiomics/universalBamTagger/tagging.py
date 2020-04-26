@@ -90,7 +90,16 @@ def run_tagging_task(alignments, output,
         ):
 
         if fetching:
-            cut_site_contig, cut_site_pos = molecule[0].get_site_location() # @todo: refactor to molecule function
+            cut_site_contig, cut_site_pos = None, None
+            for fragment in molecule:
+                #@todo this needs better handling
+                r = fragment.get_site_location() # @todo: refactor to molecule function
+                if r is not None:
+                    cut_site_contig, cut_site_pos = r
+                    break
+            if cut_site_contig is None:
+                # We cannot process this molecule using multiprocessing as there is a chance of a collision.
+                continue
 
             # Stopping criteria:
             if cut_site_pos>=fetch_end:
