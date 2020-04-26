@@ -261,6 +261,12 @@ def tag_multiome_multi_processing(
     assert fragment_size is not None
     assert bp_per_segment is not None
 
+
+    # Prune: @todo make sure these are taken into account, maybe using a whitelist or so?
+    for prune in ['start','end','contig','progress_callback_function']:
+        if prune in molecule_iterator_args:
+            del molecule_iterator_args[prune]
+
     iteration_args = {
         'molecule_iterator_args': molecule_iterator_args,
         'molecule_iterator_class': MoleculeIterator
@@ -284,6 +290,7 @@ def tag_multiome_multi_processing(
                            max_time_per_segment=max_time_per_segment)
 
     # @todo Write header to first block<tricky, because some blocks are empty,
+    # Haha lol not hard, just generate an empty bam with the header and prepend >.>
     # Maybe force the first block of the first job to be emitted regardless?
 
     # Prefetch the genomic resources with the defined genomic interval reducing I/O load during processing of the region
@@ -331,10 +338,12 @@ def tag_multiome_single_thread(
 
     print(f'Started writing to {out_bam_path}')
 
+    molecule_iterator_exec = molecule_iterator(input_bam, **molecule_iterator_args)
+
     read_groups = dict()  # Store unique read groups in this dict
     with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups) as out:
         try:
-            for i, molecule in enumerate(molecule_iterator):
+            for i, molecule in enumerate(molecule_iterator_exec):
 
                 # Stop when enough molecules are processed
                 if head is not None and (i - 1) >= head:
@@ -759,7 +768,7 @@ def run_multiome_tagging(args):
 
 
     molecule_iterator_args = {
-        'alignments': input_bam,
+        #'alignments': input_bam,
         'query_name_flagger': query_name_flagger,
         'molecule_class': molecule_class,
         'fragment_class': fragment_class,
@@ -789,10 +798,9 @@ def run_multiome_tagging(args):
                     molecule_iterator_args['contig'] = reference
                     yield from MoleculeIterator(**molecule_iterator_args)
 
-        molecule_iterator = Misc_contig_molecule_generator(
-            molecule_iterator_args)
+        molecule_iterator = Misc_contig_molecule_generator
     else:
-        molecule_iterator = MoleculeIterator(**molecule_iterator_args)
+        molecule_iterator = MoleculeIterator
 
     #####
     consensus_model_path = None
@@ -944,17 +952,32 @@ def run_multiome_tagging(args):
             print(e)
     """
 
-    tag_multiome_single_thread(
-        args.bamin,
-        args.o,
-        molecule_iterator = molecule_iterator,
-        molecule_iterator_args = None,
-        consensus_model = None ,
-        consensus_model_args={},
-        ignore_bam_issues=False,
-        head=args.head,
-        no_source_reads=args.no_source_reads
-        )
+
+
+    if args.multiprocess:
+        bp_per_job = 3_000_000
+        bp_per_segment = 500_000
+        fragment_size = 50_000
+        print("Tagging using multi-processing")
+        tag_multiome_multi_processing(input_bam_path=args.bamin, out_bam_path=args.o, molecule_iterator=molecule_iterator,
+                                      molecule_iterator_args=molecule_iterator_args,ignore_bam_issues=args.ignore_bam_issues,
+                                      head=args.head, no_source_reads=args.no_source_reads,
+                                      fragment_size=fragment_size, blacklist_path=args.blacklist,bp_per_job=bp_per_job,
+                                      bp_per_segment=bp_per_segment, temp_folder='/tmp/scmo', max_time_per_segment=60*5)
+    else:
+        # Alignments are passed as pysam handle:
+
+        tag_multiome_single_thread(
+            args.bamin,
+            args.o,
+            molecule_iterator = molecule_iterator,
+            molecule_iterator_args = molecule_iterator_args,
+            consensus_model = None ,
+            consensus_model_args={},
+            ignore_bam_issues=False,
+            head=args.head,
+            no_source_reads=args.no_source_reads
+            )
 
 
 if __name__ == '__main__':
