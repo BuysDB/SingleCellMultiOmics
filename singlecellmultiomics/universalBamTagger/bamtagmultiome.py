@@ -22,6 +22,7 @@ from singlecellmultiomics.universalBamTagger.tagging import run_tagging_tasks
 from multiprocessing import Pool
 from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads
 from singlecellmultiomics.fastaProcessing import CachedFastaNoHandle
+from singlecellmultiomics.utils.prefetch import UnitialisedClass
 from typing import Generator
 import argparse
 import uuid
@@ -535,8 +536,7 @@ def run_multiome_tagging(args):
 
     if args.ref is not None:
         try:
-            reference = CachedFastaNoHandle(
-                pysam.FastaFile(args.ref))
+            reference = UnitialisedClass(CachedFastaNoHandle, args.ref)
             print(f'Loaded reference from {args.ref}')
         except Exception as e:
             print("Error when loading the reference file, continuing without a reference")
