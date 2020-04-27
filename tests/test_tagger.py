@@ -38,7 +38,8 @@ class TestMultiomeTaggingCHIC(unittest.TestCase):
         tm.run_multiome_tagging_cmd(f'./data/chic_test_region.bam -method chic --multiprocess -o {write_path}'.split(' '))
 
         with pysam.AlignmentFile(write_path) as f:
-            #self.assertTrue( 1==len([x for x in f.header['PG'] if 'bamtagmultiome' in x.get('PN','')]) )
+            # Test program header:
+            self.assertTrue( 1==len([x for x in f.header['PG'] if 'bamtagmultiome' in x.get('PN','')]) )
 
             i =0
             # Test if the file has reads.

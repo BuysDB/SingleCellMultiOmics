@@ -288,9 +288,26 @@ def tag_multiome_multi_processing(
                            temp_folder=temp_folder,
                            max_time_per_segment=max_time_per_segment)
 
-    # @todo Write header to first block<tricky, because some blocks are empty,
-    # Haha lol not hard, just generate an empty bam with the header and prepend >.>
-    # Maybe force the first block of the first job to be emitted regardless?
+
+    # Create header bam:
+    temp_header_bam_path = f'{uuid.uuid4()}_header.bam'
+    with pysam.AlignmentFile(input_bam_path) as input_bam:
+        input_header = input_bam.header.as_dict()
+
+        # Write provenance information to BAM header
+        write_program_tag(
+            input_header,
+            program_name='bamtagmultiome',
+            command_line=" ".join(
+                sys.argv),
+            version=singlecellmultiomics.__version__,
+            description=f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
+
+        with pysam.AlignmentFile(temp_header_bam_path, 'wb', header=input_header) as out:
+            pass
+
+        pysam.index(temp_header_bam_path)
+
 
     # Prefetch the genomic resources with the defined genomic interval reducing I/O load during processing of the region
     # this is now done automatically
@@ -304,11 +321,14 @@ def tag_multiome_multi_processing(
                                          bam is not None))
             # Changing this to generator and casting to list later makes this not work. I don't understand it
     else:
-        tagged_bam_generator = (bam for bam, meta in (run_tagging_tasks(task) for task in tasks) if
-                                bam is not None)
+        tagged_bam_generator = [bam for bam, meta in (run_tagging_tasks(task) for task in tasks) if
+                                bam is not None]
 
-    # Merge the results
+    tagged_bam_generator = [temp_header_bam_path] + tagged_bam_generator
+
+    # merge the results and clean up:
     merge_bams(list(tagged_bam_generator), out_bam_path)
+
 
 
 def tag_multiome_single_thread(
