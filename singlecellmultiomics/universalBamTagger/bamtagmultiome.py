@@ -266,7 +266,7 @@ def tag_multiome_multi_processing(
     else:
         contig_blacklist = []
 
-    if molecule_iterator_args['contig'] is not None:
+    if molecule_iterator_args.get('contig',None) is not None:
         assert molecule_iterator_args.get('start') is None, 'regions are not implemented'
         contig_whitelist = [molecule_iterator_args['contig']]
     else:
