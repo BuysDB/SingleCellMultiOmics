@@ -20,7 +20,7 @@ from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_
 from singlecellmultiomics.utils.binning import bp_chunked
 from singlecellmultiomics.universalBamTagger.tagging import run_tagging_tasks
 from multiprocessing import Pool
-from singlecellmultiomics.bamProcessing import merge_bams
+from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads
 from singlecellmultiomics.fastaProcessing import CachedFastaNoHandle
 from typing import Generator
 import argparse
@@ -260,11 +260,16 @@ def tag_multiome_multi_processing(
     assert fragment_size is not None
     assert bp_per_segment is not None
 
+    if molecule_iterator_args.get('skip_contigs',None) is not None:
+        contig_blacklist = molecule_iterator_args.get('skip_contigs')
+    else:
+        contig_blacklist = []
+
     if molecule_iterator_args['contig'] is not None:
         assert molecule_iterator_args.get('start') is None, 'regions are not implemented'
-        contig_whitelist = []
-    else:
         contig_whitelist = [molecule_iterator_args['contig']]
+    else:
+        contig_whitelist = [contig for contig in get_contigs_with_reads(input_bam_path) if not contig in contig_blacklist]
 
     for prune in ['start','end','contig','progress_callback_function']:
         if prune in molecule_iterator_args:
@@ -280,7 +285,8 @@ def tag_multiome_multi_processing(
             contig_length_resource=input_bam_path,
             bin_size=bp_per_segment,
             fragment_size=fragment_size,
-            blacklist_path=blacklist_path
+            blacklist_path=blacklist_path,
+            contig_whitelist=contig_whitelist
         )
 
     # Chunk into jobs of roughly equal size: (A single job will process multiple segments)
@@ -627,6 +633,10 @@ def run_multiome_tagging(args):
             'auto_set_intron_exon_features': True
         })
 
+    bp_per_job = 10_000_000
+    bp_per_segment = 10_000_000
+    fragment_size = 500
+
     ### Method specific configuration ###
     if args.method == 'qflag':
         molecule_class = singlecellmultiomics.molecule.Molecule
@@ -638,6 +648,10 @@ def run_multiome_tagging(args):
         molecule_class = singlecellmultiomics.molecule.CHICMolecule
         fragment_class = singlecellmultiomics.fragment.CHICFragment
 
+        bp_per_job = 5_000_000
+        bp_per_segment = 50_000
+        fragment_size = 500
+
     elif args.method == 'nla' or args.method == 'nla_no_overhang':
         molecule_class = singlecellmultiomics.molecule.NlaIIIMolecule
         fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
@@ -648,6 +662,9 @@ def run_multiome_tagging(args):
                     'reference': reference,
                     'no_overhang': True
                 })
+        bp_per_job = 10_000_000
+        bp_per_segment = 10_000_000
+        fragment_size = 500
 
     elif args.method == 'chic_nla':
         molecule_class=singlecellmultiomics.molecule.CHICNLAMolecule
@@ -656,6 +673,10 @@ def run_multiome_tagging(args):
         molecule_class_args.update({
                 'reference': reference,
         })
+
+        bp_per_job = 5_000_000
+        bp_per_segment = 50_000
+        fragment_size = 500
 
     elif args.method == 'cs_feature_counts' :
         molecule_class = singlecellmultiomics.molecule.Molecule
@@ -682,6 +703,9 @@ def run_multiome_tagging(args):
 
         molecule_class = singlecellmultiomics.molecule.AnnotatedCHICMolecule
         fragment_class = singlecellmultiomics.fragment.CHICFragment
+        bp_per_job = 5_000_000
+        bp_per_segment = 500_000
+        fragment_size = 50_000
 
     elif args.method == 'nla_taps':
         molecule_class = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
@@ -691,6 +715,9 @@ def run_multiome_tagging(args):
             'reference': reference,
             'taps': singlecellmultiomics.molecule.TAPS()
         })
+        bp_per_job = 5_000_000
+        bp_per_segment = 1_000_000
+        fragment_size = 500
 
     elif args.method == 'chic_taps':
 
@@ -977,9 +1004,7 @@ def run_multiome_tagging(args):
 
 
     if args.multiprocess:
-        bp_per_job = 3_000_000
-        bp_per_segment = 500_000
-        fragment_size = 50_000
+
         print("Tagging using multi-processing")
         tag_multiome_multi_processing(input_bam_path=args.bamin, out_bam_path=args.o, molecule_iterator=molecule_iterator,
                                       molecule_iterator_args=molecule_iterator_args,ignore_bam_issues=args.ignore_bam_issues,
