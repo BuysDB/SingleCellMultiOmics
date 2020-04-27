@@ -38,6 +38,7 @@ setup(
         'singlecellmultiomics.features',
         'singlecellmultiomics.fragment',
         'singlecellmultiomics.fastqProcessing',
+        'singlecellmultiomics.fastaProcessing',
         'singlecellmultiomics.libraryDetection',
         'singlecellmultiomics.libraryProcessing',
         'singlecellmultiomics.modularDemultiplexer',
