@@ -17,7 +17,8 @@ from itertools import chain
 from more_itertools import windowed
 from typing import Generator
 
-def fill_range(start,end,step):
+
+def fill_range(start, end, step):
     """
     range iterator from start to end with stepsize step
     but generates a final step which steps to end
@@ -37,17 +38,16 @@ def fill_range(start,end,step):
 
     """
 
-    e=start
-    for s in range(start,end,step):
-        e = s+step
-        if e>end:
-            e = e-step
+    e = start
+    for s in range(start, end, step):
+        e = s + step
+        if e > end:
+            e = e - step
             break
-        yield s,e
+        yield s, e
 
-    if e<end:
+    if e < end:
         yield e, end
-
 
 
 def trim_rangelist(rangelist, start, end):
@@ -66,24 +66,24 @@ def trim_rangelist(rangelist, start, end):
         (range_start, range_end)
 
     """
-    for s,e in rangelist:
+    for s, e in rangelist:
 
         overlap = False
-        if s>=start and s<end:
+        if s >= start and s < end:
             overlap = True
-        if e>=start and e<end:
+        if e >= start and e < end:
             overlap = True
 
         if not overlap:
             continue
 
-        yield max(s,start), min(e,end)
+        yield max(s, start), min(e, end)
 
 
 def get_bins_from_bed_iter(path, contig=None):
     with open(path) as f:
         for line in f:
-            c, start, end = line.strip().split(None,3)[:3]
+            c, start, end = line.strip().split(None, 3)[:3]
             start, end = int(start), int(end)
             if contig is None or c == contig:
                 yield c, start, end
@@ -91,10 +91,10 @@ def get_bins_from_bed_iter(path, contig=None):
 
 def get_bins_from_bed_dict(path, contig=None):
     bd = {}
-    for c, start, end  in get_bins_from_bed_iter(path,contig=contig):
+    for c, start, end in get_bins_from_bed_iter(path, contig=contig):
         if not c in bd:
             bd[c] = list()
-        bd[c].append( (start,end) )
+        bd[c].append((start, end))
 
     return bd
 
@@ -106,33 +106,34 @@ def range_contains_overlap(clist):
     Args:
         clist (list) : sorted list of start,end coordinates of regions
     """
-    clist=sorted(clist)
+    clist = sorted(clist)
     # check for overlaps...
-    if len(clist)<2:
+    if len(clist) < 2:
         return False
 
-    for (start,end),(next_start,next_end) in windowed(clist,2):
-        if start>next_start or end>next_start or end>next_end or start>next_end:
-            #print(f'Overlap between {start}:{end} and {next_start}:{next_end}')
+    for (start, end), (next_start, next_end) in windowed(clist, 2):
+        if start > next_start or end > next_start or end > next_end or start > next_end:
+            # print(f'Overlap between {start}:{end} and {next_start}:{next_end}')
             return True
     return False
 
-def _merge_overlapping_ranges(clist):
 
+def _merge_overlapping_ranges(clist):
     merged = False
-    for (start,end),(next_start,next_end) in windowed(clist,2):
+    for (start, end), (next_start, next_end) in windowed(clist, 2):
         if merged:
             merged = False
             continue
 
-        if start>next_start or end>next_start or end>next_end or start>next_end:
-            yield (min(start,next_start),max(next_end, end))
+        if start > next_start or end > next_start or end > next_end or start > next_end:
+            yield (min(start, next_start), max(next_end, end))
             merged = True
 
         else:
             yield start, end
     if not merged:
         yield clist[-1]
+
 
 def merge_overlapping_ranges(clist):
     clist = sorted(clist)
@@ -141,42 +142,64 @@ def merge_overlapping_ranges(clist):
     return clist
 
 
+def blacklisted_binning_contigs(contig_length_resource: str, bin_size: int, fragment_size: int,
+                                blacklist_path: str = None, contig_whitelist: list = None) -> Generator:
+    """
+    Generate a list of (contig, bin_start, bin_end) tuples of size bin_size or smaller or when fragment_size is supplied
+    (contig, bin_start, bin_end, fetch_start, fetch_end). All regions present in the blacklist BED file will not be
+    part of the generated bins.
 
-def blacklisted_binning_contigs(contig_length_resource: str or list, bin_size: int, fragment_size: int,
-                                blacklist_path: str = None) -> Generator:
+    Args:
+        contig_length_resource(str): Path to bam file from which to extract the contig lengths
+        bin_size(int) : maximum size of generated bins (might produce some bins which are smaller)
+        fragment_size(int) : When this value is supplied fetch_start, fetch_end will be produced which will be equal to
+                            bin_start-fragment_size and bin_end+fragment size. But will never overlap with blacklisted
+                            regions or exceed contig boundaries.
+        blacklist_path(str): path to blacklist bed file
+        contig_whitelist(iterable): A set of contigs to only include in the result. All contigs are included when
+                                    contig_whitelist is not specified.
+
+    Returns:
+        bin_tuples(Generator): (contig, bin_start, bin_end),
+                               ( contig, bin_start, bin_end, fetch_start, fetch_end ) when fragment_size is specified
+    """
 
     if blacklist_path is not None:
         blacklist_dict = get_bins_from_bed_dict(blacklist_path)
     else:
         blacklist_dict = {}
 
-    for contig,length in (get_contig_sizes(contig_length_resource).items()
-                            if type(contig_length_resource) is str else contig_length_resource):
+    for contig, length in (get_contig_sizes(contig_length_resource).items()
+    if type(contig_length_resource) is str else contig_length_resource):
+        if contig_whitelist is not None and not contig in contig_whitelist:
+            continue
 
         if fragment_size is not None:
             for bin_start, bin_end, fetch_start, fetch_end in \
                     blacklisted_binning(
-                        start_coord = 0,
-                        end_coord = length,
+                        start_coord=0,
+                        end_coord=length,
                         bin_size=bin_size,
-                        blacklist=sorted(blacklist_dict.get(contig,[])),
+                        blacklist=sorted(blacklist_dict.get(contig, [])),
                         fragment_size=fragment_size):
                 yield contig, bin_start, bin_end, fetch_start, fetch_end
         else:
             for bin_start, bin_end in \
                     blacklisted_binning(
-                        start_coord = 0,
-                        end_coord = length,
+                        start_coord=0,
+                        end_coord=length,
                         bin_size=bin_size,
-                        blacklist=sorted(blacklist_dict.get(contig,[]))):
+                        blacklist=sorted(blacklist_dict.get(contig, []))):
                 yield contig, bin_start, bin_end
 
 
-
-def blacklisted_binning(start_coord: int, end_coord: int, bin_size: int, blacklist: list = None, fragment_size:int =None):
+def blacklisted_binning(start_coord: int, end_coord: int, bin_size: int, blacklist: list = None,
+                        fragment_size: int = None):
     """
-    Obtain a list of regions to fetch between start coord and end_coord with given bin_size and excluding the regions in the blacklist
-    Optimizes the bin size and allows for a fragment_size parameter to be set which expands the bins with fragment size without overlap with blacklist regions and start_coord, end_coord boundaries
+    Obtain a list of regions to fetch between start coord and end_coord with given bin_size and
+    excluding the regions in the blacklist. Optimizes the bin size and allows for a fragment_size parameter to be set
+    which expands the bins with fragment size without overlap with blacklist regions and
+    start_coord, end_coord boundaries
 
     Args:
         start_coord(int)
@@ -195,42 +218,43 @@ def blacklisted_binning(start_coord: int, end_coord: int, bin_size: int, blackli
     """
     if blacklist is None:
         blacklist = []
-    elif len(blacklist)>1:
-        blacklist= merge_overlapping_ranges(blacklist)
-    current=start_coord
-    for i, (start, end) in enumerate( chain( trim_rangelist(blacklist,start_coord, end_coord), [(end_coord,end_coord+1),])):
+    elif len(blacklist) > 1:
+        blacklist = merge_overlapping_ranges(blacklist)
+    current = start_coord
+    for i, (start, end) in enumerate(chain(
+            trim_rangelist(blacklist, start_coord, end_coord),
+            [(end_coord, end_coord + 1), ])):
 
         # Fill from current to start:
-        if start==current:
-            current=end
+        if start == current:
+            current = end
             continue
 
-        total_bins = len(list(fill_range(current,start,bin_size)))
-        if total_bins<0:
+        total_bins = len(list(fill_range(current, start, bin_size)))
+        if total_bins < 0:
             continue
-        if total_bins==0:
-            total_bins=1
-        local_bin_size = int((start-current) / total_bins)
+        if total_bins == 0:
+            total_bins = 1
 
-        for fi, (pos_s, pos_e) in enumerate(fill_range(current,start,local_bin_size)):
+        local_bin_size = int((start - current) / total_bins)
+
+        for fi, (pos_s, pos_e) in enumerate(fill_range(current, start, local_bin_size)):
 
             if fragment_size is None:
-                yield pos_s,pos_e
+                yield pos_s, pos_e
             else:
-                fs = pos_s-fragment_size
-                fe = pos_e+fragment_size
-                if fi==0:
+                fs = pos_s - fragment_size
+                fe = pos_e + fragment_size
+                if fi == 0:
                     # Left clip, no available bins on the left
                     fs = pos_s
 
-                if fi == total_bins-1:
+                if fi == total_bins - 1:
                     fe = pos_e
 
-
-                yield pos_s,pos_e, fs, fe
+                yield pos_s, pos_e, fs, fe
             current = pos_e
-
-        current=end
+        current = end
 
 
 def obtain_approximate_reference_cut_position(site: int, contig: str, alt_spans: dict) -> tuple:
@@ -238,46 +262,45 @@ def obtain_approximate_reference_cut_position(site: int, contig: str, alt_spans:
     return contig, site + alt_start
 
 
-def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_interval = 3, threads=4):
-
+def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_interval=3, threads=4):
     if live_update:
         from singlecellmultiomics.utils.plotting import GenomicPlot
         import matplotlib.pyplot as plt
-        cell_plots=  {}
+        cell_plots = {}
         for cell_index in range(show_n_cells):
             gplot = GenomicPlot(reference)
             fig = gplot.get_figure()
             fig.canvas.draw()
-            cell_plots[cell_index] = {'plot':gplot, 'fig':fig}
+            cell_plots[cell_index] = {'plot': gplot, 'fig': fig}
 
         plt.pause(0.01)
 
-    #import random
-    #random.shuffle(commands)
+    # import random
+    # random.shuffle(commands)
 
     counts = {}
 
-
-    prev=None
+    prev = None
 
     top_cells = None
 
-    start_time=datetime.now()
+    start_time = datetime.now()
 
-    update_method='partial_df'
+    update_method = 'partial_df'
 
     with multiprocessing.Pool(threads) as workers:
 
-        for i,result in enumerate(workers.imap_unordered(count_fragments_binned,
-                              commands )):
+        for i, result in enumerate(workers.imap_unordered(count_fragments_binned,
+                                                          commands)):
             counts.update(result)
-            if live_update and update_method=='partial_df':
-                if (datetime.now()-start_time).total_seconds()>2 and (prev is None or (datetime.now()-prev).total_seconds() >= update_interval):
-                    if len(result)==0:
+            if live_update and update_method == 'partial_df':
+                if (datetime.now() - start_time).total_seconds() > 2 and (
+                        prev is None or (datetime.now() - prev).total_seconds() >= update_interval):
+                    if len(result) == 0:
                         continue
 
                     df = pd.DataFrame(counts).T
-                    if df.sum().sum()==0:
+                    if df.sum().sum() == 0:
                         continue
                     prev = datetime.now()
 
@@ -285,17 +308,17 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
                         top_cells = df.sum().sort_values()[-show_n_cells:]
 
                     df = df[top_cells.index].fillna(0)
-                    df = np.clip(0,2, df / np.percentile(df,99,axis=0))
+                    df = np.clip(0, 2, df / np.percentile(df, 99, axis=0))
 
                     for contig in [list(result.keys())[0][0]]:
-                        x = np.array([ (stop+start)/2 for start,stop in df.loc[contig].index.values] )
+                        x = np.array([(stop + start) / 2 for start, stop in df.loc[contig].index.values])
 
                         for cell_index, (cell, row) in enumerate(df.loc[contig].T.iterrows()):
                             gplot = cell_plots[cell_index]['plot']
                             gplot.reset_axis(contig)
                             fig = cell_plots[cell_index]['fig']
                             fig.suptitle(cell)
-                            gplot[contig].scatter(x, row.values,s=0.1,c='k')
+                            gplot[contig].scatter(x, row.values, s=0.1, c='k')
                             fig.canvas.draw()
                     plt.pause(0.001)
 
@@ -303,23 +326,24 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
     if live_update:
         df = pd.DataFrame(counts).T
         df = df[top_cells.index].fillna(0)
-        df = np.clip(0,2, df / np.percentile(df,99,axis=0))
+        df = np.clip(0, 2, df / np.percentile(df, 99, axis=0))
 
         for contig in cell_plots[0]['plot'].contigs:
-            x = np.array([ (stop+start)/2 for start,stop in df.loc[contig].index.values] )
+            x = np.array([(stop + start) / 2 for start, stop in df.loc[contig].index.values])
 
             for cell_index, (cell, row) in enumerate(df.loc[contig].T.iterrows()):
                 gplot = cell_plots[cell_index]['plot']
                 gplot.reset_axis(contig)
                 fig = cell_plots[cell_index]['fig']
                 fig.suptitle(cell)
-                gplot[contig].scatter(x, row.values,s=0.1,c='k')
+                gplot[contig].scatter(x, row.values, s=0.1, c='k')
                 fig.canvas.draw()
         plt.pause(0.001)
 
     return counts
 
-def read_counts(read,min_mq, dedup=True):
+
+def read_counts(read, min_mq, dedup=True):
     if not read.is_read1 or read is None:
         return False
     if dedup and read.is_duplicate:
@@ -328,74 +352,71 @@ def read_counts(read,min_mq, dedup=True):
         return False
     if read.mapping_quality < min_mq or not read.has_tag('DS'):
         return False
-    #if read.has_tag('RZ') and read.get_tag('RZ') != 'CATG':
+    # if read.has_tag('RZ') and read.get_tag('RZ') != 'CATG':
     #    return False
     return True
 
 
 def gc_correct(args):
-    observations, gc_vector,MAXCP = args
+    observations, gc_vector, MAXCP = args
     correction = lowess(observations, gc_vector)
-    return np.clip(observations / np.interp( gc_vector, correction[:,0], correction[:,1] ) , 0,MAXCP)
+    return np.clip(observations / np.interp(gc_vector, correction[:, 0], correction[:, 1]), 0, MAXCP)
+
 
 def gc_correct_cn_frame(df, reference, MAXCP, threads, norm_method='median'):
-
     # Perform GC correction
-    chrom_sizes= dict( zip(reference.references, reference.lengths))
+    chrom_sizes = dict(zip(reference.references, reference.lengths))
     # Extract GC percentage from reference for the selected bin size:
     bins_to_gc = {}
 
-    for contig,start,end in df.columns:
-        k =  (contig,start,end)
+    for contig, start, end in df.columns:
+        k = (contig, start, end)
         if not k in bins_to_gc:
-            sequence = reference.fetch(contig, start,end ).upper()
-            gc = sequence.count('G')+sequence.count('C')
-            div = ((sequence.count('A')+sequence.count('T')+gc))
-            if div==0:
+            sequence = reference.fetch(contig, start, end).upper()
+            gc = sequence.count('G') + sequence.count('C')
+            div = ((sequence.count('A') + sequence.count('T') + gc))
+            if div == 0:
                 # There is no data, plop the mean gc in later
-                bins_to_gc[ k ] = np.nan
+                bins_to_gc[k] = np.nan
             else:
                 gcrat = (gc) / div
-                bins_to_gc[ k ] = gcrat
+                bins_to_gc[k] = gcrat
 
-    qf =  pd.DataFrame({'gc':bins_to_gc})
+    qf = pd.DataFrame({'gc': bins_to_gc})
     qf = qf.fillna(qf['gc'].mean())
     # Join the GC table with the count matrix
-    gc_matched = df.T.join( qf, how='left')['gc']
+    gc_matched = df.T.join(qf, how='left')['gc']
 
-        # This performs GC correction for every cell using loess regression
+    # This performs GC correction for every cell using loess regression
     with multiprocessing.Pool(threads) as workers:
-        keep_bins=df.columns
+        keep_bins = df.columns
         gc_vector = gc_matched[keep_bins]
 
-        corrected_cells = list( workers.imap(
-            gc_correct, [(row,gc_vector.values,MAXCP) for cell,row in df.iterrows()] ))
+        corrected_cells = list(workers.imap(
+            gc_correct, [(row, gc_vector.values, MAXCP) for cell, row in df.iterrows()]))
 
-    corrected_cells = pd.concat(corrected_cells,axis=1).T
+    corrected_cells = pd.concat(corrected_cells, axis=1).T
     if norm_method == 'median':
-        corrected_cells = ((corrected_cells.T/corrected_cells.median(1))*2).T
+        corrected_cells = ((corrected_cells.T / corrected_cells.median(1)) * 2).T
     elif norm_method == 'mean':
-        corrected_cells = ((corrected_cells.T/corrected_cells.mean(1))*2).T
+        corrected_cells = ((corrected_cells.T / corrected_cells.mean(1)) * 2).T
     else:
         raise ValueError('norm_method not understood')
-
 
     return corrected_cells
 
 
-
-def generate_jobs(alignments_path, bin_size = 1_000_000, bins_per_job = 10):
-    for job_group in (((contig, start, start+bin_size*bins_per_job)
-                 for start in range(0,length,bin_size*bins_per_job))
-                for contig,length in
-                get_contig_sizes(alignments_path).items()):
+def generate_jobs(alignments_path, bin_size=1_000_000, bins_per_job=10):
+    for job_group in (((contig, start, start + bin_size * bins_per_job)
+                       for start in range(0, length, bin_size * bins_per_job))
+                      for contig, length in
+                      get_contig_sizes(alignments_path).items()):
         yield from job_group
 
 
-
 def generate_commands(alignments_path,
-                      bin_size = 1_000_000,
-                      bins_per_job = 10,
+                      bin_size=1_000_000,
+                      bins_per_job=10,
                       alt_spans=None,
                       min_mq=50,
                       max_fragment_size=1000,
@@ -403,47 +424,45 @@ def generate_commands(alignments_path,
                       key_tags=None,
                       dedup=True,
                       ):
-
-    for i,(contig,start,end) in enumerate(
-                generate_jobs(alignments_path=alignments_path,bin_size=bin_size,bins_per_job=bins_per_job)):
+    for i, (contig, start, end) in enumerate(
+            generate_jobs(alignments_path=alignments_path, bin_size=bin_size, bins_per_job=bins_per_job)):
         yield (alignments_path, bin_size, max_fragment_size, \
-                               contig, start, end, \
-                               min_mq,alt_spans,key_tags,dedup)
-        if head is not None and i>=(head-1):
+               contig, start, end, \
+               min_mq, alt_spans, key_tags, dedup)
+        if head is not None and i >= (head - 1):
             break
+
 
 def count_fragments_binned(args):
     (alignments_path, bin_size, max_fragment_size, \
-                           contig, start, end, \
-                           min_mq,alt_spans, key_tags,dedup) = args
+     contig, start, end, \
+     min_mq, alt_spans, key_tags, dedup) = args
 
-
-    counts = {} # Sample->(contig,bin_start,bin_end)->counts
+    counts = {}  # Sample->(contig,bin_start,bin_end)->counts
     # Define which reads we want to count:
 
-
-    p=0
+    p = 0
     with pysam.AlignmentFile(alignments_path, threads=4) as alignments:
         # Obtain size of selected contig:
-        contig_size = get_contig_size(alignments,contig)
+        contig_size = get_contig_size(alignments, contig)
         if contig_size is None:
             raise ValueError('Unknown contig')
 
         # Determine where we start looking for fragments:
-        f_start = max(0, start-max_fragment_size)
-        f_end = min( end+max_fragment_size, contig_size)
+        f_start = max(0, start - max_fragment_size)
+        f_end = min(end + max_fragment_size, contig_size)
 
-        for p,read in enumerate(alignments.fetch(contig=contig,start=f_start,
-                                                 stop=f_end)):
+        for p, read in enumerate(alignments.fetch(contig=contig, start=f_start,
+                                                  stop=f_end)):
 
-            if not read_counts(read,min_mq=min_mq, dedup=dedup):
+            if not read_counts(read, min_mq=min_mq, dedup=dedup):
                 continue
 
             # Extract the site
             site = int(read.get_tag('DS'))
 
             # Don't count sites outside the selected bounds
-            if site<start or site>=end:
+            if site < start or site >= end:
                 continue
 
             sample = read.get_tag('SM')
@@ -455,12 +474,12 @@ def count_fragments_binned(args):
 
             # Obtain the bin index
             bin_i = int(site / bin_size)
-            bin_start = bin_size*bin_i
-            bin_end = min( bin_size*(bin_i+1), contig_size )
+            bin_start = bin_size * bin_i
+            bin_end = min(bin_size * (bin_i + 1), contig_size)
 
             # Add additional tag information: (For example the allele tag)
             if key_tags is not None:
-                tag_values = [ (read.get_tag(tag) if read.has_tag(tag) else None) for tag in key_tags ]
+                tag_values = [(read.get_tag(tag) if read.has_tag(tag) else None) for tag in key_tags]
                 bin_id = (*tag_values, contig, bin_start, bin_end)
             else:
                 bin_id = (contig, bin_start, bin_end)
@@ -478,22 +497,22 @@ def count_fragments_binned(args):
 
 
 def count_fragments_binned_wrap(args):
-
     (alignments_path, bin_size, max_fragment_size, \
-                           contig, start, end, \
-                           min_mq,alt_spans,dedup) = args
+     contig, start, end, \
+     min_mq, alt_spans, dedup) = args
 
     tp = f'./TEMP_{contig}_{start}.pickle.gz'
     res = os.system(f'bamBinCounts.py {alignments_path} -o {tp} -start {start} -end {end} -contig {contig}')
-    with gzip.open(tp,'rb') as pf:
+    with gzip.open(tp, 'rb') as pf:
         result = pickle.load(pf)
     os.remove(tp)
     return result
 
+
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
-      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-      description='Extract counts from bam file')
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description='Extract counts from bam file')
 
     argparser.add_argument('alignmentfile', type=str)
     argparser.add_argument('-head', type=int, default=None)
@@ -501,10 +520,10 @@ if __name__ == '__main__':
     argparser.add_argument('-t', type=int, default=16, help='Threads')
     argparser.add_argument('-j', type=int, default=5, help='Bins per worker')
     argparser.add_argument(
-      '-min_mq',
-      type=int,
-      default=30,
-      help='Minimum mapping quality')
+        '-min_mq',
+        type=int,
+        default=30,
+        help='Minimum mapping quality')
     argparser.add_argument('-max_fragment_size', type=int, default=1000)
     argparser.add_argument('-o', type=str, required=True)
     args = argparser.parse_args()
@@ -514,29 +533,29 @@ if __name__ == '__main__':
     with multiprocessing.Pool(args.t) as workers:
 
         job_gen = generate_commands(
-                alignments_path=args.alignmentfile,
-                bin_size=args.bin_size,
-                bins_per_job=args.j,
+            alignments_path=args.alignmentfile,
+            bin_size=args.bin_size,
+            bins_per_job=args.j,
             head=args.head)
 
-        for job_total,_ in enumerate(job_gen):
+        for job_total, _ in enumerate(job_gen):
             pass
 
         job_gen = generate_commands(
-                alignments_path=args.alignmentfile,
-                bin_size=args.bin_size,
-                bins_per_job=args.j,
+            alignments_path=args.alignmentfile,
+            bin_size=args.bin_size,
+            bins_per_job=args.j,
             head=args.head)
 
-        for i,result in enumerate(workers.imap_unordered(count_fragments_binned,
-                              job_gen )):
+        for i, result in enumerate(workers.imap_unordered(count_fragments_binned,
+                                                          job_gen)):
             counts.update(result)
-            print(f'\r{i}/{job_total}',end='')
+            print(f'\r{i}/{job_total}', end='')
 
         if args.o.endswith('.pickle.gz'):
             pd.DataFrame(counts).to_pickle(args.o)
         elif args.o.endswith('.csv'):
             pd.DataFrame(counts).to_csv(args.o)
         else:
-            with gzip.open(args.o,'wb') as out:
+            with gzip.open(args.o, 'wb') as out:
                 pickle.dump(counts, out)

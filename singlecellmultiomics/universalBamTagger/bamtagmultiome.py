@@ -9,12 +9,12 @@ from singlecellmultiomics.molecule.consensus import calculate_consensus
 import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam
 
-from singlecellmultiomics.utils import is_main_chromosome, bp_chunked
+from singlecellmultiomics.utils import is_main_chromosome
 from singlecellmultiomics.utils.submission import submit_job
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
-from pysamiterators import CachedFasta,MatePairIteratorIncludingNonProper,MatePairIterator
+from pysamiterators import MatePairIteratorIncludingNonProper
 from singlecellmultiomics.universalBamTagger.tagging import generate_tasks
 from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs
 from singlecellmultiomics.utils.binning import bp_chunked
@@ -22,17 +22,16 @@ from singlecellmultiomics.universalBamTagger.tagging import run_tagging_tasks
 from multiprocessing import Pool
 from singlecellmultiomics.bamProcessing import merge_bams
 from singlecellmultiomics.fastaProcessing import CachedFastaNoHandle
-
+from typing import Generator
 import argparse
 import uuid
 import os
 import sys
 import colorama
-import sklearn
 import pkg_resources
 import pickle
 from datetime import datetime
-import traceback
+
 
 available_consensus_models = pkg_resources.resource_listdir('singlecellmultiomics','molecule/consensus_model')
 
@@ -240,18 +239,18 @@ ma.add_argument('-max_associated_fragments',type=int, default=None, help="Limit 
 def tag_multiome_multi_processing(
         input_bam_path: str,
         out_bam_path: str,
-        molecule_iterator=None,
-        molecule_iterator_args=None,
-        ignore_bam_issues: bool =False,
-        head: int = None,
-        no_source_reads: bool=False,
+        molecule_iterator: Generator = None, # @todo add custom molecule iterator?
+        molecule_iterator_args: dict = None,
+        ignore_bam_issues: bool = False,  # @todo add ignore_bam_issues
+        head: int = None,  # @todo add head
+        no_source_reads: bool = False,  # @todo add no_source_reads
         # One extra parameter is the fragment size:
-        fragment_size:int =None,
+        fragment_size: int = None,
         # And the blacklist is optional:
-        blacklist_path:str =None,
+        blacklist_path: str = None,
         bp_per_job: int = None,
-        bp_per_segment: int  = None,
-        temp_folder: str='/tmp/scmo',
+        bp_per_segment: int = None,
+        temp_folder: str = '/tmp/scmo',
         max_time_per_segment: int = None,
         use_pool: bool = True
 
@@ -261,7 +260,12 @@ def tag_multiome_multi_processing(
     assert fragment_size is not None
     assert bp_per_segment is not None
 
-    # Prune: @todo make sure these are taken into account, maybe using a whitelist or so?
+    if molecule_iterator_args['contig'] is not None:
+        assert molecule_iterator_args.get('start') is None, 'regions are not implemented'
+        contig_whitelist = []
+    else:
+        contig_whitelist = [molecule_iterator_args['contig']]
+
     for prune in ['start','end','contig','progress_callback_function']:
         if prune in molecule_iterator_args:
             del molecule_iterator_args[prune]
