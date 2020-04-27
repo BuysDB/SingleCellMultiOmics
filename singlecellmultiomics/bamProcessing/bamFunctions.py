@@ -10,8 +10,28 @@ from collections import defaultdict, Counter
 from singlecellmultiomics.bamProcessing.pileup import pileup_truncated
 import numpy as np
 import pandas as pd
+from typing import Generator
 
 
+def get_contigs_with_reads(bam_path: str) -> Generator:
+    """
+    Get all contigs with reads mapped to them
+
+    Args:
+        bam_path(str): path to bam file
+
+    Yields:
+        contig(str)
+
+    """
+    for line in pysam.idxstats(bam_path).split('\n'):
+        try:
+            contig, contig_len, mapped_reads, unmapped_reads = line.strip().split()
+            mapped_reads, unmapped_reads = int(mapped_reads), int(unmapped_reads)
+            if mapped_reads>0 or unmapped_reads>0:
+                yield contig
+        except ValueError:
+            pass
 
 def merge_bams( bams, output_path ):
     """Merge bamfiles to output_path

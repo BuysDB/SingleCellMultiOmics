@@ -10,10 +10,19 @@ from singlecellmultiomics.bamProcessing.bamExtractSamples import extract_samples
 import os
 import sys
 from shutil import copyfile,rmtree
+from singlecellmultiomics.bamProcessing import get_contigs_with_reads
 
-"""
-These tests check if the Molecule module is working correctly
-"""
+class TestFunctions(unittest.TestCase):
+
+    def test_get_contigs_with_reads_1(self):
+        cwr = list(get_contigs_with_reads('./data/mini_nla_test.bam'))
+        self.assertEqual(len(cwr), 1)
+        self.assertIn('chr1', cwr)
+
+    def test_get_contigs_with_reads_2(self):
+        cwr = list(get_contigs_with_reads('./data/chic_test_region.bam'))
+        self.assertEqual(len(cwr), 1)
+        self.assertIn('8', cwr)
 
 class TestSorted(unittest.TestCase):
 
