@@ -44,8 +44,8 @@ class TestMolecule(unittest.TestCase):
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.Molecule,
-            fragmentClass=singlecellmultiomics.fragment.Fragment
+            molecule_class=singlecellmultiomics.molecule.Molecule,
+            fragment_class=singlecellmultiomics.fragment.Fragment
             )
             pass
 
@@ -53,8 +53,8 @@ class TestMolecule(unittest.TestCase):
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             for i,m in enumerate(singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.Molecule,
-            fragmentClass=singlecellmultiomics.fragment.Fragment,
+            molecule_class=singlecellmultiomics.molecule.Molecule,
+            fragment_class=singlecellmultiomics.fragment.Fragment,
             every_fragment_as_molecule=True
             )):
                 pass
@@ -74,8 +74,8 @@ class TestMolecule(unittest.TestCase):
             frag_count=0
             for i,m in enumerate(singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.Molecule,
-            fragmentClass=singlecellmultiomics.fragment.Fragment,
+            molecule_class=singlecellmultiomics.molecule.Molecule,
+            fragment_class=singlecellmultiomics.fragment.Fragment,
             every_fragment_as_molecule=True,
             iterator_class=pysamiterators.MatePairIteratorIncludingNonProper
             )):
@@ -103,8 +103,8 @@ class TestMolecule(unittest.TestCase):
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.Molecule,
-            fragmentClass=singlecellmultiomics.fragment.Fragment
+            molecule_class=singlecellmultiomics.molecule.Molecule,
+            fragment_class=singlecellmultiomics.fragment.Fragment
             )
             for molecule in it:
                 str(molecule)
@@ -151,14 +151,19 @@ class TestMolecule(unittest.TestCase):
             self.assertEqual(max( (len(m) for m in molecules) ),2)
             self.assertEqual(min( (len(m) for m in molecules) ),1)
 
+            # Test tags:
+            a = molecules[0]
+            a.write_tags()
+            self.assertEqual(a[0][0].get_tag('TF') , 2)
+
         os.remove('test.sam')
     def test_NLA_Molecule_repr_stability(self):
         """Test if the molecule representation function is stable"""
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
-            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+            molecule_class=singlecellmultiomics.molecule.NlaIIIMolecule,
+            fragment_class=singlecellmultiomics.fragment.NlaIIIFragment
             )
             for molecule in it:
                 str(molecule)
@@ -168,8 +173,8 @@ class TestMolecule(unittest.TestCase):
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
-            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+            molecule_class=singlecellmultiomics.molecule.NlaIIIMolecule,
+            fragment_class=singlecellmultiomics.fragment.NlaIIIFragment
             )
             for molecule in it:
                 self.assertEqual( molecule.get_a_reference_id(),0)
@@ -181,8 +186,8 @@ class TestMolecule(unittest.TestCase):
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
-            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+            molecule_class=singlecellmultiomics.molecule.NlaIIIMolecule,
+            fragment_class=singlecellmultiomics.fragment.NlaIIIFragment
             )
             pass
 
@@ -191,8 +196,8 @@ class TestMolecule(unittest.TestCase):
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.Molecule,
-            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+            molecule_class=singlecellmultiomics.molecule.Molecule,
+            fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
             fragment_class_args={
                 'R1_primer_length':0,
                 'R2_primer_length':6,
@@ -210,13 +215,13 @@ class TestMolecule(unittest.TestCase):
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             for molecule in singlecellmultiomics.molecule.MoleculeIterator(
                 alignments=f,
-                moleculeClass=singlecellmultiomics.molecule.Molecule,
+                molecule_class=singlecellmultiomics.molecule.Molecule,
                 fragment_class_args={
                     'R1_primer_length':4,
                     'R2_primer_length':6,
                 },
 
-                fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment):
+                fragment_class=singlecellmultiomics.fragment.NlaIIIFragment):
 
                 # This is a dovetailed molecule, both R1 and R2 overshoot into the adapter
                 if molecule.sample=='APKS2-P18-2-1_66' and molecule.umi=='CGC':
@@ -241,13 +246,13 @@ class TestMolecule(unittest.TestCase):
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.Molecule,
+            molecule_class=singlecellmultiomics.molecule.Molecule,
             fragment_class_args={
                 'R1_primer_length':0,
                 'R2_primer_length':0,
             },
 
-            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment)
+            fragment_class=singlecellmultiomics.fragment.NlaIIIFragment)
             for molecule in iter(it):
                 #print(molecule.get_sample())
                 if  molecule.get_sample()=='APKS3-P19-1-1_91':
@@ -260,8 +265,8 @@ class TestMolecule(unittest.TestCase):
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
             it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.Molecule,
-            fragmentClass=singlecellmultiomics.fragment.Fragment,
+            molecule_class=singlecellmultiomics.molecule.Molecule,
+            fragment_class=singlecellmultiomics.fragment.Fragment,
             fragment_class_args={
                 'R1_primer_length':0,
                 'R2_primer_length':0,
@@ -280,8 +285,8 @@ class TestMolecule(unittest.TestCase):
         total_frag_count = 0
         for molecule in singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
-            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+            molecule_class=singlecellmultiomics.molecule.NlaIIIMolecule,
+            fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
             fragment_class_args={'umi_hamming_distance':0},
             pooling_method=0,
             yield_invalid=True
@@ -303,8 +308,8 @@ class TestMolecule(unittest.TestCase):
             f= pysam.AlignmentFile('./data/mini_nla_test.bam')
             it = singlecellmultiomics.molecule.MoleculeIterator(
                 alignments=f,
-                moleculeClass=singlecellmultiomics.molecule.Molecule,
-                fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                molecule_class=singlecellmultiomics.molecule.Molecule,
+                fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
                 fragment_class_args={'umi_hamming_distance':hd},
                 pooling_method=pooling_method
             )
@@ -337,8 +342,8 @@ class TestMolecule(unittest.TestCase):
             with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
                 for molecule in singlecellmultiomics.molecule.MoleculeIterator(
                     alignments=f,
-                    moleculeClass=singlecellmultiomics.molecule.Molecule,
-                    fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                    molecule_class=singlecellmultiomics.molecule.Molecule,
+                    fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
                     molecule_class_args={'max_associated_fragments':i},
                     fragment_class_args={'umi_hamming_distance':1}
 
@@ -352,8 +357,8 @@ class TestMolecule(unittest.TestCase):
         f= pysam.AlignmentFile('./data/mini_nla_test.bam')
         it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.Molecule,
-            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+            molecule_class=singlecellmultiomics.molecule.Molecule,
+            fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
             fragment_class_args={'umi_hamming_distance':1}
 
         )
@@ -389,8 +394,8 @@ class TestMolecule(unittest.TestCase):
         f= pysam.AlignmentFile('./data/mini_nla_test.bam')
         it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.Molecule,
-            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+            molecule_class=singlecellmultiomics.molecule.Molecule,
+            fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
             fragment_class_args={'umi_hamming_distance':1}
 
         )
@@ -429,9 +434,9 @@ class TestMolecule(unittest.TestCase):
         f= pysam.AlignmentFile('./data/mini_nla_test.bam')
         it = singlecellmultiomics.molecule.MoleculeIterator(
             alignments=f,
-            moleculeClass=singlecellmultiomics.molecule.AnnotatedNLAIIIMolecule,
+            molecule_class=singlecellmultiomics.molecule.AnnotatedNLAIIIMolecule,
             molecule_class_args={'features':features},
-            fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+            fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
             fragment_class_args={'umi_hamming_distance':1}
         )
 
@@ -447,8 +452,8 @@ class TestMolecule(unittest.TestCase):
         with pysam.AlignmentFile('./data/mini_nla_test.bam') as f, pysam.AlignmentFile('./data/consensus_write_test.bam','wb',header=f.header) as target_bam:
             molecule_iterator =  singlecellmultiomics.molecule.MoleculeIterator(
                 alignments=f,
-                moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
-                fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+                molecule_class=singlecellmultiomics.molecule.NlaIIIMolecule,
+                fragment_class=singlecellmultiomics.fragment.NlaIIIFragment
             )
 
             classifier = singlecellmultiomics.molecule.train_consensus_model(
@@ -459,8 +464,8 @@ class TestMolecule(unittest.TestCase):
 
             molecule_iterator =  singlecellmultiomics.molecule.MoleculeIterator(
                 alignments=f,
-                moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
-                fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment
+                molecule_class=singlecellmultiomics.molecule.NlaIIIMolecule,
+                fragment_class=singlecellmultiomics.fragment.NlaIIIFragment
             )
 
             for i,molecule in enumerate(molecule_iterator):

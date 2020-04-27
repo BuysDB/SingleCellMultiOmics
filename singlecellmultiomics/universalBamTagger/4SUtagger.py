@@ -49,8 +49,8 @@ if __name__ == '__main__':
                 fragment_class_args=fragment_class_args,
                 molecule_class_args={
                     'reference': reference},
-                moleculeClass=FourThiouridine,
-                fragmentClass=FeatureCountsSingleEndFragment)
+                molecule_class=FourThiouridine,
+                fragment_class=FeatureCountsSingleEndFragment)
             for i, molecule in enumerate(test_iter):
                 molecule.write_tags()
                 molecule.set_meta('mi', i)

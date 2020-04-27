@@ -200,6 +200,7 @@ class Molecule():
         self.cache_size = cache_size
         self.strand = None
         self.umi = None
+        self.overflow_fragments = 0
         self.umi_hamming_distance = None
         # when set, when comparing to a fragment the fragment to be added has
         # to match this hash
@@ -1036,13 +1037,18 @@ class Molecule():
             - af : amount of associated fragments
             - rt : rt_reaction_index
             - rd : rt_duplicate_index
+            - TR : Total RT reactions
             - ap : phasing information (if allele_resolver is set)
+            - TF : total fragments
         """
         self.is_valid(set_rejection_reasons=True)
         if self.umi is not None:
             self.set_meta('mI', self.umi)
         if self.allele is not None:
             self.set_meta('DA', str(self.allele))
+
+        # Set total amount of associated fragments
+        self.set_meta('TF',len(self.fragments) + self.overflow_fragments )
 
         # associatedFragmentCount :
         self.set_meta('af', len(self))
@@ -1055,11 +1061,13 @@ class Molecule():
                         read.is_duplicate = True
 
         # Write RT reaction tags (rt: rt reaction index, rd rt duplicate index)
+        rt_reaction_index = None
         for rt_reaction_index, (_, frags) in enumerate(
                 self.get_rt_reactions().items()):
             for rt_duplicate_index, frag in enumerate(frags):
                 frag.set_meta('rt', rt_reaction_index)
                 frag.set_meta('rd', rt_duplicate_index)
+        self.set_meta('TR', 0 if (rt_reaction_index is None) else rt_reaction_index+1 )
 
         if self.allele_resolver is not None:
             self.write_allele_phasing_information_tag()
@@ -1382,6 +1390,7 @@ class Molecule():
 
         # Do not process the fragment when the max_associated_fragments threshold is exceeded
         if self.max_associated_fragments is not None and len(self.fragments)>=(self.max_associated_fragments):
+            self.overflow_fragments += 1
             raise OverflowError()
 
         self.match_hash = fragment.match_hash

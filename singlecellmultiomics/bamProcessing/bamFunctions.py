@@ -2,15 +2,61 @@ import os
 import pysam
 import time
 import contextlib
-from shutil import which
-from singlecellmultiomics.utils import BlockZip
+from shutil import which, move
+from singlecellmultiomics.utils import BlockZip, Prefetcher
 import uuid
 import os
 from collections import defaultdict, Counter
 from singlecellmultiomics.bamProcessing.pileup import pileup_truncated
 import numpy as np
 import pandas as pd
+from typing import Generator
 
+
+def get_contigs_with_reads(bam_path: str) -> Generator:
+    """
+    Get all contigs with reads mapped to them
+
+    Args:
+        bam_path(str): path to bam file
+
+    Yields:
+        contig(str)
+
+    """
+    for line in pysam.idxstats(bam_path).split('\n'):
+        try:
+            contig, contig_len, mapped_reads, unmapped_reads = line.strip().split()
+            mapped_reads, unmapped_reads = int(mapped_reads), int(unmapped_reads)
+            if mapped_reads>0 or unmapped_reads>0:
+                yield contig
+        except ValueError:
+            pass
+
+def merge_bams( bams, output_path ):
+    """Merge bamfiles to output_path
+
+    When a single bam file is supplied, the bam file is moved to  output_path
+    All input bam files are removed
+
+    Args:
+        bams : list or tuple containing paths to bam files to merge
+        output_path (str): target path
+
+    Returns:
+        output_path (str)
+
+    """
+    if len(bams)==1:
+        move(bams[0], output_path)
+        move(bams[0]+'.bai', output_path+'.bai')
+    else:
+        pysam.merge(output_path, *bams, '-@ 4 -f -l 1 -c')
+        pysam.index(output_path, '-@ 4')
+        for o in bams:
+            os.remove(o)
+            os.remove(o+'.bai')
+    return output_path
 
 def verify_and_fix_bam(bam_path):
     """
@@ -491,15 +537,33 @@ def sort_and_index(
         os.remove(unsorted_path)
 
 
-class MapabilityReader():
+class MapabilityReader(Prefetcher):
 
-    def __init__(self, mapability_safe_file_path):
+    def __init__(self, mapability_safe_file_path, read_all=False, dont_open=True):
+        self.args = locals().copy()
+        del self.args['self']
         self.mapability_safe_file_path = mapability_safe_file_path
-        self.handle = BlockZip(mapability_safe_file_path, 'r')
+        if not dont_open:
+            self.handle = BlockZip(mapability_safe_file_path, 'r')
+
+
+    def instance(self, arg_update):
+        if 'self' in self.args:
+            del self.args['self']
+        clone = MapabilityReader(**self.args, dont_open=False)
+        return clone
 
         # Todo: exit statements
+    def prefetch(self, contig, start, end):
+        clone = self.instance()
+        clone.handle.read_contig_to_cache( contig, region_start=start, region_end=end)
+        return clone
 
     def site_is_mapable(self, contig, ds, strand):
+
+        if self.handle is None:
+            self.handle = BlockZip(self.mapability_safe_file_path, 'r')
+
         """ Obtain if a restriction site is mapable or not
         Args:
             contig (str) : contig of site to look up
@@ -700,6 +764,53 @@ def random_sample_bam(bam,n,**sample_location_args):
     return pd.DataFrame(r)
 
 
+def replace_bam_header(origin_bam_path, header, target_bam_path=None, header_write_mode='auto'):
+
+
+    if target_bam_path is None:
+        target_bam_path = origin_bam_path
+
+    # Write the re-headered bam file to this path
+    complete_temp_path = origin_bam_path.replace('.bam', '') + '.rehead.bam'
+
+    # When header_write_mode is auto, when samtools is available, samtools
+    # will be used, otherwise pysam
+    if header_write_mode == 'auto':
+        if which('samtools') is None:
+            header_write_mode = 'pysam'
+        else:
+            header_write_mode = 'samtools'
+
+    if header_write_mode == 'pysam':
+
+        with pysam.AlignmentFile(complete_temp_path, "wb", header=header) as out, \
+             pysam.AlignmentFile(origin_bam_path) as origin:
+            for read in origin:
+                out.write(read)
+
+        os.rename(complete_temp_path, target_bam_path)
+
+    elif header_write_mode == 'samtools':
+
+        # Write the new header to this sam file:
+        headerSamFilePath = origin_bam_path.replace(
+            '.bam', '') + '.header.sam'
+
+        # Write the sam file with the complete header:
+        with pysam.AlignmentFile(headerSamFilePath, 'w', header=header):
+            pass
+
+        # Concatenate and remove origin
+        rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {origin_bam_path}; }} | samtools view -b > {complete_temp_path} ;
+                mv {complete_temp_path } {target_bam_path};rm {headerSamFilePath};
+                """
+        os.system(rehead_cmd)
+    else:
+        raise ValueError(
+            'header_write_mode should be either, auto, pysam or samtools')
+
+
+
 def add_readgroups_to_header(
         origin_bam_path,
         readgroups_in,
@@ -725,9 +836,6 @@ def add_readgroups_to_header(
 
     """
 
-    if target_bam_path is None:
-        target_bam_path = origin_bam_path
-
     # Create a read group dictionary
     if isinstance(readgroups_in, set):
         readGroupsDict = {}
@@ -749,48 +857,11 @@ def add_readgroups_to_header(
     else:
         raise ValueError("supply a set or dict for readgroups_in")
 
-    # Write the re-headered bam file to this path
-    complete_temp_path = origin_bam_path.replace('.bam', '') + '.rehead.bam'
 
-    # When header_write_mode is auto, when samtools is available, samtools
-    # will be used, otherwise pysam
-    if header_write_mode == 'auto':
-        if which('samtools') is None:
-            header_write_mode = 'pysam'
-        else:
-            header_write_mode = 'samtools'
-
-    if header_write_mode == 'pysam':
-        with pysam.AlignmentFile(origin_bam_path, "rb") as origin:
-            header = origin.header.copy()
-            hCopy = header.to_dict()
-            hCopy['RG'] = list(readGroupsDict.values())
-            with pysam.AlignmentFile(complete_temp_path, "wb", header=hCopy) as out:
-                for read in origin:
-                    out.write(read)
-
-        os.rename(complete_temp_path, target_bam_path)
-
-    elif header_write_mode == 'samtools':
-        with pysam.AlignmentFile(origin_bam_path, "rb") as origin:
-            header = origin.header.copy()
-
-            # Write the new header to this sam file:
-            headerSamFilePath = origin_bam_path.replace(
-                '.bam', '') + '.header.sam'
-
-            hCopy = header.to_dict()
-            hCopy['RG'] = list(readGroupsDict.values())
-
-            # Write the sam file with the complete header:
-            with pysam.AlignmentFile(headerSamFilePath, 'w', header=hCopy):
-                pass
-
-        # Concatenate and remove origin
-        rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {origin_bam_path}; }} | samtools view -b > {complete_temp_path} ;
-                mv {complete_temp_path } {target_bam_path};rm {headerSamFilePath};
-                """
-        os.system(rehead_cmd)
-    else:
-        raise ValueError(
-            'header_write_mode should be either, auto, pysam or samtools')
+    with pysam.AlignmentFile(origin_bam_path, "rb") as origin:
+        header = origin.header.copy()
+        hCopy = header.to_dict()
+        hCopy['RG'] = list(readGroupsDict.values())
+        replace_bam_header(origin_bam_path, header,
+                            target_bam_path=target_bam_path,
+                            header_write_mode=header_write_mode)

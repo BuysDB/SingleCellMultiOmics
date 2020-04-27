@@ -128,13 +128,13 @@ def count_transcripts(cargs):
 
     # What is used for assignment of molecules?
     if args.method == 'nla':
-        moleculeClass = singlecellmultiomics.molecule.AnnotatedNLAIIIMolecule
-        fragmentClass = singlecellmultiomics.fragment.NLAIIIFragment
+        molecule_class = singlecellmultiomics.molecule.AnnotatedNLAIIIMolecule
+        fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
         pooling_method = 1  # all data from the same cell can be dealt with separately
         stranded = None  # data is not stranded
     elif args.method == 'vasa' or args.method == 'cs':
-        moleculeClass = singlecellmultiomics.molecule.VASA
-        fragmentClass = singlecellmultiomics.fragment.SingleEndTranscript
+        molecule_class = singlecellmultiomics.molecule.VASA
+        fragment_class = singlecellmultiomics.fragment.SingleEndTranscript
         pooling_method = 1
         stranded = 1  # data is stranded, mapping to other strand
     else:
@@ -171,7 +171,7 @@ def count_transcripts(cargs):
             molecule_iterator = MoleculeIterator(
                 alignments=alignments,
                 check_eject_every=5000,
-                moleculeClass=moleculeClass,
+                molecule_class=molecule_class,
                 molecule_class_args={
                     'features': features,
                     'stranded': stranded,
@@ -180,7 +180,7 @@ def count_transcripts(cargs):
                     'allele_resolver': allele_resolver
                 },
 
-                fragmentClass=fragmentClass,
+                fragment_class=fragment_class,
                 fragment_class_args={
                     'umi_hamming_distance': args.umi_hamming_distance,
                     'R1_primer_length': 4,

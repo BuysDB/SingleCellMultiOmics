@@ -116,8 +116,8 @@ def obtain_variant_statistics(
                                                                    molecule_class_args={
                                                                        'reference': reference
                                                                    },
-                                                                   moleculeClass=singlecellmultiomics.molecule.NlaIIIMolecule,
-                                                                   fragmentClass=singlecellmultiomics.fragment.NLAIIIFragment,
+                                                                   molecule_class=singlecellmultiomics.molecule.NlaIIIMolecule,
+                                                                   fragment_class=singlecellmultiomics.fragment.NlaIIIFragment,
                                                                    start=ssnv_position - WINDOW_RADIUS,
                                                                    end=ssnv_position + WINDOW_RADIUS,
                                                                    contig=chromosome

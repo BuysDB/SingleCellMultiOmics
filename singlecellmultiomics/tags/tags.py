@@ -139,7 +139,7 @@ tags = [
     SamTag('rS', 'randomPrimerStart'),
     SamTag('rP', 'randomPrimerSequence'),
     SamTag('TR', 'totalRTreactions'),
-
+    SamTag('TF', 'totalAssociatedFragments'),
 
     SamTag('AI', 'AssignedIntrons'),
     SamTag('AE', 'AssingedExons'),

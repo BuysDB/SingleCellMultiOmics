@@ -6,18 +6,37 @@ import os
 
 class BlockZip():
 
-    def __init__(self, path, mode='r'):
+
+    def verify(self):
+
+        prev_contig = None
+        prev_pos = None
+        for line in self.bgzf_handle:
+            if len(line) == 0:
+                continue
+            line_contig, line_pos, line_strand, rest = self.read_file_line(line)
+
+            if prev_pos is not None and line_pos<prev_pos and line_contig==prev_contig:
+                raise ValueError('Corrupted mapfile')
+
+            prev_contig = line_contig
+            prev_pos = line_pos
+
+    def __init__(self, path, mode='r', read_all=False):
         """
         Store tabular information tied to genomic locations in a bgzipped file
         Args:
             path (str) : path to file
             mode (str) : mode, r: read, w: write
+
+            read_all(bool) : when enabled all data is read from the file and the handles are closed
         """
         self.path = path
         self.index_path = f'{path}.idx'
         self.prev_contig = None
         self.mode = mode
         self.index = {}
+        self.cache = {}
 
         if self.mode == 'w':
             self.bgzf_handle = bgzf.BgzfWriter(self.path, 'w')
@@ -34,9 +53,28 @@ class BlockZip():
             for line in self.index_handle:
                 contig, start = line.strip().split()
                 self.index[contig] = int(start)
+
+            if read_all:
+
+                for line in self.bgzf_handle:
+                    if len(line) == 0:
+                        continue
+                    line_contig, line_pos, line_strand, rest = self.read_file_line(line)
+                    #print((line_pos, line_strand,rest))
+                    if not line_contig in self.cache:
+                        self.cache[line_contig] = {}
+                    self.cache[line_contig][(line_pos, line_strand)] = rest
+                    cpos = line_pos
+                self.bgzf_handle.close()
+                self.bgzf_handle=None
+                self.index_handle.close()
+                self.index_handle=None
+
         else:
             raise ValueError('Mode can be r or w')
-        self.cache = {}
+
+
+
 
     def __enter__(self):
         return self
@@ -91,7 +129,9 @@ class BlockZip():
         if contig in self.cache:
             return self.cache[contig].get((position, strand), None)
 
-    def read_contig_to_cache(self, contig):
+
+
+    def read_contig_to_cache(self, contig, region_start=None, region_end=None):
         if contig not in self.index:
             return
 
@@ -106,7 +146,13 @@ class BlockZip():
                     break
                 line_contig, line_pos, line_strand, rest = self.read_file_line(
                     line)
+                if line_contig != contig:
+                    break
                 #print((line_pos, line_strand,rest))
+                if region_start is not None and line_pos<region_start:
+                    continue
+                if region_end is not None and line_pos>region_end:
+                    break
                 self.cache[contig][(line_pos, line_strand)] = rest
 
             except Exception as e:

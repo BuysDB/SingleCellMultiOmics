@@ -2,7 +2,7 @@ from singlecellmultiomics.fragment import Fragment
 from singlecellmultiomics.utils.sequtils import hamming_distance
 
 
-class NLAIIIFragment(Fragment):
+class NlaIIIFragment(Fragment):
     def __init__(self,
                  reads,
                  R1_primer_length=4,

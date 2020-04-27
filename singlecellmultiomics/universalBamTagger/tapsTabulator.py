@@ -94,21 +94,21 @@ if __name__ == '__main__':
         'min_max_mapping_quality': args.minmq
     }
     if args.method == 'nla':
-        moleculeClass = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
-        fragmentClass = singlecellmultiomics.fragment.NLAIIIFragment
+        molecule_class = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
+        fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
         molecule_class_args.update({'site_has_to_be_mapped': True})
     elif args.method == 'chic':
-        moleculeClass = singlecellmultiomics.molecule.TAPSCHICMolecule
-        fragmentClass = singlecellmultiomics.fragment.CHICFragment
+        molecule_class = singlecellmultiomics.molecule.TAPSCHICMolecule
+        fragment_class = singlecellmultiomics.fragment.CHICFragment
     else:
         raise ValueError("Supply 'nla' or 'chic' for -method")
 
     try:
         for i, molecule in enumerate(singlecellmultiomics.molecule.MoleculeIterator(
             alignments=alignments,
-            moleculeClass=moleculeClass,
+            molecule_class=molecule_class,
             yield_invalid=(output is not None),
-            fragmentClass=fragmentClass,
+            fragment_class=fragment_class,
             fragment_class_args={'umi_hamming_distance': 1},
 
                 molecule_class_args=molecule_class_args,
