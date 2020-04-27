@@ -634,8 +634,9 @@ def run_multiome_tagging(args):
         })
 
     bp_per_job = 10_000_000
-    bp_per_segment = 10_000_000
+    bp_per_segment = 999_999_999
     fragment_size = 500
+    max_time_per_segment = None
 
     ### Method specific configuration ###
     if args.method == 'qflag':
@@ -687,7 +688,7 @@ def run_multiome_tagging(args):
         molecule_class = singlecellmultiomics.molecule.Molecule
         fragment_class = singlecellmultiomics.fragment.FeatureCountsFullLengthFragment
 
-    elif args.method == 'episeq' :
+    elif args.method == 'episeq':
         molecule_class = singlecellmultiomics.molecule.Molecule
         fragment_class = singlecellmultiomics.fragment.FeatureCountsSingleEndFragment
 
@@ -1010,10 +1011,11 @@ def run_multiome_tagging(args):
                                       molecule_iterator_args=molecule_iterator_args,ignore_bam_issues=args.ignore_bam_issues,
                                       head=args.head, no_source_reads=args.no_source_reads,
                                       fragment_size=fragment_size, blacklist_path=args.blacklist,bp_per_job=bp_per_job,
-                                      bp_per_segment=bp_per_segment, temp_folder='/tmp/scmo', max_time_per_segment=60*5)
+                                      bp_per_segment=bp_per_segment, temp_folder='/tmp/scmo', max_time_per_segment=max_time_per_segment)
     else:
         # Alignments are passed as pysam handle:
-
+        if args.blacklist is not None:
+            raise NotImplementedError("Blacklist can only be used with --multiprocess")
         tag_multiome_single_thread(
             args.bamin,
             args.o,

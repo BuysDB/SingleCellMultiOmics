@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import argparse
 import pysam
-import collections
 import numpy as np
 import os
 import pickle
@@ -10,7 +9,6 @@ import gzip
 import pandas as pd
 import multiprocessing
 from singlecellmultiomics.bamProcessing import get_contig_sizes, get_contig_size
-from singlecellmultiomics.utils import is_main_chromosome
 from statsmodels.nonparametric.smoothers_lowess import lowess
 from datetime import datetime
 from itertools import chain
