@@ -12,4 +12,3 @@ class FastaNoHandle(FastaFile):
     def __init__(self, path: str):
         handle = FastaFile(path)
         FastaFile.__init__(self, handle)
-
