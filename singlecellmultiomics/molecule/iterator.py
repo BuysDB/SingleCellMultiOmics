@@ -9,6 +9,15 @@ import collections
 import pysam
 
 
+class ReadIterator(pysamiterators.iterators.MatePairIterator):
+    def __next__(self):
+
+        try:
+            rec = next(self.iterator)
+            return tuple((rec, None))
+        except StopIteration:
+            raise
+
 class MoleculeIterator():
     """Iterate over molecules in pysam.AlignmentFile or reads from a generator or list
 
@@ -406,3 +415,5 @@ class MoleculeIterator():
                     m.__finalise__()
                     yield m
         self._clear_cache()
+
+
