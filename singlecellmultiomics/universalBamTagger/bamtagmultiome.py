@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import pysam
-from singlecellmultiomics.molecule import MoleculeIterator
+from singlecellmultiomics.molecule import MoleculeIterator, ReadIterator
 import singlecellmultiomics
 import singlecellmultiomics.molecule
 from singlecellmultiomics.molecule.consensus import calculate_consensus
@@ -14,7 +14,7 @@ from singlecellmultiomics.utils.submission import submit_job
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
-from pysamiterators import MatePairIteratorIncludingNonProper
+from pysamiterators import MatePairIteratorIncludingNonProper, MatePairIterator
 from singlecellmultiomics.universalBamTagger.tagging import generate_tasks
 from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs
 from singlecellmultiomics.utils.binning import bp_chunked
@@ -297,7 +297,6 @@ def tag_multiome_multi_processing(
                            iteration_args=iteration_args,
                            temp_folder=temp_folder,
                            max_time_per_segment=max_time_per_segment)
-
 
     # Create header bam:
     temp_header_bam_path = f'{uuid.uuid4()}_header.bam'
@@ -634,16 +633,22 @@ def run_multiome_tagging(args):
         })
 
     bp_per_job = 10_000_000
-    bp_per_segment = 999_999_999
+    bp_per_segment = 999_999_999 #@todo make this None or so
     fragment_size = 500
     max_time_per_segment = None
 
     ### Method specific configuration ###
     if args.method == 'qflag':
+
         molecule_class = singlecellmultiomics.molecule.Molecule
-        fragment_class = singlecellmultiomics.fragment.Fragment
+        fragment_class = singlecellmultiomics.fragment.FragmentStartPosition
+
         # Write all reads
         yield_invalid = True
+
+        bp_per_job = 3_000_000
+        bp_per_segment = 3_000_000
+        fragment_size = 0
 
     elif args.method == 'chic':
         molecule_class = singlecellmultiomics.molecule.CHICMolecule
@@ -834,6 +839,8 @@ def run_multiome_tagging(args):
         'progress_callback_function':progress_callback_function
     }
 
+
+
     if args.resolve_unproperly_paired_reads:
         molecule_iterator_args['iterator_class'] = MatePairIteratorIncludingNonProper
 
@@ -851,6 +858,11 @@ def run_multiome_tagging(args):
         molecule_iterator = Misc_contig_molecule_generator
     else:
         molecule_iterator = MoleculeIterator
+
+    if args.method == 'qflag':
+        molecule_iterator_args['every_fragment_as_molecule'] = True
+        molecule_iterator_args['iterator_class'] = ReadIterator
+
 
     #####
     consensus_model_path = None

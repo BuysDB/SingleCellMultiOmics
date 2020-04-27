@@ -1,5 +1,5 @@
 from .molecule import Molecule, might_be_variant, molecule_to_random_primer_dict
-from .iterator import MoleculeIterator
+from .iterator import MoleculeIterator, ReadIterator
 from .taps import *
 from .chic import *
 from .featureannotatedmolecule import *

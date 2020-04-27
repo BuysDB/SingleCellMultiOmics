@@ -965,6 +965,22 @@ class FeatureCountsFullLengthFragment(FeatureCountsSingleEndFragment):
         return self.umi_eq(other)
 
 
+class FragmentWithoutPosition(Fragment):
+    """ Fragment without a specific location on a contig"""
+    def get_site_location(self):
+        if self.has_valid_span():
+            return self.span[0], 0
+        else:
+            return '*', 0
+
+class FragmentStartPosition(Fragment):
+    """ Fragment without a specific location on a contig"""
+    def get_site_location(self):
+        for read in self:
+            if read is not None and not read.is_unmapped:
+                return read.reference_name, read.reference_start
+        return None
+
 
 
 class FragmentWithoutUMI(Fragment):
