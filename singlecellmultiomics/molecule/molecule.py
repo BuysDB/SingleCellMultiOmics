@@ -271,6 +271,38 @@ class Molecule():
         else:
             self.set_meta('mp', 'unknown')
 
+    def calculate_consensus(self, consensus_model, molecular_identifier, out, **model_kwargs):
+        """
+        Create consensus read for molecule
+
+        Args:
+
+            consensus_model
+
+            molecular_identifier (str) : identier for this molecule, will be suffixed to the reference_id
+
+            out(pysam.AlingmentFile) : target bam file
+
+            **model_kwargs : arguments passed to the consensus model
+
+        """
+        try:
+            consensus_reads = self.deduplicate_to_single_CIGAR_spaced(
+                out,
+                f'c_{self.get_a_reference_id()}_{molecular_identifier}',
+                consensus_model,
+                NUC_RADIUS=model_kwargs['consensus_k_rad']
+            )
+            for consensus_read in consensus_reads:
+                consensus_read.set_tag('RG', self[0].get_read_group())
+                consensus_read.set_tag('mi', molecular_identifier)
+                out.write(consensus_read)
+
+        except Exception as e:
+
+            self.set_rejection_reason('CONSENSUS_FAILED', set_qcfail=True)
+            self.write_pysam(out)
+
     def get_a_reference_id(self):
         """
         Obtain a reference id for a random associated mapped read
@@ -475,7 +507,7 @@ class Molecule():
             self,
             target_bam,
             read_name,
-            classifier,
+            classifier=None,
             max_N_span=300,
             reference=None,
             **feature_matrix_args
@@ -496,21 +528,24 @@ class Molecule():
         for read in self.iter_reads():
             read.is_duplicate = True
 
-        features, reference_bases, CIGAR, alignment_start, alignment_end = self.get_base_calling_feature_matrix_spaced(
-            True, reference=reference, **feature_matrix_args)
+        if classifier is not None:
+            features, reference_bases, CIGAR, alignment_start, alignment_end = self.get_base_calling_feature_matrix_spaced(
+                True, reference=reference, **feature_matrix_args)
 
-        base_calling_probs = classifier.predict_proba(features)
-        predicted_sequence = [ 'ACGT'[i] for i in np.argmax( base_calling_probs ,1) ]
-        reference_sequence = ''.join(
-            [base for chrom, pos, base in reference_bases])
-        #predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
-        predicted_sequence = ''.join(predicted_sequence)
+            base_calling_probs = classifier.predict_proba(features)
+            predicted_sequence = [ 'ACGT'[i] for i in np.argmax( base_calling_probs ,1) ]
 
-        phred_scores = np.rint(
-            -10 * np.log10(np.clip(1 -base_calling_probs.max(1),
-                                   0.000000001,
-                                   0.999999999)
-                           )).astype('B')
+
+            reference_sequence = ''.join(
+                [base for chrom, pos, base in reference_bases])
+            #predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
+            predicted_sequence = ''.join(predicted_sequence)
+
+            phred_scores = np.rint(
+                -10 * np.log10(np.clip(1 - base_calling_probs.max(1),
+                                       0.000000001,
+                                       0.999999999)
+                               )).astype('B')
 
         reads = []
 
@@ -599,13 +634,23 @@ class Molecule():
         return predicted_sequence,phred_scores
 
 
+    def deduplicate_majority(self, target_bam, read_name, max_N_span=300 ):
+
+        # Convert (contig, position) -> (base_call) into:
+        # (contig, position) -> (base_call, confidence)
+        base_call_dict ={
+            (contig, position): (base, 0.95) for (contig, position), base in self.get_consensus().items()
+        }
+
+        return self.deduplicate_to_single_CIGAR_spaced_from_dict(target_bam, read_name, base_call_dict, max_N_span=300)
+
+
     def deduplicate_to_single_CIGAR_spaced_from_dict(
             self,
             target_bam,
             read_name,
             base_call_dict, #(contig, position) -> (base_call, confidence)
             max_N_span=300,
-            reference=None,
             ):
         """
         Deduplicate all associated reads to a single pseudoread, when the span is larger than max_N_span
@@ -659,7 +704,7 @@ class Molecule():
                     phred_scores=phred_scores,
                     cigarstring=''.join(partial_CIGAR),
                     mdstring=create_MD_tag(
-                                reference.fetch(self.chromosome,reference_start,reference_end),
+                                self.reference.fetch(self.chromosome,reference_start,reference_end),
                                 predicted_sequence
                     ),
                     start=reference_start,
