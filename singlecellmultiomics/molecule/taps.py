@@ -162,7 +162,7 @@ class TAPSMolecule(Molecule):
             return False
 
         try:
-            consensus = self.get_consensus()
+            consensus = self.get_consensus(allow_unsafe=True)
         except ValueError:
             if set_rejection_reasons:
                 self.set_rejection_reason('no_consensus')
@@ -197,7 +197,7 @@ class TAPSMolecule(Molecule):
 
         # Obtain consensus:
         try:
-            consensus = self.get_consensus(classifier=classifier)
+            consensus = self.get_consensus(classifier=classifier, allow_unsafe=True)
         except ValueError:
             raise ValueError(
                 'Cannot obtain a safe consensus for this molecule')
@@ -243,6 +243,10 @@ class TAPSNlaIIIMolecule(NlaIIIMolecule, TAPSMolecule):
         NlaIIIMolecule.write_tags(self)
         TAPSMolecule.write_tags(self)
 
+    def __finalise__(self):
+        NlaIIIMolecule.__finalise__(self)
+        TAPSMolecule.__finalise__(self)
+
     def is_valid(self, set_rejection_reasons=False):
         return NlaIIIMolecule.is_valid(
             self, set_rejection_reasons=set_rejection_reasons) and TAPSMolecule.is_valid(
@@ -283,6 +287,10 @@ class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
         return CHICMolecule.is_valid(
             self, set_rejection_reasons=set_rejection_reasons) and TAPSMolecule.is_valid(
             self, set_rejection_reasons=set_rejection_reasons)
+
+    def __finalise__(self):
+        CHICMolecule.__finalise__(self)
+        TAPSMolecule.__finalise__(self)
 
 
 class AnnotatedTAPSCHICMolecule(AnnotatedCHICMolecule, TAPSMolecule):
@@ -381,5 +389,5 @@ class TAPSPTaggedMolecule(AnnotatedTAPSNlaIIIMolecule):
         self.set_meta('pE',','.join(conversion_locations))
         for context,obs in context_obs.most_common():
             self.set_meta(context,obs)
-        
+
         strip_array_tags(self)
