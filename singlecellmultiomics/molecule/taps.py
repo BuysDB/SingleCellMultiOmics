@@ -162,7 +162,7 @@ class TAPSMolecule(Molecule):
             return False
 
         try:
-            consensus = self.get_consensus()
+            consensus = self.get_consensus(allow_unsafe=True)
         except ValueError:
             if set_rejection_reasons:
                 self.set_rejection_reason('no_consensus')
@@ -197,7 +197,7 @@ class TAPSMolecule(Molecule):
 
         # Obtain consensus:
         try:
-            consensus = self.get_consensus(classifier=classifier)
+            consensus = self.get_consensus(classifier=classifier, allow_unsafe=True)
         except ValueError:
             raise ValueError(
                 'Cannot obtain a safe consensus for this molecule')
@@ -381,5 +381,5 @@ class TAPSPTaggedMolecule(AnnotatedTAPSNlaIIIMolecule):
         self.set_meta('pE',','.join(conversion_locations))
         for context,obs in context_obs.most_common():
             self.set_meta(context,obs)
-        
+
         strip_array_tags(self)
