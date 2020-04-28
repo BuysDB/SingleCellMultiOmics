@@ -388,6 +388,9 @@ def sorted_bam_file(
 
     if header is not None:
         pass
+    elif type(origin_bam) is str:
+        with pysam.AlignmentFile(origin_bam) as ain:
+            header = ain.header.copy()
     elif origin_bam is not None:
         header = origin_bam.header.copy()
     else:

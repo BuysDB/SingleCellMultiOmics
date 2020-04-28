@@ -135,7 +135,7 @@ class FeatureAnnotatedMolecule(Molecule):
 
     def write_tags(self):
         Molecule.write_tags(self)
-
+        
         if len(self.exons) > 0:
             self.set_meta('EX', ','.join(sorted([str(x) for x in self.exons])))
         else:
@@ -160,9 +160,11 @@ class FeatureAnnotatedMolecule(Molecule):
         elif len(self.genes) > 0:
             # Maps to gene but not junction
             self.set_meta('IT', 0.5)
+            self.set_meta('JN',None)
         else:
             # Doesn't map to gene
             self.set_meta('IT', 0)
+            self.set_meta('JN', None)
 
         if self.is_spliced is True:
             self.set_meta('SP', True)
@@ -172,7 +174,7 @@ class FeatureAnnotatedMolecule(Molecule):
             self.set_meta('gn', ';'.join(list(self.exon_hit_gene_names)))
         else:
             self.set_meta('gn',None)
-            
+
     def annotate(self, method=0):
         """
             Args:

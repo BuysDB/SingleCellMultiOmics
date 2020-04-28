@@ -22,6 +22,7 @@ from singlecellmultiomics.universalBamTagger.tagging import run_tagging_tasks
 from multiprocessing import Pool
 from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads
 from singlecellmultiomics.fastaProcessing import CachedFastaNoHandle
+from singlecellmultiomics.utils.prefetch import UnitialisedClass
 from typing import Generator
 import argparse
 import uuid
@@ -113,6 +114,10 @@ argparser.add_argument(
     '--multiprocess',
     action='store_true',
     help="Use all the CPUs of you system to achieve (much) faster tagging")
+argparser.add_argument(
+    '-temp_folder',
+    default='./scmo',
+    help="Temp folder")
 
 
 fragment_settings = argparser.add_argument_group('Fragment settings')
@@ -265,13 +270,13 @@ def tag_multiome_multi_processing(
     else:
         contig_blacklist = []
 
-    if molecule_iterator_args['contig'] is not None:
+    if molecule_iterator_args.get('contig',None) is not None:
         assert molecule_iterator_args.get('start') is None, 'regions are not implemented'
         contig_whitelist = [molecule_iterator_args['contig']]
     else:
         contig_whitelist = [contig for contig in get_contigs_with_reads(input_bam_path) if not contig in contig_blacklist]
 
-    for prune in ['start','end','contig','progress_callback_function']:
+    for prune in ['start', 'end', 'contig', 'progress_callback_function', 'alignments']:
         if prune in molecule_iterator_args:
             del molecule_iterator_args[prune]
 
@@ -366,7 +371,8 @@ def tag_multiome_single_thread(
 
     print(f'Started writing to {out_bam_path}')
 
-    molecule_iterator_exec = molecule_iterator(input_bam, **molecule_iterator_args)
+    molecule_iterator_exec = molecule_iterator(input_bam, **{k:v for k, v in molecule_iterator_args.items()
+                                                            if k != 'alignments'})
 
     read_groups = dict()  # Store unique read groups in this dict
     with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups) as out:
@@ -535,8 +541,7 @@ def run_multiome_tagging(args):
 
     if args.ref is not None:
         try:
-            reference = CachedFastaNoHandle(
-                pysam.FastaFile(args.ref))
+            reference = UnitialisedClass(CachedFastaNoHandle, args.ref)
             print(f'Loaded reference from {args.ref}')
         except Exception as e:
             print("Error when loading the reference file, continuing without a reference")
@@ -726,7 +731,9 @@ def run_multiome_tagging(args):
         fragment_size = 500
 
     elif args.method == 'chic_taps':
-
+        bp_per_job = 5_000_000
+        bp_per_segment = 1_000_000
+        fragment_size = 500
         molecule_class_args.update({
             'reference': reference,
             'taps': singlecellmultiomics.molecule.TAPS()
@@ -1023,7 +1030,7 @@ def run_multiome_tagging(args):
                                       molecule_iterator_args=molecule_iterator_args,ignore_bam_issues=args.ignore_bam_issues,
                                       head=args.head, no_source_reads=args.no_source_reads,
                                       fragment_size=fragment_size, blacklist_path=args.blacklist,bp_per_job=bp_per_job,
-                                      bp_per_segment=bp_per_segment, temp_folder='/tmp/scmo', max_time_per_segment=max_time_per_segment)
+                                      bp_per_segment=bp_per_segment, temp_folder=args.temp_folder, max_time_per_segment=max_time_per_segment)
     else:
         # Alignments are passed as pysam handle:
         if args.blacklist is not None:
