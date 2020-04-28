@@ -731,7 +731,9 @@ def run_multiome_tagging(args):
         fragment_size = 500
 
     elif args.method == 'chic_taps':
-
+        bp_per_job = 5_000_000
+        bp_per_segment = 1_000_000
+        fragment_size = 500
         molecule_class_args.update({
             'reference': reference,
             'taps': singlecellmultiomics.molecule.TAPS()
