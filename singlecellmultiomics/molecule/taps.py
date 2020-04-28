@@ -243,6 +243,10 @@ class TAPSNlaIIIMolecule(NlaIIIMolecule, TAPSMolecule):
         NlaIIIMolecule.write_tags(self)
         TAPSMolecule.write_tags(self)
 
+    def __finalise__(self):
+        NlaIIIMolecule.__finalise__(self)
+        TAPSMolecule.__finalise__(self)
+
     def is_valid(self, set_rejection_reasons=False):
         return NlaIIIMolecule.is_valid(
             self, set_rejection_reasons=set_rejection_reasons) and TAPSMolecule.is_valid(
@@ -283,6 +287,10 @@ class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
         return CHICMolecule.is_valid(
             self, set_rejection_reasons=set_rejection_reasons) and TAPSMolecule.is_valid(
             self, set_rejection_reasons=set_rejection_reasons)
+
+    def __finalise__(self):
+        CHICMolecule.__finalise__(self)
+        TAPSMolecule.__finalise__(self)
 
 
 class AnnotatedTAPSCHICMolecule(AnnotatedCHICMolecule, TAPSMolecule):
