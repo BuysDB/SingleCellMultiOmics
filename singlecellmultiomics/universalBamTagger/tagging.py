@@ -13,16 +13,21 @@ def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
     Prefetches
         AlleleResolver
     """
-    if 'molecule_class_args' in molecule_iterator_args:
 
-        if 'allele_resolver' in molecule_iterator_args['molecule_class_args']:
-            molecule_iterator_args['molecule_class_args']['allele_resolver'] = molecule_iterator_args['molecule_class_args']['allele_resolver']
-        if 'features' in molecule_iterator_args['molecule_class_args']:
-            molecule_iterator_args['molecule_class_args']['features'].prefetch(contig,start,end)
-        if 'mappability_reader' in molecule_iterator_args['molecule_class_args']:
-            molecule_iterator_args['molecule_class_args']['mappability_reader'].prefetch(contig,start,end)
-
-
+    new_kwarg_dict = {}
+    for iterator_arg, iterator_value in molecule_iterator_args.items():
+        if 'molecule_class_args'==iterator_arg:
+            new_args = {}
+            for key, value in molecule_iterator_args['molecule_class_args'].items():
+                if key == 'features':
+                    value = value.prefetch(contig,start,end)
+                if key == 'mappability_reader':
+                    value = value.prefetch(contig,start,end)
+                new_args[key] = value
+            new_kwarg_dict[iterator_arg] = new_args
+        else:
+            new_kwarg_dict[iterator_arg] = iterator_value
+    return new_kwarg_dict
 
 def run_tagging_task(alignments, output,
                     contig=None, start =None, end=None, fetch_start=None, fetch_end=None,
@@ -54,6 +59,8 @@ def run_tagging_task(alignments, output,
     assert alignments is not None
     assert output is not None
     assert molecule_iterator_class is not None
+
+
     # There is two options: either supply start and end coordinates, or not supplying any coordinates:
     fetching = not all((x is None for x in ( start, end, fetch_start, fetch_end)))
     if fetching:
@@ -67,7 +74,7 @@ def run_tagging_task(alignments, output,
                         raise ValueError(f'{variable} has to be supplied')
             #assert not any((x is not None for x in (contig, start, end, fetch_start, fetch_end))), 'supply all these: contig, start, end, fetch_start, fetch_end'
         if enable_prefetch:
-            prefetch(contig, start, end, fetch_start,fetch_end, molecule_iterator_args)
+            molecule_iterator_args = prefetch(contig, start, end, fetch_start,fetch_end, molecule_iterator_args)
 
     time_start = datetime.now()
 
