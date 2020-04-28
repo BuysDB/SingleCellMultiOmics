@@ -14,6 +14,7 @@ import pysam
 import pysamiterators
 from singlecellmultiomics.utils import find_ranges, create_MD_tag
 import pandas as pd
+from uuid import uuid4
 
 
 ###############
@@ -437,6 +438,50 @@ class Molecule():
                 pass
         return tags_obs
 
+    def write_tags(self):
+        """ Write BAM tags to all reads associated to this molecule
+
+        This function sets the following tags:
+            - mI : most common umi
+            - DA : allele
+            - af : amount of associated fragments
+            - rt : rt_reaction_index
+            - rd : rt_duplicate_index
+            - TR : Total RT reactions
+            - ap : phasing information (if allele_resolver is set)
+            - TF : total fragments
+        """
+        self.is_valid(set_rejection_reasons=True)
+        if self.umi is not None:
+            self.set_meta('mI', self.umi)
+        if self.allele is not None:
+            self.set_meta('DA', str(self.allele))
+
+        # Set total amount of associated fragments
+        self.set_meta('TF',len(self.fragments) + self.overflow_fragments )
+
+        # associatedFragmentCount :
+        self.set_meta('af', len(self))
+        for rc, frag in  enumerate(self):
+            frag.set_meta('RC', rc)
+            if rc>0:
+                # Set duplicate bit
+                for read in frag:
+                    if read is not None:
+                        read.is_duplicate = True
+
+        # Write RT reaction tags (rt: rt reaction index, rd rt duplicate index)
+        rt_reaction_index = None
+        for rt_reaction_index, (_, frags) in enumerate(
+                self.get_rt_reactions().items()):
+            for rt_duplicate_index, frag in enumerate(frags):
+                frag.set_meta('rt', rt_reaction_index)
+                frag.set_meta('rd', rt_duplicate_index)
+        self.set_meta('TR', 0 if (rt_reaction_index is None) else rt_reaction_index+1 )
+
+        if self.allele_resolver is not None:
+            self.write_allele_phasing_information_tag()
+
     def write_tags_to_psuedoreads(self, reads):
         """
         Write molecule information to the supplied reads as BAM tags
@@ -459,6 +504,7 @@ class Molecule():
 
             # Store total amount of RT reactions:
             read.set_tag('TR', len(self.get_rt_reactions()))
+            read.set_tag('TF', len(self.fragments) + self.overflow_fragments)
 
             if self.allele is not None:
                 read.set_tag('DA', self.allele)
@@ -642,7 +688,9 @@ class Molecule():
             (contig, position): (base, 0.95) for (contig, position), base in self.get_consensus().items()
         }
 
-        return self.deduplicate_to_single_CIGAR_spaced_from_dict(target_bam, read_name, base_call_dict, max_N_span=300)
+        reads = self.deduplicate_to_single_CIGAR_spaced_from_dict(target_bam, read_name, base_call_dict, max_N_span=300)
+        self.write_tags_to_psuedoreads([read for read in reads if read is not None])
+        return reads
 
 
     def deduplicate_to_single_CIGAR_spaced_from_dict(
@@ -1073,49 +1121,6 @@ class Molecule():
         else:
             return '+'
 
-    def write_tags(self):
-        """ Write BAM tags to all reads associated to this molecule
-
-        This function sets the following tags:
-            - mI : most common umi
-            - DA : allele
-            - af : amount of associated fragments
-            - rt : rt_reaction_index
-            - rd : rt_duplicate_index
-            - TR : Total RT reactions
-            - ap : phasing information (if allele_resolver is set)
-            - TF : total fragments
-        """
-        self.is_valid(set_rejection_reasons=True)
-        if self.umi is not None:
-            self.set_meta('mI', self.umi)
-        if self.allele is not None:
-            self.set_meta('DA', str(self.allele))
-
-        # Set total amount of associated fragments
-        self.set_meta('TF',len(self.fragments) + self.overflow_fragments )
-
-        # associatedFragmentCount :
-        self.set_meta('af', len(self))
-        for rc, frag in  enumerate(self):
-            frag.set_meta('RC', rc)
-            if rc>0:
-                # Set duplicate bit
-                for read in frag:
-                    if read is not None:
-                        read.is_duplicate = True
-
-        # Write RT reaction tags (rt: rt reaction index, rd rt duplicate index)
-        rt_reaction_index = None
-        for rt_reaction_index, (_, frags) in enumerate(
-                self.get_rt_reactions().items()):
-            for rt_duplicate_index, frag in enumerate(frags):
-                frag.set_meta('rt', rt_reaction_index)
-                frag.set_meta('rd', rt_duplicate_index)
-        self.set_meta('TR', 0 if (rt_reaction_index is None) else rt_reaction_index+1 )
-
-        if self.allele_resolver is not None:
-            self.write_allele_phasing_information_tag()
 
     def set_rejection_reason(self, reason, set_qcfail=False):
         """ Add rejection reason to all fragments associated to this molecule
@@ -1589,14 +1594,20 @@ class Molecule():
             self.get_rt_reaction_fragment_sizes()
         )
 
-    def write_pysam(self, target_file):
+    def write_pysam(self, target_file, consensus=False):
         """Write all associated reads to the target file
 
         Args:
             target_file (pysam.AlignmentFile) : Target file
         """
-        for fragment in self:
-            fragment.write_pysam(target_file)
+        if consensus:
+            reads = self.deduplicate_majority(target_file,f'molecule_{uuid4()}')
+            for read in reads:
+                target_file.write(read)
+        else:
+            for fragment in self:
+                fragment.write_pysam(target_file)
+
 
     def set_methylation_call_tags(self,
                                   call_dict, bismark_call_tag='XM',
