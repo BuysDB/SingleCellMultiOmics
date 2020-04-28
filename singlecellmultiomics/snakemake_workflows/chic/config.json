@@ -1,7 +1,8 @@
 {
-    "reference_file"  :  "/media/sf_hubrecht/references/hg38/Homo_sapiens_assembly38.fasta",
-    "counting_min_mq" : 30,
-    "counting_bin_sizes": [100_000,200_000],
-    "counting_sliding_window_increments": [50_000],
-    "mapper":"bwa"
+    "reference_file"  :  "/hpc/hub_oudenaarden/Marloes/bin/masked_genome/primary_assembly_97_129B6Masked_ERCC92.fa",
+    "blacklist" : "/hpc/hub_oudenaarden/bdebarbanson/ref/500_plus_coverage_spikes_blacklist_CHiC_mm10.bed",
+    "counting_min_mq" : 50,
+    "counting_bin_sizes": [50_000],
+    "mapper":"bwa",
+    "plot_bin_sizes" : [500_000, 1000_000]
 }
