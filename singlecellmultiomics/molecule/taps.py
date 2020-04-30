@@ -9,6 +9,7 @@ from collections import Counter
 complement_trans = str.maketrans('ATGC', 'TACG')
 from singlecellmultiomics.utils.sequtils import complement
 from itertools import product
+from matplotlib.pyplot import get_cmap
 
 class TAPS():
     # Methylated Cs get converted into T readout
@@ -56,6 +57,10 @@ class TAPS():
         for x in list(itertools.product('ACT', repeat=2)):
             self.context_mapping[True][''.join(['C'] + list(x))] = 'H'
             self.context_mapping[False][''.join(['C'] + list(x))] = 'h'
+
+
+        self.colormap = get_cmap('RdYlBu_r')
+        self.colormap.set_bad((0,0,0)) # For reads without C's
 
     def position_to_context(
             self,
@@ -161,6 +166,14 @@ class TAPSMolecule(Molecule):
         except ValueError:
             raise
 
+        for read in self.iter_reads():
+            try:
+                CpG_methylation_rate = read.get_tag('sZ')/(read.get_tag('sZ')+read.get_tag('sz'))
+                cfloat = self.taps.colormap(CpG_methylation_rate)[:3]
+            except Exception as e:
+                CpG_methylation_rate = None
+                cfloat = self.taps.colormap._rgba_bad[:3]
+            read.set_tag('YC', '%s,%s,%s' % tuple( (int(x*255) for x in cfloat)))
     def is_valid(self, set_rejection_reasons=False):
         if not super().is_valid(set_rejection_reasons=set_rejection_reasons):
             return False
