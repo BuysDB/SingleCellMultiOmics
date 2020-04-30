@@ -12,7 +12,7 @@ from itertools import product
 
 class TAPS():
     # Methylated Cs get converted into T readout
-    def __init__(self, reference=None, reference_variants=None, **kwargs):
+    def __init__(self, reference=None, reference_variants=None, taps_strand='F', **kwargs):
         """
         Intialise the TAPS class
 
@@ -51,6 +51,8 @@ class TAPS():
             context: letter.upper() for context,
             letter in self.context_mapping[False].items()}
 
+        self.taps_strand = taps_strand
+
         for x in list(itertools.product('ACT', repeat=2)):
             self.context_mapping[True][''.join(['C'] + list(x))] = 'H'
             self.context_mapping[False][''.join(['C'] + list(x))] = 'h'
@@ -61,7 +63,7 @@ class TAPS():
             position,
             observed_base='N',
             strand=0,
-            reference=None
+            reference=None,
         ):
         """Extract bismark call letter from a chromosomal location given the observed base
 
@@ -93,22 +95,22 @@ class TAPS():
         context = None
         methylated = False
         rpos = position
-        if ref_base == 'C' and strand == 0:
+        if ref_base == 'C' and not strand:
             context = reference.fetch(chromosome, rpos, rpos + 3).upper()
 
-            if qbase == 'T':
+            if (qbase == 'T' and self.taps_strand=='F') or (qbase=='A' and self.taps_strand=='R'):
                 methylated = True
-            methylationStateString = self.context_mapping[methylated].get(context, 'uU'[
-                                                                          methylated])
+            #methylationStateString = self.context_mapping[methylated].get(context, 'uU'[methylated])
 
-        elif ref_base == 'G' and strand == 1:
+        elif ref_base == 'G' and strand:
             origin = reference.fetch(
                 chromosome, rpos - 2, rpos + 1).upper()
             context = origin.translate(complement_trans)[::-1]
-            if qbase == 'A':
+            if (qbase == 'A' and self.taps_strand=='F') or (qbase=='T' and self.taps_strand=='R'):
                 methylated = True
 
-        return context, self.context_mapping[methylated].get(context, '.')
+        symbol = self.context_mapping[methylated].get(context, '.')
+        return context, symbol
 
     def molecule_to_context_call_dict(self, molecule):
         """Extract bismark call_string dictionary from a molecule
@@ -132,7 +134,7 @@ class TAPS():
 
 
 class TAPSMolecule(Molecule):
-    def __init__(self, fragments=None, taps=None, classifier=None, **kwargs):
+    def __init__(self, fragments=None, taps=None, classifier=None, taps_strand='F', **kwargs):
         """ TAPSMolecule
 
         Args:
@@ -149,13 +151,15 @@ class TAPSMolecule(Molecule):
         self.taps = taps  # initialised TAPS class
         self.methylation_call_dict = None
         self.classifier = classifier
+        self.taps_strand = taps_strand
 
     def __finalise__(self):
         super().__finalise__()
+
         try:
-            self.obtain_methylation_calls(classifier=self.classifier)
+            self.obtain_methylation_calls(classifier=self.classifier, allow_unsafe=True)
         except ValueError:
-            pass
+            raise
 
     def is_valid(self, set_rejection_reasons=False):
         if not super().is_valid(set_rejection_reasons=set_rejection_reasons):
@@ -179,7 +183,7 @@ class TAPSMolecule(Molecule):
 
         return True
 
-    def obtain_methylation_calls(self, classifier=None):
+    def obtain_methylation_calls(self, classifier=None, allow_unsafe=True):
         """ This methods returns a methylation call dictionary
             Args:
                 classifier : classifier used for consensus determination
@@ -188,19 +192,28 @@ class TAPSMolecule(Molecule):
         """
 
         # Find all aligned positions and corresponding reference bases:
-        aligned_reference_positions = {}  # (chrom,pos)->base
-        for read in self.iter_reads():
-            for read_pos, ref_pos, ref_base in read.get_aligned_pairs(
-                    with_seq=True, matches_only=True):
-                aligned_reference_positions[(
-                    read.reference_name, ref_pos)] = ref_base.upper()
-
-        # Obtain consensus:
         try:
-            consensus = self.get_consensus(classifier=classifier, allow_unsafe=True)
-        except ValueError:
-            raise ValueError(
-                'Cannot obtain a safe consensus for this molecule')
+            aligned_reference_positions = {}  # (chrom,pos)->base
+            for read in self.iter_reads():
+                for read_pos, ref_pos, ref_base in read.get_aligned_pairs(
+                        with_seq=True, matches_only=True):
+                    aligned_reference_positions[(
+                        read.reference_name, ref_pos)] = ref_base.upper()
+        except ValueError as e:
+            if 'MD tag not present' in str(e):
+                self.set_rejection_reason("MD_TAG_MISSING")
+                return None
+            raise
+
+
+            # Obtain consensus:
+        try:
+            consensus = self.get_consensus(classifier=classifier, allow_unsafe=allow_unsafe)
+        except ValueError as e:
+            if 'MD tag not present' in str(e):
+                self.set_rejection_reason("MD_TAG_MISSING")
+                return None
+            raise
 
         # find all locations where a C/G was converted into A/T, now strand
         # specific
@@ -209,12 +222,22 @@ class TAPSMolecule(Molecule):
         for location, reference_base in aligned_reference_positions.items():
             if location not in consensus:
                 continue
-            if (not self.strand and reference_base == 'C' and consensus[location] in 'CT') or \
-                    self.strand and reference_base == 'G' and consensus[location] in 'AG':
-                conversions[location] = {
-                    'ref': reference_base, 'obs': consensus[location]}
-                if consensus[location] in 'TA':
-                    converted_bases += 1
+            qbase = consensus[location]
+            if self.taps_strand=='F':
+                #C->A, G->T, A>C, T>G
+
+                if (not self.strand and reference_base == 'C' and qbase in 'CT') or \
+                        self.strand and reference_base == 'G' and qbase in 'AG':
+                    conversions[location] = {
+                        'ref': reference_base, 'obs': qbase}
+                    if qbase in 'TA':
+                        converted_bases += 1
+            else:
+                if (self.strand and reference_base == 'C' and qbase in 'CA') or (not self.strand and reference_base == 'G' and consensus[location] in 'TG'):
+                    conversions[location] = {
+                        'ref': reference_base, 'obs': qbase}
+                    if qbase in 'TA':
+                        converted_bases += 1
 
         # obtain the context of the conversions:
         conversion_contexts = {
@@ -225,7 +248,7 @@ class TAPSMolecule(Molecule):
                 *location,
                 reference=self.reference,
                 observed_base=observations['obs'],
-                strand=self.strand)[1]}
+                strand=(self.strand if self.taps_strand=='F' else  not self.strand))[1]}
             for location, observations in conversions.items()}
 
         # Write bismark tags:
@@ -277,7 +300,7 @@ class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
 
     def __init__(self, fragments=None, taps=None, **kwargs):
         CHICMolecule.__init__(self, fragments, **kwargs)
-        TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
+        TAPSMolecule.__init__(self, fragments=fragments, taps_strand='F',taps=taps, **kwargs)
 
     def write_tags(self):
         CHICMolecule.write_tags(self)
