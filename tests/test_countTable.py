@@ -51,6 +51,8 @@ class TestCountTable(unittest.TestCase):
         # !samtools idxstats ./data/mini_nla_test.bam | head -n 1 | cut -f 3
         self.assertEqual(df.loc['chr1'].sum(),563)
 
+
+
     def test_contig_selection(self):
         """ Test if a contig is selected properly"""
         df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
@@ -247,6 +249,40 @@ class TestCountTable(unittest.TestCase):
 
         self.assertEqual( df.sum(1).sum(), 765 )
         self.assertEqual( df.loc[:,['A3-P15-1-1_25']].sum(skipna=True).sum(skipna=True), 12.0 )
+
+
+    def test_byValue_binned_autofill_joined(self):
+        """ Test if the by value counting feature works, this counts the value of a feature instead of its presence"""
+        df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
+            SimpleNamespace(
+                alignmentfiles=['./data/mini_nla_test.bam'],
+                o=None,
+                head=None,
+                bin=30,
+                sliding=None,
+                binTag='DS',
+                byValue='RC',
+                bedfile=None,
+                showtags=False,
+                featureTags=None,
+                joinedFeatureTags='reference_name,RC',
+                sampleTags='SM',
+                minMQ=0,
+                filterXA=False,
+                dedup=False,
+                divideMultimapping=False,
+                contig=None,
+                blacklist=None,
+                filterMP=False,
+                keepOverBounds=False,
+                doNotDivideFragments=True,
+                splitFeatures=False,
+                feature_delimiter=',',
+                 noNames=False) , return_df=True)
+
+        self.assertEqual( df.sum(1).sum(), 765 )
+        self.assertEqual( df.loc[:,['A3-P15-1-1_25']].sum(skipna=True).sum(skipna=True), 12.0 )
+
 
 if __name__ == '__main__':
     unittest.main()
