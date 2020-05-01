@@ -260,7 +260,10 @@ def obtain_approximate_reference_cut_position(site: int, contig: str, alt_spans:
     return contig, site + alt_start
 
 
-def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_interval=3, threads=4):
+def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_interval=3, threads=4, count_function=None):
+    if count_function is None:
+        count_function = count_fragments_binned
+
     if live_update:
         from singlecellmultiomics.utils.plotting import GenomicPlot
         import matplotlib.pyplot as plt
@@ -288,7 +291,7 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
 
     with multiprocessing.Pool(threads) as workers:
 
-        for i, result in enumerate(workers.imap_unordered(count_fragments_binned,
+        for i, result in enumerate(workers.imap_unordered(count_function,
                                                           commands)):
             counts.update(result)
             if live_update and update_method == 'partial_df':
@@ -429,6 +432,77 @@ def generate_commands(alignments_path,
                min_mq, alt_spans, key_tags, dedup)
         if head is not None and i >= (head - 1):
             break
+
+def count_methylation_binned(args):
+    (alignments_path, bin_size, max_fragment_size, \
+     contig, start, end, \
+     min_mq, alt_spans, key_tags, dedup) = args
+
+    # Cant use defaultdict because of pickles :\
+    met_counts = {}  # Sample->(contig,bin_start,bin_end)-> [methylated_counts, unmethylated]
+
+    # Define which reads we want to count:
+
+    p = 0
+    with pysam.AlignmentFile(alignments_path, threads=4) as alignments:
+        # Obtain size of selected contig:
+        contig_size = get_contig_size(alignments, contig)
+        if contig_size is None:
+            raise ValueError('Unknown contig')
+
+        # Determine where we start looking for fragments:
+        f_start = max(0, start - max_fragment_size)
+        f_end = min(end + max_fragment_size, contig_size)
+
+        for p, read in enumerate(alignments.fetch(contig=contig, start=f_start,
+                                                  stop=f_end)):
+
+            if not read_counts(read, min_mq=min_mq, dedup=dedup):
+                continue
+
+
+
+            tags = dict(read.tags)
+            for i, (site, refpos) in enumerate(read.get_aligned_pairs(matches_only=True)):
+
+                # Don't count sites outside the selected bounds
+                if refpos < start or refpos >= end:
+                    continue
+
+                call = tags['XM'][i]
+
+                if call in 'Zz':
+                    sample = read.get_tag('SM')
+
+                    # Process alternative contig counts:
+                    if alt_spans is not None and contig in alt_spans:
+                        contig, site = obtain_approximate_reference_cut_position(
+                            site, contig, alt_spans)
+
+                    # Obtain the bin index
+                    bin_i = int(site / bin_size)
+                    bin_start = bin_size * bin_i
+                    bin_end = min(bin_size * (bin_i + 1), contig_size)
+
+                    # Add additional tag information: (For example the allele tag)
+                    if key_tags is not None:
+                        tag_values = [(read.get_tag(tag) if read.has_tag(tag) else None) for tag in key_tags]
+                        bin_id = (*tag_values, contig, bin_start, bin_end)
+                    else:
+                        bin_id = (contig, bin_start, bin_end)
+
+                    if not sample in met_counts:
+                        met_counts[sample] = {}
+                    if not bin_id in met_counts[sample]:
+                        met_counts[sample][bin_id] = [0,0]
+                    met_counts[sample][bin_id][call=='Z']+=1
+
+
+    # Normalize?
+    for sample, data in met_counts.items():
+        for bin in data:
+            data[bin] = data[bin][0] / (data[bin][0]+data[bin][1])
+    return met_counts
 
 
 def count_fragments_binned(args):
