@@ -188,7 +188,7 @@ class FeatureContainer(Prefetcher):
                     start = int( parts[3] ) + offset
                     end = int( parts[4] ) + offset
 
-                    if region_end is not None and end<region_start or start>region_end:
+                    if region_end is not None and region_start is not None and ( end<region_start or start>region_end):
                         continue
 
                     if store_all:
