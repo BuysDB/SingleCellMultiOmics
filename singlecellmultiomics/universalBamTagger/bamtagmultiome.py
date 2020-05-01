@@ -62,6 +62,8 @@ argparser.add_argument(
     fl_feature_counts (deduplicate using a bam file tagged using featurecounts, deduplicates based on fragment position)
     nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
     chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
+    nla_tapsp_transcriptome (Add feature annotation to nla_ptaps mode )
+    nla_taps_transcriptome  (Add feature annotation to nla_taps mode )
     nla_no_overhang (Data with digested by Nla III enzyme, without the CATG present in the reads)
     scartrace (Lineage tracing )
     """)
@@ -597,7 +599,7 @@ def run_multiome_tagging(args):
         molecule_class_args['mapability_reader'] = MapabilityReader(args.mapfile)
 
     ### Transcriptome configuration ###
-    if args.method in ('nla_transcriptome', 'cs', 'vasa',  'chict'):
+    if args.method in ('cs', 'vasa',  'chict') or args.method.endswith('_transcriptome'):
         print(
             colorama.Style.BRIGHT +
             'Running in transcriptome annotation mode' +
@@ -729,6 +731,30 @@ def run_multiome_tagging(args):
         bp_per_job = 5_000_000
         bp_per_segment = 1_000_000
         fragment_size = 500
+    elif args.method == 'nla_taps_transcriptome': # Annotates reads in transcriptome
+        molecule_class = singlecellmultiomics.molecule.AnnotatedTAPSNlaIIIMolecule
+        fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
+
+        molecule_class_args.update({
+            'reference': reference,
+            'taps': singlecellmultiomics.molecule.TAPS()
+        })
+        bp_per_job = 5_000_000
+        bp_per_segment = 5_000_000
+        fragment_size = 100_000
+
+    elif args.method == 'nla_tapsp_transcriptome': # Annotates reads in transcriptome
+        molecule_class = singlecellmultiomics.molecule.TAPSPTaggedMolecule
+        fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
+
+        molecule_class_args.update({
+            'reference': reference,
+            'taps': singlecellmultiomics.molecule.TAPS()
+        })
+        bp_per_job = 5_000_000
+        bp_per_segment = 5_000_000
+        fragment_size = 100_000
+
 
     elif args.method == 'chic_taps':
         bp_per_job = 5_000_000
@@ -736,7 +762,7 @@ def run_multiome_tagging(args):
         fragment_size = 500
         molecule_class_args.update({
             'reference': reference,
-            'taps': singlecellmultiomics.molecule.TAPS()
+            'taps': singlecellmultiomics.molecule.TAPS(taps_strand='F')
         })
         molecule_class = singlecellmultiomics.molecule.TAPSCHICMolecule
         fragment_class = singlecellmultiomics.fragment.CHICFragment
@@ -876,7 +902,7 @@ def run_multiome_tagging(args):
 
     if args.consensus:
         # Load from path if available:
-
+        """
         if args.consensus_model is not None:
             if os.path.exists(args.consensus_model):
                 model_path = args.consensus_model
@@ -914,6 +940,7 @@ def run_multiome_tagging(args):
             print(f'Writing consensus model to {consensus_model_path}')
             with open(consensus_model_path, 'wb') as f:
                 pickle.dump(consensus_model, f)
+        """
 
     # We needed to check if every argument is properly placed. If so; the jobs
     # can be sent to the cluster
