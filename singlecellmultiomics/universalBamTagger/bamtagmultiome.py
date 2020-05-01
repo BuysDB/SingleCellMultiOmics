@@ -613,7 +613,7 @@ def run_multiome_tagging(args):
         transcriptome_features = singlecellmultiomics.features.FeatureContainer()
         print("Loading exons", end='\r')
         transcriptome_features.preload_GTF(
-            args.exons,
+            path=args.exons,
             select_feature_type=['exon'],
             identifierFields=(
                 'exon_id',
@@ -625,7 +625,7 @@ def run_multiome_tagging(args):
         if args.introns is not None:
             print("Loading introns", end='\r')
             transcriptome_features.preload_GTF(
-                args.introns,
+                path=args.introns,
                 select_feature_type=['intron'],
                 identifierFields=['transcript_id'],
                 store_all=True,
