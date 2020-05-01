@@ -102,7 +102,7 @@ class FeatureContainer(Prefetcher):
     def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'],
                 ignChr=False, select_feature_type=None, exon_select=None,
                 head=None, store_all=False, contig=None, offset=-1,
-                region_start=False, region_end=False):
+                region_start=None, region_end=None):
         """Load annotations from a GTF file.
         ignChr: ignore the chr part of the Annotation chromosome
         """
