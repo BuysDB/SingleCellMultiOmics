@@ -8,21 +8,19 @@ import singlecellmultiomics.molecule
 from singlecellmultiomics.molecule.consensus import calculate_consensus
 import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam
-
 from singlecellmultiomics.utils import is_main_chromosome
 from singlecellmultiomics.utils.submission import submit_job
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
 from pysamiterators import MatePairIteratorIncludingNonProper, MatePairIterator
-from singlecellmultiomics.universalBamTagger.tagging import generate_tasks
+from singlecellmultiomics.universalBamTagger.tagging import generate_tasks, prefetch, run_tagging_tasks
 from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs
 from singlecellmultiomics.utils.binning import bp_chunked
-from singlecellmultiomics.universalBamTagger.tagging import run_tagging_tasks
-from multiprocessing import Pool
 from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads
 from singlecellmultiomics.fastaProcessing import CachedFastaNoHandle
 from singlecellmultiomics.utils.prefetch import UnitialisedClass
+from multiprocessing import Pool
 from typing import Generator
 import argparse
 import uuid
@@ -326,7 +324,7 @@ def tag_multiome_multi_processing(
 
 
     # Prefetch the genomic resources with the defined genomic interval reducing I/O load during processing of the region
-    # this is now done automatically
+    # this is now done automatically, by
 
     # @todo : Obtain auto blacklisted regions if applicable
     # @todo : Progress indication
@@ -372,6 +370,10 @@ def tag_multiome_single_thread(
         description=f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
 
     print(f'Started writing to {out_bam_path}')
+
+    # de-prefetch all:
+
+    molecule_iterator_args = prefetch(None, None, None, None, None, molecule_iterator_args)
 
     molecule_iterator_exec = molecule_iterator(input_bam, **{k:v for k, v in molecule_iterator_args.items()
                                                             if k != 'alignments'})
@@ -772,8 +774,8 @@ def run_multiome_tagging(args):
         fragment_class = singlecellmultiomics.fragment.SingleEndTranscript
 
         molecule_class_args.update({
-            'pooling_method': 1,  # all data from the same cell can be dealt with separately
-            'stranded': 1  # data is stranded
+            #'pooling_method': 1,  # all data from the same cell can be dealt with separately
+            'stranded': True,  # data is stranded
         })
 
     elif args.method == 'scartrace':
