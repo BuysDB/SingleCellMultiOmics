@@ -29,7 +29,7 @@ def extract_samples( input_bam_path, output_path, capture_samples, head=None ):
     print('Groups:')
     for group in capture_samples:
 
-        output_handles[group] = pysam.AlignmentFile(output_path.replace('.bam',f'{group}.bam'), "wb", header=header, threads_n=4)
+        output_handles[group] = pysam.AlignmentFile(output_path.replace('.bam',f'{group}.bam'), "wb", header=header)
         print(f'\t{group}\t{output_handles[group].filename.decode()}')
 
     sample2handle = {}
