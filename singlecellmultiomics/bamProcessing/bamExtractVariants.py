@@ -17,6 +17,9 @@ from glob import glob
 import argparse
 from collections import Counter
 import multiprocessing
+import pickle
+import gzip
+from contextlib import ExitStack
 
 class VariantWrapper:
     def __init__(self, variant, pos=None,contig=None,ref=None,alts=None,qual=0):
@@ -43,7 +46,7 @@ class VariantWrapper:
 def job_gen( induced_variants_path, germline_variants_path,
         germline_variants_sample, alignments_path, block_size = 100, n=None,
         contig=None, completed=None,min_qual=None,germline_bam_path=None,
-        MAX_REF_MOLECULES=1000,window_radius=600,max_buffer_size=100_000 ):
+        MAX_REF_MOLECULES=1000,window_radius=600,max_buffer_size=100_000, debug_bam_folder=None ):
     """
     Job generator
 
@@ -79,7 +82,7 @@ def job_gen( induced_variants_path, germline_variants_path,
                 #f'./{extraction_folder}/variants_extracted_0_NLA_{i}.bam'
                 yield (vlist, alignments_path, None, 'NLA', germline_variants_path,
                     germline_variants_sample, germline_bam_path,
-                    window_radius, MAX_REF_MOLECULES,max_buffer_size)
+                    window_radius, MAX_REF_MOLECULES,max_buffer_size, debug_bam_folder)
 
                 vlist = []
                 i+=1
@@ -88,7 +91,7 @@ def job_gen( induced_variants_path, germline_variants_path,
         if len(vlist):
             yield (vlist, alignments_path, None, 'NLA', germline_variants_path,
                 germline_variants_sample, germline_bam_path,
-                window_radius, MAX_REF_MOLECULES,max_buffer_size)
+                window_radius, MAX_REF_MOLECULES,max_buffer_size, debug_bam_folder)
 
 
 def get_molecule_base_calls(molecule, variant):
@@ -115,7 +118,10 @@ def get_phased_variants(molecule,resolver=None):
             for chromosome, position, base in bps]
 
 
-def filter_alt_calls(alt_phased, threshold):
+def filter_alt_calls(alt_phased: collections.Counter, threshold: float):
+    """
+    Filter the counter alt-phased
+    """
     total_per_pos = Counter()
     for (phasedchrom, phased_pos, phased_base),obs in alt_phased.most_common():
         total_per_pos[(phasedchrom, phased_pos)] += obs
@@ -129,13 +135,14 @@ def filter_alt_calls(alt_phased, threshold):
 
 def recall_variants(args):
 
-    variants, alignment_file_path, target_path, mode, germline_variants_path, germline_variants_sample, germline_bam_path, window_radius, MAX_REF_MOLECULES,max_buffer_size = args
+    variants, alignment_file_path, target_path, mode, germline_variants_path, germline_variants_sample, germline_bam_path, window_radius, MAX_REF_MOLECULES,max_buffer_size, debug_bam_folder = args
 
     window_radius = 600
-    MAX_REF_MOLECULES = 1_000  # Maximum amount of reference molecules to process.
+    MAX_REF_MOLECULES = 5_000  # Maximum amount of reference molecules to process.
     # This is capped for regions to which many reads map (mapping artefact)
 
     variant_calls = dict() # cell->(chrom,pos) +/- ?
+    phased_variants = dict()
 
     ### Set up molecule iterator (1/2)
     if mode== 'NLA':
@@ -161,7 +168,7 @@ def recall_variants(args):
                                                         variant.alts[0],
                                                         min_reads=1,
                                                         stepper='nofilter'):
-                print(f'FOUND IN GERMLINE {variant}')
+                #print(f'FOUND IN GERMLINE {variant}')
                 continue
 
         #print(variant)
@@ -198,79 +205,122 @@ def recall_variants(args):
         ref_phased = Counter()
         alt_phased = Counter()
 
-        ### Set up molecule iterator (2/2)
-        try:
-            molecule_iter = MoleculeIterator(
-                alignments,
-                mc,
-                fc,
-                contig=contig,
-                start=reference_start,
-                end=reference_end,
-                molecule_class_args={
-                   'allele_resolver':unphased_allele_resolver,
-                    'max_associated_fragments':20,
-                },
-                max_buffer_size=max_buffer_size
-            )
 
-            reference_called_molecules = [] # molecule, phase
+        ###
 
-            extracted_base_call_count = 0
-            alt_call_count = 0
-            for mi,molecule in enumerate(molecule_iter):
-                base_call = get_molecule_base_calls(molecule, variant)
-                if base_call is None:
-                    continue
-                extracted_base_call_count+=1
-                base, quality = base_call
-                call = None
-                if base==variant.alts[0]:
-                    call='A'
-                    alt_call_count+=1
-                    if molecule.sample not in variant_calls:
-                        variant_calls[molecule.sample] = {}
-                    variant_calls[molecule.sample][variant_key] = 1
+        with ExitStack() as e_stack:
 
-                elif base==variant.ref:
-                    call='R'
+            if debug_bam_folder is not None:
+                output_bam = e_stack.enter_context( singlecellmultiomics.bamProcessing.sorted_bam_file(
+                    f'{debug_bam_folder}/{"_".join((str(x) for x in variant_key))}.bam', origin_bam=alignments))
+            else:
+                output_bam = None
 
-                if call is None:
-                    continue
+            ### Set up molecule iterator (2/2)
+            try:
+                molecule_iter = MoleculeIterator(
+                    alignments,
+                    mc,
+                    fc,
+                    contig=contig,
+                    start=reference_start,
+                    end=reference_end,
+                    molecule_class_args={
+                       'allele_resolver':unphased_allele_resolver,
+                        'max_associated_fragments':40,
+                    },
+                    max_buffer_size=max_buffer_size
+                )
 
-                # Obtain all germline variants which are phased :
-                phased = get_phased_variants(molecule,unphased_allele_resolver)
+                reference_called_molecules = [] # molecule, phase
 
-                if call=='R' and len(phased)>0:
-                    # If we can phase the alternative allele to a germline variant
-                    # the reference calls can indicate absence
-                    if len(reference_called_molecules) < MAX_REF_MOLECULES:
-                        reference_called_molecules.append((molecule, phased))
-
-                for chrom,pos,base in phased:
-                    if call=='A':
-                        alt_phased[(chrom,pos,base)]+=1
-                    elif call=='R':
-                        ref_phased[(chrom,pos,base)]+=1
-        except MemoryError:
-            print(f"Buffer exceeded for {variant.contig} {variant.pos}")
-            continue
-
-        #print(mi,extracted_base_call_count,alt_call_count)
-        if len(alt_phased)>0 and len(reference_called_molecules):
-            # Clean the alt_phased variants for variants which are not >90% the same
-            alt_phased_filtered = filter_alt_calls(alt_phased, 0.9)
-            #print(alt_phased_filtered)
-            for molecule, phased_gsnvs in reference_called_molecules:
-                for p in phased_gsnvs:
-                    if p in alt_phased_filtered:
-                        if not molecule.sample in variant_calls:
+                extracted_base_call_count = 0
+                alt_call_count = 0
+                for mi,molecule in enumerate(molecule_iter):
+                    base_call = get_molecule_base_calls(molecule, variant)
+                    if base_call is None:
+                        continue
+                    extracted_base_call_count+=1
+                    base, quality = base_call
+                    call = None
+                    if base==variant.alts[0]:
+                        call='A'
+                        alt_call_count+=1
+                        if molecule.sample not in variant_calls:
                             variant_calls[molecule.sample] = {}
-                        variant_calls[molecule.sample][variant_key] = 0
-                        break
-        locations_done.add(variant_key)
+                        variant_calls[molecule.sample][variant_key] = 1
+
+                    elif base==variant.ref:
+                        call='R'
+
+                    if debug_bam_folder is not None:
+                        # Write allele-call
+                        if call is None:
+                            molecule.set_meta('ac','UNK')
+                        else:
+                            molecule.set_meta('ac', call if call != 'R' else 'UR') # We dont know yet if this is truly
+                        # # reference at the allele position or just the uninformative allele
+
+                    if call is None:
+                        if output_bam is not None:
+                            molecule.write_pysam(output_bam)
+                        continue
+
+                    # Obtain all germline variants which are phased :
+                    phased = get_phased_variants(molecule, unphased_allele_resolver)
+
+                    if call == 'R' and len(phased) > 0:
+                        # If we can phase the alternative allele to a germline variant
+                        # the reference calls can indicate absence
+                        if len(reference_called_molecules) < MAX_REF_MOLECULES:
+                            reference_called_molecules.append((molecule, phased))
+                        else:
+                            if output_bam is not None:
+                                molecule.write_pysam(output_bam)
+                    else:
+                        if output_bam is not None:
+                            molecule.write_pysam(output_bam)
+
+                    for chrom, pos, base in phased:
+                        if call == 'A':
+                            alt_phased[(chrom, pos, base)] += 1
+
+                        elif call == 'R':
+                            ref_phased[(chrom, pos, base)] += 1
+
+            except MemoryError:
+                print(f"Buffer exceeded for {variant.contig} {variant.pos}")
+                continue
+
+            #print(mi,extracted_base_call_count,alt_call_count)
+            if len(alt_phased) > 0 and len(reference_called_molecules):
+                # Clean the alt_phased variants for variants which are not >90% the same
+                alt_phased_filtered = filter_alt_calls(alt_phased, 0.9)
+                #print(alt_phased_filtered)
+                phased_variants[variant_key] = alt_phased_filtered
+                for molecule, phased_gsnvs in reference_called_molecules:
+                    for p in phased_gsnvs:
+                        if p in alt_phased_filtered:
+                            if not molecule.sample in variant_calls:
+                                variant_calls[molecule.sample] = {}
+                            variant_calls[molecule.sample][variant_key] = 0
+
+                            if debug_bam_folder is not None:
+                                molecule.set_meta('S0', True)
+                                molecule.set_meta('ac', 'R')
+
+                            break
+                # And write:
+                if output_bam is not None:
+                    for molecule, phased_gsnvs in reference_called_molecules:
+                        molecule.write_pysam(output_bam)
+
+
+            locations_done.add(variant_key)
+
+
     alignments.close()
-    return variant_calls, locations_done
+    return variant_calls, locations_done, phased_variants
 
 
 if __name__ == '__main__':
@@ -284,6 +334,8 @@ if __name__ == '__main__':
     argparser.add_argument('-germline', help="vcf file with germline variants to potentially phase with", required=False)
     argparser.add_argument('-germline_sample', help="germline sample in supplied vcf file")
     argparser.add_argument('-germline_bam', help="germline bam file (no variant reads are allowed in this file)", default=None)
+    argparser.add_argument('-debug_bam_folder', help="Path to folder to write informative alignments to")
+
 
     argparser.add_argument(
         '-o',
@@ -291,18 +343,27 @@ if __name__ == '__main__':
         required=True,
         help='output path, ends in .pickle.gz, or .csv')
 
+    argparser.add_argument(
+        '-po',
+        type=str,
+        required=True,
+        help='Phased gsnv output path, ends in .pickle.gz')
+
+
     argparser.add_argument('-head', type=int, help='Process only the first N*job_size variants')
     argparser.add_argument('-t', type=int,default=8,help='Threads')
     argparser.add_argument('-minqual', type=float,help='Min variant quality to extract (from the -extract vcf file)')
-
-
     argparser.add_argument('-jobsize', type=int,default=5,help='Amount of variants being processed per Thread ')
 
     args = argparser.parse_args()
 
+    if args.debug_bam_folder is not None and not os.path.exists(args.debug_bam_folder):
+        os.makedirs(args.debug_bam_folder)
+
     assert args.o.endswith('.pickle.gz') or args.o.endswith('.csv')
 
     variant_calls = collections.defaultdict(dict)
+    phased = dict() # variant->((chrom,pos,base),())
 
     print(f'Initialising {args.t} workers')
 
@@ -313,15 +374,17 @@ if __name__ == '__main__':
             alignments_path=args.bamfile,
             n=args.head,
             block_size=args.jobsize,
-            min_qual=args.minqual
+            min_qual=args.minqual,
+            debug_bam_folder=args.debug_bam_folder
             )
+
     if args.t==1:
 
         def dummy_imap(func, args):
             for arg in args:
                 yield func(arg)
 
-        for i,(vc,done) in enumerate(dummy_imap(recall_variants, jobs )):
+        for i,(vc,done, alt_phased) in enumerate(dummy_imap(recall_variants, jobs )):
 
             for cell, calls in vc.items():
                 variant_calls[cell].update(calls)
@@ -330,11 +393,17 @@ if __name__ == '__main__':
         with multiprocessing.Pool( args.t  ) as workers:
 
             print('Collecting variant calls')
-            for i,(vc,done) in enumerate(
+            for i,(vc,done, alt_phased) in enumerate(
                 workers.imap_unordered(recall_variants,jobs)):
 
                 for cell, calls in vc.items():
                     variant_calls[cell].update(calls)
+
+                # Write phased dict:
+                for key,value in alt_phased.items():
+                    print(key, value)
+                    phased[key] = value
+
             print(i)
             if i%25==0:
                 print('writing intermediate result')
@@ -344,6 +413,9 @@ if __name__ == '__main__':
                 else:
                     df.to_pickle(args.o)
 
+                with gzip.open(args.po,'wb') as gf:
+                    pickle.dump(phased, gf)
+
     print('Finished collecting variant calls')
     # Write variants to output pickle file:
     print('Writing to output file')
@@ -352,4 +424,7 @@ if __name__ == '__main__':
         df.to_csv(args.o)
     else:
         df.to_pickle(args.o)
+
+    with gzip.open(args.po, 'wb') as gf:
+        pickle.dump(phased, gf)
     print('Finished')
