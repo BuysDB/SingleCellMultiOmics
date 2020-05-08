@@ -27,6 +27,7 @@ class TestMultiomeTaggingCHIC(unittest.TestCase):
             for read in f:
                 if read.is_read1:
                     i+=1
+                self.assertTrue(read.has_tag('RG'))
             self.assertEqual(i, 17)
 
         self.assertTrue( os.path.exists(write_path) )
@@ -46,7 +47,12 @@ class TestMultiomeTaggingCHIC(unittest.TestCase):
             for read in f:
                 if read.is_read1:
                     i+=1
+                # Test if the reads have read groups:
+                self.assertTrue(read.has_tag('RG'))
             self.assertEqual(i, 17)
+
+
+
 
         self.assertTrue( os.path.exists(write_path) )
         os.remove(write_path)
@@ -69,6 +75,7 @@ class TestMultiomeTaggingNLA(unittest.TestCase):
                     i+=1
                     if read.is_qcfail:
                         qc_failed_R1+=1
+                self.assertTrue(read.has_tag('RG'))
             self.assertEqual(i, 293)
             self.assertEqual(qc_failed_R1, 10)
 
@@ -87,6 +94,7 @@ class TestMultiomeTaggingNLA(unittest.TestCase):
             qc_failed_R1 = 0
             # Test if the file has reads.
             for read in f:
+                self.assertTrue(read.has_tag('RG'))
                 if read.is_read1:
                     i+=1
                     if read.is_qcfail:
@@ -108,6 +116,7 @@ class TestMultiomeTaggingNLA(unittest.TestCase):
             i =0
             # Test if the file has reads.
             for read in f:
+                self.assertTrue(read.has_tag('RG'))
                 if read.is_read1:
                     i+=1
             self.assertEqual(i, 283)
@@ -126,6 +135,7 @@ class TestMultiomeTaggingNLA(unittest.TestCase):
             i =0
             # Test if the file has reads.
             for read in f:
+                self.assertTrue(read.has_tag('RG'))
                 if read.is_read1:
                     i+=1
             self.assertEqual(i, 0)
@@ -163,6 +173,7 @@ class TestMultiomeTaggingNLA(unittest.TestCase):
             i =0
             # Test if the file has reads.
             for read in f:
+                self.assertTrue(read.has_tag('RG'))
                 if read.is_read1:
                     i+=1
             self.assertEqual(i, 0)
@@ -181,6 +192,7 @@ class TestMultiomeTaggingNLA(unittest.TestCase):
             i =0
             # Test if the file has reads.
             for read in f:
+                self.assertTrue(read.has_tag('RG'))
                 if read.is_read1:
                     i+=1
             self.assertEqual(i, 283)
