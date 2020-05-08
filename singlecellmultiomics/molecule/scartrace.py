@@ -63,7 +63,7 @@ class ScarTraceMolecule(Molecule):
         scarDescription = ','.join(sorted(list(scarDescription)))
 
         # Add average base calling quality excluding primers:
-        meanQ = np.mean(qualities)
+        meanQ = np.mean(qualities) if len(qualities)>0 else 0
         for read in self.iter_reads():
             read.set_tag('SQ', 1 - meanQ)
             if len(scarDescription) == 0:

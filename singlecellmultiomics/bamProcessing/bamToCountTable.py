@@ -120,7 +120,7 @@ def read_should_be_counted(read, args, blacklist_dic = None):
         if read.get_tag('mp')=='unique':
             return True
         return False
-      
+
     if read is None or read.is_qcfail:
         return False
 
@@ -425,6 +425,11 @@ def create_count_table(args, return_df=False):
         featureTags = args.joinedFeatureTags.split(',')
         joinFeatures = True
 
+        # When -byValue is used, and joined feature tags are supplied, automatically append the args.byValue tag, otherwise it will get lost
+        if args.byValue is not None and len(featureTags)>0 and args.byValue not in featureTags:
+            featureTags.append(args.byValue)
+
+
     if args.bin is not None and args.binTag not in featureTags:
         print("The bin tag was not supplied as feature, automatically appending the bin feature.")
         featureTags.append(args.binTag)
@@ -438,9 +443,9 @@ def create_count_table(args, return_df=False):
         collections.Counter)  # cell->feature->count
 
     if args.blacklist is not None:
-        # create blacklist dictionary {chromosome : [ (start1, end1), ..., (startN, endN) ]} 
+        # create blacklist dictionary {chromosome : [ (start1, end1), ..., (startN, endN) ]}
         # used to check each read and exclude if it is within any of these start end sites
-        # 
+        #
         blacklist_dic = {}
         print("Creating blacklist dictionary:")
         with open(args.blacklist, mode='r') as blfile:

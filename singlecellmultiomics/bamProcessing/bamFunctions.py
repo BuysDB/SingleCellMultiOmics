@@ -33,7 +33,7 @@ def get_contigs_with_reads(bam_path: str) -> Generator:
         except ValueError:
             pass
 
-def merge_bams( bams, output_path ):
+def merge_bams( bams: list, output_path: str, threads: int=4 ):
     """Merge bamfiles to output_path
 
     When a single bam file is supplied, the bam file is moved to  output_path
@@ -51,8 +51,8 @@ def merge_bams( bams, output_path ):
         move(bams[0], output_path)
         move(bams[0]+'.bai', output_path+'.bai')
     else:
-        pysam.merge(output_path, *bams, '-@ 4 -f -l 1 -c')
-        pysam.index(output_path, '-@ 4')
+        pysam.merge(output_path, *bams, f'-@ {threads} -f -l 1 -c')
+        pysam.index(output_path, f'-@ {threads}')
         for o in bams:
             os.remove(o)
             os.remove(o+'.bai')
@@ -108,7 +108,13 @@ def _get_samples_from_bam(handle):
         samples (set) : set containing all sample names
 
     """
-    return set([entry['SM'] for entry in handle.header.as_dict()['RG']])
+    try:
+        return set([entry['SM'] for entry in handle.header.as_dict()['RG']])
+    except Exception as e:
+        samples = set()
+        for read in handle:
+            samples.add( read.get_tag('SM') )
+        return samples
 
 def get_sample_to_read_group_dict(bam):
     """ Obtain a dictionary containing {'sample name' : ['read groupA', 'read group B'], ...}
@@ -419,10 +425,10 @@ def sorted_bam_file(
             write_path,
             remove_unsorted=True,
             local_temp_sort=local_temp_sort,
-            fast_compression = fast_compression
+            fast_compression=fast_compression
             )
     else:
-        os.rename(unsorted_path,write_path)
+        os.rename(unsorted_path, write_path)
 
 def write_program_tag(input_header,
                       program_name,
@@ -516,8 +522,8 @@ def sort_and_index(
 
         # Try to sort at multiple locations, if sorting fails try the next until all locations have been tried
         temp_paths =  [temp_path_first, f'/tmp/{prefix}', f'./{prefix}' ]
-        for i,temp_path in enumerate(temp_paths):
-            failed=False
+        for i, temp_path in enumerate(temp_paths):
+            failed = False
             try:
                 pysam.sort(
                     '-o',
@@ -769,7 +775,6 @@ def random_sample_bam(bam,n,**sample_location_args):
 
 def replace_bam_header(origin_bam_path, header, target_bam_path=None, header_write_mode='auto'):
 
-
     if target_bam_path is None:
         target_bam_path = origin_bam_path
 
@@ -860,11 +865,10 @@ def add_readgroups_to_header(
     else:
         raise ValueError("supply a set or dict for readgroups_in")
 
-
     with pysam.AlignmentFile(origin_bam_path, "rb") as origin:
         header = origin.header.copy()
         hCopy = header.to_dict()
         hCopy['RG'] = list(readGroupsDict.values())
-        replace_bam_header(origin_bam_path, header,
+        replace_bam_header(origin_bam_path, hCopy,
                             target_bam_path=target_bam_path,
                             header_write_mode=header_write_mode)

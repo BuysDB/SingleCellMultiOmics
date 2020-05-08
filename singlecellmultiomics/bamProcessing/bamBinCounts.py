@@ -260,7 +260,10 @@ def obtain_approximate_reference_cut_position(site: int, contig: str, alt_spans:
     return contig, site + alt_start
 
 
-def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_interval=3, threads=4):
+def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_interval=3, threads=4, count_function=None):
+    if count_function is None:
+        count_function = count_fragments_binned
+
     if live_update:
         from singlecellmultiomics.utils.plotting import GenomicPlot
         import matplotlib.pyplot as plt
@@ -288,7 +291,7 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
 
     with multiprocessing.Pool(threads) as workers:
 
-        for i, result in enumerate(workers.imap_unordered(count_fragments_binned,
+        for i, result in enumerate(workers.imap_unordered(count_function,
                                                           commands)):
             counts.update(result)
             if live_update and update_method == 'partial_df':
@@ -421,20 +424,124 @@ def generate_commands(alignments_path,
                       head=None,
                       key_tags=None,
                       dedup=True,
+                      kwargs=None,
+                      skip_contigs=None
                       ):
     for i, (contig, start, end) in enumerate(
             generate_jobs(alignments_path=alignments_path, bin_size=bin_size, bins_per_job=bins_per_job)):
+
+        if skip_contigs is not None and contig in skip_contigs:
+            continue
         yield (alignments_path, bin_size, max_fragment_size, \
                contig, start, end, \
-               min_mq, alt_spans, key_tags, dedup)
+               min_mq, alt_spans, key_tags, dedup, kwargs)
         if head is not None and i >= (head - 1):
             break
+
+def count_methylation_binned(args):
+    (alignments_path, bin_size, max_fragment_size, \
+     contig, start, end, \
+     min_mq, alt_spans, key_tags, dedup, kwargs) = args
+
+
+    min_counts_per_bin = kwargs.get('min_counts_per_bin',10) # Min measurements across all cells
+    # Cant use defaultdict because of pickles :\
+    met_counts = {}  # Sample->(contig,bin_start,bin_end)-> [methylated_counts, unmethylated]
+
+    # Define which reads we want to count:
+    known =  set()
+    if 'known' in kwargs:
+        # Only ban the very specific TAPS conversions:
+        try:
+            with pysam.VariantFile(kwargs['known']) as variants:
+                for record in variants.fetch(contig, start, end):
+                    if record.ref=='C' and 'T' in record.alts:
+                        known.add( record.pos)
+                    if record.ref=='G' and 'A' in record.alts:
+                        known.add(record.pos)
+        except ValueError:
+            # This happends on contigs not present in the vcf
+            pass
+
+    p = 0
+
+    start_time = datetime.now()
+    with pysam.AlignmentFile(alignments_path, threads=4) as alignments:
+        # Obtain size of selected contig:
+        contig_size = get_contig_size(alignments, contig)
+        if contig_size is None:
+            raise ValueError('Unknown contig')
+
+        # Determine where we start looking for fragments:
+        f_start = max(0, start - max_fragment_size)
+        f_end = min(end + max_fragment_size, contig_size)
+
+        for p, read in enumerate(alignments.fetch(contig=contig, start=f_start,
+                                                  stop=f_end)):
+
+
+
+
+            if p%50==0 and 'maxtime' in kwargs:
+                if (datetime.now() - start_time).total_seconds() > kwargs['maxtime']:
+                    print(f'Gave up on {contig}:{start}-{end}')
+
+                    break
+
+            if not read_counts(read, min_mq=min_mq, dedup=dedup):
+                continue
+
+
+            tags = dict(read.tags)
+            for i, (qpos, site) in enumerate(read.get_aligned_pairs(matches_only=True)):
+
+                # Don't count sites outside the selected bounds
+                if site < start or site >= end:
+                    continue
+
+                if site in known:
+                    continue
+
+                call = tags['XM'][i]
+
+                if call in 'Zz':
+                    sample = read.get_tag('SM')
+
+                    # Process alternative contig counts:
+                    if alt_spans is not None and contig in alt_spans:
+                        contig, site = obtain_approximate_reference_cut_position(
+                            site, contig, alt_spans)
+
+                    # Obtain the bin index
+                    bin_i = int(site / bin_size)
+                    bin_start = bin_size * bin_i
+                    bin_end = min(bin_size * (bin_i + 1), contig_size)
+
+                    # Add additional tag information: (For example the allele tag)
+                    if key_tags is not None:
+                        tag_values = [(read.get_tag(tag) if read.has_tag(tag) else None) for tag in key_tags]
+                        bin_id = (*tag_values, contig, bin_start, bin_end)
+                    else:
+                        bin_id = (contig, bin_start, bin_end)
+
+                    if not bin_id in met_counts:
+                        met_counts[bin_id] = {}
+                    if not sample in met_counts[bin_id]:
+                        met_counts[bin_id][sample] = [0,0]
+                    met_counts[bin_id][sample][call=='Z']+=1
+
+
+    # Normalize?
+    for sample, data in met_counts.items():
+        for bin in data:
+            data[bin] = data[bin][0] / (data[bin][0]+data[bin][1])
+    return met_counts
 
 
 def count_fragments_binned(args):
     (alignments_path, bin_size, max_fragment_size, \
      contig, start, end, \
-     min_mq, alt_spans, key_tags, dedup) = args
+     min_mq, alt_spans, key_tags, dedup, kwargs) = args
 
     counts = {}  # Sample->(contig,bin_start,bin_end)->counts
     # Define which reads we want to count:
@@ -497,7 +604,7 @@ def count_fragments_binned(args):
 def count_fragments_binned_wrap(args):
     (alignments_path, bin_size, max_fragment_size, \
      contig, start, end, \
-     min_mq, alt_spans, dedup) = args
+     min_mq, alt_spans, dedup, kwargs) = args
 
     tp = f'./TEMP_{contig}_{start}.pickle.gz'
     res = os.system(f'bamBinCounts.py {alignments_path} -o {tp} -start {start} -end {end} -contig {contig}')

@@ -32,14 +32,18 @@ def extract_samples( input_bam_path, output_path, capture_samples, head=None ):
         output_handles[group] = pysam.AlignmentFile(output_path.replace('.bam',f'{group}.bam'), "wb", header=header)
         print(f'\t{group}\t{output_handles[group].filename.decode()}')
 
+    sample2handle = {}
+    for group,samples in capture_samples.items():
+        for sample in samples:
+            sample2handle[sample] = output_handles[group]
+
     written = 0
     for r in bamFile:
-        if r.has_tag('SM'):
-            sample = r.get_tag('SM')
-            for group in capture_samples:
-                if sample in capture_samples[group]:
-                    # Write
-                    output_handles[group].write(r)
+
+        try:
+            sample2handle[r.get_tag('SM')].write(r)
+        except Exception:
+            continue
 
             written += 1
             if head is not None and written >= head:

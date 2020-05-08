@@ -102,11 +102,10 @@ class FeatureContainer(Prefetcher):
     def loadGTF(self, path, thirdOnly=None, identifierFields=['gene_id'],
                 ignChr=False, select_feature_type=None, exon_select=None,
                 head=None, store_all=False, contig=None, offset=-1,
-                region_start=False, region_end=False):
+                region_start=None, region_end=None):
         """Load annotations from a GTF file.
         ignChr: ignore the chr part of the Annotation chromosome
         """
-
         if region_end is not None or region_start is not None:
             assert contig is not None and region_end is not None and region_start is not None
 
@@ -114,7 +113,12 @@ class FeatureContainer(Prefetcher):
         #pattern = '^(.*) "(.*).*"'
         #prog = re.compile(pattern)
         if self.verbose:
-            print("Loading %s" % path)
+            if contig is None:
+                print(f"Loading {path} completely")
+            elif region_start is None:
+                print(f"Loading {path}, for contig {contig}")
+            else:
+                print(f"Loading {path}, for contig {contig}:{region_start}-{region_end}")
         added = 0
         with (gzip.open(path, 'rt') if path.endswith('.gz') else open(path, 'r')) as f:
             for line_id, line in enumerate(f):
@@ -188,7 +192,7 @@ class FeatureContainer(Prefetcher):
                     start = int( parts[3] ) + offset
                     end = int( parts[4] ) + offset
 
-                    if region_end is not None and end<region_start or start>region_end:
+                    if region_end is not None and region_start is not None and ( end<region_start or start>region_end):
                         continue
 
                     if store_all:

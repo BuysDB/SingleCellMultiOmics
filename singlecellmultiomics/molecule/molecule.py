@@ -1938,7 +1938,7 @@ class Molecule():
 
 
 
-    def get_base_observation_dict(self, return_refbases=False, allow_N=False,allow_unsafe=False):
+    def get_base_observation_dict(self, return_refbases=False, allow_N=False,allow_unsafe=True):
         '''
         Obtain observed bases at reference aligned locations
 
@@ -1974,20 +1974,36 @@ class Molecule():
             for read in fragment:
                 if read is None:
                     continue
-                for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(
-                        read, with_seq=True, reference=self.reference):
 
-                    if query_pos is None or ref_pos is None: #or ref_pos < start or ref_pos > end:
-                        continue
-                    query_base = read.seq[query_pos]
-                    #query_qual = read.qual[query_pos]
-                    if query_base == 'N':
-                        continue
-                    base_obs[(read.reference_name, ref_pos)][query_base] += 1
+                if allow_unsafe:
+                    for  query_pos, ref_pos, ref_base in read.get_aligned_pairs(matches_only=True, with_seq=True):
+                        if query_pos is None or ref_pos is None: #or ref_pos < start or ref_pos > end:
+                            continue
+                        query_base = read.seq[query_pos]
+                        #query_qual = read.qual[query_pos]
+                        if query_base == 'N':
+                            continue
+                        base_obs[(read.reference_name, ref_pos)][query_base] += 1
 
-                    if return_refbases:
-                        ref_bases[(read.reference_name, ref_pos)
-                                  ] = ref_base.upper()
+                        if return_refbases:
+                            ref_bases[(read.reference_name, ref_pos)
+                                      ] = ref_base.upper()
+
+                else:
+                    for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(
+                            read, with_seq=True, reference=self.reference):
+
+                        if query_pos is None or ref_pos is None: #or ref_pos < start or ref_pos > end:
+                            continue
+                        query_base = read.seq[query_pos]
+                        #query_qual = read.qual[query_pos]
+                        if query_base == 'N':
+                            continue
+                        base_obs[(read.reference_name, ref_pos)][query_base] += 1
+
+                        if return_refbases:
+                            ref_bases[(read.reference_name, ref_pos)
+                                      ] = ref_base.upper()
 
         if used == 0 and ignored > 0:
             raise ValueError(f'Could not extract any safe data from molecule {error}')
