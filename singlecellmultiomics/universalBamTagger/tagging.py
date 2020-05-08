@@ -30,9 +30,9 @@ def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
     return new_kwarg_dict
 
 def run_tagging_task(alignments, output,
-                    contig=None, start =None, end=None, fetch_start=None, fetch_end=None,
+                    contig=None, start=None, end=None, fetch_start=None, fetch_end=None,
                     molecule_iterator_class=None,  molecule_iterator_args={},
-                    read_groups=None, timeout_time=None, enable_prefetch=True ):
+                    read_groups=None, timeout_time=None, enable_prefetch=True):
     """ Run tagging task for the supplied region
 
     Args:
@@ -74,7 +74,7 @@ def run_tagging_task(alignments, output,
                         raise ValueError(f'{variable} has to be supplied')
             #assert not any((x is not None for x in (contig, start, end, fetch_start, fetch_end))), 'supply all these: contig, start, end, fetch_start, fetch_end'
         if enable_prefetch:
-            molecule_iterator_args = prefetch(contig, start, end, fetch_start,fetch_end, molecule_iterator_args)
+            molecule_iterator_args = prefetch(contig, start, end, fetch_start, fetch_end, molecule_iterator_args)
 
     time_start = datetime.now()
 
@@ -87,7 +87,7 @@ def run_tagging_task(alignments, output,
             raise TimeoutError()
 
     total_molecules_written = 0
-    for i,molecule in enumerate(
+    for i, molecule in enumerate(
             molecule_iterator_class(alignments,  # Input alignments
                             contig=contig, start=fetch_start, end=fetch_end, # Region
                             # Set a callback function used to check if a problematic region is reached
@@ -128,8 +128,8 @@ def run_tagging_task(alignments, output,
         molecule.write_pysam(output)
         total_molecules_written+=1
 
-    return {'total_molecules_written':total_molecules_written,
-            'time_start':time_start}
+    return {'total_molecules_written': total_molecules_written,
+            'time_start': time_start}
 
 
 
@@ -150,12 +150,12 @@ def run_tagging_tasks(args: tuple):
     read_groups = dict()
 
     with AlignmentFile(alignments_path) as alignments:
-        with sorted_bam_file(target_file, origin_bam=alignments, mode='wbu',
-            fast_compression=True, read_groups=read_groups) as output:
-            for task  in arglist:
+        with sorted_bam_file(target_file, origin_bam=alignments, mode='wb', fast_compression=False,
+                             read_groups=read_groups) as output:
+            for task in arglist:
                 try:
                     statistics = run_tagging_task(alignments, output, read_groups=read_groups, **task)
-                    total_molecules += statistics.get('total_molecules_written',0)
+                    total_molecules += statistics.get('total_molecules_written', 0)
                 except TimeoutError:
                     timeout_tasks.append( task )
 

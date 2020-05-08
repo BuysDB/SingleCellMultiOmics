@@ -265,7 +265,7 @@ def tag_multiome_multi_processing(
     assert fragment_size is not None
     assert bp_per_segment is not None
 
-    if molecule_iterator_args.get('skip_contigs',None) is not None:
+    if molecule_iterator_args.get('skip_contigs', None) is not None:
         contig_blacklist = molecule_iterator_args.get('skip_contigs')
     else:
         contig_blacklist = []
