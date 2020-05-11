@@ -49,7 +49,7 @@ class MethylationCountMatrix:
         return f'Methylation call matrix containing {len(self.counts)} samples and {len(self.sites)} locations'
 
     def prune(self, min_samples: int = 0, min_variance: float = None):
-        if min_samples == 0 and min_variance is None:
+        if len(self.sites)==0 or len(self.counts) == 0 or min_samples == 0 and min_variance is None:
             return
 
         for location, row in self.get_bulk_frame().iterrows():
@@ -82,7 +82,15 @@ class MethylationCountMatrix:
             dmat = np.apply_along_axis(distance, 1, df.values, matrix=df.values)
             return pd.DataFrame(dmat, columns=df.index, index=df.index)
 
-        return get_dmat(self.get_frame('beta'))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            dmat = get_dmat(self.get_frame('beta'))
+
+            while dmat.isna().sum().sum() > 0:
+                sample = dmat.isna().sum().idxmax()
+                dmat.drop(sample, 0, inplace=True)
+                dmat.drop(sample, 1, inplace=True)
+
+        return dmat
 
     def get_frame(self, dtype: str):
         """
