@@ -14,7 +14,7 @@ from datetime import datetime
 from itertools import chain
 from more_itertools import windowed
 from typing import Generator
-
+from singlecellmultiomics.methylation import MethylationCountMatrix
 
 def fill_range(start, end, step):
     """
@@ -446,7 +446,7 @@ def count_methylation_binned(args):
 
     min_counts_per_bin = kwargs.get('min_counts_per_bin',10) # Min measurements across all cells
     # Cant use defaultdict because of pickles :\
-    met_counts = {}  # Sample->(contig,bin_start,bin_end)-> [methylated_counts, unmethylated]
+    met_counts = MethylationCountMatrix()  # Sample->(contig,bin_start,bin_end)-> [methylated_counts, unmethylated]
 
     # Define which reads we want to count:
     known =  set()
@@ -524,28 +524,8 @@ def count_methylation_binned(args):
                     else:
                         bin_id = (contig, bin_start, bin_end)
 
-                    if not bin_id in met_counts:
-                        met_counts[bin_id] = {}
-                    if not sample in met_counts[bin_id]:
-                        met_counts[bin_id][sample] = [0,0]
-                    met_counts[bin_id][sample][call=='Z']+=1
+                    met_counts[sample, bin_id][call=='Z']+=1
 
-
-    # Normalize?
-    if kwargs.get('output_fmt', None) == 'methylated':
-        for sample, data in met_counts.items():
-            for bin in data:
-                data[bin] = data[bin][1]
-    elif kwargs.get('output_fmt', None) == 'unmethylated':
-        for sample, data in met_counts.items():
-            for bin in data:
-                data[bin] = data[bin][0]
-    elif kwargs.get('output_fmt', None) == 'both':
-        return met_counts
-    else:
-        for sample, data in met_counts.items():
-            for bin in data:
-                data[bin] = data[bin][1] / (data[bin][0]+data[bin][1])
     return met_counts
 
 
