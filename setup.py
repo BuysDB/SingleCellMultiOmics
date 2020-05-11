@@ -43,6 +43,7 @@ setup(
         'singlecellmultiomics.libraryProcessing',
         'singlecellmultiomics.modularDemultiplexer',
         'singlecellmultiomics.molecule',
+        'singlecellmultiomics.methylation',
         'singlecellmultiomics.pyutils',
         'singlecellmultiomics.variants',
         'singlecellmultiomics.tags',
