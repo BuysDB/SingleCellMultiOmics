@@ -450,7 +450,7 @@ def count_methylation_binned(args):
 
     # Define which reads we want to count:
     known =  set()
-    if 'known' in kwargs:
+    if 'known' in kwargs and kwargs['known'] is not None:
         # Only ban the very specific TAPS conversions:
         try:
             with pysam.VariantFile(kwargs['known']) as variants:
@@ -482,7 +482,7 @@ def count_methylation_binned(args):
 
 
 
-            if p%50==0 and 'maxtime' in kwargs:
+            if p%50==0 and 'maxtime' in kwargs and kwargs['maxtime'] is not None:
                 if (datetime.now() - start_time).total_seconds() > kwargs['maxtime']:
                     print(f'Gave up on {contig}:{start}-{end}')
 
@@ -532,9 +532,20 @@ def count_methylation_binned(args):
 
 
     # Normalize?
-    for sample, data in met_counts.items():
-        for bin in data:
-            data[bin] = data[bin][0] / (data[bin][0]+data[bin][1])
+    if kwargs.get('output_fmt', None) == 'methylated':
+        for sample, data in met_counts.items():
+            for bin in data:
+                data[bin] = data[bin][1]
+    elif kwargs.get('output_fmt', None) == 'unmethylated':
+        for sample, data in met_counts.items():
+            for bin in data:
+                data[bin] = data[bin][0]
+    elif kwargs.get('output_fmt', None) == 'both':
+        return met_counts
+    else:
+        for sample, data in met_counts.items():
+            for bin in data:
+                data[bin] = data[bin][1] / (data[bin][0]+data[bin][1])
     return met_counts
 
 
