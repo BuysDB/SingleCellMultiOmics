@@ -342,7 +342,7 @@ def tag_multiome_multi_processing(
 
     # merge the results and clean up:
     merge_bams(list(tagged_bam_generator), out_bam_path)
-
+    write_status(out_bam_path, 'Reached end. All ok!')
 
 
 def tag_multiome_single_thread(
