@@ -174,7 +174,9 @@ if __name__ == '__main__':
 
     if args.bismark_tabfile is not None:
         print('Writing bismark_tabfile matrix', end="")
-        counts.get_bulk_frame().to_csv(args.bismark_tabfile, sep='\t')
+        bf = counts.get_bulk_frame()
+        bf.index.set_names(['chr','start', 'end'], inplace=True)
+        bf[['unmethylated', 'methylated', 'beta']].to_csv(args.bismark_tabfile, sep='\t')
         print(f" [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
     if args.tabfile is not None:
