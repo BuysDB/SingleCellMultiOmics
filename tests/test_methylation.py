@@ -1,58 +1,44 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import unittest
-import singlecellmultiomics.molecule
-import singlecellmultiomics.fragment
-import pysam
-import pysamiterators.iterators
+from singlecellmultiomics.methylation import MethylationCountMatrix
+
 """
-These tests check if the Molecule module is working correctly
+These tests check if the methylation module is working correctly
 """
 
-class TestFragment(unittest.TestCase):
+class TestMethylationCountMatrix(unittest.TestCase):
 
-    def test_init(self):
-        """Test if the fragment can be initialised"""
-        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
-            for i,(R1,R2) in enumerate(pysamiterators.iterators.MatePairIterator(f)):
-                frag = singlecellmultiomics.fragment.Fragment([R1,R2])
-                self.assertIsNotNone(frag)
+    def test_matrix(self):
+        mA = MethylationCountMatrix()
+        mA['sample_A', ('chr1', 10, 20)][0] += 1
+        mA['sample_A', ('chr2', 10, 20)][0] += 2
 
-    def test_get(self):
-        """Test if the fragment can be initialised"""
-        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
-            for i,(R1,R2) in enumerate(pysamiterators.iterators.MatePairIterator(f)):
-                frag = singlecellmultiomics.fragment.Fragment([R1,R2])
-                if R1 is not None:
-                    self.assertEqual(frag.get_R1(), R1 )
-                    self.assertEqual(frag[0], R1 )
-                if R2 is not None:
-                    self.assertEqual(frag.get_R2(), R2 )
-                    self.assertEqual(frag[1], R2 )
+        self.assertTrue( len(mA.counts) == 1 )
+        self.assertEqual(mA.counts['sample_A'].get(('chr1', 10, 20))[0], 1)
+        self.assertEqual(mA.counts['sample_A'].get(('chr1', 10, 20))[1], 0)
+        self.assertEqual(mA.counts['sample_A'].get(('chr2', 10, 20))[0], 2)
+        self.assertEqual(mA.counts['sample_A'].get(('chr2', 10, 20))[1], 0)
 
-    def test_get_sample(self):
-        """Test if the sample name of the fragment can be obtained"""
-        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
-            for i,(R1,R2) in enumerate(pysamiterators.iterators.MatePairIterator(f)):
-                frag = singlecellmultiomics.fragment.Fragment([R1,R2])
-                self.assertTrue( frag.get_sample().startswith('A') )
+        self.assertEqual(mA.get_bulk_frame('pd').loc[('chr1', 10, 20)].unmethylated , 1.0)
+        self.assertEqual(mA.get_bulk_frame('pd').loc[('chr1', 10, 20)].methylated , 0)
+        self.assertEqual(mA.get_bulk_frame('pd').loc[('chr1', 10, 20)].beta , 0 )
 
-    def test_set_sample(self):
-        """Test if the sample name of the fragment can be changed"""
-        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
-            for i,(R1,R2) in enumerate(pysamiterators.iterators.MatePairIterator(f)):
-                frag = singlecellmultiomics.fragment.Fragment([R1,R2])
-                frag.set_sample(f'TEST{i}')
-                self.assertEqual(frag.get_sample(), f'TEST{i}' )
+        mB = MethylationCountMatrix()
+        mB['sample_A', ('chr2', 10, 20)][1] += 2
+        mB['sample_B', ('chr2', 10, 20)][1] += 1
+        mB['sample_B', ('chr2', 10, 20)][0] = 2
 
-    def test_strand(self):
-        """Test if the strand can be obtained (doesn't check validity)"""
-        with pysam.AlignmentFile('./data/mini_nla_test.bam') as f:
-            for i,(R1,R2) in enumerate(pysamiterators.iterators.MatePairIterator(f)):
-                frag = singlecellmultiomics.fragment.Fragment([R1,R2])
-                self.assertIn( frag.get_strand(), [None,0,1])
-                if frag.is_mapped:
-                    self.assertIn( frag.get_strand(), [0,1])
+        mA.update(mB)
+        self.assertEqual(len(mA.counts), 2)
+        self.assertEqual(mA.get_frame('beta')[('chr2', 10, 20)]['sample_A'], 1)
+        self.assertEqual(mA.get_frame('beta')[('chr2', 10, 20)]['sample_B'], 1 / 3)
+
+        self.assertEqual(mA.get_bulk_frame()['n_samples'].max(), 2)
+        self.assertEqual(mA.get_bulk_frame()['n_samples'].min(), 1)
+        self.assertEqual(mA.get_bulk_frame()['methylated'].sum(), 3)
+        self.assertEqual(mA.get_bulk_frame()['unmethylated'].sum(), 3)
+
 
 
 if __name__ == '__main__':
