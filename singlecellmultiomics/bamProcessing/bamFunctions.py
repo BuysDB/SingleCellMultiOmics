@@ -51,7 +51,7 @@ def merge_bams( bams: list, output_path: str, threads: int=4 ):
         move(bams[0], output_path)
         move(bams[0]+'.bai', output_path+'.bai')
     else:
-        pysam.merge(output_path, *bams, f'-@ {threads} -f -l 1 -c')
+        pysam.merge(output_path, *bams, f'-@ {threads} -f -l 1')
         pysam.index(output_path, f'-@ {threads}')
         for o in bams:
             os.remove(o)
