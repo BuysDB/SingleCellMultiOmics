@@ -116,8 +116,8 @@ argparser.add_argument(
     help="Use all the CPUs of you system to achieve (much) faster tagging")
 argparser.add_argument(
     '-temp_folder',
-    default='./scmo',
-    help="Temp folder")
+    default='./',
+    help="Temp folder location")
 
 
 fragment_settings = argparser.add_argument_group('Fragment settings')
@@ -255,7 +255,7 @@ def tag_multiome_multi_processing(
         blacklist_path: str = None,
         bp_per_job: int = None,
         bp_per_segment: int = None,
-        temp_folder: str = '/tmp/scmo',
+        temp_folder_root: str = '/tmp/scmo',
         max_time_per_segment: int = None,
         use_pool: bool = True
 
@@ -264,6 +264,12 @@ def tag_multiome_multi_processing(
     assert bp_per_job is not None
     assert fragment_size is not None
     assert bp_per_segment is not None
+
+    if not os.path.exists(temp_folder_root):
+        raise ValueError(f'The path {temp_folder_root} does not exist')
+    temp_folder = os.path.join( temp_folder_root , f'scmo_{uuid.uuid4()}' )
+    if not os.path.exists(temp_folder):
+        os.makedirs(temp_folder, exist_ok=True)
 
     if molecule_iterator_args.get('skip_contigs', None) is not None:
         contig_blacklist = molecule_iterator_args.get('skip_contigs')
@@ -304,7 +310,7 @@ def tag_multiome_multi_processing(
                            max_time_per_segment=max_time_per_segment)
 
     # Create header bam:
-    temp_header_bam_path = f'{uuid.uuid4()}_header.bam'
+    temp_header_bam_path = f'{temp_folder}/{uuid.uuid4()}_header.bam'
     with pysam.AlignmentFile(input_bam_path) as input_bam:
         input_header = input_bam.header.as_dict()
 
@@ -342,6 +348,13 @@ def tag_multiome_multi_processing(
 
     # merge the results and clean up:
     merge_bams(list(tagged_bam_generator), out_bam_path)
+
+    # Remove the temp dir:
+    try:
+        os.rmdir(temp_folder)
+    except Exception:
+        sys.stderr.write(f'Failed to remove {temp_folder}\n')
+
     write_status(out_bam_path, 'Reached end. All ok!')
 
 
@@ -1059,7 +1072,7 @@ def run_multiome_tagging(args):
                                       molecule_iterator_args=molecule_iterator_args,ignore_bam_issues=args.ignore_bam_issues,
                                       head=args.head, no_source_reads=args.no_source_reads,
                                       fragment_size=fragment_size, blacklist_path=args.blacklist,bp_per_job=bp_per_job,
-                                      bp_per_segment=bp_per_segment, temp_folder=args.temp_folder, max_time_per_segment=max_time_per_segment)
+                                      bp_per_segment=bp_per_segment, temp_folder_root=args.temp_folder, max_time_per_segment=max_time_per_segment)
     else:
         # Alignments are passed as pysam handle:
         if args.blacklist is not None:

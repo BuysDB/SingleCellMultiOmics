@@ -84,9 +84,9 @@ if __name__ == '__main__':
     argparser.add_argument('-ref', help='path to reference fasta', type=str, required=False)
 
     fi = argparser.add_argument_group("Filters")
-    fi.add_argument('-min_variance', default=0.1, type=float)
+    fi.add_argument('-min_variance', default=None, type=float)
     fi.add_argument('-min_mapping_qual', default=40, type=int)
-    fi.add_argument('-min_samples', default=10, type=int)
+    fi.add_argument('-min_samples', default=1, type=int)
     fi.add_argument('-skip_contigs', type=str, help='Comma separated contigs to skip', default='MT,chrM')
     fi.add_argument('-known_variants',
                            help='VCF file with known variants, will be not taken into account as methylated/unmethylated',
