@@ -73,7 +73,7 @@ class MethylationCountMatrix:
             del self.counts[d]
 
     def get_sample_distance_matrix(self):
-
+        self.check_integrity()
         def distance(row, matrix):
             # Amount of differences / total comparisons
             return np.nansum(np.abs((matrix - row)), axis=1) / (np.isfinite(matrix - row).sum(axis=1))
@@ -103,6 +103,7 @@ class MethylationCountMatrix:
             df(pd.DataFrame) : Dataframe containing the selected column, rows are samples, columns are locations
 
         """
+        self.check_integrity()
         # Fix columns
         columns = list(sorted(self.sites))
         # Create column to index mapping:
@@ -127,6 +128,11 @@ class MethylationCountMatrix:
 
         return pd.DataFrame(mat, index=samples, columns=pd.MultiIndex.from_tuples(columns))
 
+    def check_integrity(self):
+        if len(self.sites) == 0 or len(self.counts) == 0:
+            print(self)
+            raise ValueError('The count matrix contains no data, verify if the input data was empty or filtered to stringently')
+
     def get_bulk_frame(self, dtype='pd'):
         """
         Get pandas dataframe containing the selected columns
@@ -136,6 +142,7 @@ class MethylationCountMatrix:
             df(pd.DataFrame) : Dataframe containing the selected column, rows are locations,
 
         """
+        self.check_integrity()
         # Fix columns
         columns = list(sorted(self.sites))
         # Create column to index mapping:

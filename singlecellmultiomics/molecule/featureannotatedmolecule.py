@@ -132,7 +132,53 @@ class FeatureAnnotatedMolecule(Molecule):
                 tabulated_hits.append(location_dict)
 
         return pd.DataFrame(tabulated_hits)
+    
 
+    def write_tags_to_psuedoreads(self, reads, call_super=True): 
+        # @ todo needs refactor; the psuedoread should just be a Fragment too, solves all issues
+        if call_super:
+            Molecule.write_tags_to_psuedoreads(self, reads)
+            
+        for read in reads:
+            if len(self.exons) > 0:
+                read.set_tag('EX', ','.join(sorted([str(x) for x in self.exons])))
+            else:
+                read.set_tag('EX', None)
+
+            if len(self.introns) > 0:
+                read.set_tag('IN', ','.join(
+                    sorted([str(x) for x in self.introns])))
+            else:
+                read.set_tag('IN', None)
+
+            if len(self.genes) > 0:
+                read.set_tag('GN', ','.join(sorted([str(x) for x in self.genes])))
+            else:
+                read.set_tag('GN', None)
+
+            if len(self.junctions) > 0:
+                read.set_tag('JN', ','.join(
+                    sorted([str(x) for x in self.junctions])))
+                # Is transcriptome
+                read.set_tag('IT', 1)
+            elif len(self.genes) > 0:
+                # Maps to gene but not junction
+                read.set_tag('IT', 0.5)
+                read.set_tag('JN', None)
+            else:
+                # Doesn't map to gene
+                read.set_tag('IT', 0)
+                read.set_tag('JN', None)
+
+            if self.is_spliced is True:
+                read.set_tag('SP', True)
+            elif self.is_spliced is False:
+                read.set_tag('SP', False)
+            if len(self.exon_hit_gene_names):
+                read.set_tag('gn', ';'.join(list(self.exon_hit_gene_names)))
+            else:
+                read.set_tag('gn', None)
+            
     def write_tags(self):
         Molecule.write_tags(self)
         
