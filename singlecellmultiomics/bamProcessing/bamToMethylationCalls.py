@@ -81,7 +81,6 @@ if __name__ == '__main__':
     argparser.add_argument('-bin_size', default=500, type=int, help='bin size, set to 1 for single CpG')
     argparser.add_argument('-bp_per_job', default=500_000, type=int, help='Amount of basepairs to be processed per thread per chunk')
     argparser.add_argument('-threads', default=None, type=int, help='Amount of threads to use, None to use the amount of available threads')
-    argparser.add_argument('-ref', help='path to reference fasta', type=str, required=False)
 
     fi = argparser.add_argument_group("Filters")
     fi.add_argument('-min_variance', default=None, type=float)
@@ -110,11 +109,6 @@ if __name__ == '__main__':
 
     if args.distmat_plot is not None and not args.distmat_plot.endswith('.png'):
         args.distmat_plot += '.png'
-    # autodetect reference:
-    if args.ref is None:
-        args.ref = get_reference_from_pysam_alignmentFile(args.bamfile)
-    if args.ref is None:
-        raise ValueError('Reference autodetect failed. Supply a reference using -ref')
 
     print('Obtaining counts ', end="")
     counts = get_methylation_count_matrix(bam_path = args.bamfile,
