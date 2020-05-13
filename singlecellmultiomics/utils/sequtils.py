@@ -1,5 +1,27 @@
 import math
 from pysam import FastaFile
+from singlecellmultiomics.utils.prefetch import Prefetcher
+from collections import Counter
+import numpy as np
+
+class Reference(Prefetcher):
+    """ This is a picklable wrapper to pass reference handles """
+
+    def __init__(self):
+        self.args = locals().copy()
+        del self.args['self']
+
+    def instance(self, arg_update):
+        if 'self' in self.args:
+            del self.args['self']
+        clone = Reference(**self.args)
+        return clone
+
+        # Todo: exit statements
+    def prefetch(self, contig, start, end):
+        return FastaFile(**self.args)
+
+
 
 
 def is_main_chromosome(chrom):
@@ -143,3 +165,32 @@ def create_MD_tag(reference_seq, query_seq):
     if no_change > 0:
         md.append(str(no_change))
     return ''.join(md)
+
+
+def phredscores_to_base_call(phredscores_per_base: dict):
+    """
+    Perform base calling on a observation dictionary.
+    Returns N when there are multiple options with the same likelihood
+
+    Args:
+        phredscores_per_base: dictionary with log transformed phred scores  {'C': [-0.0002741077772782459,
+                           -0.0002741077772782459]}, 'A':[-0.0002741077772782459])
+
+    Returns:
+        base(str) : Called base
+        probability(float) : probability of the call to be correct
+    """
+    likelihood_per_base = {base: sum(v) for base, v in phredscores_per_base.items()}
+    amount = {base: len(v) for base, v in phredscores_per_base.items()}
+    total_likelihood = sum(likelihood_per_base.values())
+
+    total_prob = np.power(10, np.power(0.5, total_likelihood - 1))
+
+    base_probs = Counter({base: p / total_prob for base, p in likelihood_per_base.items()}).most_common()
+
+    # We cannot make a base call when there are no observations or when the most likely bases have the same prob
+    if len(base_probs) == 0 or (len(base_probs) >= 2 and base_probs[0][1] == base_probs[1][1]):
+        return 'N', 0
+
+    return (base_probs[0][0],  np.power(10,base_probs[0][1]))
+
