@@ -344,9 +344,11 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
     return counts
 
 
-def read_counts(read, min_mq, dedup=True):
-    if not read.is_read1 or read is None:
+def read_counts(read, min_mq, dedup=True, read1_only=False):
+
+    if read1_only and (not read.is_read1 or read is None):
         return False
+
     if dedup and read.is_duplicate:
         return False
     if read.has_tag('mp') and read.get_tag('mp') != 'unique':
@@ -355,6 +357,7 @@ def read_counts(read, min_mq, dedup=True):
         return False
     # if read.has_tag('RZ') and read.get_tag('RZ') != 'CATG':
     #    return False
+
     return True
 
 
@@ -551,7 +554,7 @@ def count_fragments_binned(args):
         for p, read in enumerate(alignments.fetch(contig=contig, start=f_start,
                                                   stop=f_end)):
 
-            if not read_counts(read, min_mq=min_mq, dedup=dedup):
+            if not read_counts(read, min_mq=min_mq, dedup=dedup, read1_only=True):
                 continue
 
             # Extract the site
