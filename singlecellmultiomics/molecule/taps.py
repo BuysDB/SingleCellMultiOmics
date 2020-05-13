@@ -158,6 +158,15 @@ class TAPSMolecule(Molecule):
         self.classifier = classifier
         self.taps_strand = taps_strand
 
+    def add_cpg_color_tag_to_read(self, read):
+        try:
+            CpG_methylation_rate = read.get_tag('sZ') / (read.get_tag('sZ') + read.get_tag('sz'))
+            cfloat = self.taps.colormap(CpG_methylation_rate)[:3]
+        except Exception as e:
+            CpG_methylation_rate = None
+            cfloat = self.taps.colormap._rgba_bad[:3]
+        read.set_tag('YC', '%s,%s,%s' % tuple((int(x * 255) for x in cfloat)))
+
     def __finalise__(self):
         super().__finalise__()
 
@@ -174,6 +183,14 @@ class TAPSMolecule(Molecule):
                 CpG_methylation_rate = None
                 cfloat = self.taps.colormap._rgba_bad[:3]
             read.set_tag('YC', '%s,%s,%s' % tuple( (int(x*255) for x in cfloat)))
+
+    def write_tags_to_psuedoreads(self, reads, call_super=True):
+        if call_super:
+            Molecule.write_tags_to_psuedoreads(self,reads)
+        for read in reads:
+            self.add_cpg_color_tag_to_read(read)
+
+
     def is_valid(self, set_rejection_reasons=False):
         if not super().is_valid(set_rejection_reasons=set_rejection_reasons):
             return False
@@ -288,6 +305,10 @@ class TAPSNlaIIIMolecule(NlaIIIMolecule, TAPSMolecule):
             self, set_rejection_reasons=set_rejection_reasons) and TAPSMolecule.is_valid(
             self, set_rejection_reasons=set_rejection_reasons)
 
+    def write_tags_to_psuedoreads(self, reads):
+        NlaIIIMolecule.write_tags_to_psuedoreads(self, reads)
+        TAPSMolecule.write_tags_to_psuedoreads(self, reads, call_super=False)
+
 
 class AnnotatedTAPSNlaIIIMolecule(AnnotatedNLAIIIMolecule, TAPSMolecule):
     """Molecule class for combined TAPS, NLAIII and transcriptome """
@@ -307,6 +328,9 @@ class AnnotatedTAPSNlaIIIMolecule(AnnotatedNLAIIIMolecule, TAPSMolecule):
             self, set_rejection_reasons=set_rejection_reasons) and TAPSMolecule.is_valid(
             self, set_rejection_reasons=set_rejection_reasons)
 
+    def write_tags_to_psuedoreads(self, reads):
+        AnnotatedNLAIIIMolecule.write_tags_to_psuedoreads(self, reads)
+        TAPSMolecule.write_tags_to_psuedoreads(self, reads)
 
 class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
     """Molecule class for combined TAPS and CHIC """
@@ -328,6 +352,10 @@ class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
         CHICMolecule.__finalise__(self)
         TAPSMolecule.__finalise__(self)
 
+    def write_tags_to_psuedoreads(self, reads):
+        CHICMolecule.write_tags_to_psuedoreads(self, reads)
+        TAPSMolecule.write_tags_to_psuedoreads(self, reads)
+
 
 class AnnotatedTAPSCHICMolecule(AnnotatedCHICMolecule, TAPSMolecule):
     """Molecule class for combined TAPS, CHIC and transcriptome """
@@ -347,7 +375,9 @@ class AnnotatedTAPSCHICMolecule(AnnotatedCHICMolecule, TAPSMolecule):
             self, set_rejection_reasons=set_rejection_reasons) and TAPSMolecule.is_valid(
             self, set_rejection_reasons=set_rejection_reasons)
 
-
+    def write_tags_to_psuedoreads(self, reads):
+        AnnotatedCHICMolecule.write_tags_to_psuedoreads(self, reads)
+        TAPSMolecule.write_tags_to_psuedoreads(self, reads, call_super=False)
 
 
 def strip_array_tags(molecule):
@@ -427,3 +457,5 @@ class TAPSPTaggedMolecule(AnnotatedTAPSNlaIIIMolecule):
             self.set_meta(context,obs)
 
         strip_array_tags(self)
+
+
