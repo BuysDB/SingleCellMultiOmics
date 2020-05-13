@@ -32,7 +32,7 @@ def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
 def run_tagging_task(alignments, output,
                     contig=None, start=None, end=None, fetch_start=None, fetch_end=None,
                     molecule_iterator_class=None,  molecule_iterator_args={},
-                    read_groups=None, timeout_time=None, enable_prefetch=True):
+                    read_groups=None, timeout_time=None, enable_prefetch=True, consensus_mode=None, no_source_reads=False):
     """ Run tagging task for the supplied region
 
     Args:
@@ -125,7 +125,13 @@ def run_tagging_task(alignments, output,
                 if not rgid in read_groups:
                     read_groups[rgid] = fragment.get_read_group(True)[1]
 
-        molecule.write_pysam(output)
+        if consensus_mode is None:
+            molecule.write_pysam(output)
+        elif consensus_mode=='majority':
+            molecule.write_pysam(output, consensus=True, no_source_reads=no_source_reads)
+        else:
+            raise ValueError(f'Unknown consensus method {consensus_mode}')
+
         total_molecules_written+=1
 
     return {'total_molecules_written': total_molecules_written,
@@ -179,6 +185,7 @@ def run_tagging_tasks(args: tuple):
 
 
 def generate_tasks(input_bam_path: str, temp_folder: str, job_gen: Generator, iteration_args: dict,
+                   additional_args: dict,
                    max_time_per_segment: int = None) -> Generator:
     # Task generator:
     return (
@@ -191,6 +198,6 @@ def generate_tasks(input_bam_path: str, temp_folder: str, job_gen: Generator, it
                 'end': end,
                 'fetch_start': fetch_start,
                 'fetch_end': fetch_end,
-                **iteration_args
+                **iteration_args, **additional_args
 
             } for contig, start, end, fetch_start, fetch_end in job]) for job in job_gen)
