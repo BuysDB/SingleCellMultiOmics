@@ -353,7 +353,7 @@ def read_counts(read, min_mq, dedup=True, read1_only=False):
         return False
     if read.has_tag('mp') and read.get_tag('mp') != 'unique':
         return False
-    if read.mapping_quality < min_mq or not read.has_tag('DS'):
+    if (min_mq is not None and read.mapping_quality < min_mq) or not read.has_tag('DS'):
         return False
     # if read.has_tag('RZ') and read.get_tag('RZ') != 'CATG':
     #    return False
