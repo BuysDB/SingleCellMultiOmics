@@ -330,7 +330,7 @@ class AnnotatedTAPSNlaIIIMolecule(AnnotatedNLAIIIMolecule, TAPSMolecule):
 
     def write_tags_to_psuedoreads(self, reads):
         AnnotatedNLAIIIMolecule.write_tags_to_psuedoreads(self, reads)
-        TAPSMolecule.write_tags_to_psuedoreads(self, reads)
+        TAPSMolecule.write_tags_to_psuedoreads(self, reads, call_super=False)
 
 class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
     """Molecule class for combined TAPS and CHIC """
@@ -456,6 +456,15 @@ class TAPSPTaggedMolecule(AnnotatedTAPSNlaIIIMolecule):
         for context,obs in context_obs.most_common():
             self.set_meta(context,obs)
 
-        strip_array_tags(self)
+        self.mismatches = mismatches
+        self.conversions_count = conversions_count
+        self.context_obs = context_obs
+        self.rev_counts = rev_counts
+        self.forward_counts = forward_counts
+        self.conversion_locations=conversion_locations
 
+        #strip_array_tags(self)
+
+    def write_tags_to_psuedoreads(self, reads):
+        AnnotatedTAPSNlaIIIMolecule.write_tags_to_psuedoreads(self,reads)
 
