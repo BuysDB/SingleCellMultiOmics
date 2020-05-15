@@ -98,17 +98,21 @@ if __name__ == '__main__':
     df = pd.DataFrame(counts).T.fillna(0)
     # remove cells were the median is zero
     if args.norm_method=='median':
-        shape_before_median_filter = df.shape
-        df = df.T[df.median()>0].T
-        shape_after_median_filter = df.shape
-        print(shape_before_median_filter,shape_after_median_filter )
-        # Remove rows with little counts
-        df = df.T[df.sum()>molecule_threshold].T
-        df = df / np.percentile(df,pct_clip,axis=0)
-        df = np.clip(0,MAXCP,(df / df.median())*2)
-        df = df.T
+        try:
+            shape_before_median_filter = df.shape
+            df = df.T[df.median()>0].T
+            shape_after_median_filter = df.shape
+            print(shape_before_median_filter,shape_after_median_filter )
+            # Remove rows with little counts
+            df = df.T[df.sum()>molecule_threshold].T
+            df = df / np.percentile(df,pct_clip,axis=0)
+            df = np.clip(0,MAXCP,(df / df.median())*2)
+            df = df.T
+        except Exception as e:
+            print(f"\rMedian normalisation [ {Fore.RED}FAIL{Style.RESET_ALL} ] ")
+            args.norm_method = 'mean'
 
-    else:
+    if args.norm_method == 'mean':
         shape_before_median_filter = df.shape
         df = df.T[df.mean()>0].T
         shape_after_median_filter = df.shape
