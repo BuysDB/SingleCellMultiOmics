@@ -40,18 +40,30 @@ def get_methylation_count_matrix(bam_path,
                                  skip_contigs: set = None,
                                  known_variants: str = None,
                                  maxtime: int = None,
-                                 threads: int = None):
+                                 head: int=None,
+                                 threads: int = None,
+                                **kwargs
+                                 ):
 
+
+    all_kwargs = {'known': known_variants,
+            'maxtime': maxtime,
+            'single_location':bin_size==1,
+            'min_samples':min_samples,
+            'min_variance':min_variance,
+            'threads':threads
+            }
+    all_kwargs.update(kwargs)
     commands = generate_commands(
         alignments_path=bam_path,
-        bin_size=bin_size,
+        bin_size=bin_size if bin_size!=1 else bp_per_job,
         key_tags=None,
         max_fragment_size=0,
         dedup=True,
-        bins_per_job=int(bp_per_job / bin_size), min_mq=min_mapping_qual,
-        kwargs={'known': known_variants,
-                'maxtime': maxtime,
-                }, skip_contigs=skip_contigs
+        head=head,
+        bins_per_job= int(bp_per_job / bin_size) if bin_size!=1 else 1, min_mq=min_mapping_qual,
+        kwargs=all_kwargs,
+        skip_contigs=skip_contigs
     )
 
 
@@ -59,13 +71,13 @@ def get_methylation_count_matrix(bam_path,
     if threads==1:
         for command in commands:
             result = count_methylation_binned(command)
-            result.prune(min_samples=min_samples, min_variance=min_variance)
+            #result.prune(min_samples=min_samples, min_variance=min_variance)
             count_mat.update( result )
     else:
         with multiprocessing.Pool(threads) as workers:
 
             for result in workers.imap_unordered(count_methylation_binned, commands):
-                result.prune(min_samples=min_samples, min_variance=min_variance)
+                #result.prune(min_samples=min_samples, min_variance=min_variance)
                 count_mat.update(result)
 
     return count_mat
@@ -75,16 +87,18 @@ def get_methylation_count_matrix(bam_path,
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="""Export and plot copy number profiles
+        description="""Extract methylation calls from bam file
     """)
     argparser.add_argument('bamfile', metavar='bamfile', type=str)
     argparser.add_argument('-bin_size', default=500, type=int, help='bin size, set to 1 for single CpG')
-    argparser.add_argument('-bp_per_job', default=500_000, type=int, help='Amount of basepairs to be processed per thread per chunk')
-    argparser.add_argument('-threads', default=None, type=int, help='Amount of threads to use, None to use the amount of available threads')
+    argparser.add_argument('-bp_per_job', default=1_000_000, type=int, help='Amount of basepairs to be processed per thread per chunk')
+    argparser.add_argument('-threads', default=None, type=int, help='Amount of threads to use for counting, None to use the amount of available threads')
+    argparser.add_argument('-threads_agg', default=1, type=int, help='Amount of threads to use for aggregation. Aggregation is very memory intensive, so this amount of threads should probably be lower than -threads')
 
     fi = argparser.add_argument_group("Filters")
     fi.add_argument('-min_variance', default=None, type=float)
     fi.add_argument('-min_mapping_qual', default=40, type=int)
+    fi.add_argument('-head', default=None, type=int,help='Process the first n bins')
     fi.add_argument('-min_samples', default=1, type=int)
     fi.add_argument('-skip_contigs', type=str, help='Comma separated contigs to skip', default='MT,chrM')
     fi.add_argument('-known_variants',
@@ -119,9 +133,13 @@ if __name__ == '__main__':
                                  known_variants = args.known_variants,
                                  skip_contigs = args.skip_contigs.split(','),
                                  min_mapping_qual=args.min_mapping_qual,
+                                 head = args.head,
                                  threads=args.threads,
+                                 single_location= (args.bin_size==1)
     )
     print(f" [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
+
+    print(counts)
 
     if args.betas is not None:
         print('Writing counts ', end="")

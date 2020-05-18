@@ -3,14 +3,19 @@
 
 import pandas as pd
 import numpy as np
+from multiprocessing import Pool, Manager
 
+def get_bulk_vector(args):
+    obj, samples, location = args
+    return obj.get_bulk_column(samples, location)
 
 class MethylationCountMatrix:
 
-    def __init__(self, counts: dict = None):
+    def __init__(self, counts: dict = None, threads=None):
         # Sample->(contig,bin_start,bin_end)-> [methylated_counts, unmethylated]
         self.counts = {} if counts is None else counts
         self.sites = set()
+        self.threads = threads
 
     def __getitem__(self, key: tuple):
         sample, location = key
@@ -23,10 +28,11 @@ class MethylationCountMatrix:
 
     def get_without_init(self, key: tuple):
         # Obtain a key without setting it
-        sample, location = key
-        if sample not in self.counts or location not in self.counts[sample]:
-            return [0, 0]
-        return self.counts[sample][location]
+        # sample, location = key
+        try:
+            return self.counts[key[0]][key[1]]
+        except KeyError:
+            return (0,0)
 
     def __setitem__(self, key: tuple, value: list):
         sample, location = key
@@ -52,7 +58,7 @@ class MethylationCountMatrix:
         if len(self.sites)==0 or len(self.counts) == 0 or min_samples == 0 and min_variance is None:
             return
 
-        for location, row in self.get_bulk_frame().iterrows():
+        for location, row in self.get_bulk_frame(use_multi=False).iterrows():
             if row.n_samples < min_samples:
                 self.delete_location(location)
             elif min_variance is not None and (np.isnan(row.variance) or row.variance < min_variance):
@@ -91,6 +97,9 @@ class MethylationCountMatrix:
                 dmat.drop(sample, 1, inplace=True)
 
         return dmat
+
+
+
 
     def get_frame(self, dtype: str):
         """
@@ -133,7 +142,26 @@ class MethylationCountMatrix:
             print(self)
             raise ValueError('The count matrix contains no data, verify if the input data was empty or filtered to stringently')
 
-    def get_bulk_frame(self, dtype='pd'):
+
+    def get_bulk_column(self, samples, location):
+
+        total_un, total_met = 0, 0
+        betas = []
+        n_samples = 0
+        for sample in samples:
+            unmethylated, methylated = self.get_without_init((sample, location))
+            total_un += unmethylated
+            total_met += methylated
+
+            if methylated + unmethylated > 0:
+                n_samples += 1
+                betas.append(methylated / (methylated + unmethylated))
+
+        empty = (total_met+total_un) == 0
+        return [ total_un, total_met, np.nan if empty else total_met/(total_un+total_met), np.var(betas) if len(betas) else np.nan, n_samples]
+
+
+    def get_bulk_frame(self, dtype='pd', use_multi=True):
         """
         Get pandas dataframe containing the selected columns
 
@@ -153,28 +181,18 @@ class MethylationCountMatrix:
         mat = np.zeros((len(columns), 5))
         mat[:] = np.nan
 
-        for index, location in enumerate(columns):
 
-            total_un, total_met = 0, 0
-            betas = []
-            n_samples = 0
-            for sample in samples:
-                unmethylated, methylated = self.get_without_init((sample, location))
-                total_un += unmethylated
-                total_met += methylated
+        if use_multi and (self.threads is not None and self.threads>1):
+            with Pool(self.threads) as workers:
+                for index,column in enumerate(
+                                                    workers.imap( get_bulk_vector,
+                                                    ( (self, samples, location)
+                                                    for index, location in enumerate(columns) ), chunksize=100_000)):
+                    mat[index, :] =  column
+        else:
+            for index, location in enumerate(columns):
+                mat[index, :] = self.get_bulk_column(samples, location)
 
-                if methylated + unmethylated > 0:
-                    n_samples += 1
-                    betas.append(methylated / (methylated + unmethylated))
-
-            mat[index, 0:2] = (total_un, total_met)
-            if mat[index, 0:2].sum() > 0:
-                mat[index, 2] = total_met / (total_un + total_met)
-
-            if len(betas) > 0:
-                mat[index, 3] = np.var(betas)
-
-            mat[index, 4] = n_samples
         if dtype == 'pd':
             return pd.DataFrame(mat, index=pd.MultiIndex.from_tuples(columns),
                                 columns=('unmethylated', 'methylated', 'beta', 'variance', 'n_samples'))
@@ -182,9 +200,3 @@ class MethylationCountMatrix:
             return mat
         else:
             raise ValueError('dtype should be pd or np')
-
-
-
-
-
-
