@@ -691,7 +691,7 @@ class Molecule():
                 qbase = read.seq[qpos]
                 qqual = read.query_qualities[qpos]
                 # @ todo reads which span multiple chromosomes
-                obs[(self.chromosome, rpos)][qbase].append(np.log10(1 - np.power(10, -qqual / 10)))
+                obs[(self.chromosome, rpos)][qbase].append(1 - np.power(10, -qqual / 10))
 
         reads = list(self.get_dedup_reads(read_name,
                                      target_bam,

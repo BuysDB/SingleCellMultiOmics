@@ -167,30 +167,29 @@ def create_MD_tag(reference_seq, query_seq):
     return ''.join(md)
 
 
-def phredscores_to_base_call(phredscores_per_base: dict):
+def phredscores_to_base_call(probs: dict):
     """
     Perform base calling on a observation dictionary.
     Returns N when there are multiple options with the same likelihood
 
     Args:
-        phredscores_per_base: dictionary with log transformed phred scores  {'C': [-0.0002741077772782459,
-                           -0.0002741077772782459]}, 'A':[-0.0002741077772782459])
+        probs: dictionary with confidence scores probs = {
+            'A':[0.95,0.99,0.9],
+            'T':[0.1],
+        }
 
     Returns:
         base(str) : Called base
-        probability(float) : probability of the call to be correct
+        phred(float) : probability of the call to be correct
     """
-    likelihood_per_base = {base: sum(v) for base, v in phredscores_per_base.items()}
-    amount = {base: len(v) for base, v in phredscores_per_base.items()}
-    total_likelihood = sum(likelihood_per_base.values())
-
-    total_prob = np.power(10, np.power(0.5, total_likelihood - 1))
-
-    base_probs = Counter({base: p / total_prob for base, p in likelihood_per_base.items()}).most_common()
+    # Add N:
+    probs['N'] = [1-p  for base, ps in probs.items() for p in ps ]
+    likelihood_per_base = {base:np.product(v)/np.power(0.25, len(v)-1) for base,v in probs.items() }
+    total_likelihood = sum( likelihood_per_base.values() )
+    base_probs = Counter({base:p/total_likelihood for base,p in likelihood_per_base.items() }).most_common()
 
     # We cannot make a base call when there are no observations or when the most likely bases have the same prob
     if len(base_probs) == 0 or (len(base_probs) >= 2 and base_probs[0][1] == base_probs[1][1]):
         return 'N', 0
 
-    return (base_probs[0][0],  np.power(10,base_probs[0][1]))
-
+    return (base_probs[0][0],  base_probs[0][1])
