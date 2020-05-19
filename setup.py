@@ -106,6 +106,7 @@ setup(
         # Variants:
         'singlecellmultiomics/variants/postProcessVariants.py',
         'singlecellmultiomics/variants/vcfFilterAlleleFreq.py',
+        'singlecellmultiomics/variants/vcfMutProfiler.py',
 
         # Utility: (SGE wrapper)
         'singlecellmultiomics/utils/submission.py',

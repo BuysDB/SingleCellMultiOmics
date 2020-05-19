@@ -344,17 +344,23 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
     return counts
 
 
-def read_counts(read, min_mq, dedup=True):
-    if not read.is_read1 or read is None:
+def read_counts(read, min_mq, dedup=True, read1_only=False):
+
+    if read1_only and (not read.is_read1 or read is None):
         return False
+
+    if read.is_qcfail:
+        return False
+
     if dedup and read.is_duplicate:
         return False
     if read.has_tag('mp') and read.get_tag('mp') != 'unique':
         return False
-    if read.mapping_quality < min_mq or not read.has_tag('DS'):
+    if (min_mq is not None and read.mapping_quality < min_mq) or not read.has_tag('DS'):
         return False
     # if read.has_tag('RZ') and read.get_tag('RZ') != 'CATG':
     #    return False
+
     return True
 
 
@@ -438,15 +444,20 @@ def generate_commands(alignments_path,
         if head is not None and i >= (head - 1):
             break
 
+
+
 def count_methylation_binned(args):
     (alignments_path, bin_size, max_fragment_size, \
      contig, start, end, \
      min_mq, alt_spans, key_tags, dedup, kwargs) = args
 
 
+    # single_location => count single cpgs
+    single_location = kwargs.get('single_location',False)
+
     min_counts_per_bin = kwargs.get('min_counts_per_bin',10) # Min measurements across all cells
     # Cant use defaultdict because of pickles :\
-    met_counts = MethylationCountMatrix()  # Sample->(contig,bin_start,bin_end)-> [methylated_counts, unmethylated]
+    met_counts = MethylationCountMatrix(threads=kwargs.get('threads',None))  # Sample->(contig,bin_start,bin_end)-> [methylated_counts, unmethylated]
 
     # Define which reads we want to count:
     known =  set()
@@ -513,9 +524,14 @@ def count_methylation_binned(args):
                             site, contig, alt_spans)
 
                     # Obtain the bin index
-                    bin_i = int(site / bin_size)
-                    bin_start = bin_size * bin_i
-                    bin_end = min(bin_size * (bin_i + 1), contig_size)
+                    if single_location:
+                        bin_i = site
+                        bin_start = site
+                        bin_end = site+1
+                    else:
+                        bin_i = int(site / bin_size)
+                        bin_start = bin_size * bin_i
+                        bin_end = min(bin_size * (bin_i + 1), contig_size)
 
                     # Add additional tag information: (For example the allele tag)
                     if key_tags is not None:
@@ -525,7 +541,7 @@ def count_methylation_binned(args):
                         bin_id = (contig, bin_start, bin_end)
 
                     met_counts[sample, bin_id][call=='Z']+=1
-
+    met_counts.prune(min_samples=kwargs.get('min_samples',0), min_variance=kwargs.get('min_variance',0))
     return met_counts
 
 
@@ -551,7 +567,7 @@ def count_fragments_binned(args):
         for p, read in enumerate(alignments.fetch(contig=contig, start=f_start,
                                                   stop=f_end)):
 
-            if not read_counts(read, min_mq=min_mq, dedup=dedup):
+            if not read_counts(read, min_mq=min_mq, dedup=dedup, read1_only=True):
                 continue
 
             # Extract the site

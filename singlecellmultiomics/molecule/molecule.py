@@ -5,7 +5,7 @@ from singlecellmultiomics.fragment import Fragment
 import collections
 import itertools
 import numpy as np
-from singlecellmultiomics.utils import style_str
+from singlecellmultiomics.utils import style_str, phredscores_to_base_call
 import textwrap
 import singlecellmultiomics.alleleTools
 import functools
@@ -25,7 +25,7 @@ def detect_alleles(molecules,
                    position,
                    min_cell_obs=3,
                    base_confidence_threshold=None,
-                   classifier=None): # [ alleles]
+                   classifier=None):  # [ alleles]
     """
     Detect the alleles (variable bases) present at the selected location
 
@@ -42,35 +42,35 @@ def detect_alleles(molecules,
         classifier (obj) : classifier used for consensus call, when no classifier is supplied a mayority vote is used
 
     """
-    observed_alleles = collections.defaultdict(set) # cell -> { base_call , .. }
+    observed_alleles = collections.defaultdict(set)  # cell -> { base_call , .. }
     for molecule in molecules:
         base_call = molecule.get_consensus_base(contig, position, classifier=classifier)
 
-        #confidence = molecule.get_mean_base_quality(*variant_location, base_call)
+        # confidence = molecule.get_mean_base_quality(*variant_location, base_call)
         if base_call is not None:
             observed_alleles[base_call].add(molecule.sample)
 
-    return [allele for allele, cells in observed_alleles.items() if len(cells)>=min_cell_obs]
+    return [allele for allele, cells in observed_alleles.items() if len(cells) >= min_cell_obs]
 
 
-def get_variant_phase(molecules, contig, position, variant_base, allele_resolver, phasing_ratio_threshold=None): # (location,base) -> [( location, base, idenfifier)]
-    alleles = [ variant_base ]
-    phases = collections.defaultdict(collections.Counter) # Allele_id -> variant->obs
+def get_variant_phase(molecules, contig, position, variant_base, allele_resolver,
+                      phasing_ratio_threshold=None):  # (location,base) -> [( location, base, idenfifier)]
+    alleles = [variant_base]
+    phases = collections.defaultdict(collections.Counter)  # Allele_id -> variant->obs
     for molecule in molecules:
-        #allele_obs = molecule.get_allele(return_allele_informative_base_dict=True,allele_resolver=allele_resolver)
-        allele = list( molecule.get_allele(allele_resolver) )
-        if allele is None or len(allele)>1 or len(allele)==0:
+        # allele_obs = molecule.get_allele(return_allele_informative_base_dict=True,allele_resolver=allele_resolver)
+        allele = list(molecule.get_allele(allele_resolver))
+        if allele is None or len(allele) > 1 or len(allele) == 0:
             continue
-        allele=allele[0]
+        allele = allele[0]
 
-        base  = molecule.get_consensus_base(contig, position)
+        base = molecule.get_consensus_base(contig, position)
         if base in alleles:
             phases[base][allele] += 1
         else:
             pass
 
-
-    if len(phases[variant_base])==0:
+    if len(phases[variant_base]) == 0:
         raise ValueError("Phasing not established, no gSNVS available")
 
     phased_allele_id = phases[variant_base].most_common(1)[0][0]
@@ -78,13 +78,14 @@ def get_variant_phase(molecules, contig, position, variant_base, allele_resolver
     # Check if the phasing noise is below the threshold:
     if phasing_ratio_threshold is not None:
         correct = phases[variant_base].most_common(1)[0][1]
-        total = sum( phases[variant_base].values() )
-        phasing_ratio = correct/total
-        if correct/total < phasing_ratio_threshold:
+        total = sum(phases[variant_base].values())
+        phasing_ratio = correct / total
+        if correct / total < phasing_ratio_threshold:
             raise ValueError(f'Phasing ratio not met. ({phasing_ratio}) < {phasing_ratio_threshold}')
     # Check if the other allele i
 
     return phased_allele_id
+
 
 ###############
 
@@ -124,7 +125,7 @@ def molecule_to_random_primer_dict(
         if hseq is not None and 'N' in hseq:
             # find nearest
             for other_contig, other_start, other_seq in rp:
-                if other_contig!=h_contig or other_start != hstart:
+                if other_contig != h_contig or other_start != hstart:
                     continue
 
                 if hseq.count('N') > max_N_distance:
@@ -458,13 +459,13 @@ class Molecule():
             self.set_meta('DA', str(self.allele))
 
         # Set total amount of associated fragments
-        self.set_meta('TF',len(self.fragments) + self.overflow_fragments )
+        self.set_meta('TF', len(self.fragments) + self.overflow_fragments)
 
         # associatedFragmentCount :
         self.set_meta('af', len(self))
-        for rc, frag in  enumerate(self):
+        for rc, frag in enumerate(self):
             frag.set_meta('RC', rc)
-            if rc>0:
+            if rc > 0:
                 # Set duplicate bit
                 for read in frag:
                     if read is not None:
@@ -477,7 +478,7 @@ class Molecule():
             for rt_duplicate_index, frag in enumerate(frags):
                 frag.set_meta('rt', rt_reaction_index)
                 frag.set_meta('rd', rt_duplicate_index)
-        self.set_meta('TR', 0 if (rt_reaction_index is None) else rt_reaction_index+1 )
+        self.set_meta('TR', 0 if (rt_reaction_index is None) else rt_reaction_index + 1)
 
         if self.allele_resolver is not None:
             self.write_allele_phasing_information_tag()
@@ -538,8 +539,9 @@ class Molecule():
 
         # We only use the proba:
         base_calling_probs = classifier.predict_proba(features)
-        predicted_sequence = [ 'ACGT'[i] for i in np.argmax( base_calling_probs ,1) ]
-        phred_scores = np.rint(-10 * np.log10(np.clip(1 - base_calling_probs.max(1), 0.000000001, 0.999999999))).astype('B')
+        predicted_sequence = ['ACGT'[i] for i in np.argmax(base_calling_probs, 1)]
+        phred_scores = np.rint(-10 * np.log10(np.clip(1 - base_calling_probs.max(1), 0.000000001, 0.999999999))).astype(
+            'B')
 
         read = self.get_consensus_read(
             read_name=read_name,
@@ -557,7 +559,7 @@ class Molecule():
             max_N_span=300,
             reference=None,
             **feature_matrix_args
-            ):
+    ):
         """
         Deduplicate all associated reads to a single pseudoread, when the span is larger than max_N_span
         the read is split up in multi-segments. Uncovered locations are spaced using N's in the CIGAR.
@@ -579,12 +581,11 @@ class Molecule():
                 True, reference=reference, **feature_matrix_args)
 
             base_calling_probs = classifier.predict_proba(features)
-            predicted_sequence = [ 'ACGT'[i] for i in np.argmax( base_calling_probs ,1) ]
-
+            predicted_sequence = ['ACGT'[i] for i in np.argmax(base_calling_probs, 1)]
 
             reference_sequence = ''.join(
                 [base for chrom, pos, base in reference_bases])
-            #predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
+            # predicted_sequence[ features[:, [ x*8 for x in range(4) ] ].sum(1)==0 ] ='N'
             predicted_sequence = ''.join(predicted_sequence)
 
             phred_scores = np.rint(
@@ -623,8 +624,8 @@ class Molecule():
                         phred_scores=phred_scores[query_index_start:query_index_end],
                         cigarstring=''.join(partial_CIGAR),
                         mdstring=create_MD_tag(
-                                    reference_sequence[query_index_start:query_index_end],
-                                    predicted_sequence[query_index_start:query_index_end]
+                            reference_sequence[query_index_start:query_index_end],
+                            predicted_sequence[query_index_start:query_index_end]
                         ),
                         start=reference_start,
                         supplementary=supplementary
@@ -648,8 +649,8 @@ class Molecule():
             phred_scores=phred_scores[query_index_start:query_index_end],
             cigarstring=''.join(partial_CIGAR),
             mdstring=create_MD_tag(
-                        reference_sequence[query_index_start:query_index_end],
-                        predicted_sequence[query_index_start:query_index_end]
+                reference_sequence[query_index_start:query_index_end],
+                predicted_sequence[query_index_start:query_index_end]
 
             ),
             start=reference_start,
@@ -666,40 +667,112 @@ class Molecule():
 
         return reads
 
-
-
     def extract_stretch_from_dict(self, base_call_dict, alignment_start, alignment_end):
-        base_calling_probs = np.array([base_call_dict.get( (self.chromosome, pos), ('N',0))[1] for pos in range(alignment_start, alignment_end)])
-        predicted_sequence = [base_call_dict.get( (self.chromosome, pos), ('N',0))[0] for pos in range(alignment_start, alignment_end)]
+        base_calling_probs = np.array(
+            [base_call_dict.get((self.chromosome, pos), ('N', 0))[1] for pos in range(alignment_start, alignment_end)])
+        predicted_sequence = [base_call_dict.get((self.chromosome, pos), ('N', 0))[0] for pos in
+                              range(alignment_start, alignment_end)]
         predicted_sequence = ''.join(predicted_sequence)
         phred_scores = np.rint(
-            -10 * np.log10(np.clip(1 -base_calling_probs,
+            -10 * np.log10(np.clip(1 - base_calling_probs,
                                    0.000000001,
                                    0.999999999)
                            )).astype('B')
-        return predicted_sequence,phred_scores
+        return predicted_sequence, phred_scores
 
-
-    def deduplicate_majority(self, target_bam, read_name, max_N_span=300 ):
+    def deduplicate_majority(self, target_bam, read_name, max_N_span=None):
 
         # Convert (contig, position) -> (base_call) into:
         # (contig, position) -> (base_call, confidence)
-        base_call_dict ={
-            (contig, position): (base, 0.95) for (contig, position), base in self.get_consensus().items()
-        }
 
-        reads = self.deduplicate_to_single_CIGAR_spaced_from_dict(target_bam, read_name, base_call_dict, max_N_span=300)
+        obs = collections.defaultdict(lambda: collections.defaultdict(list))
+        for read in self.iter_reads():
+            for qpos, rpos in read.get_aligned_pairs(matches_only=True):
+                qbase = read.seq[qpos]
+                qqual = read.query_qualities[qpos]
+                # @ todo reads which span multiple chromosomes
+                obs[(self.chromosome, rpos)][qbase].append(1 - np.power(10, -qqual / 10))
+
+        reads = list(self.get_dedup_reads(read_name,
+                                     target_bam,
+                                     obs={reference_position: phredscores_to_base_call(probs)
+                                          for reference_position, probs in obs.items()},
+                                     max_N_span=max_N_span))
         self.write_tags_to_psuedoreads([read for read in reads if read is not None])
         return reads
 
+    def generate_partial_reads(self, obs, max_N_span=None):
+        CIGAR, alignment_start, alignment_end = self.get_CIGAR()
+        query_index_start = 0
+        query_index_end = 0
+        reference_position = alignment_start  # pointer to current position
+        reference_start = alignment_start  # pointer to alignment start of current read
+        reference_end = None
+        partial_CIGAR = []
+        partial_MD = []
+        partial_sequence = []
+        partial_phred = []
+
+        for operation, amount in CIGAR:
+            if operation == 'N':
+                if max_N_span is not None and amount > max_N_span:
+                    yield reference_start, reference_end, partial_sequence, partial_phred, partial_CIGAR, partial_MD
+                    # Clear all
+                    partial_CIGAR = []
+                    partial_MD = []
+                    partial_sequence = []
+                    partial_phred = []
+                else:
+                    # Increment
+                    partial_CIGAR.append(f'{amount}{operation}')
+                    query_index_start += sum((len(s) for s in partial_sequence))
+
+                reference_position += amount
+            elif operation == 'M':  # Consume query and reference
+
+                query_index_end += amount
+                if len(partial_CIGAR) == 0:
+                    reference_start = reference_position
+                start_fetch = reference_position
+
+                reference_position += amount
+                reference_end = reference_position
+                partial_CIGAR.append(f'{amount}{operation}')
+
+                predicted_sequence, phred_scores = self.extract_stretch_from_dict(obs, start_fetch, reference_end)  # [start .. end)
+
+                partial_sequence.append(predicted_sequence)
+                partial_phred.append(phred_scores)
+
+        yield reference_start, reference_end, partial_sequence, partial_phred, partial_CIGAR, partial_MD
+
+    def get_dedup_reads(self, read_name, target_bam, obs, max_N_span=None):
+        for reference_start, reference_end, partial_sequence, partial_phred, partial_CIGAR, partial_MD in self.generate_partial_reads(
+                obs, max_N_span=max_N_span):
+            consensus_read = self.get_consensus_read(
+                read_name=read_name,
+                target_file=target_bam,
+                consensus=''.join(partial_sequence),
+                phred_scores=np.concatenate(partial_phred),
+                cigarstring=''.join(partial_CIGAR),
+                mdstring=create_MD_tag(
+                    self.reference.fetch(self.chromosome, reference_start, reference_end),
+                    ''.join(partial_sequence)
+                ),
+                start=reference_start,
+                supplementary=False
+            )
+
+            consensus_read.is_reverse = self.strand
+            yield consensus_read
 
     def deduplicate_to_single_CIGAR_spaced_from_dict(
             self,
             target_bam,
             read_name,
-            base_call_dict, #(contig, position) -> (base_call, confidence)
+            base_call_dict,  # (contig, position) -> (base_call, confidence)
             max_N_span=300,
-            ):
+    ):
         """
         Deduplicate all associated reads to a single pseudoread, when the span is larger than max_N_span
         the read is split up in multi-segments. Uncovered locations are spaced using N's in the CIGAR.
@@ -724,49 +797,83 @@ class Molecule():
         query_index_end = 0
         reference_position = alignment_start  # pointer to current position
         reference_start = alignment_start  # pointer to alignment start of current read
+        reference_end = None
         supplementary = False
         partial_CIGAR = []
         partial_MD = []
 
+        partial_sequence = []
+        partial_phred = []
 
         for operation, amount in CIGAR:
 
             if operation == 'N':
+                # Pop the previous read..
+                if len(partial_sequence):
+                    assert reference_end is not None
+                    consensus_read = self.get_consensus_read(
+                        read_name=read_name,
+                        target_file=target_bam,
+                        consensus=''.join(partial_sequence),
+                        phred_scores=np.concatenate(partial_phred),
+                        cigarstring=''.join(partial_CIGAR),
+                        mdstring=create_MD_tag(
+                            self.reference.fetch(self.chromosome, reference_start, reference_end),
+                            ''.join(partial_sequence)
+                        ),
+                        start=reference_start,
+                        supplementary=supplementary
+                    )
+                    reads.append(consensus_read)
+                    if not supplementary:
+                        consensus_read.is_read1 = True
+
+                    supplementary = True
+                    reference_start = reference_position
+                    partial_CIGAR = []
+                    partial_phred = []
+                    partial_sequence = []
+
                 # Consume reference:
                 reference_position += amount
+                partial_CIGAR.append(f'{amount}{operation}')
 
             if operation == 'M':  # Consume query and reference
                 query_index_end += amount
-                reference_start = reference_position
+                # This should only be reset upon a new read:
+                if len(partial_CIGAR) == 0:
+                    reference_start = reference_position
                 reference_position += amount
                 reference_end = reference_position
 
                 partial_CIGAR.append(f'{amount}{operation}')
 
-                predicted_sequence, phred_scores = self.extract_stretch_from_dict( base_call_dict, reference_start, reference_end  ) #[start .. end)
+                predicted_sequence, phred_scores = self.extract_stretch_from_dict(base_call_dict, reference_start,
+                                                                                  reference_end)  # [start .. end)
 
-                consensus_read = self.get_consensus_read(
-                    read_name=read_name,
-                    target_file=target_bam,
-                    consensus=predicted_sequence,
-                    phred_scores=phred_scores,
-                    cigarstring=''.join(partial_CIGAR),
-                    mdstring=create_MD_tag(
-                                self.reference.fetch(self.chromosome,reference_start,reference_end),
-                                predicted_sequence
-                    ),
-                    start=reference_start,
-                    supplementary=supplementary
-                )
-                reads.append(consensus_read)
-                if not supplementary:
-                    consensus_read.is_read1 = True
+                partial_sequence.append(predicted_sequence)
+                partial_phred.append(phred_scores)
 
-                supplementary = True
-                reference_start = reference_position
-                partial_CIGAR = []
+        consensus_read = self.get_consensus_read(
+            read_name=read_name,
+            target_file=target_bam,
+            consensus=''.join(partial_sequence),
+            phred_scores=np.concatenate(partial_phred),
+            cigarstring=''.join(partial_CIGAR),
+            mdstring=create_MD_tag(
+                self.reference.fetch(self.chromosome, reference_start, reference_end),
+                ''.join(partial_sequence)
+            ),
+            start=reference_start,
+            supplementary=supplementary
+        )
+        reads.append(consensus_read)
+        if not supplementary:
+            consensus_read.is_read1 = True
 
-
+        supplementary = True
+        reference_start = reference_position
+        partial_CIGAR = []
 
         # Write last index tag to last read ..
         if supplementary:
@@ -861,7 +968,7 @@ class Molecule():
                             # Update rt_reactions
                             if USE_RT:
                                 if not (
-                                        ref_pos, query_base) in RT_reaction_coverage:
+                                               ref_pos, query_base) in RT_reaction_coverage:
                                     features[row_index][RT_INDEX +
                                                         COLUMN_OFFSET +
                                                         features_per_block *
@@ -928,13 +1035,13 @@ class Molecule():
                         FS_INDEX,
                         STRAND_INDEX):
                     features[:, index +
-                             COLUMN_OFFSET +
-                             features_per_block *
-                             block_index] /= features[:, RC_INDEX +
-                                                      COLUMN_OFFSET +
-                                                      features_per_block *
-                                                      block_index]
-            #np.nan_to_num( features, nan=-1, copy=False )
+                                COLUMN_OFFSET +
+                                features_per_block *
+                                block_index] /= features[:, RC_INDEX +
+                                                            COLUMN_OFFSET +
+                                                            features_per_block *
+                                                            block_index]
+            # np.nan_to_num( features, nan=-1, copy=False )
             features[np.isnan(features)] = -1
 
             if NUC_RADIUS > 0:
@@ -947,18 +1054,18 @@ class Molecule():
                     slice_end = -(NUC_RADIUS * 2) + offset
                     if slice_end == 0:
                         features[:, features_per_block *
-                                 BASE_COUNT *
-                                 offset:features_per_block *
-                                 BASE_COUNT *
-                                 (offset +
-                                  1)] = x[slice_start:, :]
+                                    BASE_COUNT *
+                                    offset:features_per_block *
+                                           BASE_COUNT *
+                                           (offset +
+                                            1)] = x[slice_start:, :]
                     else:
                         features[:, features_per_block *
-                                 BASE_COUNT *
-                                 offset:features_per_block *
-                                 BASE_COUNT *
-                                 (offset +
-                                  1)] = x[slice_start:slice_end, :]
+                                    BASE_COUNT *
+                                    offset:features_per_block *
+                                           BASE_COUNT *
+                                           (offset +
+                                            1)] = x[slice_start:slice_end, :]
 
             if return_ref_info:
                 ref_info = [
@@ -966,8 +1073,6 @@ class Molecule():
                     for ref_pos in range(origin_start, origin_end + 1)]
                 return features, ref_info
             return features
-
-
 
     def get_CIGAR(self, reference=None):
         """ Get alignment of all associated reads
@@ -999,7 +1104,6 @@ class Molecule():
                 alignment_end = max(alignment_end, end)
 
         return CIGAR, alignment_start, alignment_end
-
 
     @functools.lru_cache(maxsize=4)
     def get_base_calling_feature_matrix_spaced(
@@ -1075,7 +1179,7 @@ class Molecule():
         # Edgecase: it can be that not a single base can be used for base calling
         # in that case features will be None
         # when there is no features return None
-        if features is None or len(features)==0:
+        if features is None or len(features) == 0:
             return None
 
         # check which bases should not be used
@@ -1083,8 +1187,6 @@ class Molecule():
             mask_variants is None or
             not might_be_variant_function(chrom, pos, mask_variants, base)
             for chrom, pos, base in feature_info]
-
-
 
         X_molecule = features[use_indices]
         y_molecule = [
@@ -1121,7 +1223,6 @@ class Molecule():
         else:
             return '+'
 
-
     def set_rejection_reason(self, reason, set_qcfail=False):
         """ Add rejection reason to all fragments associated to this molecule
 
@@ -1132,7 +1233,6 @@ class Molecule():
         """
         for fragment in self:
             fragment.set_rejection_reason(reason, set_qcfail=set_qcfail)
-
 
     def is_valid(self, set_rejection_reasons=False):
         """Check if the molecule is valid
@@ -1353,8 +1453,9 @@ class Molecule():
 
         return f"""{self.__class__.__name__}
         with {len(self.fragments)} assinged fragments
-        { "Allele :" +  (self.allele if self.allele is not None else "No allele assigned")}
-        """ + frag_repr + ('' if len(self.fragments) < max_show else f'... {len(self.fragments)-max_show} fragments not shown')
+        {"Allele :" + (self.allele if self.allele is not None else "No allele assigned")}
+        """ + frag_repr + (
+            '' if len(self.fragments) < max_show else f'... {len(self.fragments) - max_show} fragments not shown')
 
     def update_umi(self):
         """Set UMI
@@ -1439,7 +1540,7 @@ class Molecule():
     def _add_fragment(self, fragment):
 
         # Do not process the fragment when the max_associated_fragments threshold is exceeded
-        if self.max_associated_fragments is not None and len(self.fragments)>=(self.max_associated_fragments):
+        if self.max_associated_fragments is not None and len(self.fragments) >= (self.max_associated_fragments):
             self.overflow_fragments += 1
             raise OverflowError()
 
@@ -1448,7 +1549,6 @@ class Molecule():
         # if we already had a fragment, this fragment is a duplicate:
         if len(self.fragments) > 1:
             fragment.set_duplicate(True)
-
 
         self.fragments.append(fragment)
 
@@ -1542,12 +1642,12 @@ class Molecule():
         if chromosome != self.chromosome:
             return True
         return position < (
-            self.spanStart -
-            self.cache_size *
-            0.5) or position > (
-            self.spanEnd +
-            self.cache_size *
-            0.5)
+                self.spanStart -
+                self.cache_size *
+                0.5) or position > (
+                       self.spanEnd +
+                       self.cache_size *
+                       0.5)
 
     def get_rt_reactions(self):
         """Obtain RT reaction dictionary
@@ -1578,8 +1678,10 @@ class Molecule():
             if rt_end is None:
                 continue
 
-            rt_chrom, rt_start, rt_end = pysamiterators.iterators.getListSpanningCoordinates(itertools.chain.from_iterable(
-                [fragment for fragment in fragments if fragment is not None and fragment.get_random_primer_hash()[0] is not None]))
+            rt_chrom, rt_start, rt_end = pysamiterators.iterators.getListSpanningCoordinates(
+                itertools.chain.from_iterable(
+                    [fragment for fragment in fragments if
+                     fragment is not None and fragment.get_random_primer_hash()[0] is not None]))
 
             rt_sizes.append([rt_end - rt_start])
         return rt_sizes
@@ -1594,20 +1696,26 @@ class Molecule():
             self.get_rt_reaction_fragment_sizes()
         )
 
-    def write_pysam(self, target_file, consensus=False):
+    def write_pysam(self, target_file, consensus=False, no_source_reads=False, consensus_name=None):
         """Write all associated reads to the target file
 
         Args:
             target_file (pysam.AlignmentFile) : Target file
+            consensus (bool) : write consensus
+            no_source_reads (bool) : while in consensus mode, don't write original reads
         """
         if consensus:
-            reads = self.deduplicate_majority(target_file,f'molecule_{uuid4()}')
+            reads = self.deduplicate_majority(target_file,
+                                              f'molecule_{uuid4()}' if consensus_name is None else consensus_name)
             for read in reads:
                 target_file.write(read)
+            if not no_source_reads:
+                for fragment in self:
+                    fragment.write_pysam(target_file)
+
         else:
             for fragment in self:
                 fragment.write_pysam(target_file)
-
 
     def set_methylation_call_tags(self,
                                   call_dict, bismark_call_tag='XM',
@@ -1658,10 +1766,12 @@ class Molecule():
                 bismark_call_tag,
                 ''.join([
                     call_dict.get(
-                        (read.reference_name, rpos), {}).get('context', '.')  # Obtain all aligned positions from the call dict
+                        (read.reference_name, rpos), {}).get('context', '.')
+                    # Obtain all aligned positions from the call dict
                     # iterate all positions in the alignment
                     for qpos, rpos in read.get_aligned_pairs(matches_only=True)
-                    if qpos is not None and rpos is not None])  # make sure to ignore non matching positions ? is this neccesary?
+                    if qpos is not None and rpos is not None])
+                # make sure to ignore non matching positions ? is this neccesary?
             )
 
             # Set total methylated bases
@@ -1792,7 +1902,7 @@ class Molecule():
         Returns:
             mean_phred_score (float)
         """
-        assert(base is not None or not_base is not None), "Supply base or not_base"
+        assert (base is not None or not_base is not None), "Supply base or not_base"
 
         qualities = []
         for read in self.iter_reads():
@@ -1889,9 +1999,9 @@ class Molecule():
         phase_str = '|'.join(
             [
                 f'{chromosome},{position},{base},{allele}' for allele,
-                chromosome,
-                position,
-                base in phased_locations])
+                                                               chromosome,
+                                                               position,
+                                                               base in phased_locations])
 
         if len(phase_str) > 0:
             for read in reads:
@@ -1916,7 +2026,7 @@ class Molecule():
         used = 0  # some alignments yielded valid calls
         ignored = 0
         for fragment in self:
-            _ ,start, end = fragment.span
+            _, start, end = fragment.span
             for read in fragment:
                 if read is None:
                     continue
@@ -1936,9 +2046,7 @@ class Molecule():
 
         return base_obs
 
-
-
-    def get_base_observation_dict(self, return_refbases=False, allow_N=False,allow_unsafe=True):
+    def get_base_observation_dict(self, return_refbases=False, allow_N=False, allow_unsafe=True):
         '''
         Obtain observed bases at reference aligned locations
 
@@ -1966,7 +2074,7 @@ class Molecule():
         ref_bases = {}
         used = 0  # some alignments yielded valid calls
         ignored = 0
-        error=None
+        error = None
         for fragment in self:
             _, start, end = fragment.span
 
@@ -1976,34 +2084,34 @@ class Molecule():
                     continue
 
                 if allow_unsafe:
-                    for  query_pos, ref_pos, ref_base in read.get_aligned_pairs(matches_only=True, with_seq=True):
-                        if query_pos is None or ref_pos is None: #or ref_pos < start or ref_pos > end:
+                    for query_pos, ref_pos, ref_base in read.get_aligned_pairs(matches_only=True, with_seq=True):
+                        if query_pos is None or ref_pos is None:  # or ref_pos < start or ref_pos > end:
                             continue
                         query_base = read.seq[query_pos]
-                        #query_qual = read.qual[query_pos]
+                        # query_qual = read.qual[query_pos]
                         if query_base == 'N':
                             continue
                         base_obs[(read.reference_name, ref_pos)][query_base] += 1
 
                         if return_refbases:
                             ref_bases[(read.reference_name, ref_pos)
-                                      ] = ref_base.upper()
+                            ] = ref_base.upper()
 
                 else:
                     for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(
                             read, with_seq=True, reference=self.reference):
 
-                        if query_pos is None or ref_pos is None: #or ref_pos < start or ref_pos > end:
+                        if query_pos is None or ref_pos is None:  # or ref_pos < start or ref_pos > end:
                             continue
                         query_base = read.seq[query_pos]
-                        #query_qual = read.qual[query_pos]
+                        # query_qual = read.qual[query_pos]
                         if query_base == 'N':
                             continue
                         base_obs[(read.reference_name, ref_pos)][query_base] += 1
 
                         if return_refbases:
                             ref_bases[(read.reference_name, ref_pos)
-                                      ] = ref_base.upper()
+                            ] = ref_base.upper()
 
         if used == 0 and ignored > 0:
             raise ValueError(f'Could not extract any safe data from molecule {error}')
@@ -2041,7 +2149,7 @@ class Molecule():
                     continue
                 matches += obs[ref]
                 mismatches += sum((base_obs for base,
-                                   base_obs in obs.most_common() if base != ref))
+                                                base_obs in obs.most_common() if base != ref))
 
         return matches, mismatches
 
@@ -2082,7 +2190,7 @@ class Molecule():
                 return dict()
 
             base_calling_probs = classifier.predict_proba(features)
-            predicted_sequence = [ 'ACGT'[i] for i in np.argmax( base_calling_probs ,1) ]
+            predicted_sequence = ['ACGT'[i] for i in np.argmax(base_calling_probs, 1)]
 
             reference_sequence = ''.join(
                 [base for chrom, pos, base in reference_bases])
@@ -2094,7 +2202,8 @@ class Molecule():
                                )).astype('B')
 
             consensus = {(chrom, pos): consensus_base for (
-                chrom, pos, ref_base), consensus_base in zip(reference_bases, predicted_sequence)}
+                                                              chrom, pos, ref_base), consensus_base in
+                         zip(reference_bases, predicted_sequence)}
 
             if store_consensus:
                 self.classifier_consensus = consensus
@@ -2138,8 +2247,7 @@ class Molecule():
             c = self.get_consensus(classifier)
         except ValueError:
             return None
-        return c.get(  (contig, position), None)
-
+        return c.get((contig, position), None)
 
     # when enabled other calls (non ref non alt will be set None)
     def check_variants(self, variants, exclude_other_calls=True):
@@ -2157,11 +2265,10 @@ class Molecule():
                 self.spanStart,
                 self.spanEnd):
             variant_dict[(variant.chrom, variant.pos - 1)
-                         ] = (variant.ref, variant.alts)
+            ] = (variant.ref, variant.alts)
 
         variant_calls = collections.defaultdict(collections.Counter)
         for fragment in self:
-
 
             _, start, end = fragment.span
             for read in fragment:
@@ -2248,7 +2355,7 @@ class Molecule():
 
         html = f"""<h3>{self.chromosome}:{self.spanStart}-{self.spanEnd}
             sample:{self.get_sample()}  {'valid molecule' if self[0].is_valid() else 'Non valid molecule'}</h3>
-            <h5>UMI:{self.get_umi()} Mapping qual:{round(self.get_mean_mapping_qual(),1)} Cut loc: {"%s:%s" % self[0].get_site_location()} </h5>
+            <h5>UMI:{self.get_umi()} Mapping qual:{round(self.get_mean_mapping_qual(), 1)} Cut loc: {"%s:%s" % self[0].get_site_location()} </h5>
             <div style="white-space:nowrap; font-family:monospace; color:#888">"""
         # undigested:{self.get_undigested_site_count()}
         consensus = self.get_consensus()
@@ -2265,8 +2372,8 @@ class Molecule():
         for fragment in itertools.chain(*self.get_rt_reactions().values()):
             html += f'<h5>{fragment.get_R1().query_name}</h5>'
             for readid, read in [
-                    (1, fragment.get_R1()),
-                    (2, fragment.get_R2())]:  # go over R1 and R2:
+                (1, fragment.get_R1()),
+                (2, fragment.get_R2())]:  # go over R1 and R2:
                 # This is just the sequence:
                 if read is None:
                     continue

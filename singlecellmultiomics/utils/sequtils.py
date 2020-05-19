@@ -1,5 +1,27 @@
 import math
 from pysam import FastaFile
+from singlecellmultiomics.utils.prefetch import Prefetcher
+from collections import Counter
+import numpy as np
+
+class Reference(Prefetcher):
+    """ This is a picklable wrapper to pass reference handles """
+
+    def __init__(self):
+        self.args = locals().copy()
+        del self.args['self']
+
+    def instance(self, arg_update):
+        if 'self' in self.args:
+            del self.args['self']
+        clone = Reference(**self.args)
+        return clone
+
+        # Todo: exit statements
+    def prefetch(self, contig, start, end):
+        return FastaFile(**self.args)
+
+
 
 
 def is_main_chromosome(chrom):
@@ -143,3 +165,31 @@ def create_MD_tag(reference_seq, query_seq):
     if no_change > 0:
         md.append(str(no_change))
     return ''.join(md)
+
+
+def phredscores_to_base_call(probs: dict):
+    """
+    Perform base calling on a observation dictionary.
+    Returns N when there are multiple options with the same likelihood
+
+    Args:
+        probs: dictionary with confidence scores probs = {
+            'A':[0.95,0.99,0.9],
+            'T':[0.1],
+        }
+
+    Returns:
+        base(str) : Called base
+        phred(float) : probability of the call to be correct
+    """
+    # Add N:
+    probs['N'] = [1-p  for base, ps in probs.items() for p in ps ]
+    likelihood_per_base = {base:np.product(v)/np.power(0.25, len(v)-1) for base,v in probs.items() }
+    total_likelihood = sum( likelihood_per_base.values() )
+    base_probs = Counter({base:p/total_likelihood for base,p in likelihood_per_base.items() }).most_common()
+
+    # We cannot make a base call when there are no observations or when the most likely bases have the same prob
+    if len(base_probs) == 0 or (len(base_probs) >= 2 and base_probs[0][1] == base_probs[1][1]):
+        return 'N', 0
+
+    return (base_probs[0][0],  base_probs[0][1])

@@ -32,8 +32,6 @@ import pickle
 from datetime import datetime
 
 
-available_consensus_models = pkg_resources.resource_listdir('singlecellmultiomics','molecule/consensus_model')
-
 argparser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     description='Assign molecules, set sample tags, set alleles')
@@ -200,31 +198,10 @@ cg.add_argument(
     '--consensus',
     action='store_true',
     help='Calculate molecule consensus read, this feature is _VERY_ experimental')
-cg.add_argument('-consensus_mask_variants', type=str,
-                help='variants to mask during training (VCF file)')
-cg.add_argument(
-    '-consensus_model',
-    type=str,
-    help=f'Name of or path to consensus classifier, built-in available models are:{", ".join(available_consensus_models)}',
-    default=None)
-cg.add_argument(
-    '-consensus_n_train',
-    type=int,
-    help='Amount of bases used for training',
-    default=500_000)
-
-cg.add_argument(
-    '-consensus_k_rad',
-    type=int,
-    help='consensus model k radius',
-    default=3)
-
 
 cg.add_argument('--no_source_reads', action='store_true',
                 help='Do not write original reads, only consensus ')
 
-cg.add_argument('--consensus_allow_train_location_oversampling', action='store_true',
-                help='Allow to train the consensus model multiple times for a single genomic location')
 
 
 ma = argparser.add_argument_group('Molecule assignment settings')
@@ -257,8 +234,8 @@ def tag_multiome_multi_processing(
         bp_per_segment: int = None,
         temp_folder_root: str = '/tmp/scmo',
         max_time_per_segment: int = None,
-        use_pool: bool = True
-
+        use_pool: bool = True,
+        additional_args: dict = None
     ):
 
     assert bp_per_job is not None
@@ -307,6 +284,7 @@ def tag_multiome_multi_processing(
                            job_gen=job_gen,
                            iteration_args=iteration_args,
                            temp_folder=temp_folder,
+                           additional_args= additional_args,
                            max_time_per_segment=max_time_per_segment)
 
     # Create header bam:
@@ -563,6 +541,13 @@ def run_multiome_tagging(args):
         except Exception as e:
             print("Error when loading the reference file, continuing without a reference")
             reference = None
+
+    ##### Set up consensus
+    consensus_model_args = {'consensus_mode':None}
+    if args.consensus:
+        consensus_model_args = {'consensus_mode': 'majority'}
+    if args.no_source_reads:
+        consensus_model_args['no_source_reads'] = True
 
     ##### Define fragment and molecule class arguments and instances: ####
 
@@ -915,47 +900,6 @@ def run_multiome_tagging(args):
     #####
     consensus_model_path = None
 
-    if args.consensus:
-        # Load from path if available:
-        """
-        if args.consensus_model is not None:
-            if os.path.exists(args.consensus_model):
-                model_path = args.consensus_model
-            else:
-                model_path = pkg_resources.resource_filename(
-                    'singlecellmultiomics', f'molecule/consensus_model/{args.consensus_model}')
-
-            if model_path.endswith('.h5'):
-                try:
-                    from tensorflow.keras.models import load_model
-                except ImportError:
-                    print("Please install tensorflow")
-                    raise
-                consensus_model = load_model(model_path)
-
-            else:
-                with open(model_path, 'rb') as f:
-                    consensus_model = pickle.load(f)
-        else:
-            skip_already_covered_bases = not args.consensus_allow_train_location_oversampling
-            if args.consensus_mask_variants is None:
-                mask_variants = None
-            else:
-                mask_variants = pysam.VariantFile(args.consensus_mask_variants)
-            print("Fitting consensus model, this may take a long time")
-            consensus_model = singlecellmultiomics.molecule.train_consensus_model(
-                molecule_iterator,
-                mask_variants=mask_variants,
-                n_train=args.consensus_n_train,
-                skip_already_covered_bases=skip_already_covered_bases
-                )
-            # Write the consensus model to disk
-            consensus_model_path = os.path.abspath(
-                os.path.dirname(args.o)) + '/consensus_model.pickle.gz'
-            print(f'Writing consensus model to {consensus_model_path}')
-            with open(consensus_model_path, 'wb') as f:
-                pickle.dump(consensus_model, f)
-        """
 
     # We needed to check if every argument is properly placed. If so; the jobs
     # can be sent to the cluster
@@ -1072,8 +1016,14 @@ def run_multiome_tagging(args):
                                       molecule_iterator_args=molecule_iterator_args,ignore_bam_issues=args.ignore_bam_issues,
                                       head=args.head, no_source_reads=args.no_source_reads,
                                       fragment_size=fragment_size, blacklist_path=args.blacklist,bp_per_job=bp_per_job,
-                                      bp_per_segment=bp_per_segment, temp_folder_root=args.temp_folder, max_time_per_segment=max_time_per_segment)
+                                      bp_per_segment=bp_per_segment, temp_folder_root=args.temp_folder, max_time_per_segment=max_time_per_segment,
+                                      additional_args=consensus_model_args
+                                      )
     else:
+
+        if consensus_model_args.get('consensus_mode') is not None:
+            raise NotImplementedError('Please use --multiprocess')
+
         # Alignments are passed as pysam handle:
         if args.blacklist is not None:
             raise NotImplementedError("Blacklist can only be used with --multiprocess")
