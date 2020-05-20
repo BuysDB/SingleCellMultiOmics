@@ -540,7 +540,7 @@ class Molecule():
         # We only use the proba:
         base_calling_probs = classifier.predict_proba(features)
         predicted_sequence = ['ACGT'[i] for i in np.argmax(base_calling_probs, 1)]
-        phred_scores = np.rint(-10 * np.log10(np.clip(1 - base_calling_probs.max(1), 0.000000001, 0.999999999))).astype(
+        phred_scores = np.rint(-10 * np.log10(np.clip(1 - base_calling_probs.max(1), 0.000000001, 0.999999))).astype(
             'B')
 
         read = self.get_consensus_read(
@@ -591,7 +591,7 @@ class Molecule():
             phred_scores = np.rint(
                 -10 * np.log10(np.clip(1 - base_calling_probs.max(1),
                                        0.000000001,
-                                       0.999999999)
+                                       0.999999)
                                )).astype('B')
 
         reads = []

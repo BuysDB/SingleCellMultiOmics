@@ -728,7 +728,10 @@ def run_multiome_tagging(args):
             'reference': reference,
             'taps': singlecellmultiomics.molecule.TAPS()
         })
-        bp_per_job = 5_000_000
+        if args.consensus:
+            bp_per_job = 2_000_000
+        else:
+            bp_per_job = 5_000_000
         bp_per_segment = 1_000_000
         fragment_size = 500
     elif args.method == 'nla_taps_transcriptome': # Annotates reads in transcriptome
