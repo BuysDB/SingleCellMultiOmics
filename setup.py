@@ -85,6 +85,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamPlotRTstats.py',
         'singlecellmultiomics/bamProcessing/bamPlateVisualisation.py',
         'singlecellmultiomics/bamProcessing/bamFeatureDensityVisualisation.py',
+        'singlecellmultiomics/bamProcessing/bamMethylationCutDistance.py',
         'singlecellmultiomics/bamProcessing/bamDuprate.py',
         'singlecellmultiomics/bamProcessing/bamExtractRandomPrimerStats.py',
         'singlecellmultiomics/bamProcessing/bamToRNACounts.py',
