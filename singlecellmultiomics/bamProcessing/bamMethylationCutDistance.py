@@ -99,7 +99,7 @@ def methylation_to_cut_histogram(args):
                 if distance>max_dist:
                     continue
 
-                distance_methylation[sample][distance][call] +=1
+                distance_methylation[sample][(read.is_read1, read.is_reverse, distance)][call] +=1
 
     return distance_methylation
 
@@ -199,5 +199,48 @@ if __name__ == '__main__':
                     un[sample][distance] = contexts[ctx]
 
         pd.DataFrame(beta).sort_index().T.sort_index().to_csv(f'{args.prefix}_beta_{ctx}.csv')
+        pd.DataFrame(beta).sort_index().T.sort_index().to_csv(f'{args.prefix}_beta_{ctx}.pickle.gz')
         pd.DataFrame(met).sort_index().T.sort_index().to_csv(f'{args.prefix}_counts_{ctx.upper()}.csv')
+        pd.DataFrame(met).sort_index().T.sort_index().to_csv(f'{args.prefix}_counts_{ctx.upper()}.pickle.gz')
         pd.DataFrame(un).sort_index().T.sort_index().to_csv(f'{args.prefix}_counts_{ctx}.csv')
+        pd.DataFrame(un).sort_index().T.sort_index().to_csv(f'{args.prefix}_counts_{ctx}.pickle.gz')
+
+        # Make plots
+        beta = {}
+        met = {}
+        un = {}
+        for sample, sample_data in r.items():
+            beta[sample] = {}
+            met[sample] = {}
+            un[sample] = {}
+            for distance, contexts in sample_data.items():
+                if distance[-1] > 500 or distance[-1] < 4: # Clip in sane region
+                    continue
+                if ctx in contexts or ctx.upper() in contexts:
+                    beta[sample][distance] = contexts[ctx.upper()] / (contexts[ctx.upper()] + contexts[ctx])
+                    met[sample][distance] = contexts[ctx.upper()]
+                    un[sample][distance] = contexts[ctx]
+
+        beta = pd.DataFrame(beta).sort_index().T.sort_index()
+        met = pd.DataFrame(met).sort_index().T.sort_index()
+        un = pd.DataFrame(un).sort_index().T.sort_index()
+
+        for mate in [True, False]:
+            for strand in [True, False]:
+                fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+
+                un[mate, strand].sum().rename('Unmethylated').plot(ax=ax1)
+                met[mate, strand].sum().rename('Methylated').plot(ax=ax1)
+
+                ax1.set_xlabel('distance to cut')
+                ax1.set_ylabel('# molecules')
+                ax1.legend()
+
+                (met[mate, strand].sum() / (un[mate, strand].sum() + met[mate, strand].sum())).rename('Beta').plot(
+                    ax=ax2)
+                # ax2.set_ylim(0,0)
+
+                sns.despine()
+                ax1.set_title(f'Mate {"R1" if mate else "R2"}, strand:{"reverse" if strand else "forward"}')
+                ax2.set_ylabel('Beta')
+                plt.savefig(f'{args.prefix}_{ctx}_{"R1" if mate else "R2"}_{"reverse" if strand else "forward"}.png')
