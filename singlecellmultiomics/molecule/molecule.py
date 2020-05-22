@@ -747,6 +747,8 @@ class Molecule():
         yield reference_start, reference_end, partial_sequence, partial_phred, partial_CIGAR, partial_MD
 
     def get_dedup_reads(self, read_name, target_bam, obs, max_N_span=None):
+        if self.chromosome is None:
+            return None # We cannot perform this action
         for reference_start, reference_end, partial_sequence, partial_phred, partial_CIGAR, partial_MD in self.generate_partial_reads(
                 obs, max_N_span=max_N_span):
             consensus_read = self.get_consensus_read(

@@ -449,7 +449,7 @@ def run_multiome_tagging(args):
             cs_feature_counts (Single end, deduplicate using a bam file tagged using featurecounts, deduplicates a umi per gene)
             fl_feature_counts (deduplicate using a bam file tagged using featurecounts, deduplicates based on fragment position)
             nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
-            chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
+            chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS), chic_taps_transcriptome (Same as chic_taps, but includes annotations)
             chic_nla
             scartrace  (lineage tracing protocol)
 
@@ -758,6 +758,17 @@ def run_multiome_tagging(args):
         bp_per_segment = 5_000_000
         fragment_size = 100_000
 
+    elif args.method == 'chic_taps_transcriptome':
+
+        bp_per_job = 5_000_000
+        bp_per_segment = 5_000_000
+        fragment_size = 100_000
+        molecule_class_args.update({
+            'reference': reference,
+            'taps': singlecellmultiomics.molecule.TAPS(taps_strand='F')
+        })
+        molecule_class = singlecellmultiomics.molecule.AnnotatedTAPSCHICMolecule
+        fragment_class = singlecellmultiomics.fragment.CHICFragment
 
     elif args.method == 'chic_taps':
         bp_per_job = 5_000_000
