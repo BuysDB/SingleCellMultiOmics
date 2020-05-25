@@ -82,8 +82,13 @@ class GenomicPlot():
 
         """
 
+
+        # Figure out what contigs are present in the dataframe:
+        contigs_to_plot = [contig for contig in self.contigs if contig in set(df.columns.get_level_values(0))]
+
         try:
-            clmap = sns.clustermap(df.sort_index(1)[self.contigs],
+
+            clmap = sns.clustermap(df.sort_index(1)[contigs_to_plot],
                 col_cluster=False,method=method,
                 cmap=cmap, vmax=max_cn,vmin=0,
                 yticklabels=True, figsize=figsize, **kwargs)
@@ -99,7 +104,9 @@ class GenomicPlot():
         xtick_pos = []
         xtick_label = []
         last_idx = 0
-        for idx, (contig, start, end) in enumerate(df.sort_index(1)[self.contigs].columns):
+        for idx, (contig, start, end) in enumerate(df.sort_index(1)[contigs_to_plot].columns):
+            # Clean up contig label:
+            contig = contig.replace('chr', '')
             if prev is not None and prev != contig:
                 ax_heatmap.axvline(idx-0.5, c='k',lw=1.5, zorder=10)
                 xtick_pos.append( (idx+last_idx) / 2)
