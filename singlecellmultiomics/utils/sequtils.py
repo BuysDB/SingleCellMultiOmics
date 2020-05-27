@@ -167,6 +167,18 @@ def create_MD_tag(reference_seq, query_seq):
     return ''.join(md)
 
 
+def prob_to_phred(prob: float):
+    """
+    Convert probability of base call being correct into phred score
+    Values are clipped to stay within 0 to 60 phred range
+
+    Args:
+        prob  (float): probability of base call being correct
+
+    Returns:
+        phred_score (byte)
+    """
+    return np.rint(-10 * np.log10(np.clip(1-prob, 1-0.999999, 0.999999))).astype('B')
 def phredscores_to_base_call(probs: dict):
     """
     Perform base calling on a observation dictionary.
