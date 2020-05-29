@@ -458,13 +458,16 @@ def count_methylation_binned(args):
     single_location = kwargs.get('single_location', False)
 
     contexts_to_capture = kwargs.get('contexts_to_capture', None) # List
+
+    reference = None
+
     if contexts_to_capture is not None:
         context_radius = kwargs.get('context_radius', None)
         reference_path = kwargs.get('reference_path', None)
         if reference_path is not None:
             reference = CachedFasta(FastaFile(reference_path))
-        else:
-            reference = None
+
+
 
     default_sample_name = kwargs.get('default_sample_name', 'bulk_sample')
 
@@ -527,17 +530,25 @@ def count_methylation_binned(args):
 
                 final_call = None
                 if contexts_to_capture is not None:
-                    if call!='.':
+                    if call=='.':
+                        continue
+
+                    try:
                         context = reference.fetch(read.reference_name,
                                                   site - context_radius,
                                                   site + context_radius + 1)
-                        if context[context_radius] == 'G':
-                            context = reverse_complement(context)
+                    except Exception as e: # Happens when on edges of contigs
+                        continue
 
-                        if context in contexts_to_capture:
-                            final_call = call.isupper()
-                        else:
-                            continue
+                    if context[context_radius] == 'G':
+                        context = reverse_complement(context)
+
+                    if context in contexts_to_capture:
+                        final_call = call.isupper()
+
+                    else:
+                        continue
+
 
                 elif call in 'Zz':
 
@@ -576,6 +587,9 @@ def count_methylation_binned(args):
                     met_counts[sample, bin_id][final_call]+=1
 
     met_counts.prune(min_samples=kwargs.get('min_samples',0), min_variance=kwargs.get('min_variance',0))
+    if reference is not None:
+        reference.handle.close()
+
     return met_counts
 
 

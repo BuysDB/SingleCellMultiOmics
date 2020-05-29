@@ -14,6 +14,8 @@ class MethylationCountMatrix:
     def __init__(self, counts: dict = None, threads=None):
         # Sample->(contig,bin_start,bin_end)-> [methylated_counts, unmethylated]
         self.counts = {} if counts is None else counts
+
+        # { (contig, bin_start, bin_end), (contig, bin_start, bin_end) .. }
         self.sites = set()
         self.threads = threads
 
