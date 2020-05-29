@@ -69,7 +69,7 @@ def extract_covariates(bam_path: str,
                     continue
 
                 refbase = refbase.upper()
-                if refbase is 'N' or (read.reference_name, refpos) in known:
+                if refbase == 'N' or (read.reference_name, refpos) in known:
                     continue
 
                 key = get_covariate_key(read, qpos, refpos, reference, refbase, **covariate_kwargs)
