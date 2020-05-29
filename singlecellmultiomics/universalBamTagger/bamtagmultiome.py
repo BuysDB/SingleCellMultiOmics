@@ -114,7 +114,7 @@ argparser.add_argument(
     help="Use multiple the CPUs of you system to achieve (much) faster tagging")
 argparser.add_argument(
     '-tagthreads',
-    type='int',
+    type=int,
     help='Amount of processes to use for tagging (--multiprocess needs to be enabled). Uses all available CPUs when not set.'
     )
 
