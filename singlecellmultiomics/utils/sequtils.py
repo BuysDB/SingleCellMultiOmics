@@ -1,8 +1,10 @@
 import math
-from pysam import FastaFile
+from pysam import FastaFile, AlignmentFile
 from singlecellmultiomics.utils.prefetch import Prefetcher
 from collections import Counter
 import numpy as np
+from pysamiterators import CachedFasta
+from array import array
 
 class Reference(Prefetcher):
     """ This is a picklable wrapper to pass reference handles """
@@ -167,6 +169,41 @@ def create_MD_tag(reference_seq, query_seq):
     return ''.join(md)
 
 
+def prob_to_phred(prob: float):
+    """
+    Convert probability of base call being correct into phred score
+    Values are clipped to stay within 0 to 60 phred range
+
+    Args:
+        prob  (float): probability of base call being correct
+
+    Returns:
+        phred_score (byte)
+    """
+    return np.rint(-10 * np.log10(np.clip(1-prob, 1-0.999999, 0.999999))).astype('B')
+
+
+def get_context(contig: str, position: int, reference: FastaFile, ibase: str = None, k_rad: int = 1):
+    """
+    Args:
+        contig: contig of the location to extract context
+        position: zero based position
+        reference: pysam.FastaFile handle or similar object which supports .fetch()
+        ibase: single base to inject into the middle of the context
+        k_rad: radius to extract
+
+    Returns:
+        context(str) : extracted context with length k_rad*2 + 1
+
+    """
+    if ibase is not None:
+        ctx = reference.fetch(contig, position-k_rad, position+k_rad+1).upper()
+        return ctx[:k_rad]+ibase+ctx[1+k_rad:]
+    else:
+        return reference.fetch(contig, position-k_rad, position+k_rad+1).upper()
+
+
+
 def phredscores_to_base_call(probs: dict):
     """
     Perform base calling on a observation dictionary.
@@ -185,8 +222,8 @@ def phredscores_to_base_call(probs: dict):
     # Add N:
     probs['N'] = [1-p  for base, ps in probs.items() for p in ps ]
     likelihood_per_base = {base:np.product(v)/np.power(0.25, len(v)-1) for base,v in probs.items() }
-    total_likelihood = sum( likelihood_per_base.values() )
-    base_probs = Counter({base:p/total_likelihood for base,p in likelihood_per_base.items() }).most_common()
+    total_likelihood = sum(likelihood_per_base.values())
+    base_probs = Counter({base:p/total_likelihood for base, p in likelihood_per_base.items() }).most_common()
 
     # We cannot make a base call when there are no observations or when the most likely bases have the same prob
     if len(base_probs) == 0 or (len(base_probs) >= 2 and base_probs[0][1] == base_probs[1][1]):

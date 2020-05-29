@@ -244,3 +244,4 @@ if __name__ == '__main__':
                 ax1.set_title(f'Mate {"R1" if mate else "R2"}, strand:{"reverse" if strand else "forward"}')
                 ax2.set_ylabel('Beta')
                 plt.savefig(f'{args.prefix}_{ctx}_{"R1" if mate else "R2"}_{"reverse" if strand else "forward"}.png')
+                plt.close('all')

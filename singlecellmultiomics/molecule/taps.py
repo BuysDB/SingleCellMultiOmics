@@ -139,7 +139,7 @@ class TAPS():
 
 
 class TAPSMolecule(Molecule):
-    def __init__(self, fragments=None, taps=None, classifier=None, taps_strand='F', **kwargs):
+    def __init__(self, fragments=None, taps=None, classifier=None, taps_strand='F', allow_unsafe_base_calls=True, **kwargs):
         """ TAPSMolecule
 
         Args:
@@ -157,6 +157,7 @@ class TAPSMolecule(Molecule):
         self.methylation_call_dict = None
         self.classifier = classifier
         self.taps_strand = taps_strand
+        self.allow_unsafe_base_calls = allow_unsafe_base_calls
 
     def add_cpg_color_tag_to_read(self, read):
         try:
@@ -171,9 +172,9 @@ class TAPSMolecule(Molecule):
         super().__finalise__()
 
         try:
-            self.obtain_methylation_calls(classifier=self.classifier, allow_unsafe=True)
+            self.obtain_methylation_calls(classifier=self.classifier, allow_unsafe=self.allow_unsafe_base_calls)
         except ValueError:
-            raise
+            self.obtain_methylation_calls(classifier=self.classifier, allow_unsafe=True)
 
         for read in self.iter_reads():
             try:
@@ -196,7 +197,7 @@ class TAPSMolecule(Molecule):
             return False
 
         try:
-            consensus = self.get_consensus(allow_unsafe=True)
+            consensus = self.get_consensus(allow_unsafe=self.allow_unsafe_base_calls)
         except ValueError:
             if set_rejection_reasons:
                 self.set_rejection_reason('no_consensus')
@@ -354,7 +355,7 @@ class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
 
     def write_tags_to_psuedoreads(self, reads):
         CHICMolecule.write_tags_to_psuedoreads(self, reads)
-        TAPSMolecule.write_tags_to_psuedoreads(self, reads)
+        TAPSMolecule.write_tags_to_psuedoreads(self, reads, call_super=False)
 
 
 class AnnotatedTAPSCHICMolecule(AnnotatedCHICMolecule, TAPSMolecule):
@@ -364,11 +365,15 @@ class AnnotatedTAPSCHICMolecule(AnnotatedCHICMolecule, TAPSMolecule):
         assert features is not None, "Supply features!"
         AnnotatedCHICMolecule.__init__(
             self, fragments, features=features, **kwargs)
-        TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
+        TAPSMolecule.__init__(self, fragments=fragments, taps_strand='F',taps=taps, **kwargs)
 
     def write_tags(self):
         AnnotatedCHICMolecule.write_tags(self)
         TAPSMolecule.write_tags(self)
+
+    def __finalise__(self):
+        AnnotatedCHICMolecule.__finalise__(self)
+        TAPSMolecule.__finalise__(self)
 
     def is_valid(self, set_rejection_reasons=False):
         return AnnotatedCHICMolecule.is_valid(
@@ -467,4 +472,3 @@ class TAPSPTaggedMolecule(AnnotatedTAPSNlaIIIMolecule):
 
     def write_tags_to_psuedoreads(self, reads):
         AnnotatedTAPSNlaIIIMolecule.write_tags_to_psuedoreads(self,reads)
-

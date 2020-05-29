@@ -111,7 +111,13 @@ argparser.add_argument('-stats_file_path',type=str,default=None,help='Path to lo
 argparser.add_argument(
     '--multiprocess',
     action='store_true',
-    help="Use all the CPUs of you system to achieve (much) faster tagging")
+    help="Use multiple the CPUs of you system to achieve (much) faster tagging")
+argparser.add_argument(
+    '-tagthreads',
+    type=int,
+    help='Amount of processes to use for tagging (--multiprocess needs to be enabled). Uses all available CPUs when not set.'
+    )
+
 argparser.add_argument(
     '-temp_folder',
     default='./',
@@ -151,8 +157,6 @@ molecule_settings.add_argument(
     type=int,
     default=1,
     help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base")
-
-
 
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument(
@@ -235,7 +239,8 @@ def tag_multiome_multi_processing(
         temp_folder_root: str = '/tmp/scmo',
         max_time_per_segment: int = None,
         use_pool: bool = True,
-        additional_args: dict = None
+        additional_args: dict = None,
+        n_threads=None
     ):
 
     assert bp_per_job is not None
@@ -314,7 +319,7 @@ def tag_multiome_multi_processing(
     # @todo : Progress indication
 
     if use_pool:
-        with Pool() as workers:
+        with Pool(n_threads) as workers:
             tagged_bam_generator = list((bam for bam, meta in workers.imap_unordered(run_tagging_tasks, tasks) if
                                          bam is not None))
             # Changing this to generator and casting to list later makes this not work. I don't understand it
@@ -449,7 +454,7 @@ def run_multiome_tagging(args):
             cs_feature_counts (Single end, deduplicate using a bam file tagged using featurecounts, deduplicates a umi per gene)
             fl_feature_counts (deduplicate using a bam file tagged using featurecounts, deduplicates based on fragment position)
             nla_taps (Data with digested by Nla III enzyme and methylation converted by TAPS)
-            chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS)
+            chic_taps (Data with digested by mnase enzyme and methylation converted by TAPS), chic_taps_transcriptome (Same as chic_taps, but includes annotations)
             chic_nla
             scartrace  (lineage tracing protocol)
 
@@ -758,6 +763,17 @@ def run_multiome_tagging(args):
         bp_per_segment = 5_000_000
         fragment_size = 100_000
 
+    elif args.method == 'chic_taps_transcriptome':
+
+        bp_per_job = 5_000_000
+        bp_per_segment = 5_000_000
+        fragment_size = 100_000
+        molecule_class_args.update({
+            'reference': reference,
+            'taps': singlecellmultiomics.molecule.TAPS(taps_strand='F')
+        })
+        molecule_class = singlecellmultiomics.molecule.AnnotatedTAPSCHICMolecule
+        fragment_class = singlecellmultiomics.fragment.CHICFragment
 
     elif args.method == 'chic_taps':
         bp_per_job = 5_000_000
@@ -1020,7 +1036,7 @@ def run_multiome_tagging(args):
                                       head=args.head, no_source_reads=args.no_source_reads,
                                       fragment_size=fragment_size, blacklist_path=args.blacklist,bp_per_job=bp_per_job,
                                       bp_per_segment=bp_per_segment, temp_folder_root=args.temp_folder, max_time_per_segment=max_time_per_segment,
-                                      additional_args=consensus_model_args
+                                      additional_args=consensus_model_args, n_threads=args.tagthreads
                                       )
     else:
 

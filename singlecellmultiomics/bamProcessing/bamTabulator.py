@@ -31,7 +31,13 @@ if __name__ == '__main__':
     argparser.add_argument(
         '--dedup',
         action='store_true',
-        help='Count only the first occurence of a molecule. Requires RC tag to be set. Reads without RC tag will be ignored!')
+        help='Count only the first occurence of a molecule. Requires RC tag or .duplicate bit to be set.')
+
+    argparser.add_argument(
+        '--no-qcfail',
+        action='store_true',
+        help='Do not show qcfailed reads')
+
     argparser.add_argument(
         '--showtags',
         action='store_true',
@@ -105,6 +111,9 @@ if __name__ == '__main__':
             for i, read in enumerate(f):
                 if args.dedup and read.is_duplicate:
                     continue
+                if args.noqcfail and read.is_qcfail:
+                    continue
+
                 values = [
                     str(singlecellmultiomics.modularDemultiplexer.metaFromRead(read, tag))
                     for tag in featureTags
