@@ -12,7 +12,7 @@ def get_covariate_key(read, qpos, refpos, reference, refbase, cycle_bin_size=3, 
     qual = read.query_qualities[qpos]
     qbase = read.query_sequence[qpos]
 
-    if qbase is 'N':
+    if qbase == 'N':
         return None
 
     context = get_context(read.reference_name, refpos, reference, qbase, k_rad)
@@ -69,7 +69,7 @@ def extract_covariates(bam_path: str,
                     continue
 
                 refbase = refbase.upper()
-                if refbase is 'N' or (read.reference_name, refpos) in known:
+                if refbase == 'N' or (read.reference_name, refpos) in known:
                     continue
 
                 key = get_covariate_key(read, qpos, refpos, reference, refbase, **covariate_kwargs)
@@ -190,6 +190,7 @@ def _recalibrate_reads(bam_path, reference_path, contig, start, end, covariate_k
 
 def __recalibrate_reads(kwargs):
     _recalibrate_reads(**kwargs)
+
 
 def recalibrate_reads(bam_path, target_bam_path, reference_path, n_processes, covariate_kwargs, intermediate_bam_size=20_000_000):
     job_generation_args = {

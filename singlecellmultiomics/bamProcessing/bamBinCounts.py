@@ -445,7 +445,6 @@ def generate_commands(alignments_path,
             break
 
 
-
 def count_methylation_binned(args):
     (alignments_path, bin_size, max_fragment_size, \
      contig, start, end, \

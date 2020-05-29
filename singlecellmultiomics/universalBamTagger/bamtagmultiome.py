@@ -158,8 +158,6 @@ molecule_settings.add_argument(
     default=1,
     help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base")
 
-
-
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument(
     '--cluster',
