@@ -111,7 +111,13 @@ argparser.add_argument('-stats_file_path',type=str,default=None,help='Path to lo
 argparser.add_argument(
     '--multiprocess',
     action='store_true',
-    help="Use all the CPUs of you system to achieve (much) faster tagging")
+    help="Use multiple the CPUs of you system to achieve (much) faster tagging")
+argparser.add_argument(
+    '-tagthreads',
+    type='int',
+    help='Amount of processes to use for tagging (--multiprocess needs to be enabled). Uses all available CPUs when not set.'
+    )
+
 argparser.add_argument(
     '-temp_folder',
     default='./',
@@ -235,7 +241,8 @@ def tag_multiome_multi_processing(
         temp_folder_root: str = '/tmp/scmo',
         max_time_per_segment: int = None,
         use_pool: bool = True,
-        additional_args: dict = None
+        additional_args: dict = None,
+        n_threads=None
     ):
 
     assert bp_per_job is not None
@@ -314,7 +321,7 @@ def tag_multiome_multi_processing(
     # @todo : Progress indication
 
     if use_pool:
-        with Pool() as workers:
+        with Pool(n_threads) as workers:
             tagged_bam_generator = list((bam for bam, meta in workers.imap_unordered(run_tagging_tasks, tasks) if
                                          bam is not None))
             # Changing this to generator and casting to list later makes this not work. I don't understand it
@@ -1031,7 +1038,7 @@ def run_multiome_tagging(args):
                                       head=args.head, no_source_reads=args.no_source_reads,
                                       fragment_size=fragment_size, blacklist_path=args.blacklist,bp_per_job=bp_per_job,
                                       bp_per_segment=bp_per_segment, temp_folder_root=args.temp_folder, max_time_per_segment=max_time_per_segment,
-                                      additional_args=consensus_model_args
+                                      additional_args=consensus_model_args, n_threads=args.tagthreads
                                       )
     else:
 
