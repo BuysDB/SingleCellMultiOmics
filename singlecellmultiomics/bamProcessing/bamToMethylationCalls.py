@@ -53,6 +53,7 @@ def get_methylation_count_matrix(bam_path,
             'min_variance':min_variance,
             'threads':threads
             }
+
     all_kwargs.update(kwargs)
     commands = generate_commands(
         alignments_path=bam_path,
@@ -94,19 +95,25 @@ if __name__ == '__main__':
     argparser.add_argument('-bp_per_job', default=1_000_000, type=int, help='Amount of basepairs to be processed per thread per chunk')
     argparser.add_argument('-threads', default=None, type=int, help='Amount of threads to use for counting, None to use the amount of available threads')
     argparser.add_argument('-threads_agg', default=1, type=int, help='Amount of threads to use for aggregation. Aggregation is very memory intensive, so this amount of threads should probably be lower than -threads')
+    argparser.add_argument('-reference', default=None, type=str, help='Path to reference fasta file')
+
 
     fi = argparser.add_argument_group("Filters")
     fi.add_argument('-min_variance', default=None, type=float)
     fi.add_argument('-min_mapping_qual', default=40, type=int)
-    fi.add_argument('-head', default=None, type=int,help='Process the first n bins')
+    fi.add_argument('-head', default=None, type=int, help='Process the first n bins')
     fi.add_argument('-min_samples', default=1, type=int)
     fi.add_argument('-skip_contigs', type=str, help='Comma separated contigs to skip', default='MT,chrM')
     fi.add_argument('-known_variants',
                            help='VCF file with known variants, will be not taken into account as methylated/unmethylated',
                            type=str)
 
+    fi.add_argument('-contexts_to_capture', default=None, type=str, help='Contexts to capture, comma separated')
+
+
     og = argparser.add_argument_group("Output")
     #og.add_argument('-bed', type=str, help='Bed file to write methylation calls to')
+    og.add_argument('-default_sample_name', type=str, help='Default sample name to use when SM tag is not available in the read')
     og.add_argument('-wig_beta', type=str, help='WIG file to write mean methylation per bin to')
     og.add_argument('-wig_n_samples', type=str, help='WIG file to write amount of samples covering to')
 
@@ -119,7 +126,18 @@ if __name__ == '__main__':
                     help='Tabulated file to write to, contains: chr | start | end | unmethylated_counts | methylated_counts | beta_value | variance | n_samples')
     og.add_argument('-distmat', type=str, help='CSV or pickle file to write single cell distance matrix to')
     og.add_argument('-distmat_plot', type=str, help='.PNG file to write distance matrix image to')
+
     args = argparser.parse_args()
+
+    if args.contexts_to_capture is None:
+        contexts_to_capture = None
+        context_radius = None
+    else:
+        contexts_to_capture = args.contexts_to_capture.split(',')
+        lengths = set( (len(context) for context in contexts_to_capture ) )
+        assert len(lengths)==1, 'Please only supply contexts of the same length'
+        context_radius = int((list(lengths)[0] - 1) / 2)
+        assert args.reference is not None, 'Please supply supply a fasta file using -reference'
 
     if args.distmat_plot is not None and not args.distmat_plot.endswith('.png'):
         args.distmat_plot += '.png'
@@ -135,7 +153,10 @@ if __name__ == '__main__':
                                  min_mapping_qual=args.min_mapping_qual,
                                  head = args.head,
                                  threads=args.threads,
-                                 single_location= (args.bin_size==1)
+                                 single_location= (args.bin_size==1),
+                                 contexts_to_capture = contexts_to_capture,
+                                 context_radius = context_radius,
+                                 reference_path = args.reference
     )
     print(f" [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 

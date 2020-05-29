@@ -15,6 +15,9 @@ from itertools import chain
 from more_itertools import windowed
 from typing import Generator
 from singlecellmultiomics.methylation import MethylationCountMatrix
+from pysamiterators import CachedFasta
+from pysam import FastaFile
+from singlecellmultiomics.utils import reverse_complement
 
 def fill_range(start, end, step):
     """
@@ -452,11 +455,22 @@ def count_methylation_binned(args):
 
 
     # single_location => count single cpgs
-    single_location = kwargs.get('single_location',False)
+    single_location = kwargs.get('single_location', False)
+
+    contexts_to_capture = kwargs.get('contexts_to_capture', None) # List
+    if contexts_to_capture is not None:
+        context_radius = kwargs.get('context_radius', None)
+        reference_path = kwargs.get('reference_path', None)
+        if reference_path is not None:
+            reference = CachedFasta(FastaFile(reference_path))
+        else:
+            reference = None
+
+    default_sample_name = kwargs.get('default_sample_name', 'bulk_sample')
 
     min_counts_per_bin = kwargs.get('min_counts_per_bin',10) # Min measurements across all cells
     # Cant use defaultdict because of pickles :\
-    met_counts = MethylationCountMatrix(threads=kwargs.get('threads',None))  # Sample->(contig,bin_start,bin_end)-> [methylated_counts, unmethylated]
+    met_counts = MethylationCountMatrix(threads=kwargs.get('threads', None))  # Sample->(contig,bin_start,bin_end)-> [methylated_counts, unmethylated]
 
     # Define which reads we want to count:
     known =  set()
@@ -489,9 +503,6 @@ def count_methylation_binned(args):
         for p, read in enumerate(alignments.fetch(contig=contig, start=f_start,
                                                   stop=f_end)):
 
-
-
-
             if p%50==0 and 'maxtime' in kwargs and kwargs['maxtime'] is not None:
                 if (datetime.now() - start_time).total_seconds() > kwargs['maxtime']:
                     print(f'Gave up on {contig}:{start}-{end}')
@@ -514,32 +525,56 @@ def count_methylation_binned(args):
 
                 call = tags['XM'][i]
 
-                if call in 'Zz':
+                final_call = None
+                if contexts_to_capture is not None:
+                    if call!='.':
+                        context = reference.fetch(read.reference_name,
+                                                  site - context_radius,
+                                                  site + context_radius + 1)
+                        if context[context_radius] == 'G':
+                            context = reverse_complement(context)
+
+                        if context in contexts_to_capture:
+                            final_call = call.isupper()
+                        else:
+                            continue
+
+                elif call in 'Zz':
+
+                    final_call = call=='Z'
+                else:
+                    continue
+
+                if read.has_tag('SM'):
                     sample = read.get_tag('SM')
+                else:
+                    sample = default_sample_name
 
-                    # Process alternative contig counts:
-                    if alt_spans is not None and contig in alt_spans:
-                        contig, site = obtain_approximate_reference_cut_position(
-                            site, contig, alt_spans)
+                # Process alternative contig counts:
+                if alt_spans is not None and contig in alt_spans:
+                    contig, site = obtain_approximate_reference_cut_position(
+                        site, contig, alt_spans)
 
-                    # Obtain the bin index
-                    if single_location:
-                        bin_i = site
-                        bin_start = site
-                        bin_end = site+1
-                    else:
-                        bin_i = int(site / bin_size)
-                        bin_start = bin_size * bin_i
-                        bin_end = min(bin_size * (bin_i + 1), contig_size)
+                # Obtain the bin index
+                if single_location:
+                    bin_i = site
+                    bin_start = site
+                    bin_end = site + 1
+                else:
+                    bin_i = int(site / bin_size)
+                    bin_start = bin_size * bin_i
+                    bin_end = min(bin_size * (bin_i + 1), contig_size)
 
-                    # Add additional tag information: (For example the allele tag)
-                    if key_tags is not None:
-                        tag_values = [(read.get_tag(tag) if read.has_tag(tag) else None) for tag in key_tags]
-                        bin_id = (*tag_values, contig, bin_start, bin_end)
-                    else:
-                        bin_id = (contig, bin_start, bin_end)
+                # Add additional tag information: (For example the allele tag)
+                if key_tags is not None:
+                    tag_values = [(read.get_tag(tag) if read.has_tag(tag) else None) for tag in key_tags]
+                    bin_id = (*tag_values, contig, bin_start, bin_end)
+                else:
+                    bin_id = (contig, bin_start, bin_end)
 
-                    met_counts[sample, bin_id][call=='Z']+=1
+                if final_call is not None:
+                    met_counts[sample, bin_id][final_call]+=1
+
     met_counts.prune(min_samples=kwargs.get('min_samples',0), min_variance=kwargs.get('min_variance',0))
     return met_counts
 
