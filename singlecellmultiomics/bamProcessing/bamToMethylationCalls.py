@@ -143,20 +143,20 @@ if __name__ == '__main__':
         args.distmat_plot += '.png'
 
     print('Obtaining counts ', end="")
-    counts = get_methylation_count_matrix(bam_path = args.bamfile,
-                                 bin_size = args.bin_size,
-                                 bp_per_job = args.bp_per_job,
-                                 min_samples = args.min_samples,
-                                 min_variance = args.min_variance,
-                                 known_variants = args.known_variants,
-                                 skip_contigs = args.skip_contigs.split(','),
-                                 min_mapping_qual=args.min_mapping_qual,
-                                 head = args.head,
-                                 threads=args.threads,
-                                 single_location= (args.bin_size==1),
-                                 contexts_to_capture = contexts_to_capture,
-                                 context_radius = context_radius,
-                                 reference_path = args.reference
+    counts = get_methylation_count_matrix(bam_path=args.bamfile,
+                                          bin_size=args.bin_size,
+                                          bp_per_job=args.bp_per_job,
+                                          min_samples=args.min_samples,
+                                          min_variance=args.min_variance,
+                                          known_variants=args.known_variants,
+                                          skip_contigs=args.skip_contigs.split(','),
+                                          min_mapping_qual=args.min_mapping_qual,
+                                          head=args.head,
+                                          threads=args.threads,
+                                          single_location=(args.bin_size==1),
+                                          contexts_to_capture=contexts_to_capture,
+                                          context_radius=context_radius,
+                                          reference_path=args.reference
     )
     print(f" [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
