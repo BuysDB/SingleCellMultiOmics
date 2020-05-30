@@ -550,8 +550,9 @@ def count_methylation_binned(args):
                         context = reference.fetch(read.reference_name,
                                                   site - context_radius,
                                                   site + context_radius + 1)
-                    except Exception as e: # Happens when on edges of contigs
-                        continue
+                    except KeyError:
+                        raise KeyError(f'The supplied reference file does not match the reads. Contig "{read.reference_name}" missing from supplied reference.')
+
 
                     if context[context_radius] == 'G':
                         context = reverse_complement(context)
