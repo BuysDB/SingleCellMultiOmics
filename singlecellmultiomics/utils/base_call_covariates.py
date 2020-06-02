@@ -156,9 +156,10 @@ def recalibrate_base_calls(read, reference, joined_prob, covariate_kwargs):
     new_qualities = array('B', [0] * len(read.query_qualities))
 
     # Iterate all aligned pairs and replace phred score:
-    for qpos, refpos, refbase in read.get_aligned_pairs(matches_only=True, with_seq=True):
 
-        key = get_covariate_key(read, qpos, refpos, reference, refbase.upper(), **covariate_kwargs)
+    for qpos, refpos, refbase in read.get_aligned_pairs(matches_only=True, with_seq=False):
+
+        key = get_covariate_key(read, qpos, refpos, reference, None, **covariate_kwargs)
         try:
             phred = joined_prob[key]
         except KeyError:
