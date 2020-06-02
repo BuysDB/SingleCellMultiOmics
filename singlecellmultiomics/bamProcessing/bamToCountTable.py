@@ -113,7 +113,7 @@ def read_should_be_counted(read, args, blacklist_dic = None):
     """
 
 
-# Read is empty
+
     if args.filterMP:
         if not read.has_tag('mp'):
             return False
@@ -177,10 +177,13 @@ def assignReads(
     sample = tuple(readTag(read, tag) for tag in sampleTags)
 
     # Decide how many counts this read yields
-    if args.doNotDivideFragments:
-        countToAdd = 1
-    else:
-        countToAdd = (0.5 if (read.is_paired and not args.dedup) else 1)
+    countToAdd = 1
+
+    if not args.doNotDivideFragments:
+        # IF the read is paired, and the mate mapped, we should count 0.5, and will end up
+        # with 1 in total
+        countToAdd = (0.5 if (read.is_paired and not read.mate_is_unmapped) else 1)
+
     assigned += 1
 
     if args.divideMultimapping:
