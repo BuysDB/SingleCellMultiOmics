@@ -112,7 +112,10 @@ def read_should_be_counted(read, args, blacklist_dic = None):
     bool
     """
 
-
+    if args.r1only and read.is_read2:
+        return False
+    if args.r2only and read.is_read1:
+        return False
 
     if args.filterMP:
         if not read.has_tag('mp'):
@@ -179,7 +182,9 @@ def assignReads(
     # Decide how many counts this read yields
     countToAdd = 1
 
-    if not args.doNotDivideFragments:
+    if args.r1only or args.r2only:
+        countToAdd = 1
+    elif not args.doNotDivideFragments:
         # IF the read is paired, and the mate mapped, we should count 0.5, and will end up
         # with 1 in total
         countToAdd = (0.5 if (read.is_paired and not read.mate_is_unmapped) else 1)
@@ -596,6 +601,17 @@ if __name__ == '__main__':
         '-head',
         type=int,
         help='Run the algorithm only on the first N reads to check if the result looks like what you expect.')
+
+
+    argparser.add_argument(
+        '--r1only',
+        action='store_true',
+        help='Only count R1')
+
+    argparser.add_argument(
+        '--r2only',
+        action='store_true',
+        help='Only count R2')
 
     argparser.add_argument(
         '--splitFeatures',

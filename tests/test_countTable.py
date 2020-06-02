@@ -44,12 +44,49 @@ class TestCountTable(unittest.TestCase):
                 doNotDivideFragments=True,
                 contig=None,
                 blacklist=None,
+                r1only=False,
+                r2only=False,
                 filterMP=False,
                 splitFeatures=False,
                 feature_delimiter=',',
                  noNames=False) , return_df=True)
         # !samtools idxstats ./data/mini_nla_test.bam | head -n 1 | cut -f 3
         self.assertEqual(df.loc['chr1'].sum(),563)
+
+
+    def test_total_read1_counting(self):
+        """ Test if the amount of valid deduped R1 reads in a bam file is counted properly
+            samtools view ./data/mini_nla_test.bam -f 64 -F 3840 | grep DS | wc -l : 210
+        """
+        df = singlecellmultiomics.bamProcessing.bamToCountTable.create_count_table(
+            SimpleNamespace(
+                alignmentfiles=['./data/mini_nla_test.bam'],
+                head=None,
+                o=None,
+                bin=None,
+                binTag='DS',
+                sliding=None,
+                bedfile=None,
+                showtags=False,
+                featureTags=None,
+                joinedFeatureTags='reference_name',
+                byValue=None,
+                sampleTags='SM',
+                minMQ=0,
+                filterXA=False,
+                dedup=True,
+                divideMultimapping=False,
+                doNotDivideFragments=True,
+                contig=None,
+                blacklist=None,
+                r1only=True,
+                r2only=False,
+                filterMP=False,
+                splitFeatures=False,
+                feature_delimiter=',',
+                 noNames=False) , return_df=True)
+        # !samtools idxstats ./data/mini_nla_test.bam | head -n 1 | cut -f 3
+        self.assertEqual(df.loc['chr1'].sum(),210)
 
 
 
@@ -73,6 +110,8 @@ class TestCountTable(unittest.TestCase):
                 minMQ=0,
                 filterXA=False,
                 dedup=False,
+                r1only=False,
+                r2only=False,
                 divideMultimapping=False,
                 doNotDivideFragments=True,
                 splitFeatures=False,
@@ -105,6 +144,8 @@ class TestCountTable(unittest.TestCase):
                 divideMultimapping=False,
                 doNotDivideFragments=True,
                 contig=None,
+                r1only=False,
+                r2only=False,
                 blacklist=None,
                 filterMP=False,
                 splitFeatures=False,
@@ -134,6 +175,8 @@ class TestCountTable(unittest.TestCase):
                 dedup=False,
                 divideMultimapping=False,
                 contig=None,
+                r1only=False,
+                r2only=False,
                 keepOverBounds=False,
                 doNotDivideFragments=True,
                 blacklist=None,
@@ -170,6 +213,8 @@ class TestCountTable(unittest.TestCase):
                 dedup=False,
                 divideMultimapping=False,
                 contig='chr1',
+                r1only=False,
+                r2only=False,
                 keepOverBounds=False,
                 doNotDivideFragments=True,
                 blacklist=None,
@@ -209,6 +254,8 @@ class TestCountTable(unittest.TestCase):
                 divideMultimapping=False,
                 doNotDivideFragments=True,
                 contig=None,
+                r1only=False,
+                r2only=False,
                 blacklist=None,
                 filterMP=False,
                 splitFeatures=False,
@@ -240,6 +287,8 @@ class TestCountTable(unittest.TestCase):
                 divideMultimapping=False,
                 contig=None,
                 blacklist=None,
+                r1only=False,
+                r2only=False,
                 filterMP=False,
                 keepOverBounds=False,
                 doNotDivideFragments=True,
@@ -273,6 +322,8 @@ class TestCountTable(unittest.TestCase):
                 divideMultimapping=False,
                 contig=None,
                 blacklist=None,
+                r1only=False,
+                r2only=False,
                 filterMP=False,
                 keepOverBounds=False,
                 doNotDivideFragments=True,
@@ -282,6 +333,8 @@ class TestCountTable(unittest.TestCase):
 
         self.assertEqual( df.sum(1).sum(), 765 )
         self.assertEqual( df.loc[:,['A3-P15-1-1_25']].sum(skipna=True).sum(skipna=True), 12.0 )
+
+
 
 
 if __name__ == '__main__':
