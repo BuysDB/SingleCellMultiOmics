@@ -72,7 +72,7 @@ rule all:
         expand("processed/GC_plots/histplot_{plot_bin_size}.png", plot_bin_size=plot_bin_sizes),
         expand("processed/plots/ReadCount.png", library=libraries),
         expand("processed/tables/ScCHICLigation_merged_tagged.bamTA_obs_per_cell.csv", library=libraries)
- 
+
 
 rule SCMO_demux:
     input:
@@ -88,11 +88,11 @@ rule SCMO_demux:
     params: runtime="30h"
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 4000
-        
+
     shell:
         "demux.py -merge _ {input.fastqfiles} -hd 1 -o processed --y > {log.stdout} 2> {log.stderr}"
 
-        
+
 rule Trim:
     input:
         r1="processed/{library}/demultiplexedR1.fastq.gz",
@@ -126,11 +126,11 @@ rule sort:
     output:
         bam = temp("processed/{library}/sorted.bam"),
         bam_index = temp("processed/{library}/sorted.bam.bai")
-    
+
     shell:
         "samtools sort -T processed/{wildcards.library}/temp_sort -@ {threads} {input.unsortedbam} > processed/{wildcards.library}/sorted.unfinished.bam && mv processed/{wildcards.library}/sorted.unfinished.bam {output.bam} && samtools index {output.bam}"
 
-        
+
 rule map:
     input:
         ref=config['reference_file'],
@@ -158,7 +158,7 @@ rule map:
                 "bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1 -x {input.ref} -1 {input.r1} -2 {input.r2} | samtools view -b - > processed/{wildcards.library}/unsorted.bam"
                 )
 
-            
+
 rule SCMO_tagmultiome_ChiC:
     input:
         bam = "processed/{library}/sorted.bam",
@@ -178,7 +178,7 @@ rule SCMO_tagmultiome_ChiC:
     shell:
         "bamtagmultiome.py --multiprocess -blacklist {input.blacklist} -method chic {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
 
-        
+
 rule SCMO_library_stats:
     input:
         bam = "processed/{library}/tagged.bam",
@@ -196,8 +196,8 @@ rule SCMO_library_stats:
 
     shell:
         "libraryStatistics.py processed/{wildcards.library} -tagged_bam /tagged.bam > {log.stdout} 2> {log.stdout}"
-       
-    
+
+
 # individual count tables per library
 rule SCMO_count_table:
     input:
@@ -218,9 +218,9 @@ rule SCMO_count_table:
         "bamToCountTable.py -bin {wildcards.counting_bin_size} \
         -minMQ {params.counting_min_mq} \
         --noNames \
-        {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS -o {output.csv} --dedup > {log.stdout} 2> {log.stderr}"
-        
-        
+        {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS -o {output.csv} --dedup --r1only > {log.stdout} 2> {log.stderr}"
+
+
 ## for merged file:
 rule merge_tagged_bam:
    input:
@@ -231,16 +231,16 @@ rule merge_tagged_bam:
       merged_bam_index = "processed/merged_tagged.bam.bai"
    log:
       stdout="log/merge_bam/merge_bam.stdout",
-      stderr="log/merge_bam/merge_bam.stderr"       
+      stderr="log/merge_bam/merge_bam.stderr"
    threads: 1
    params:
       runtime="8h"
    message:
         'Merging tagged BAM files'
-   
+
    shell:
-        "samtools merge -c {output.merged_bam} {input.tagged_bams} > {log.stdout} 2> {log.stderr}; samtools index {output.merged_bam}"  
-   
+        "samtools merge -c {output.merged_bam} {input.tagged_bams} > {log.stdout} 2> {log.stderr}; samtools index {output.merged_bam}"
+
 
 rule SCMO_merged_library_stats:
     input:
@@ -256,7 +256,7 @@ rule SCMO_merged_library_stats:
 
     shell:
         "libraryStatistics.py -t chic-stats {input.bam} > {log.stdout} 2> {log.stderr}"
-   
+
 
 rule SCMO_GC_plots:
    input:
@@ -278,7 +278,7 @@ rule SCMO_GC_plots:
 
    shell:
         "bamCopyNumber.py -bin_size {wildcards.plot_bin_size} -min_mapping_qual {params.min_mq} {input.merged_bam} -gcmatplot {output.GCmatplot} -rawmat {output.rawmat} -histplot {output.histplot} -ref {input.ref}  > {log.stdout} 2> {log.stderr}"
-   
+
 
 # count table for merged bam
 rule SCMO_merged_count_table:
@@ -300,9 +300,9 @@ rule SCMO_merged_count_table:
         "bamToCountTable.py -bin {wildcards.counting_bin_size} \
         -minMQ {params.counting_min_mq} \
         --noNames \
-        {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS -o {output.csv} --dedup > {log.stdout} 2> {log.stderr}"
+        {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS --r1only -o {output.csv} --dedup > {log.stdout} 2> {log.stderr}"
 
-        
+
 rule SCMO_merged_infilerz:
     input:
         bam = "processed/merged_tagged.bam"
@@ -319,4 +319,4 @@ rule SCMO_merged_infilerz:
         mem_mb=lambda wildcards, attempt: attempt * 8000
 
     shell:
-      "bamToCountTable.py -minMQ {params.counting_min_mq} {input.bam} -sampleTags SM -joinedFeatureTags lh -o {output.csv} --filterXA --dedup > {log.stdout} 2> {log.stderr}"
+      "bamToCountTable.py -minMQ {params.counting_min_mq} {input.bam} -sampleTags SM -joinedFeatureTags lh -o {output.csv} --filterXA --dedup --r1only > {log.stdout} 2> {log.stderr}"
