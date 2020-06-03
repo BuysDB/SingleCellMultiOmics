@@ -53,6 +53,7 @@ def generate_job_script(scheduler, jobfile,stderr, stdout, job_name, memory_gb, 
             '#!/bin/sh',
             '#SBATCH -J %s' % job_name, # Sets job name
             '#SBATCH -n %s' % threads_n,
+            '#SBATCH -N 1', # Run on a single node
             '#SBATCH --time %s:00:00' % str(time_h).zfill(2),
             '#SBATCH --mem %sG' % memory_gb,
             '#SBATCH --chdir %s' % (working_directory),
