@@ -1,5 +1,6 @@
 from multiprocessing import Pool
-from pysam import AlignmentFile, FastaFile, index
+from pysam import AlignmentFile, FastaFile
+import pysam
 from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs
 from singlecellmultiomics.utils.sequtils import reverse_complement, get_context
 from pysamiterators import CachedFasta
@@ -157,7 +158,7 @@ def recalibrate_base_calls(read, reference, joined_prob, covariate_kwargs):
 
     # Iterate all aligned pairs and replace phred score:
 
-    for qpos, refpos, refbase in read.get_aligned_pairs(matches_only=True, with_seq=False):
+    for qpos, refpos in read.get_aligned_pairs(matches_only=True, with_seq=False):
 
         key = get_covariate_key(read, qpos, refpos, reference, None, **covariate_kwargs)
         try:
@@ -188,7 +189,7 @@ def _recalibrate_reads(bam_path, reference_path, contig, start, end, covariate_k
                 recalibrate_base_calls(read, reference, joined_prob, covariate_kwargs)
                 out.write(read)
 
-    index(o_path)
+    pysam.index(o_path)
     return o_path
 
 
