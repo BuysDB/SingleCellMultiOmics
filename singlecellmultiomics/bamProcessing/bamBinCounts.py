@@ -347,20 +347,33 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
     return counts
 
 
-def read_counts(read, min_mq, dedup=True, read1_only=False):
+def read_counts(read, min_mq, dedup=True, read1_only=False, verbose=False):
 
     if read1_only and (not read.is_read1 or read is None):
+        if verbose:
+            print('NOT READ1')
         return False
 
     if read.is_qcfail:
+        if verbose:
+            print('QCFAIL')
         return False
 
     if dedup and read.is_duplicate:
+        if verbose:
+            print('DUPLICATE')
         return False
     if read.has_tag('mp') and read.get_tag('mp') != 'unique':
+        if verbose:
+            print('MP')
         return False
-    if (min_mq is not None and read.mapping_quality < min_mq) or not read.has_tag('DS'):
+    if (min_mq is not None and read.mapping_quality < min_mq):
+        if verbose:
+            print('MAPQ')
         return False
+
+    if verbose:
+        print('OK')
     # if read.has_tag('RZ') and read.get_tag('RZ') != 'CATG':
     #    return False
 
@@ -512,7 +525,7 @@ def count_methylation_binned(args):
 
                     break
 
-            if not read_counts(read, min_mq=min_mq, dedup=dedup):
+            if not read_counts(read, min_mq=min_mq, dedup=dedup, verbose=False):
                 continue
 
 
@@ -537,8 +550,9 @@ def count_methylation_binned(args):
                         context = reference.fetch(read.reference_name,
                                                   site - context_radius,
                                                   site + context_radius + 1)
-                    except Exception as e: # Happens when on edges of contigs
-                        continue
+                    except KeyError:
+                        raise KeyError(f'The supplied reference file does not match the reads. Contig "{read.reference_name}" missing from supplied reference.')
+
 
                     if context[context_radius] == 'G':
                         context = reverse_complement(context)

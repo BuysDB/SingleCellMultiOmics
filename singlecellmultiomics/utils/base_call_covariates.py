@@ -1,11 +1,13 @@
 from multiprocessing import Pool
 from pysam import AlignmentFile, FastaFile
+import pysam
 from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs
 from singlecellmultiomics.utils.sequtils import reverse_complement, get_context
 from pysamiterators import CachedFasta
 from array import array
 from uuid import uuid4
-from singlecellmultiomics.bamProcessing import merge_bams
+from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads
+
 
 def get_covariate_key(read, qpos, refpos, reference, refbase, cycle_bin_size=3, k_rad=1):
 
@@ -88,7 +90,7 @@ def extract_covariates(bam_path: str,
 
 
 def extract_covariates_wrapper(kwargs):
-    extract_covariates(**kwargs)
+    return extract_covariates(**kwargs)
 
 
 def extract_covariates_from_bam(bam_path, reference_path, known_variants, n_processes=None, bin_size=10_000_000,
@@ -96,6 +98,7 @@ def extract_covariates_from_bam(bam_path, reference_path, known_variants, n_proc
             deduplicate = True,
             filter_qcfailed = True  ):
 
+    global known
     known = known_variants
 
     joined = dict()
@@ -121,7 +124,7 @@ def extract_covariates_from_bam(bam_path, reference_path, known_variants, n_proc
     with Pool(n_processes) as workers:
 
         for i, r in enumerate(
-                        workers.imap_unordered(extract_covariates, (
+                        workers.imap_unordered(extract_covariates_wrapper, (
                                    {
                                          'bam_path': bam_path,
                                          'reference_path': reference_path,
@@ -154,9 +157,10 @@ def recalibrate_base_calls(read, reference, joined_prob, covariate_kwargs):
     new_qualities = array('B', [0] * len(read.query_qualities))
 
     # Iterate all aligned pairs and replace phred score:
-    for qpos, refpos, refbase in read.get_aligned_pairs(matches_only=True, with_seq=True):
 
-        key = get_covariate_key(read, qpos, refpos, reference, refbase.upper(), **covariate_kwargs)
+    for qpos, refpos in read.get_aligned_pairs(matches_only=True, with_seq=False):
+
+        key = get_covariate_key(read, qpos, refpos, reference, None, **covariate_kwargs)
         try:
             phred = joined_prob[key]
         except KeyError:
@@ -166,7 +170,7 @@ def recalibrate_base_calls(read, reference, joined_prob, covariate_kwargs):
     read.query_qualities = new_qualities
 
 
-def _recalibrate_reads(bam_path, reference_path, contig, start, end, covariate_kwargs):
+def _recalibrate_reads(bam_path, reference_path, contig, start, end, covariate_kwargs, **kwargs):
     # Recalibrate the reads in bam_path
 
     global joined_prob  # Global to share over multiprocessing
@@ -185,33 +189,38 @@ def _recalibrate_reads(bam_path, reference_path, contig, start, end, covariate_k
                 recalibrate_base_calls(read, reference, joined_prob, covariate_kwargs)
                 out.write(read)
 
+    pysam.index(o_path)
     return o_path
 
 
 def __recalibrate_reads(kwargs):
-    _recalibrate_reads(**kwargs)
+    return _recalibrate_reads(**kwargs)
 
 
-def recalibrate_reads(bam_path, target_bam_path, reference_path, n_processes, covariate_kwargs, intermediate_bam_size=20_000_000):
+def recalibrate_reads(bam_path, target_bam_path, reference_path, n_processes, covariates,  covariate_kwargs, intermediate_bam_size=20_000_000):
     job_generation_args = {
         'contig_length_resource': bam_path,
         'bin_size': intermediate_bam_size,
         'fragment_size': 0
     }
+    global joined_prob
+    joined_prob = covariates
+
 
     with Pool(n_processes) as workers:
-        intermediate_bams = list( workers.imap_unordered(_recalibrate_reads, (
+        intermediate_bams = list( workers.imap_unordered(__recalibrate_reads, (
                         {
                             'bam_path': bam_path,
                             'reference_path': reference_path,
                             'contig': contig,
-                            'start': start,
-                            'end': end,
-                            'start_fetch': start_fetch,
-                            'end_fetch': end_fetch,
+                            'start': None,
+                            'end': None,
+                           # 'start_fetch': start_fetch,
+                            #'end_fetch': end_fetch,
                             'covariate_kwargs': covariate_kwargs
                         }
-                        for contig, start, end, start_fetch, end_fetch in
-                        blacklisted_binning_contigs(**job_generation_args))))
+                        for contig in list(get_contigs_with_reads(bam_path)))))
+                        #for contig, start, end, start_fetch, end_fetch in
+                        #blacklisted_binning_contigs(**job_generation_args))))
 
         merge_bams(intermediate_bams, target_bam_path)

@@ -34,7 +34,7 @@ if __name__ == '__main__':
         help='Count only the first occurence of a molecule. Requires RC tag or .duplicate bit to be set.')
 
     argparser.add_argument(
-        '--no-qcfail',
+        '--noqcfail',
         action='store_true',
         help='Do not show qcfailed reads')
 
