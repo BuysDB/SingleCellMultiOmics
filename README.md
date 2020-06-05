@@ -31,7 +31,7 @@ The mapped reads are encoded in a BAM file. This BAM file still contains the enc
  RNA:CELSEQ1, CELSEQ2, VASA (with 8 and 6bp UMI),
  methylation digest sequencing:SC MSPJI ,  
  lineage tracing:SCARTRACE,
- DNA digest sequencing: NLAIII, 
+ DNA digest sequencing: NLAIII,
  histone modification sequencing: scCHIC,
  Single cell methylation : TAPs (in combination with any other supported protocol).
 
@@ -101,10 +101,10 @@ bamToCountTable.py -featureTags chrom -sampleTags SM --divideMultimapping --dedu
 
 Obtain sample, chromosome, restrictionsite, read start, and read end from test.bam file:
 ```
-bamFileTabulator.py -featureTags SM,reference_name,DS,reference_start,reference_end test.bam
+bamTabulator.py -featureTags SM,reference_name,DS,reference_start,reference_end test.bam
 ```
 List all available tags:
 ```
-bamFileTabulator.py test.bam
+bamTabulator.py test.bam
 ```
 You can additionaly use any of the pysam read attributes
