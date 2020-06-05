@@ -66,6 +66,7 @@
 | SM    | sampleName                                   | No         | No                   |
 | SP    | IsSpliced                                    | No         | No                   |
 | SQ    | meanBaseQuality                              | No         | No                   |
+| TF    | totalAssociatedFragmentsIncludingOverlflow   | No         | No                   |
 | TR    | totalRTreactions                             | No         | No                   |
 | TR    | totalRTreactions                             | No         | No                   |
 | Ti    | tile                                         | No         | No                   |
@@ -80,6 +81,7 @@
 | aQ    | Read1Clipped3primeBasesKmerQuality           | Yes        | No                   |
 | aa    | rawIlluminaIndexSequence                     | No         | No                   |
 | af    | associatedFragmentCount                      | No         | No                   |
+| af    | totalAssociatedFragmentsInBam                | No         | No                   |
 | ah    | hammingDistanceToIndex                       | No         | No                   |
 | ap    | phasedAllelicSNVs                            | No         | No                   |
 | au    | phasednUnknownAllelicOriginSNVs              | No         | No                   |
@@ -100,8 +102,8 @@
 | lh    | ligationOverhangSequence                     | No         | No                   |
 | lq    | ligationOverhangQuality                      | Yes        | No                   |
 | nM    | editDistanceToReference                      | No         | No                   |
-| rP    | randomPrimerSequence                         | No         | No                   |
-| rS    | randomPrimerStart                            | No         | No                   |
+| rP    | randomPrimerStart                            | No         | No                   |
+| rS    | randomPrimerSequence                         | No         | No                   |
 | rd    | rtDuplicateIndex                             | No         | No                   |
 | rt    | rtReactionIndex                              | No         | No                   |
 | sH    | Total CHH methylated                         | No         | No                   |

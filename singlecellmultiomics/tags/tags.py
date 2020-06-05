@@ -136,10 +136,11 @@ tags = [
     SamTag('sx', 'Total CHG unmethylated'),
 
 
-    SamTag('rS', 'randomPrimerStart'),
-    SamTag('rP', 'randomPrimerSequence'),
+    SamTag('rS', 'randomPrimerSequence'),
+    SamTag('rP', 'randomPrimerStart'),
     SamTag('TR', 'totalRTreactions'),
-    SamTag('TF', 'totalAssociatedFragments'),
+    SamTag('TF', 'totalAssociatedFragmentsIncludingOverlflow'),
+    SamTag('af', 'totalAssociatedFragmentsInBam'),
 
     SamTag('AI', 'AssignedIntrons'),
     SamTag('AE', 'AssingedExons'),
