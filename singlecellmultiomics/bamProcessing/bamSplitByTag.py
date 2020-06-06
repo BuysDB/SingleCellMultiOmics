@@ -5,6 +5,7 @@ import pysam
 import argparse
 import sys
 import collections
+from multiprocessing import Pool
 
 def split_bam_by_tag( input_bam_path, output_prefix, tag, head=None, max_handles=10, skip=None ):
     """
@@ -29,29 +30,42 @@ def split_bam_by_tag( input_bam_path, output_prefix, tag, head=None, max_handles
     done = set()
     waiting = set()
 
+    print('Started writing', end='')
     written = 0
     for r in bamFile:
         if not r.has_tag(tag):
             continue
         value = str(r.get_tag(tag))
-        if value in skip:
+        if value in skip or value in waiting:
             continue
 
         if not value in output_handles:
             if len(output_handles)>=max_handles:
                 waiting.add(value)
                 continue
+            print(f'\rOpened bam file for {value}            ', end='')
             output_handles[value] = pysam.AlignmentFile(f'{output_prefix}.{value}.bam', "wb", header=header)
 
         output_handles[value].write(r)
+        written+=1
+        if written%100_000==0:
+            print(f'\rWrote {written} reads                      ',end='')
+        if head is not None and written>=head:
+            break
 
+
+    to_index = []
     for value,handle in output_handles.items():
         done.add(value)
         handle.close()
-        try:
-            os.system(f'samtools index {handle.filename.decode()}')
-        except Exception as e:
-            pass
+        to_index.append(handle.filename.decode())
+
+
+    # Index using multiple threads:
+    print(f'\nIndexing {len(to_index)} bam files')
+
+    with Pool(10) as workers:
+        workers.imap(pysam.index, to_index)
 
     return done, waiting
 
