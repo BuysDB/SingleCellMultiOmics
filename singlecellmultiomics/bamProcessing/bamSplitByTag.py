@@ -7,6 +7,13 @@ import sys
 import collections
 from multiprocessing import Pool
 
+def index_bam(path):
+    try:
+        pysam.index(path)
+    except Exception as e:
+
+        print(e)
+
 def split_bam_by_tag( input_bam_path, output_prefix, tag, head=None, max_handles=10, skip=None ):
     """
     Split bam file by a tag value
@@ -63,9 +70,9 @@ def split_bam_by_tag( input_bam_path, output_prefix, tag, head=None, max_handles
 
     # Index using multiple threads:
     print(f'\nIndexing {len(to_index)} bam files')
-
     with Pool(10) as workers:
-        workers.imap(pysam.index, to_index)
+        for result in workers.imap_unordered(index_bam, to_index):
+            pass
 
     return done, waiting
 
