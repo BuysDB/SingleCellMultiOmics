@@ -25,6 +25,9 @@ def create_overseq_distribution(args):
         for location in locations:
             if location is None:
                 continue
+
+            # Location is a tuple (contig, start, end, fetch_start, fetch_end)
+            # We only need (contig, start, end) to obtain reads in the target region
             for i, read in enumerate(alignments.fetch(*location[:3])):
 
                 start, end = location[-2:]
@@ -37,6 +40,7 @@ def create_overseq_distribution(args):
                     site = read.get_tag('DS')
                     if site < start or site > end:
                         continue
+                    # @todo ; implement for reads without DS tag
 
                 bin_index = int(read.get_tag('DS') / bin_size)
 
@@ -47,6 +51,7 @@ def create_overseq_distribution(args):
                     )
 
                 if allelic:
+                    # Prepend allele to bin identifier:
                     location_key = (read.get_tag('DA'), *location_key)
 
                 overseq[location_key ][read.get_tag('SM')][read.get_tag('af')] += 1
@@ -55,10 +60,28 @@ def create_overseq_distribution(args):
 
     return overseq
 
-def obtain_overseq_dictionary(bam_path, bin_size, min_mq=10, allelic=False):
+def obtain_overseq_dictionary(bam_path, bin_size, min_mq=10, allelic=False, blacklist_path=None):
+    """
+    Create molecule duplicate counting dictionary
+
+    Args:
+        bam_path: path to bam file to obtain duplicate counts from (requires af tag to be set)
+        bin_size: bin size for output dict
+        min_mq: minimum mapping quality
+        allelic: wether to split bins into multiple alleles based on the DA tag value
+        blacklist_path: path to blacklist bed file (optional)
+
+    Returns:
+        overseq (dict) : {(location):{sample(str):{reads_per_molecule(int):count (int)}}}
+
+    """
+
+
+
     overseq = defaultdict(overseq_dict)
 
     worker_bins = list(grouper(blacklisted_binning_contigs(contig_length_resource=bam_path,
+                                                           blacklist_path=blacklist_path,
                                                            bin_size=bin_size,
                                                            fragment_size=0), 50))  # take N bins for every worker
 
@@ -111,10 +134,12 @@ if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="""Create oversequencing tables for single cells""")
-    argparser.add_argument('bamfile', metavar='bamfile', type=str)
-    argparser.add_argument('-output_folder', default='./overseq_tables')
-    argparser.add_argument('--allelic', action='store_true')
-    argparser.add_argument('-bin_size', type=int, default=500_000)
+    argparser.add_argument('bamfile', metavar='bamfile', type=str, help='Bam file where duplicates have been flagged \
+    , and the amount of reads associated to the duplicate stored in the sam tag "af"')
+    argparser.add_argument('-output_folder', default='./overseq_tables', help='Folder to write sample CSV files to')
+    argparser.add_argument('--allelic', action='store_true', help='Split bins into alleles (based on DA tag)')
+    argparser.add_argument('-bin_size', type=int, default=500_000, help='Bin size for the output files')
+    argparser.add_argument('-blacklist', type=str, help='Bed file containing regions to ignore from counting')
 
     fi = argparser.add_argument_group("Filters")
     fi.add_argument('-min_mapping_qual', default=40, type=int)
@@ -125,6 +150,6 @@ if __name__ == '__main__':
     if not os.path.exists(args.output_folder):
         os.makedirs(args.output_folder)
 
-    overseq = obtain_overseq_dictionary(args.bamfile, args.bin_size, min_mq=args.min_mapping_qual, allelic=args.allelic)
+    overseq = obtain_overseq_dictionary(args.bamfile, args.bin_size, min_mq=args.min_mapping_qual, allelic=args.allelic, blacklist_path=args.blacklist)
     # (location) : cell : duplicates : count
     write_overseq_dict_to_single_sample_files(overseq, args.output_folder)
