@@ -7,6 +7,8 @@ import seaborn as sns
 from multiprocessing import Pool
 from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs
 from more_itertools import grouper
+import argparse
+import os
 
 def overseq_dict():
     return defaultdict(Counter)
@@ -71,7 +73,6 @@ def obtain_overseq_dictionary(bam_path, bin_size, min_mq=10, allelic=False):
     return overseq
 
 def write_overseq_dict_to_single_sample_files(overseq, target_dir):
-
     # reads per cell:
     reads_per_cell = Counter()
     locations = sorted(list(overseq.keys()))
@@ -95,3 +96,27 @@ def write_overseq_dict_to_single_sample_files(overseq, target_dir):
         print(sample)
         pd.DataFrame(cell_hist).sort_index().sort_index(1).to_csv(f'{target_dir}/cell_hist_{sample}.csv')
 
+
+
+
+if __name__ == '__main__':
+    argparser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="""Create oversequencing tables for single cells""")
+    argparser.add_argument('bamfile', metavar='bamfile', type=str)
+    argparser.add_argument('-output_folder', default='./overseq_tables')
+    argparser.add_argument('--allelic', action='store_true')
+    argparser.add_argument('-bin_size', type=int, default=500_000)
+
+    fi = argparser.add_argument_group("Filters")
+    fi.add_argument('-min_mapping_qual', default=40, type=int)
+
+    args = argparser.parse_args()
+
+    # Create output folder if it does not exist:
+    if not os.path.exists(args.output_folder):
+        os.makedirs(args.output_folder)
+
+    overseq = obtain_overseq_dictionary(args.bamfile, args.bin_size, min_mq=args.min_mapping_qual, allelic=args.allelic)
+    # (location) : cell : duplicates : count
+    write_overseq_dict_to_single_sample_files(overseq, args.output_folder)
