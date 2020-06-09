@@ -26,9 +26,17 @@ def create_overseq_distribution(args):
             if location is None:
                 continue
             for i, read in enumerate(alignments.fetch(*location[:3])):
+
+                start, end = location[-2:]
                 if read.is_duplicate or read.mapping_quality < min_mq or read.is_read2 or read.is_qcfail or (allelic and not read.has_tag(
                         'DA')):
                     continue
+
+                # Prevent double counting of fragments
+                if read.has_tag('DS'):
+                    site = read.get_tag('DS')
+                    if site < start or site > end:
+                        continue
 
                 bin_index = int(read.get_tag('DS') / bin_size)
 
