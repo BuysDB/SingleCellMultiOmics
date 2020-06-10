@@ -473,6 +473,29 @@ def write_program_tag(input_header,
         'DS': description
     })
 
+def  add_blacklisted_region(input_header, contig=None, start=None, end=None, source='auto_blacklisted'):
+    if 'CO' not in input_header: # Blacklisted regions, as freetext comment
+        input_header['CO'] = []
+    input_header['CO'].append(f'scmo_blacklisted\t{contig}:{start} {end}\tsource:{source}')
+
+def get_blacklisted_regions_from_bam(bam_path):
+    blacklisted = {}
+    with pysam.AlignmentFile(bam_path) as alignments:
+        if 'CO' in alignments.header:
+            for record in alignments.header['CO']:
+                parts = record.strip().split('\t')
+                if parts[0]!='scmo_blacklisted':
+                    continue
+
+                region = parts[1]
+                contig, span = region.split(' ')
+                start, end = span.split('-')
+                start = int(start)
+                end = int(end)
+                if not contig in blacklisted:
+                    blacklisted[contig] = []
+                blacklisted[contig].append( (start,end) )
+    return blacklisted
 
 def bam_is_processed_by_program(alignments, program='bamtagmultiome'):
     """Check if bam file has been processed by the supplied program
