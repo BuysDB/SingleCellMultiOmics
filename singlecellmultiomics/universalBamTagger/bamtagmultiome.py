@@ -7,7 +7,7 @@ import singlecellmultiomics
 import singlecellmultiomics.molecule
 from singlecellmultiomics.molecule.consensus import calculate_consensus
 import singlecellmultiomics.fragment
-from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam
+from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam,add_blacklisted_region
 from singlecellmultiomics.utils import is_main_chromosome
 from singlecellmultiomics.utils.submission import submit_job
 import singlecellmultiomics.alleleTools
@@ -15,7 +15,7 @@ from singlecellmultiomics.universalBamTagger.customreads import CustomAssingment
 import singlecellmultiomics.features
 from pysamiterators import MatePairIteratorIncludingNonProper, MatePairIterator
 from singlecellmultiomics.universalBamTagger.tagging import generate_tasks, prefetch, run_tagging_tasks
-from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs
+from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs,get_bins_from_bed_iter
 from singlecellmultiomics.utils.binning import bp_chunked
 from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads
 from singlecellmultiomics.fastaProcessing import CachedFastaNoHandle
@@ -117,6 +117,12 @@ argparser.add_argument(
     type=int,
     help='Amount of processes to use for tagging (--multiprocess needs to be enabled). Uses all available CPUs when not set.'
     )
+
+argparser.add_argument(
+    '-max_time_per_segment',
+    default=None,
+    type=float,
+    help='Maximum time spent on a single genomic location')
 
 argparser.add_argument(
     '-temp_folder',
@@ -264,7 +270,7 @@ def tag_multiome_multi_processing(
     else:
         contig_whitelist = [contig for contig in get_contigs_with_reads(input_bam_path) if not contig in contig_blacklist]
 
-    for prune in ['start', 'end', 'contig', 'progress_callback_function', 'alignments']:
+    for prune in ['start', 'end', 'contig', 'progress_callback_function','alignments']:
         if prune in molecule_iterator_args:
             del molecule_iterator_args[prune]
 
@@ -306,32 +312,54 @@ def tag_multiome_multi_processing(
             version=singlecellmultiomics.__version__,
             description=f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
 
+
+        if blacklist_path is not None:
+            for contig, start, end in get_bins_from_bed_iter(blacklist_path):
+                add_blacklisted_region(input_header,contig,start,end,source=blacklist_path)
+
+        # Prefetch the genomic resources with the defined genomic interval reducing I/O load during processing of the region
+        # this is now done automatically, by
+
+        # @todo : Obtain auto blacklisted regions if applicable
+        # @todo : Progress indication
+
+        bam_files_generated = []
+
+        if use_pool:
+            workers = Pool(n_threads)
+            job_generator = workers.imap_unordered(run_tagging_tasks, tasks)
+
+        else:
+            job_generator = (run_tagging_tasks(task) for task in tasks)
+
+        total_processed_molecules = 0
+        for bam, meta in job_generator:
+            if bam is not None:
+                bam_files_generated.append(bam)
+            if len(meta):
+                total_processed_molecules+=meta['total_molecules']
+                timeouts = meta.get('timeout_tasks',[])
+                for timeout in timeouts:
+                    print('blacklisted', timeout['contig'], timeout['start'], timeout['end'])
+                    add_blacklisted_region(input_header,
+                        contig=timeout['contig'],
+                        start=timeout['start'],
+                        end=timeout['end']
+                    )
+            if head is not None and total_processed_molecules>head:
+                print('Head was supplied, stopping')
+                break
+        tagged_bam_generator = [temp_header_bam_path] +  bam_files_generated
+
         with pysam.AlignmentFile(temp_header_bam_path, 'wb', header=input_header) as out:
             pass
 
         pysam.index(temp_header_bam_path)
-
-
-    # Prefetch the genomic resources with the defined genomic interval reducing I/O load during processing of the region
-    # this is now done automatically, by
-
-    # @todo : Obtain auto blacklisted regions if applicable
-    # @todo : Progress indication
-
-    if use_pool:
-        with Pool(n_threads) as workers:
-            tagged_bam_generator = list((bam for bam, meta in workers.imap_unordered(run_tagging_tasks, tasks) if
-                                         bam is not None))
-            # Changing this to generator and casting to list later makes this not work. I don't understand it
-    else:
-        tagged_bam_generator = [bam for bam, meta in (run_tagging_tasks(task) for task in tasks) if
-                                bam is not None]
-
-    tagged_bam_generator = [temp_header_bam_path] + tagged_bam_generator
-
     # merge the results and clean up:
+    print('Merging final bam files')
     merge_bams(list(tagged_bam_generator), out_bam_path)
-
+    if use_pool:
+        workers.close()
     # Remove the temp dir:
     try:
         os.rmdir(temp_folder)
@@ -647,7 +675,7 @@ def run_multiome_tagging(args):
     bp_per_job = 10_000_000
     bp_per_segment = 999_999_999 #@todo make this None or so
     fragment_size = 500
-    max_time_per_segment = None
+    max_time_per_segment = args.max_time_per_segment
 
     ### Method specific configuration ###
     if args.method == 'qflag':
@@ -669,6 +697,8 @@ def run_multiome_tagging(args):
         bp_per_job = 5_000_000
         bp_per_segment = 50_000
         fragment_size = 500
+        if max_time_per_segment is None:
+            max_time_per_segment = 20 # 20 seconds should be plenty for 50kb
 
     elif args.method == 'nla' or args.method == 'nla_no_overhang':
         molecule_class = singlecellmultiomics.molecule.NlaIIIMolecule
