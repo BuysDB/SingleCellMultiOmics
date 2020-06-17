@@ -47,13 +47,14 @@ def merge_bams( bams: list, output_path: str, threads: int=4 ):
         output_path (str)
 
     """
+    assert threads>=1
     if len(bams) == 1:
         assert os.path.exists(bams[0]+'.bai'), 'Only indexed files can be merged'
         move(bams[0], output_path)
         move(bams[0]+'.bai', output_path+'.bai')
     else:
         assert all((os.path.exists(bams[0]+'.bai') for bam in bams)), 'Only indexed files can be merged'
-        pysam.merge(output_path, *bams, f'-@ {threads} -f -l 1 -c') #-c to only keep the same id once
+        pysam.merge(output_path, *bams, f'-@ {threads} -f -p -c') #-c to only keep the same id once
         pysam.index(output_path, f'-@ {threads}')
         for o in bams:
             os.remove(o)
