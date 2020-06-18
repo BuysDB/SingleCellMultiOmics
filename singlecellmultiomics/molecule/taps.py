@@ -264,7 +264,7 @@ class TAPSMolecule(Molecule):
                     if qbase in 'TA':
                         converted_bases += 1
             else:
-                if (self.strand and reference_base == 'C' and qbase in 'CA') or (not self.strand and reference_base == 'G' and consensus[location] in 'TG'):
+                if (self.strand and reference_base == 'C' and qbase in 'CT') or (not self.strand and reference_base == 'G' and consensus[location] in 'AG'):
                     conversions[location] = {
                         'ref': reference_base, 'obs': qbase}
                     if qbase in 'TA':
@@ -336,9 +336,9 @@ class AnnotatedTAPSNlaIIIMolecule(AnnotatedNLAIIIMolecule, TAPSMolecule):
 class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
     """Molecule class for combined TAPS and CHIC """
 
-    def __init__(self, fragments=None, taps=None, **kwargs):
+    def __init__(self, fragments=None, taps=None,  taps_strand='F', **kwargs):
         CHICMolecule.__init__(self, fragments, **kwargs)
-        TAPSMolecule.__init__(self, fragments=fragments, taps_strand='F',taps=taps, **kwargs)
+        TAPSMolecule.__init__(self, fragments=fragments, taps_strand=taps_strand,taps=taps, **kwargs)
 
     def write_tags(self):
         CHICMolecule.write_tags(self)
@@ -361,11 +361,11 @@ class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
 class AnnotatedTAPSCHICMolecule(AnnotatedCHICMolecule, TAPSMolecule):
     """Molecule class for combined TAPS, CHIC and transcriptome """
 
-    def __init__(self, fragments=None, features=None, taps=None, **kwargs):
+    def __init__(self, fragments=None, features=None, taps_strand='F', taps=None, **kwargs):
         assert features is not None, "Supply features!"
         AnnotatedCHICMolecule.__init__(
             self, fragments, features=features, **kwargs)
-        TAPSMolecule.__init__(self, fragments=fragments, taps_strand='F',taps=taps, **kwargs)
+        TAPSMolecule.__init__(self, fragments=fragments, taps_strand=taps_strand,taps=taps, **kwargs)
 
     def write_tags(self):
         AnnotatedCHICMolecule.write_tags(self)
