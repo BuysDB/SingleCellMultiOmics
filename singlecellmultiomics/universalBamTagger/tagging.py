@@ -60,7 +60,6 @@ def run_tagging_task(alignments, output,
     assert output is not None
     assert molecule_iterator_class is not None
 
-
     # There is two options: either supply start and end coordinates, or not supplying any coordinates:
     fetching = not all((x is None for x in ( start, end, fetch_start, fetch_end)))
     if fetching:
@@ -78,13 +77,16 @@ def run_tagging_task(alignments, output,
 
     time_start = datetime.now()
 
+
     def timeout_check_function(iteration, mol_iter, reads ):
         nonlocal time_start
         nonlocal timeout_time
         if timeout_time is None:
             return
+
         if (datetime.now()-time_start).total_seconds() > timeout_time:
             raise TimeoutError()
+
 
     total_molecules_written = 0
     for i, molecule in enumerate(
@@ -160,7 +162,7 @@ def run_tagging_tasks(args: tuple):
                              read_groups=read_groups) as output:
             for task in arglist:
                 try:
-                    statistics = run_tagging_task(alignments, output, read_groups=read_groups, **task)
+                    statistics = run_tagging_task(alignments, output, read_groups=read_groups, timeout_time=timeout_time, **task)
                     total_molecules += statistics.get('total_molecules_written', 0)
                 except TimeoutError:
                     timeout_tasks.append( task )
@@ -179,9 +181,11 @@ def run_tagging_tasks(args: tuple):
             remove(target_file)
             remove(f'{target_file}.bai')
         except Exception as e:
-                pass
+            print(f'Cleaning up failed for {target_file}')
+            print(e)
+            pass
 
-        return None, meta
+    return None, meta
 
 
 def generate_tasks(input_bam_path: str, temp_folder: str, job_gen: Generator, iteration_args: dict,

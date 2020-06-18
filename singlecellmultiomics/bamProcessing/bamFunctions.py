@@ -47,13 +47,19 @@ def merge_bams( bams: list, output_path: str, threads: int=4 ):
         output_path (str)
 
     """
+    assert threads>=1
     if len(bams) == 1:
         assert os.path.exists(bams[0]+'.bai'), 'Only indexed files can be merged'
         move(bams[0], output_path)
         move(bams[0]+'.bai', output_path+'.bai')
     else:
         assert all((os.path.exists(bams[0]+'.bai') for bam in bams)), 'Only indexed files can be merged'
-        pysam.merge(output_path, *bams, f'-@ {threads} -f -l 1')
+        if which('samtools') is None:
+            pysam.merge(output_path, *bams, f'-@ {threads} -f -p -c') #-c to only keep the same id once
+        else:
+            # This above command can have issues...
+            os.system(f'samtools merge {output_path} {" ".join(bams)} -@ {threads} -f -p -c')
+
         pysam.index(output_path, f'-@ {threads}')
         for o in bams:
             os.remove(o)
@@ -473,6 +479,29 @@ def write_program_tag(input_header,
         'DS': description
     })
 
+def  add_blacklisted_region(input_header, contig=None, start=None, end=None, source='auto_blacklisted'):
+    if 'CO' not in input_header: # Blacklisted regions, as freetext comment
+        input_header['CO'] = []
+    input_header['CO'].append(f'scmo_blacklisted\t{contig}:{start} {end}\tsource:{source}')
+
+def get_blacklisted_regions_from_bam(bam_path):
+    blacklisted = {}
+    with pysam.AlignmentFile(bam_path) as alignments:
+        if 'CO' in alignments.header:
+            for record in alignments.header['CO']:
+                parts = record.strip().split('\t')
+                if parts[0]!='scmo_blacklisted':
+                    continue
+
+                region = parts[1]
+                contig, span = region.split(' ')
+                start, end = span.split('-')
+                start = int(start)
+                end = int(end)
+                if not contig in blacklisted:
+                    blacklisted[contig] = []
+                blacklisted[contig].append( (start,end) )
+    return blacklisted
 
 def bam_is_processed_by_program(alignments, program='bamtagmultiome'):
     """Check if bam file has been processed by the supplied program

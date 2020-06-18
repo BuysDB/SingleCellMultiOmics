@@ -30,3 +30,5 @@ share/python-wheels/
 _build
 _static
 _templates
+dev/
+data/test

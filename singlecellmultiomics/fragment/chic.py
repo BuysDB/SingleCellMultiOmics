@@ -9,7 +9,7 @@ class CHICFragment(Fragment):
                  R2_primer_length=6,
                  assignment_radius=1_000,
                  umi_hamming_distance=1,
-                 invert_strand=True,
+                 invert_strand=False,
                  no_umi_cigar_processing=False,
                  **kwargs
                  ):
