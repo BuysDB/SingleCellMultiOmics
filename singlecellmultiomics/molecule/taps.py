@@ -336,7 +336,7 @@ class AnnotatedTAPSNlaIIIMolecule(AnnotatedNLAIIIMolecule, TAPSMolecule):
 class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
     """Molecule class for combined TAPS and CHIC """
 
-    def __init__(self, fragments=None, taps=None,  taps_strand='F', **kwargs):
+    def __init__(self, fragments=None, taps=None,  taps_strand='R', **kwargs):
         CHICMolecule.__init__(self, fragments, **kwargs)
         TAPSMolecule.__init__(self, fragments=fragments, taps_strand=taps_strand,taps=taps, **kwargs)
 
@@ -361,7 +361,7 @@ class TAPSCHICMolecule(CHICMolecule, TAPSMolecule):
 class AnnotatedTAPSCHICMolecule(AnnotatedCHICMolecule, TAPSMolecule):
     """Molecule class for combined TAPS, CHIC and transcriptome """
 
-    def __init__(self, fragments=None, features=None, taps_strand='F', taps=None, **kwargs):
+    def __init__(self, fragments=None, features=None, taps_strand='R', taps=None, **kwargs):
         assert features is not None, "Supply features!"
         AnnotatedCHICMolecule.__init__(
             self, fragments, features=features, **kwargs)
