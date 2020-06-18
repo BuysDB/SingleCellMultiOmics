@@ -138,7 +138,7 @@ if __name__ == '__main__':
         assert len(lengths)==1, 'Please only supply contexts of the same length'
         context_radius = int((list(lengths)[0] - 1) / 2)
         for context in contexts_to_capture:
-            assert contex[context_radius]=='C', 'Supply only contexts with a C in the middle'
+            assert context[context_radius]=='C', 'Supply only contexts with a C in the middle'
 
         assert args.reference is not None, 'Please supply supply a fasta file using -reference'
 
