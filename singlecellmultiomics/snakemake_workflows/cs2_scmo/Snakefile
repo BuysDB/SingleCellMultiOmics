@@ -8,11 +8,7 @@ CelSeq2 pipeline based on the version of Marijn van Loenhout (2018)
 
 Dependencies:
 # STAR
-# samtools
-# umi-tools
-# cutadapt (trimgalore/atropos)
-# subread
-# colorama
+# cutadapt
 # SingleCellMultiOmics package
 
 This workflow:
@@ -88,7 +84,7 @@ rule SCMO_demux:
         mem_mb=lambda wildcards, attempt: attempt * 4000
 
     shell:
-        "demux.py -merge _ {input.fastqfiles} -o processed --y -use CS2C8U6 > {log.stdout} 2> {log.stderr}"
+        "demux.py -merge _ {input.fastqfiles} -o processed --y > {log.stdout} 2> {log.stderr}"
 
 #### 2. Trimming
 rule Trim:
