@@ -199,7 +199,7 @@ rule SCMO_count_table_nondedup:
         mem_mb=lambda wildcards, attempt: attempt * 8000
 
     shell:
-        "bamToCountTable.py --noNames {input.bam} -o {output.countTable} -joinedFeatureTags GN,chrom -sampleTags SM > {log.stdout} 2> {log.stderr}"
+        "bamToCountTable.py --noNames {input.bam} -o {output.countTable} -joinedFeatureTags GN,gn,chrom -sampleTags SM > {log.stdout} 2> {log.stderr}"
 
 #### b. Make count tables of deduplicated bam files
 # This works exactly the same as step a
@@ -218,4 +218,4 @@ rule SCMO_count_table_filtered:
         mem_mb=lambda wildcards, attempt: attempt * 8000
 
     shell:
-        "bamToCountTable.py --dedup --noNames {input.bam} -o {output.countTable} -joinedFeatureTags GN,chrom -sampleTags SM > {log.stdout} 2> {log.stderr}"
+        "bamToCountTable.py --dedup --noNames {input.bam} -o {output.countTable} -joinedFeatureTags GN,gn,chrom -sampleTags SM > {log.stdout} 2> {log.stderr}"
