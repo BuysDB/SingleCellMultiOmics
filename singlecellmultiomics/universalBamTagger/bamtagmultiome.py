@@ -800,7 +800,7 @@ def run_multiome_tagging(args):
         fragment_size = 100_000
         molecule_class_args.update({
             'reference': reference,
-            'taps': singlecellmultiomics.molecule.TAPS(taps_strand='F')
+            'taps': singlecellmultiomics.molecule.TAPS(taps_strand='R')
         })
         molecule_class = singlecellmultiomics.molecule.AnnotatedTAPSCHICMolecule
         fragment_class = singlecellmultiomics.fragment.CHICFragment
@@ -811,7 +811,7 @@ def run_multiome_tagging(args):
         fragment_size = 500
         molecule_class_args.update({
             'reference': reference,
-            'taps': singlecellmultiomics.molecule.TAPS(taps_strand='F')
+            'taps': singlecellmultiomics.molecule.TAPS(taps_strand='R')
         })
         molecule_class = singlecellmultiomics.molecule.TAPSCHICMolecule
         fragment_class = singlecellmultiomics.fragment.CHICFragment
