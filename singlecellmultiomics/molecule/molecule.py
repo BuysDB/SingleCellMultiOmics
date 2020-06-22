@@ -1709,9 +1709,13 @@ class Molecule():
         if consensus:
             reads = self.deduplicate_majority(target_file,
                                               f'molecule_{uuid4()}' if consensus_name is None else consensus_name)
+
             for read in reads:
                 target_file.write(read)
+
             if not no_source_reads:
+                for read in self.iter_reads():
+                    read.is_duplicate=True
                 for fragment in self:
                     fragment.write_pysam(target_file)
 
