@@ -82,6 +82,15 @@ class BarcodeParser():
                         else:
                             index, barcode = parts
                         #self.barcodes[barcodeFileAlias][barcode] = index
+
+                        # When the index is only digits, convert to integer
+                        try:
+                            if int(index)==int(str(int(index))):
+                                index = int(index)
+                            else:
+                                pass
+                        except Exception as e:
+                            pass
                         self.addBarcode(
                             barcodeFileAlias, barcode=barcode, index=index)
                         logging.info(
