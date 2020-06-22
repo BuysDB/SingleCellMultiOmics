@@ -156,11 +156,9 @@ class PlateStatistic(object):
 
     def cell_counts_to_dataframe(self, cell_counts, mux, name='raw_reads'):
         df = pd.DataFrame({name: cell_counts})
-        if mux == 'CS2C8U6':
-            offset = 0
-        else:
-            offset = 1
 
+        offset = 0 # Offset is zero for all protocols since 0.1.12
+    
         format = 384 if ('384' in mux or mux.startswith('CS2')) else 96
 
         df['col'] = [index2well[format]

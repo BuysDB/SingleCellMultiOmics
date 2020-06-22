@@ -45,7 +45,7 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         demultiplexed_record = demux.demultiplex([r1,r2])
         # The barcode sequence is ACACACTA (first barcode)
         self.assertEqual( demultiplexed_record[0].tags['BC'], 'ACACACTA')
-        self.assertEqual( demultiplexed_record[0].tags['bi'], 0)
+        self.assertEqual( demultiplexed_record[0].tags['bi'], 1) # 1 from version 0.1.12
 
 
     def test_CS2_NH_matching_barcode(self):
@@ -75,7 +75,7 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         demultiplexed_record = demux.demultiplex([r1,r2])
         # The barcode sequence is ACACACTA (first barcode)
         self.assertEqual( demultiplexed_record[0].tags['BC'], 'TCTGGGCA')
-        self.assertEqual( demultiplexed_record[0].tags['bi'], '55')
+        self.assertEqual( demultiplexed_record[0].tags['bi'], 55)
         self.assertEqual( demultiplexed_record[0].tags['RX'], 'ATAATA')
         self.assertEqual( demultiplexed_record[0].sequence, seq)
 
@@ -106,7 +106,7 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         demultiplexed_record = demux.demultiplex([r1,r2])
         # The barcode sequence is ACACACTA (first barcode)
         self.assertEqual( demultiplexed_record[0].tags['BC'], 'TCTGGGCA')
-        self.assertEqual( demultiplexed_record[0].tags['bi'], '55')
+        self.assertEqual( demultiplexed_record[0].tags['bi'], 55)
         self.assertEqual( demultiplexed_record[0].tags['MX'], 'CS2C8U6')
         self.assertEqual( demultiplexed_record[0].tags['RX'], 'ATAATA')
         self.assertEqual( demultiplexed_record[0].sequence, seq)
@@ -135,7 +135,7 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         demultiplexed_record = demux.demultiplex([r1,r2])
         # The barcode sequence is ACACACTA (first barcode)
         self.assertEqual( demultiplexed_record[0].tags['BC'], 'AGAGCGCG')
-        self.assertEqual( demultiplexed_record[0].tags['bi'], 25)
+        self.assertEqual( demultiplexed_record[0].tags['bi'], 26)
         self.assertEqual( demultiplexed_record[0].tags['MX'], 'scCHIC384C8U3')
         self.assertEqual( demultiplexed_record[0].tags['RX'], 'AAA')
         self.assertEqual( demultiplexed_record[0].sequence, seq)
@@ -174,7 +174,7 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         demultiplexed_record = demux.demultiplex([r1,r2])
         # The barcode sequence is ACACACTA (first barcode)
         self.assertEqual( demultiplexed_record[0].tags['BC'], 'ACACACTA')
-        self.assertEqual( demultiplexed_record[0].tags['bi'], 0)
+        self.assertEqual( demultiplexed_record[0].tags['bi'], 1)
 
 
 if __name__ == '__main__':
