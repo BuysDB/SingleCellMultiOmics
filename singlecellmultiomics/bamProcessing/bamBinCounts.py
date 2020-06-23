@@ -469,6 +469,7 @@ def count_methylation_binned(args):
 
     # single_location => count single cpgs
     single_location = kwargs.get('single_location', False)
+    dyad_mode =  kwargs.get('dyad_mode', False)
 
     contexts_to_capture = kwargs.get('contexts_to_capture', None) # List
 
@@ -553,9 +554,9 @@ def count_methylation_binned(args):
                     except KeyError:
                         raise KeyError(f'The supplied reference file does not match the reads. Contig "{read.reference_name}" missing from supplied reference.')
 
-                    if len(context)!=context_radius:
+                    if len(context)!=(context_radius*2 +1):
                         continue
-                    
+
                     if context[context_radius] == 'G':
                         context = reverse_complement(context)
 
@@ -569,6 +570,13 @@ def count_methylation_binned(args):
                 elif call in 'Zz':
 
                     final_call = call=='Z'
+                    #CpG
+                    #^
+                    if read.is_reverse and dyad_mode:
+                        #GpC
+                        #  ^
+                        site += 1
+
                 else:
                     continue
 

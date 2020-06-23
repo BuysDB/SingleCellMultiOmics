@@ -97,6 +97,8 @@ if __name__ == '__main__':
     argparser.add_argument('-threads_agg', default=1, type=int, help='Amount of threads to use for aggregation. Aggregation is very memory intensive, so this amount of threads should probably be lower than -threads')
     argparser.add_argument('-reference', default=None, type=str, help='Path to reference fasta file')
 
+    argparser.add_argument('--mirror_cpg_dyad',action='store_true', help='Count CpG methylation of a single dyad as one position')
+
 
     fi = argparser.add_argument_group("Filters")
     fi.add_argument('-min_variance', default=None, type=float)
@@ -133,6 +135,7 @@ if __name__ == '__main__':
         contexts_to_capture = None
         context_radius = None
     else:
+        assert args.mirror_cpg_dyad is False, '--mirror_cpg_dyad can only be used when no contexts_to_capture are supplied. (CpG mode) '
         contexts_to_capture = args.contexts_to_capture.split(',')
         lengths = set( (len(context) for context in contexts_to_capture ) )
         assert len(lengths)==1, 'Please only supply contexts of the same length'
@@ -159,7 +162,9 @@ if __name__ == '__main__':
                                           single_location=(args.bin_size==1),
                                           contexts_to_capture=contexts_to_capture,
                                           context_radius=context_radius,
-                                          reference_path=args.reference
+                                          reference_path=args.reference,
+                                          dyad_mode=args.mirror_cpg_dyad
+
     )
     print(f" [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
