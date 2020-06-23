@@ -471,6 +471,9 @@ def count_methylation_binned(args):
     single_location = kwargs.get('single_location', False)
     dyad_mode =  kwargs.get('dyad_mode', False)
 
+    # Stranded mode:
+    stranded =  kwargs.get('stranded', False)
+
     contexts_to_capture = kwargs.get('contexts_to_capture', None) # List
 
     reference = None
@@ -603,9 +606,18 @@ def count_methylation_binned(args):
                 # Add additional tag information: (For example the allele tag)
                 if key_tags is not None:
                     tag_values = [(read.get_tag(tag) if read.has_tag(tag) else None) for tag in key_tags]
-                    bin_id = (*tag_values, contig, bin_start, bin_end)
+                    if stranded:
+                        bin_id = (*tag_values, contig, bin_start, bin_end, '+-'[read.is_reverse])
+                    else:
+                        bin_id = (*tag_values, contig, bin_start, bin_end)
                 else:
-                    bin_id = (contig, bin_start, bin_end)
+
+                    if stranded:
+                        bin_id = (contig, bin_start, bin_end,  '+-'[read.is_reverse])
+                    else:
+                        bin_id = (contig, bin_start, bin_end)
+
+
 
                 if final_call is not None:
                     met_counts[sample, bin_id][final_call]+=1

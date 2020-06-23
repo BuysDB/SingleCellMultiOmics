@@ -98,6 +98,7 @@ if __name__ == '__main__':
     argparser.add_argument('-reference', default=None, type=str, help='Path to reference fasta file')
 
     argparser.add_argument('--mirror_cpg_dyad',action='store_true', help='Count CpG methylation of a single dyad as one position')
+    argparser.add_argument('--stranded',action='store_true', help='Perform strand specific methylation calls')
 
 
     fi = argparser.add_argument_group("Filters")
@@ -145,6 +146,12 @@ if __name__ == '__main__':
 
         assert args.reference is not None, 'Please supply supply a fasta file using -reference'
 
+
+    if args.stranded:
+        assert args.mirror_cpg_dyad is False, '--mirror_cpg_dyad can only be used in non-strand specific mode '
+        assert args.wig_beta is None, '-wig_beta cannot be used in stranded mode as WIG files are not strand specific'
+        assert args.wig_n_samples is None, '-wig_n_samples cannot be used in stranded mode as WIG files are not strand specific'
+
     if args.distmat_plot is not None and not args.distmat_plot.endswith('.png'):
         args.distmat_plot += '.png'
 
@@ -163,12 +170,14 @@ if __name__ == '__main__':
                                           contexts_to_capture=contexts_to_capture,
                                           context_radius=context_radius,
                                           reference_path=args.reference,
-                                          dyad_mode=args.mirror_cpg_dyad
+                                          dyad_mode=args.mirror_cpg_dyad,
+                                          stranded=args.stranded
 
     )
     print(f" [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
     print(counts)
+
 
     if args.betas is not None:
         print('Writing counts ', end="")
@@ -216,7 +225,8 @@ if __name__ == '__main__':
     if args.bismark_tabfile is not None:
         print('Writing bismark_tabfile matrix', end="")
         bf = counts.get_bulk_frame()
-        bf.index.set_names(['chr','start', 'end'], inplace=True)
+
+        bf.index.set_names(['chr','start', 'end'] + (['strand'] if args.stranded else []), inplace=True)
         bf[['unmethylated', 'methylated', 'beta']].to_csv(args.bismark_tabfile, sep='\t')
         print(f" [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
