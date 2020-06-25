@@ -16,6 +16,8 @@ class MethylationCountMatrix:
         self.counts = {} if counts is None else counts
 
         # { (contig, bin_start, bin_end), (contig, bin_start, bin_end) .. }
+        #or
+        # { (contig, bin_start, bin_end,strand), (contig, bin_start, bin_end, strand) .. }
         self.sites = set()
         self.threads = threads
 
