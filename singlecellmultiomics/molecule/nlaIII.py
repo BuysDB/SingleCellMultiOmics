@@ -94,12 +94,14 @@ class NlaIIIMolecule(Molecule):
             total -= 1
         return total
 
-    def write_tags_to_psuedoreads(self, reads):
-        Molecule.write_tags_to_psuedoreads(self)
+    def write_tags_to_psuedoreads(self, reads, call_super=True):
+        if call_super:
+            Molecule.write_tags_to_psuedoreads(self)
         if self.reference is not None:  # Only calculate this statistic when a reference is available
             if self.get_cut_site() is not None:
+                us = self.get_undigested_site_count()
                 for read in reads:
-                    read.set_tag('Us', self.get_undigested_site_count())
+                    read.set_tag('Us', us)
 
 
 class AnnotatedNLAIIIMolecule(FeatureAnnotatedMolecule, NlaIIIMolecule):
@@ -119,3 +121,7 @@ class AnnotatedNLAIIIMolecule(FeatureAnnotatedMolecule, NlaIIIMolecule):
     def __init__(self, fragment, features, **kwargs):
         FeatureAnnotatedMolecule.__init__(self, fragment, features, **kwargs)
         NlaIIIMolecule.__init__(self, fragment, **kwargs)
+
+    def write_tags_to_psuedoreads(self,reads):
+        NlaIIIMolecule.write_tags_to_psuedoreads(self, reads)
+        FeatureAnnotatedMolecule.write_tags_to_psuedoreads(self,reads,call_super=False)
