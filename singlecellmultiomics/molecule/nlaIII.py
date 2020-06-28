@@ -94,6 +94,13 @@ class NlaIIIMolecule(Molecule):
             total -= 1
         return total
 
+    def write_tags_to_psuedoreads(self, reads):
+        Molecule.write_tags_to_psuedoreads(self)
+        if self.reference is not None:  # Only calculate this statistic when a reference is available
+            if self.get_cut_site() is not None:
+                for read in reads:
+                    read.set_tag('Us', self.get_undigested_site_count())
+
 
 class AnnotatedNLAIIIMolecule(FeatureAnnotatedMolecule, NlaIIIMolecule):
     """Nla III based Molecule which is annotated with features (genes/exons/introns, .. )
