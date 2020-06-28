@@ -166,7 +166,7 @@ class Molecule():
                  fragments: typing.Optional[typing.Iterable] = None,
                  cache_size: int = 10_000,
                  reference: typing.Union[pysam.FastaFile, pysamiterators.CachedFasta] = None,
-                 # When all fragments have a mappin quality below this value
+                 # When all fragments have a mapping quality below this value
                  # the is_valid method will return False,
                  min_max_mapping_quality: typing.Optional[int] = None,
                  mapability_reader: typing.Optional[singlecellmultiomics.bamProcessing.MapabilityReader] = None,
