@@ -6,6 +6,7 @@ import argparse
 import sys
 import collections
 from multiprocessing import Pool
+from singlecellmultiomics.utils import get_valid_filename
 
 def index_bam(path):
     try:
@@ -43,8 +44,13 @@ def split_bam_by_tag( input_bam_path, output_prefix, tag, head=None, max_handles
         if not r.has_tag(tag):
             continue
         value = str(r.get_tag(tag))
+
+        # Clean up value to get proper file name:
+        value = get_valid_filename(value)
+
         if value in skip or value in waiting:
             continue
+
 
         if not value in output_handles:
             if len(output_handles)>=max_handles:
