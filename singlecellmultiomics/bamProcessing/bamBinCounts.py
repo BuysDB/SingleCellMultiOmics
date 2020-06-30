@@ -569,6 +569,20 @@ def count_methylation_binned(args):
                     else:
                         continue
 
+                    if context[context_radius] not in 'CG':
+                        # This is bad... the position is not  a C or G. It might be another IUPAC nucleotide code.
+
+                        #Ditch this READ if the ref base is A/T
+                        if context[context_radius] in 'AT':
+                            print(f'For read {read.reference_name}:{read.cigarstring} at {site}, query pos {qpos} a {context[context_radius]} was found in the reference. Ignoring this read')
+                            break
+
+                        #Ditch this BASE if IUPAC nucleotide code:
+                        continue
+
+
+
+
                 elif call in 'Zz':
 
                     final_call = call=='Z'
