@@ -101,3 +101,54 @@ def vcf_to_variant_contexts(vcf_to_extract_contexts: str, reference_path: str, b
                     pattern_obs[sample][(context, allele)] += obs
     return pattern_obs
 
+
+def vcf_complement_snvs(vcf_input: str, vcf_negative:str, vcf_output:str):
+    """ Removes overlapping snvs in vcf_negative from vcf_input
+
+    Returns:
+        None
+    """
+    with pysam.VariantFile(vcf_input) as input_vcf_handle, pysam.VariantFile(vcf_negative) as remove_handle:
+        with pysam.VariantFile(vcf_output,header=input_vcf_handle.header,mode='w') as out:
+            for record in input_vcf_handle:
+
+                if len(record.ref)!=1:
+                    continue
+
+                if len(record.alts[0])!=1:
+                    continue
+
+                # Check if this location is variant:
+                drop = False
+                for hit in remove_handle.fetch(record.chrom, record.pos, record.pos+1):
+                    if len(hit.ref)!=1:
+                        continue
+
+                    if hit.pos == record.pos:
+                        drop = True
+
+                if not drop:
+                    out.write(record)
+
+
+def vcf_complement_set_snvs(vcf_input: str, set_negative:set, vcf_output:str):
+    """ Removes overlapping snvs in set_negative from vcf_input
+
+    set negative should be a set of chromosomal locations {(contig, pos),}
+
+    Returns:
+        None
+    """
+    with pysam.VariantFile(vcf_input) as input_vcf_handle:
+        with pysam.VariantFile(vcf_output,header=input_vcf_handle.header,mode='w') as out:
+            for record in input_vcf_handle:
+
+                if len(record.ref)!=1:
+                    continue
+
+                if len(record.alts[0])!=1:
+                    continue
+
+
+                if not (record.chrom,record.pos) in set_negative:
+                    out.write(record)
