@@ -569,7 +569,6 @@ def count_methylation_binned(args):
                     else:
                         continue
 
-
                 elif call in 'Zz':
 
                     final_call = call=='Z'

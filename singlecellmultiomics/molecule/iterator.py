@@ -415,5 +415,3 @@ class MoleculeIterator():
                     m.__finalise__()
                     yield m
         self._clear_cache()
-
-
