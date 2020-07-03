@@ -41,7 +41,7 @@ if __name__ == '__main__':
     argparser.add_argument('-rawmat', type=str)
     argparser.add_argument('-gcmat', type=str)
 
-    argparser.add_argument('-norm_method', default='median', type=str)
+    argparser.add_argument('-norm_method', default='median', type=str, help='Either mean or median')
 
     args = argparser.parse_args()
 
