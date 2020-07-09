@@ -22,21 +22,25 @@ class DivCounter(Counter):
         return result
 
 
-def _get_sc_unstranded_cut_dictionary(args):
+def _get_sc_cut_dictionary(args):
 
-    bam, contig = args
+    bam, contig, strand_specific = args
     cut_positions = defaultdict(Counter)
     with pysam.AlignmentFile(bam) as alignments:
         for read in alignments.fetch(contig):
 
             if not read.is_read1 or read.is_duplicate or read.is_qcfail or read.mapping_quality==0:
                 continue
-            cut_positions[read.get_tag('SM')][read.get_tag('DS')]+=1
+            cut_positions[read.get_tag('SM')][
+                (read.is_reverse, read.get_tag('DS'))
+                    if strand_specific else
+                read.get_tag('DS')
+                ]+=1
 
     return contig,cut_positions
 
 
-def get_sc_unstranded_cut_dictionary(bam_path: str):
+def get_sc_cut_dictionary(bam_path: str, strand_specific=False):
     """
     Generates cut distribution dictionary  (contig)->sample->position->obs
 
@@ -44,7 +48,10 @@ def get_sc_unstranded_cut_dictionary(bam_path: str):
     cut_sites = {}
     with Pool() as workers:
         with pysam.AlignmentFile(bam_path) as alignments:
-            for contig,r in workers.imap_unordered(_get_sc_unstranded_cut_dictionary, ( (bam_path, contig) for contig in get_contigs_with_reads(bam_path) )):
+            for contig,r in workers.imap_unordered(
+                _get_sc_cut_dictionary, (
+                    (bam_path, contig,strand_specific)
+                    for contig in get_contigs_with_reads(bam_path) )):
                 cut_sites[contig]=r
 
     return cut_sites
@@ -73,7 +80,7 @@ def analyse(bam_path,output_dir, create_plot=False, min_distance=20, max_distanc
     if verbose:
         print('Obtaining cuts per cell .. ', end='\r')
 
-    cut_sites = get_sc_unstranded_cut_dictionary(bam_path)
+    cut_sites = get_sc_cut_dictionary(bam_path, strand_specific=strand_specific)
 
 
     all_counts = {}
@@ -93,9 +100,14 @@ def analyse(bam_path,output_dir, create_plot=False, min_distance=20, max_distanc
             cut_count_df.index.name='distance between cuts'
             filtered_count_df = cut_count_df.loc[:, cut_count_df.sum()>100]
             sns.clustermap((filtered_count_df / filtered_count_df.loc[20:].mean()).T,
-                           cmap='viridis', vmax=3, col_cluster=False, method='ward',figsize=(8,20))
+                           cmap='viridis', vmax=3,
+                           metric='correlation', col_cluster=False,
+                           method='ward',figsize=(8,20))
             plt.tight_layout()
             plt.savefig(f'{output_dir}/heatmap.png')
+
+
+            ax.figure.subplots_adjust(left=0.3)  # change 0.3 to suit your needs.
 
         except Exception as e:
             print(e)
@@ -177,9 +189,14 @@ def analyse(bam_path,output_dir, create_plot=False, min_distance=20, max_distanc
             ax.grid()
             plt.legend()
 
-            #plt.show()
+            plt.tight_layout()
+
             plt.savefig(f'{sc_plot_dir}/{cell}.png')
             plt.close()
+
+            # Plot residual with smoothed function
+
+
         except RuntimeError as e:
             print(f'Could not fit data for {cell}, ( {total_molecules} molecules )')
             pass
@@ -210,9 +227,10 @@ if __name__ == '__main__':
 
     argparser.add_argument('alignmentfile', type=str)
     argparser.add_argument('-o', type=str, required=True, help='Output folder')
+    argparser.add_argument('-max_distance', type=int,default=800, help='Maximum distance in both plots and output tables')
     args = argparser.parse_args()
 
     if not os.path.exists(args.o):
         os.makedirs(args.o)
 
-    analyse(args.alignmentfile, args.o, create_plot=True, verbose=True,strand_specific=False)
+    analyse(args.alignmentfile, args.o, create_plot=True, verbose=True,strand_specific=False,max_distance=args.max_distance)
