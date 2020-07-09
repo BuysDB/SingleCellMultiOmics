@@ -347,7 +347,7 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
     return counts
 
 
-def read_counts(read, min_mq, dedup=True, read1_only=False, verbose=False):
+def read_counts(read, min_mq, dedup=True, read1_only=False,ignore_mp=False, verbose=False):
 
     if read1_only and (not read.is_read1 or read is None):
         if verbose:
@@ -363,7 +363,7 @@ def read_counts(read, min_mq, dedup=True, read1_only=False, verbose=False):
         if verbose:
             print('DUPLICATE')
         return False
-    if read.has_tag('mp') and read.get_tag('mp') != 'unique':
+    if not ignore_mp and read.has_tag('mp') and read.get_tag('mp') != 'unique':
         if verbose:
             print('MP')
         return False
@@ -651,6 +651,7 @@ def count_fragments_binned(args):
     # Define which reads we want to count:
 
     p = 0
+    ignore_mp = kwargs.get('ignore_mp',False)
     with pysam.AlignmentFile(alignments_path, threads=4) as alignments:
         # Obtain size of selected contig:
         contig_size = get_contig_size(alignments, contig)
@@ -664,7 +665,7 @@ def count_fragments_binned(args):
         for p, read in enumerate(alignments.fetch(contig=contig, start=f_start,
                                                   stop=f_end)):
 
-            if not read_counts(read, min_mq=min_mq, dedup=dedup, read1_only=True):
+            if not read_counts(read, min_mq=min_mq, dedup=dedup, read1_only=True,ignore_mp=ignore_mp):
                 continue
 
             # Extract the site
