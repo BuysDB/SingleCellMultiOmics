@@ -6,7 +6,7 @@ from collections import Counter
 from singlecellmultiomics.bamProcessing import sorted_bam_file, has_variant_reads
 from singlecellmultiomics.molecule import NlaIIIMolecule,MoleculeIterator,train_consensus_model,get_consensus_training_data, Molecule
 from singlecellmultiomics.fragment import NlaIIIFragment, Fragment
-from singlecellmultiomics.variant import VariantWrapper
+from singlecellmultiomics.variants import VariantWrapper
 import pysam
 import collections
 import numpy as np

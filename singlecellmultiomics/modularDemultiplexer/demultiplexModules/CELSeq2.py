@@ -105,7 +105,7 @@ class CELSeq2_c8_u8(UmiBarcodeDemuxMethod):
             barcodeRead=1,
             barcodeStart=8,
             barcodeLength=8,
-            random_primer_read=0,
+            random_primer_read=1,
             random_primer_length=6,
             barcodeFileAlias=self.barcodeFileAlias,
             barcodeFileParser=barcodeFileParser,
@@ -134,5 +134,5 @@ class CELSeq2_c8_u8_NNLAIII(UmiBarcodeDemuxMethod):
             **kwargs)
         self.shortName = 'CS2C8U8NNLA'
         self.longName = 'CELSeq 2, CB: 8bp, UMI: 8bp, NLAIII free'
-        self.autoDetectable = True
+        self.autoDetectable = False
         self.description = 'CEL-Seq2 without NLAIII digestable barcodes '

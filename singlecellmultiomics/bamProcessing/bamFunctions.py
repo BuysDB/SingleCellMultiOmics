@@ -11,6 +11,46 @@ from singlecellmultiomics.bamProcessing.pileup import pileup_truncated
 import numpy as np
 import pandas as pd
 from typing import Generator
+from multiprocessing import Pool
+
+def _get_r1_counts_per_cell(args):
+    """Obtain the amount of unique read1 reads per cell (Function is used as Pool chunk)
+
+    Args:
+        args: bam_path, contig
+
+    Returns:
+        cell_obs (Counter) : {sampleA:n_molecules, sampleB:m_molecules, ...}
+    """
+    bam_path, contig = args
+    cell_obs = Counter()
+    with pysam.AlignmentFile(bam_path) as alignments:
+        for read in alignments.fetch(contig):
+            if read.is_qcfail or read.is_duplicate or not read.is_read1:
+                continue
+            cell_obs[read.get_tag('SM')]+=1
+    return cell_obs
+
+def get_r1_counts_per_cell(bam_path):
+    """Obtain the amount of unique read1 reads per cell
+
+    Args:
+        bam_path : str
+
+    Returns:
+        cell_obs (Counter) : {sampleA:n_molecules, sampleB:m_molecules, ...}
+    """
+    cell_obs = Counter()
+    with Pool() as workers:
+        for cell_obs_for_contig in workers.imap_unordered(_get_r1_counts_per_cell,
+            (
+                (bam_path, contig)
+                for contig in get_contigs_with_reads(bam_path))
+            ):
+
+
+            cell_obs += cell_obs_for_contig
+    return cell_obs
 
 
 def get_contigs_with_reads(bam_path: str) -> Generator:

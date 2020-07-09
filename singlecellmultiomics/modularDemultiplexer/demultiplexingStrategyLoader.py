@@ -232,7 +232,9 @@ class DemultiplexingStrategyLoader:
                 for readPair in readPairs:
                     if len(readPairs) == 1:
                         processedReadPairs, strategyYields = self.demultiplex(
-                            [readPairs['R1'][0]], maxReadPairs=testReads, strategies=strategies, probe=True)
+                            [ readPairs[
+                                list(readPairs.keys())[0]
+                                ][0] ], maxReadPairs=testReads, strategies=strategies, probe=True)
                     elif len(readPairs) == 2:
                         processedReadPairs, strategyYields = self.demultiplex(
                             (readPairs['R1'][0], readPairs['R2'][0]), maxReadPairs=testReads, strategies=strategies, probe=True)

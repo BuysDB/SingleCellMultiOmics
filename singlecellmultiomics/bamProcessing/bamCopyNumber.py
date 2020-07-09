@@ -33,6 +33,8 @@ if __name__ == '__main__':
     argparser.add_argument('-pct_clip', default=99.999, type=float)
     argparser.add_argument('-min_mapping_qual', default=40, type=int)
     argparser.add_argument('-molecule_threshold', default=5_000, type=int)
+    argparser.add_argument('--ignore_mp',action='store_true',help='Ignore mp tag value')
+
 
     argparser.add_argument('-rawmatplot', type=str, help='Path to raw matrix, plot is not made when this path is not supplied ')
     argparser.add_argument('-gcmatplot', type=str, help='Path to gc corrected matrix, plot is not made when this path is not supplied ')
@@ -41,7 +43,7 @@ if __name__ == '__main__':
     argparser.add_argument('-rawmat', type=str)
     argparser.add_argument('-gcmat', type=str)
 
-    argparser.add_argument('-norm_method', default='median', type=str)
+    argparser.add_argument('-norm_method', default='median', type=str, help='Either mean or median')
 
     args = argparser.parse_args()
 
@@ -64,11 +66,12 @@ if __name__ == '__main__':
     h=GenomicPlot(reference)
     contigs = GenomicPlot(reference).contigs
 
+    kwargs = {'ignore_mp':args.ignore_mp}
     print("Creating count matrix ... ", end="")
     commands = generate_commands(
                 alignments_path=alignments_path,
                 bin_size=bin_size,key_tags=None,
-                bins_per_job=5,head=None,min_mq=min_mapping_qual)
+                bins_per_job=5,head=None,min_mq=min_mapping_qual,kwargs=kwargs )
 
     counts = obtain_counts(commands,
                             reference=reference,
