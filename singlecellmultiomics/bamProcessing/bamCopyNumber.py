@@ -146,7 +146,7 @@ if __name__ == '__main__':
 
     if rawmatplot is not None:
         print("Creating raw heatmap ...", end="")
-        h.cn_heatmap(df, figsize=(15,15))
+        h.cn_heatmap(df, figsize=(15,15+(0.05)*df.shape[0]))
         plt.savefig(rawmatplot)
         print(f"\rCreating raw heatmap [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
         plt.close('all')
