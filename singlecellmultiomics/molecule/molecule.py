@@ -1767,17 +1767,20 @@ class Molecule():
         if reads is None:
             reads = self.iter_reads()
         for read in reads:
+
+            bis_met_call_string = ''.join([
+                call_dict.get(
+                    (read.reference_name, rpos), {}).get('context', '.')
+                # Obtain all aligned positions from the call dict
+                # iterate all positions in the alignment
+                for qpos, rpos in read.get_aligned_pairs(matches_only=True)
+                if qpos is not None and rpos is not None])
+            # make sure to ignore non matching positions ? is this neccesary?
+
             read.set_tag(
                 # Write the methylation tag to the read
                 bismark_call_tag,
-                ''.join([
-                    call_dict.get(
-                        (read.reference_name, rpos), {}).get('context', '.')
-                    # Obtain all aligned positions from the call dict
-                    # iterate all positions in the alignment
-                    for qpos, rpos in read.get_aligned_pairs(matches_only=True)
-                    if qpos is not None and rpos is not None])
-                # make sure to ignore non matching positions ? is this neccesary?
+                bis_met_call_string
             )
 
             # Set total methylated bases
@@ -1816,6 +1819,30 @@ class Molecule():
             read.set_tag(
                 total_unmethylated_CHH_tag,
                 molecule_XM['h'])
+
+
+            # Set XR (Read conversion string)
+            # @todo: this is TAPS specific, inneficient, ugly
+
+            fwd = 0
+            rev = 0
+            for (qpos, rpos, ref_base), call in zip(
+                read.get_aligned_pairs(matches_only=True,with_seq=True),
+                bis_met_call_string):
+                qbase = read.query_sequence[qpos]
+                if call.isupper():
+                    if qbase=='A':
+                        rev+=1
+                    elif qbase=='T':
+                        fwd+=1
+
+            # Set XG (genome conversion string)
+            if rev>fwd:
+                read.set_tag('XR','CT')
+                read.set_tag('XG','GA')
+            else:
+                read.set_tag('XR','CT')
+                read.set_tag('XG','CT')
 
     def set_meta(self, tag, value):
         """Set meta information to all fragments
