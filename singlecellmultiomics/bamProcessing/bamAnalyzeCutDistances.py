@@ -107,7 +107,7 @@ def analyse(bam_path,output_dir, create_plot=False, min_distance=20, max_distanc
             plt.savefig(f'{output_dir}/heatmap.png')
 
 
-            ax.figure.subplots_adjust(left=0.3)  # change 0.3 to suit your needs.
+            #ax.figure.subplots_adjust(left=0.3)  # change 0.3 to suit your needs.
 
         except Exception as e:
             print(e)
