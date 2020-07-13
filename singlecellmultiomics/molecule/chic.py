@@ -13,10 +13,54 @@ class CHICMolecule(Molecule):
 
     def __init__(self, fragment,
                  **kwargs):
+
+        self.site_location = None
         Molecule.__init__(self, fragment, **kwargs)
         self.ligation_motif = None
 
+        # Extracted from fragments:
+        self.assignment_radius=None
+
+
+
+    def _add_fragment(self,fragment):
+        # Update the cut coordinate tho the (left most extreme value)
+        self.assignment_radius =fragment.assignment_radius
+
+        if fragment.site_location is not None:
+
+            if self.site_location is None:
+                self.site_location = [fragment.site_location[0],fragment.site_location[1]]
+
+            elif fragment.strand: # Reverse:
+                self.site_location[1] = max(fragment.site_location[1], self.site_location[1]) # this is the coordinate
+            else:
+                self.site_location[1] = min(fragment.site_location[1], self.site_location[1]) # this is the coordinate
+
+        # else : writing a fragment which has no cut location associated
+
+        Molecule._add_fragment(self, fragment)
+
+
+    def get_cut_site(self):
+        """For restriction based protocol data, obtain genomic location of cut site
+
+        Returns:
+            None if site is not available
+
+            chromosome (str)
+            position (int)
+            strand (bool)
+        """
+        return (*self.site_location, self.strand)
+
     def write_tags(self):
+
+        # Write DS tag when it could have been updated
+        if self.assignment_radius is not None and self.assignment_radius>0 and len(self)>1:
+            for frag in self:
+                frag.set_meta('DS', self.site_location[1])
+
         Molecule.write_tags(self)
 
     def is_valid(self, set_rejection_reasons=False):
