@@ -2,6 +2,27 @@ from singlecellmultiomics.molecule.molecule import Molecule
 import collections
 import pandas as pd
 
+class TranscriptMolecule(Molecule):
+
+    def __init__(self, fragment,
+             **kwargs):
+        self.genes=set()
+        Molecule.__init__(self, fragment, **kwargs)
+
+
+    def _add_fragment(self, fragment):
+
+        self.genes.update(fragment.genes)
+        Molecule._add_fragment(self, fragment)
+
+    def write_tags(self):
+
+        for frag in self:
+            frag.write_tags()
+
+        Molecule.write_tags(self)
+
+
 
 class FeatureAnnotatedMolecule(Molecule):
     """Molecule which is annotated with features (genes/exons/introns, .. )
@@ -51,6 +72,8 @@ class FeatureAnnotatedMolecule(Molecule):
             self.is_spliced = False
         else:
             self.is_spliced = is_spliced
+
+
 
     def set_intron_exon_features(self):
         if not self.is_annotated:
@@ -132,13 +155,13 @@ class FeatureAnnotatedMolecule(Molecule):
                 tabulated_hits.append(location_dict)
 
         return pd.DataFrame(tabulated_hits)
-    
 
-    def write_tags_to_psuedoreads(self, reads, call_super=True): 
+
+    def write_tags_to_psuedoreads(self, reads, call_super=True):
         # @ todo needs refactor; the psuedoread should just be a Fragment too, solves all issues
         if call_super:
             Molecule.write_tags_to_psuedoreads(self, reads)
-            
+
         for read in reads:
             if len(self.exons) > 0:
                 read.set_tag('EX', ','.join(sorted([str(x) for x in self.exons])))
@@ -178,10 +201,10 @@ class FeatureAnnotatedMolecule(Molecule):
                 read.set_tag('gn', ';'.join(list(self.exon_hit_gene_names)))
             else:
                 read.set_tag('gn', None)
-            
+
     def write_tags(self):
         Molecule.write_tags(self)
-        
+
         if len(self.exons) > 0:
             self.set_meta('EX', ','.join(sorted([str(x) for x in self.exons])))
         else:
