@@ -47,11 +47,13 @@ class DemultiplexingStrategyLoader:
             dm.CELSeq2_c8_u6_NH,
             dm.CELSeq2_c8_u8,
             dm.CELSeq2_c8_u8_NNLAIII,
+
             dm.CELSeq2_c8_u6_swapped_reads,
 
             dm.NLAIII_384w_c8_u3,
             dm.NLAIII_96w_c8_u3,
             dm.Nla_384w_u8_c8_ad3_is15,
+            dm.NLAIII_384w_c8_u3_SINGLE_END,
 
             dm.SCCHIC_384w_c8_u3,
             dm.SCCHIC_384w_c8_u3_cs2,
@@ -59,6 +61,7 @@ class DemultiplexingStrategyLoader:
             dm.MSPJI_c8_u3,
             dm.ScartraceR2,
             dm.ScartraceR1
+
 
         ]
         for c in self.demux_classes:
@@ -148,7 +151,8 @@ class DemultiplexingStrategyLoader:
             targetFile=None,
             rejectHandle=None,
             log_handle=None,
-            probe=None):
+            probe=None
+            ):
 
         useStrategies = strategies if strategies is not None else self.getAutodetectStrategies()
         strategyYields = collections.Counter()
@@ -192,6 +196,8 @@ class DemultiplexingStrategyLoader:
 
                     continue
                 except Exception as e:
+                    if probe:
+                        continue
                     print(traceback.format_exc())
                     print(
                         f'{Fore.RED}Fatal error. While demultiplexing strategy {strategy.longName} yielded an error, the error message was: {e}')
