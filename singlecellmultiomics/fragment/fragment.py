@@ -862,6 +862,10 @@ class SingleEndTranscriptFragment(Fragment, FeatureAnnotatedObject):
                                         capture_locations=capture_locations,
                                         auto_set_intron_exon_features=auto_set_intron_exon_features )
 
+        self.match_hash = (self.sample,
+                           self.span[0],
+                           self.strand)
+
 
     def write_tags(self):
         # First decide on what values to write
@@ -909,6 +913,9 @@ class SingleEndTranscriptFragment(Fragment, FeatureAnnotatedObject):
 
     def __eq__(self, other):
         # Check if the other fragment/molecule is aligned to the same gene
+        if self.match_hash != other.match_hash:
+            return False
+
         if len(self.genes.intersection(other.genes)):
             return self.umi_eq(other)
 
