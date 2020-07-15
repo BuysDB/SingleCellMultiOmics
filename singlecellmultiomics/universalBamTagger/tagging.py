@@ -82,7 +82,6 @@ def run_tagging_task(alignments, output,
             #assert not any((x is not None for x in (contig, start, end, fetch_start, fetch_end))), 'supply all these: contig, start, end, fetch_start, fetch_end'
         if enable_prefetch:
             molecule_iterator_args = prefetch(contig, start, end, fetch_start, fetch_end, molecule_iterator_args)
-
     time_start = datetime.now()
 
 
@@ -106,25 +105,27 @@ def run_tagging_task(alignments, output,
                             )
         ):
 
-        if fetching:
-            cut_site_contig, cut_site_pos = None, None
-            for fragment in molecule:
-                #@todo this needs better handling
-                r = fragment.get_site_location() # @todo: refactor to molecule function
-                if r is not None:
-                    cut_site_contig, cut_site_pos = r
+        # Do not process molecules out of the defined region
+        if fetch_start is not None:
+            if fetching:
+                cut_site_contig, cut_site_pos = None, None
+                for fragment in molecule:
+                    #@todo this needs better handling
+                    r = fragment.get_site_location() # @todo: refactor to molecule function
+                    if r is not None:
+                        cut_site_contig, cut_site_pos = r
+                        break
+                if cut_site_contig is None:
+                    # We cannot process this molecule using multiprocessing as there is a chance of a collision.
+                    continue
+
+                # Stopping criteria:
+                if cut_site_pos>=fetch_end:
                     break
-            if cut_site_contig is None:
-                # We cannot process this molecule using multiprocessing as there is a chance of a collision.
-                continue
 
-            # Stopping criteria:
-            if cut_site_pos>=fetch_end:
-                break
-
-            # Skip molecules outside the desired region:
-            if cut_site_contig!=contig or cut_site_pos<start or cut_site_pos>=end: # End is exclusive
-                continue
+                # Skip molecules outside the desired region:
+                if cut_site_contig!=contig or cut_site_pos<start or cut_site_pos>=end: # End is exclusive
+                    continue
 
         molecule.write_tags()
 
