@@ -769,7 +769,6 @@ def run_multiome_tagging(args):
         fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
 
         molecule_class_args.update({
-            'pooling_method': 1,  # all data from the same cell can be dealt with separately
             'stranded': None  # data is not stranded
         })
     elif args.method == 'chict' :
@@ -857,6 +856,7 @@ def run_multiome_tagging(args):
         #molecule_class_args.update(transcriptome_feature_args)
         fragment_class_args.update(transcriptome_feature_args)
         fragment_class_args.update({'stranded': True })
+        molecule_class_args.update({'cache_size':1000})
 
 
     elif args.method == 'scartrace':
