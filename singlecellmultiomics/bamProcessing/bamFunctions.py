@@ -53,12 +53,14 @@ def get_r1_counts_per_cell(bam_path):
     return cell_obs
 
 
-def get_contigs_with_reads(bam_path: str) -> Generator:
+def get_contigs_with_reads(bam_path: str, with_length: bool = False) -> Generator:
     """
     Get all contigs with reads mapped to them
 
     Args:
         bam_path(str): path to bam file
+
+        with_length(bool): also yield the length of the contig
 
     Yields:
         contig(str)
@@ -69,7 +71,10 @@ def get_contigs_with_reads(bam_path: str) -> Generator:
             contig, contig_len, mapped_reads, unmapped_reads = line.strip().split()
             mapped_reads, unmapped_reads = int(mapped_reads), int(unmapped_reads)
             if mapped_reads>0 or unmapped_reads>0:
-                yield contig
+                if with_length:
+                    yield contig, int(contig_len)
+                else:
+                    yield contig
         except ValueError:
             pass
 

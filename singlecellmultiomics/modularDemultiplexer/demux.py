@@ -317,7 +317,7 @@ if __name__ == '__main__':
                 f'{Fore.RED}NONE! The library will not be demultiplexed! The used barcodes could not be detected automatically. Please supply the desired method using the -use flag or increase the -dsize parameter to use more reads for detecting the library type.{Style.RESET_ALL}')
 
         if not args.y:
-            print(f"\n{Style.BRIGHT}--y not supplied, execute the command below to run demultiplexing on the cluster:{Style.RESET_ALL}")
+            print(f"\n{Style.BRIGHT}--y not supplied, supply --y or execute the command below to run demultiplexing on the cluster:{Style.RESET_ALL}")
             arguments = " ".join(
                 [x for x in sys.argv if x != '--dry' and '--y' not in x and '-submit' not in x and '.fastq' not in x and '.fq' not in x]) + " --y"
 

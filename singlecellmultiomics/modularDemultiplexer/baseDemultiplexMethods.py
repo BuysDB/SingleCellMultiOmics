@@ -506,6 +506,7 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
                 barcodeLength + umiLength, None)
 
         if random_primer_read is not None:
+
             if self.sequenceCapture[random_primer_read].stop is not None:
                 raise NotImplementedError()
             self.sequenceCapture[random_primer_read] = slice(
@@ -520,9 +521,10 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
 
     def demultiplex(self, records, **kwargs):
 
-        # Check if the supplied reads are mate-pair:
-        if len(records) != 2:
-            raise NonMultiplexable('Not mate pair')
+        # Check if the supplied reads are mate-pair or single end
+        if len(records) not in (1, 2):
+            raise NonMultiplexable('Not mate pair or single end')
+
 
         # Perform first pass demultiplexing of the illumina fragments:
         try:

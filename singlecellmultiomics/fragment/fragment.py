@@ -4,6 +4,7 @@ import pysamiterators.iterators
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 from singlecellmultiomics.utils import style_str
 from singlecellmultiomics.bamProcessing import get_read_group_from_read
+from singlecellmultiomics.features import FeatureAnnotatedObject
 complement = str.maketrans('ATCGN', 'TAGCN')
 
 
@@ -850,16 +851,76 @@ class Fragment():
         self.set_meta('RZ', seq)
 
 
-class SingleEndTranscript(Fragment):
-    def __init__(self, reads, **kwargs):
-        Fragment.__init__(self, reads, **kwargs)
+
+class SingleEndTranscriptFragment(Fragment, FeatureAnnotatedObject):
+    def __init__(self, reads, features, assignment_radius=0, stranded=None, capture_locations=False, auto_set_intron_exon_features=True,**kwargs):
+
+        Fragment.__init__(self, reads, assignment_radius=assignment_radius, **kwargs)
+        FeatureAnnotatedObject.__init__(self,
+                                        features=features,
+                                        stranded=stranded,
+                                        capture_locations=capture_locations,
+                                        auto_set_intron_exon_features=auto_set_intron_exon_features )
+
+        self.match_hash = (self.sample,
+                           self.span[0],
+                           self.strand)
 
 
-        self.match_hash = (
-            self.sample,
-            self.strand,
-            reads[1].reference_end if self.strand else reads[1].reference_start,
-            )
+    def write_tags(self):
+        # First decide on what values to write
+        FeatureAnnotatedObject.write_tags(self)
+        # Additional fragment data
+        Fragment.write_tags(self)
+
+    def is_valid(self):
+        if len(self.genes)==0:
+            return False
+        return True
+
+    def annotate(self):
+        for read in self:
+            if read is None:
+                continue
+
+            read_strand = read.is_reverse
+            if self.stranded is not None and self.stranded==False:
+                read_strand=not read_strand
+
+
+            strand = ('-' if read_strand else '+')
+            read.set_tag('mr',strand)
+            for start, end in read.get_blocks():
+
+                for hit in self.features.findFeaturesBetween(
+                        chromosome=read.reference_name,
+                        sampleStart=start,
+                        sampleEnd=end,
+                        strand=(None if self.stranded is None else strand)) :
+
+                    hit_start, hit_end, hit_id, hit_strand, hit_ids = hit
+                    self.hits[hit_ids].add(
+                        (read.reference_name, (hit_start, hit_end)))
+
+                    if self.capture_locations:
+                        if not hit_id in self.feature_locations:
+                            self.feature_locations[hit_id] = []
+                        self.feature_locations[hit_id].append( (hit_start, hit_end, hit_strand))
+
+
+    def get_site_location(self):
+        return self.span[0], self.start
+
+    def __eq__(self, other):
+        # Check if the other fragment/molecule is aligned to the same gene
+        if self.match_hash != other.match_hash:
+            return False
+
+        if len(self.genes.intersection(other.genes)):
+            return self.umi_eq(other)
+
+        return False
+
 
 
 

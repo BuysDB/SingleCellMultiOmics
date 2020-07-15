@@ -16,9 +16,9 @@ def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
 
     new_kwarg_dict = {}
     for iterator_arg, iterator_value in molecule_iterator_args.items():
-        if 'molecule_class_args'==iterator_arg:
+        if iterator_arg in ('molecule_class_args','fragment_class_args'):
             new_args = {}
-            for key, value in molecule_iterator_args['molecule_class_args'].items():
+            for key, value in molecule_iterator_args[iterator_arg].items():
                 if key == 'features':
                     value = value.prefetch(contig,start,end)
                 if key == 'mappability_reader':
@@ -60,12 +60,20 @@ def run_tagging_task(alignments, output,
     assert output is not None
     assert molecule_iterator_class is not None
 
-    # There is two options: either supply start and end coordinates, or not supplying any coordinates:
-    fetching = not all((x is None for x in ( start, end, fetch_start, fetch_end)))
+    # There is three options: either supply only contig, or  start and end coordinates, or not supplying any coordinates:
+    fetching = not all((x is None for x in (contig, start, end, fetch_start, fetch_end)))
     if fetching:
-        if start is not None and end is not None and fetch_start is None and fetch_end is None:
+        if start is None and end is None:
+            assert fetch_start is None and fetch_end is None, 'start and end need to be supplied'
+            assert contig is not None
+
+
+        elif start is not None and end is not None and fetch_start is None and fetch_end is None:
             fetch_start = start
             fetch_end = end
+        elif all((x is None for x in (start, end, fetch_start, fetch_end))):
+            assert contig is not None, 'A contig is required'
+
         else:
             if any((x is not None for x in (contig, start, end, fetch_start, fetch_end))):
                 for variable in  ('contig', 'start', 'end', 'fetch_start', 'fetch_end'):
@@ -74,7 +82,6 @@ def run_tagging_task(alignments, output,
             #assert not any((x is not None for x in (contig, start, end, fetch_start, fetch_end))), 'supply all these: contig, start, end, fetch_start, fetch_end'
         if enable_prefetch:
             molecule_iterator_args = prefetch(contig, start, end, fetch_start, fetch_end, molecule_iterator_args)
-
     time_start = datetime.now()
 
 
@@ -98,25 +105,27 @@ def run_tagging_task(alignments, output,
                             )
         ):
 
-        if fetching:
-            cut_site_contig, cut_site_pos = None, None
-            for fragment in molecule:
-                #@todo this needs better handling
-                r = fragment.get_site_location() # @todo: refactor to molecule function
-                if r is not None:
-                    cut_site_contig, cut_site_pos = r
+        # Do not process molecules out of the defined region
+        if fetch_start is not None:
+            if fetching:
+                cut_site_contig, cut_site_pos = None, None
+                for fragment in molecule:
+                    #@todo this needs better handling
+                    r = fragment.get_site_location() # @todo: refactor to molecule function
+                    if r is not None:
+                        cut_site_contig, cut_site_pos = r
+                        break
+                if cut_site_contig is None:
+                    # We cannot process this molecule using multiprocessing as there is a chance of a collision.
+                    continue
+
+                # Stopping criteria:
+                if cut_site_pos>=fetch_end:
                     break
-            if cut_site_contig is None:
-                # We cannot process this molecule using multiprocessing as there is a chance of a collision.
-                continue
 
-            # Stopping criteria:
-            if cut_site_pos>=fetch_end:
-                break
-
-            # Skip molecules outside the desired region:
-            if cut_site_contig!=contig or cut_site_pos<start or cut_site_pos>=end: # End is exclusive
-                continue
+                # Skip molecules outside the desired region:
+                if cut_site_contig!=contig or cut_site_pos<start or cut_site_pos>=end: # End is exclusive
+                    continue
 
         molecule.write_tags()
 

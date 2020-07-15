@@ -91,6 +91,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamExtractRandomPrimerStats.py',
         'singlecellmultiomics/bamProcessing/bamToRNACounts.py',
         'singlecellmultiomics/bamProcessing/structureTensor.py',
+        'singlecellmultiomics/bamProcessing/bamCompare.py',
         'singlecellmultiomics/bamProcessing/variantStats.py',
         'singlecellmultiomics/bamProcessing/bamExtractVariants.py',
         'singlecellmultiomics/bamProcessing/bamMatchGATKBQSRReport.py',
