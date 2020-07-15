@@ -143,6 +143,12 @@ fragment_settings.add_argument(
     help='NlaIII: Allow fragments to be shifted slightly around the cut site.')
 
 fragment_settings.add_argument(
+    '-assignment_radius',
+    type=int,
+    help='Molecule assignment radius')
+
+
+fragment_settings.add_argument(
     '--no_rejects',
     action='store_true',
     help='Do not write rejected reads to output file')
@@ -396,6 +402,7 @@ def tag_multiome_single_thread(
     input_bam = pysam.AlignmentFile(input_bam_path, "rb", ignore_truncation=ignore_bam_issues, threads=4)
     input_header = input_bam.header.as_dict()
 
+
     # Write provenance information to BAM header
     write_program_tag(
         input_header,
@@ -409,6 +416,7 @@ def tag_multiome_single_thread(
 
     # de-prefetch all:
 
+
     # contig, start, end, start, end , args
 
     molecule_iterator_args = prefetch(molecule_iterator_args['contig'],
@@ -417,6 +425,7 @@ def tag_multiome_single_thread(
                                     molecule_iterator_args['start'],
                                     molecule_iterator_args['end'],
                                     molecule_iterator_args)
+
 
     molecule_iterator_exec = molecule_iterator(input_bam, **{k:v for k, v in molecule_iterator_args.items()
                                                             if k != 'alignments'})
@@ -697,6 +706,7 @@ def run_multiome_tagging(args):
 
 
     bp_per_job = 10_000_000
+    pooling_method=1
     bp_per_segment = 999_999_999 #@todo make this None or so
     fragment_size = 500
     one_contig_per_process=False
@@ -721,7 +731,7 @@ def run_multiome_tagging(args):
 
         bp_per_job = 5_000_000
         bp_per_segment = 50_000
-        fragment_size = 500
+        fragment_size = 1000
         if max_time_per_segment is None:
             max_time_per_segment = 20 # 20 seconds should be plenty for 50kb
 
@@ -885,6 +895,13 @@ def run_multiome_tagging(args):
     if args.max_associated_fragments is not None:
         molecule_class_args['max_associated_fragments'] = args.max_associated_fragments
 
+
+    if args.assignment_radius is not None:
+        fragment_class_args['assignment_radius'] = args.assignment_radius
+        if args.multiprocess:
+            raise NotImplementedError('-assignment_radius is currently incompatible with --multiprocess')
+
+
     # This decides what molecules we will traverse
     if args.contig == MISC_ALT_CONTIGS_SCMO:
         contig = None
@@ -937,7 +954,6 @@ def run_multiome_tagging(args):
         progress_callback_function = None
 
 
-
     molecule_iterator_args = {
         #'alignments': input_bam,
         'query_name_flagger': query_name_flagger,
@@ -952,7 +968,8 @@ def run_multiome_tagging(args):
         'contig': contig,
         'every_fragment_as_molecule': every_fragment_as_molecule,
         'skip_contigs':skip_contig,
-        'progress_callback_function':progress_callback_function
+        'progress_callback_function':progress_callback_function,
+        'pooling_method' : pooling_method
     }
 
 

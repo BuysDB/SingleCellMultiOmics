@@ -25,6 +25,163 @@ class TestMolecule(unittest.TestCase):
 
         self.assertEqual(i,1)
 
+
+    def test_eq(self):
+
+
+        def get_chic_read(header,  qname, contig ='chr1', start=100, sequence='ATCGGG', cigar=None, umi='CAT', sample='CELL_1', is_reverse=False, read1=True, paired=False,proper_pair=True ):
+                read = pysam.AlignedSegment(header)
+                read.set_tag('SM',sample) # The sample to which the sample belongs is extracted from the SM tag
+                read.set_tag('RX',umi) # The UMI is extracted from the RX tag
+                read.set_tag('MX','scCHIC')
+                # By default the molecule assignment is done based on the mapping location of read 1:
+                read.reference_name = contig
+                read.reference_start = start
+                read.query_name = qname
+                read.query_sequence = sequence
+                read.is_reverse = is_reverse
+                read.cigarstring = f'{len(sequence)}M' if cigar is None else cigar
+                if read1:
+                    read.is_read1 = True
+                    read.is_read2 = False
+                else:
+                    read.is_read1 = False
+                    read.is_read2 = True
+                if paired:
+                    read.is_paired = True
+                    read.is_proper_pair = proper_pair
+                return read
+
+        from singlecellmultiomics.molecule import Molecule
+        from singlecellmultiomics.fragment import Fragment
+        import pysam
+        # Create sam file to write some reads to:
+        with pysam.AlignmentFile('test.sam','w',reference_names=['chr1','chr2'],reference_lengths=[1000,1000]) as test_sam:
+
+            read_A = get_chic_read(test_sam.header, 'read_A')
+            read_B = get_chic_read(test_sam.header, 'read_B', start=102)
+            read_C = get_chic_read(test_sam.header, 'read_C', start=110)
+            # A reverse read
+            read_D = get_chic_read(test_sam.header, 'read_D', start=110-5, is_reverse=True)
+            # A different sample read
+            read_E = get_chic_read(test_sam.header, 'read_E', start=110-5, is_reverse=True, sample='CELL_2')
+
+            # A umi error read
+            read_F = get_chic_read(test_sam.header, 'read_F', start=110-5, is_reverse=True, sample='CELL_2', umi='CAG')
+
+            # A proper pair
+            read_G_a = get_chic_read(test_sam.header, 'read_G', start=102,  paired=True)
+            read_G_b = get_chic_read(test_sam.header, 'read_G', start=130, read1=False, paired=True)
+
+            # A stale R2
+            read_H = get_chic_read(test_sam.header, 'read_H', start=130,  paired=True, proper_pair=False, read1=False)
+
+            # Read softclipped from start
+            read_I = get_chic_read(test_sam.header, 'soft_clipped_read', start=104, cigar='2S4M')
+
+            frag_A = Fragment([read_A],umi_hamming_distance=0,assignment_radius=2)
+            frag_B = Fragment([read_B],umi_hamming_distance=0,assignment_radius=2)
+            frag_C = Fragment([read_C],umi_hamming_distance=0,assignment_radius=2)
+            frag_D = Fragment([read_D],umi_hamming_distance=0,assignment_radius=2)
+            frag_E = Fragment([read_E],umi_hamming_distance=0,assignment_radius=2)
+            frag_F = Fragment([read_F],umi_hamming_distance=0,assignment_radius=2)
+            frag_G = Fragment([read_G_a, read_G_b],umi_hamming_distance=0,assignment_radius=2)
+
+            self.assertTrue(frag_A==frag_B)
+            self.assertTrue(frag_A==frag_G)
+            self.assertFalse(frag_A==frag_C)
+            self.assertFalse(frag_A==frag_D)
+            self.assertFalse(frag_C==frag_D)
+            self.assertFalse(frag_E==frag_D)
+
+            frag_A = CHICFragment([read_A],umi_hamming_distance=0,assignment_radius=2)
+            frag_B = CHICFragment([read_B],umi_hamming_distance=0,assignment_radius=2)
+            frag_C = CHICFragment([read_C],umi_hamming_distance=0,assignment_radius=2)
+            frag_D = CHICFragment([read_D],umi_hamming_distance=0,assignment_radius=2)
+            frag_E = CHICFragment([read_E],umi_hamming_distance=1,assignment_radius=2)
+            frag_F = CHICFragment([read_F],umi_hamming_distance=1,assignment_radius=2)
+            frag_G = CHICFragment([read_G_a, read_G_b],umi_hamming_distance=0,assignment_radius=2)
+            frag_I = CHICFragment([read_I],umi_hamming_distance=1,assignment_radius=2)
+
+
+            frag_H = CHICFragment([None, read_H],umi_hamming_distance=1,assignment_radius=2)
+            self.assertFalse(frag_H.is_valid())
+            self.assertTrue(frag_A.is_valid())
+            self.assertTrue(frag_B.is_valid())
+
+            self.assertTrue(frag_A==frag_B)
+
+            print(frag_G, frag_I)
+            self.assertTrue(frag_G==frag_I)
+            self.assertFalse(frag_A==frag_C)
+            self.assertFalse(frag_A==frag_D)
+            self.assertFalse(frag_C==frag_D)
+            self.assertFalse(frag_E==frag_D)
+
+
+            self.assertTrue(frag_A==frag_B)
+            self.assertFalse(frag_A==frag_C)
+
+            molecule_A = CHICMolecule([frag_A])
+            print(molecule_A.site_location[1])
+            self.assertEqual(molecule_A.site_location[1],100)
+            self.assertTrue(molecule_A==frag_B)
+            self.assertFalse(molecule_A==frag_C)
+
+            # Test construction of molecule:
+            self.assertTrue( molecule_A.add_fragment(frag_B) )
+            self.assertEqual(len(molecule_A),2)
+
+            # Frag C cannot be added:
+            self.assertFalse( molecule_A.add_fragment(frag_C) )
+            self.assertEqual(len(molecule_A),2)
+
+            # Frag D cannot be added:
+            self.assertFalse( molecule_A.add_fragment(frag_D) )
+            self.assertEqual(len(molecule_A),2)
+
+            # Test moving of site location by read which is aligned more to left:
+            molecule = CHICMolecule([frag_B])
+            self.assertEqual(molecule.site_location[1],102)
+            self.assertTrue( molecule.add_fragment(frag_A) )
+            self.assertEqual(molecule.site_location[1],100)
+
+            # Test moving of site location by read which is aligned more to right: (Revserse strand)
+            molecule = CHICMolecule([frag_B])
+            self.assertEqual(molecule.site_location[1],102)
+            self.assertTrue( molecule.add_fragment(frag_A) )
+            self.assertEqual(molecule.site_location[1],100)
+
+            # Test umi distance:
+            molecule = CHICMolecule([frag_E])
+            self.assertTrue( molecule.add_fragment(frag_F) )
+            read_F.set_tag('RX','GGG')
+            frag_G = CHICFragment([read_F],umi_hamming_distance=1,assignment_radius=2)
+            self.assertFalse( molecule.add_fragment(frag_G) )
+
+
+            # Perform iteration
+            reads = [read_A, read_B, read_C, read_D, read_E, read_F, (read_G_a, read_G_b), (None,read_H), (read_I,None)]
+            molecules = list(MoleculeIterator( reads,
+                            molecule_class = CHICMolecule,
+                            fragment_class = CHICFragment,
+                            yield_invalid=True,
+                            fragment_class_args={
+                                'assignment_radius':2,
+                                'umi_hamming_distance':1
+                            }))
+
+            recovered_reads = []
+            for molecule in molecules:
+                for read in molecule.iter_reads():
+                    recovered_reads.append(read)
+                    print(read.query_name)
+            self.assertEqual(len(recovered_reads),10)
+
+        os.remove('test.sam')
+
+
+
     def test_chic_nocigar_dedup(self):
         i = 0
         with pysam.AlignmentFile('./data/chic_test_region.bam') as alignments:
