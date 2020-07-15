@@ -60,12 +60,20 @@ def run_tagging_task(alignments, output,
     assert output is not None
     assert molecule_iterator_class is not None
 
-    # There is two options: either supply start and end coordinates, or not supplying any coordinates:
-    fetching = not all((x is None for x in ( start, end, fetch_start, fetch_end)))
+    # There is three options: either supply only contig, or  start and end coordinates, or not supplying any coordinates:
+    fetching = not all((x is None for x in (contig, start, end, fetch_start, fetch_end)))
     if fetching:
-        if start is not None and end is not None and fetch_start is None and fetch_end is None:
+        if start is None and end is None:
+            assert fetch_start is None and fetch_end is None, 'start and end need to be supplied'
+            assert contig is not None
+
+
+        elif start is not None and end is not None and fetch_start is None and fetch_end is None:
             fetch_start = start
             fetch_end = end
+        elif all((x is None for x in (start, end, fetch_start, fetch_end))):
+            assert contig is not None, 'A contig is required'
+
         else:
             if any((x is not None for x in (contig, start, end, fetch_start, fetch_end))):
                 for variable in  ('contig', 'start', 'end', 'fetch_start', 'fetch_end'):
