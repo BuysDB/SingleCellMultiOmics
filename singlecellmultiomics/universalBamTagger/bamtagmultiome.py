@@ -164,6 +164,11 @@ molecule_settings.add_argument(
     default=1,
     help="Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base")
 
+molecule_settings.add_argument(
+    '--feature_container_verbose',
+        action='store_true',
+        help='Make the feature container print more')
+
 cluster = argparser.add_argument_group('cluster execution')
 cluster.add_argument(
     '--cluster',
@@ -245,6 +250,7 @@ def tag_multiome_multi_processing(
         temp_folder_root: str = '/tmp/scmo',
         max_time_per_segment: int = None,
         use_pool: bool = True,
+        one_contig_per_process: bool =False,
         additional_args: dict = None,
         n_threads=None
     ):
@@ -280,16 +286,22 @@ def tag_multiome_multi_processing(
     }
 
     # Define the regions to be processed and group into segments to perform tagging on
-    regions = blacklisted_binning_contigs(
-            contig_length_resource=input_bam_path,
-            bin_size=bp_per_segment,
-            fragment_size=fragment_size,
-            blacklist_path=blacklist_path,
-            contig_whitelist=contig_whitelist
-        )
+    if one_contig_per_process:
 
-    # Chunk into jobs of roughly equal size: (A single job will process multiple segments)
-    job_gen = bp_chunked(regions, bp_per_job)
+        #job_gen = [ [(contig,0,contig_len,0,contig_len),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True)  ]
+        job_gen = [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True)  ]
+
+    else:
+        regions = blacklisted_binning_contigs(
+                contig_length_resource=input_bam_path,
+                bin_size=bp_per_segment,
+                fragment_size=fragment_size,
+                blacklist_path=blacklist_path,
+                contig_whitelist=contig_whitelist
+            )
+
+        # Chunk into jobs of roughly equal size: (A single job will process multiple segments)
+        job_gen = bp_chunked(regions, bp_per_job)
 
     tasks = generate_tasks(input_bam_path=input_bam_path,
                            job_gen=job_gen,
@@ -318,7 +330,7 @@ def tag_multiome_multi_processing(
                 add_blacklisted_region(input_header,contig,start,end,source=blacklist_path)
 
         # Prefetch the genomic resources with the defined genomic interval reducing I/O load during processing of the region
-        # this is now done automatically, by
+        # this is now done automatically, by tagging.run_tagging_task
 
         # @todo : Obtain auto blacklisted regions if applicable
         # @todo : Progress indication
@@ -397,12 +409,23 @@ def tag_multiome_single_thread(
 
     # de-prefetch all:
 
-    molecule_iterator_args = prefetch(None, None, None, None, None, molecule_iterator_args)
+    # contig, start, end, start, end , args
+
+    molecule_iterator_args = prefetch(molecule_iterator_args['contig'],
+                                    molecule_iterator_args['start'],
+                                    molecule_iterator_args['end'],
+                                    molecule_iterator_args['start'],
+                                    molecule_iterator_args['end'],
+                                    molecule_iterator_args)
 
     molecule_iterator_exec = molecule_iterator(input_bam, **{k:v for k, v in molecule_iterator_args.items()
                                                             if k != 'alignments'})
 
+    print('Params:',molecule_iterator_args)
     read_groups = dict()  # Store unique read groups in this dict
+
+
+
     with sorted_bam_file(out_bam_path, header=input_header, read_groups=read_groups) as out:
         try:
             for i, molecule in enumerate(molecule_iterator_exec):
@@ -643,7 +666,7 @@ def run_multiome_tagging(args):
         if args.introns is not None and args.exons is None:
             raise ValueError("Please supply both intron and exon GTF files")
 
-        transcriptome_features = singlecellmultiomics.features.FeatureContainer()
+        transcriptome_features = singlecellmultiomics.features.FeatureContainer(verbose=args.feature_container_verbose)
         print("Loading exons", end='\r')
         transcriptome_features.preload_GTF(
             path=args.exons,
@@ -667,14 +690,16 @@ def run_multiome_tagging(args):
         print("All features loaded")
 
         # Add more molecule class arguments
-        molecule_class_args.update({
+        transcriptome_feature_args = {
             'features': transcriptome_features,
-            'auto_set_intron_exon_features': True
-        })
+            'auto_set_intron_exon_features': True,
+        }
+
 
     bp_per_job = 10_000_000
     bp_per_segment = 999_999_999 #@todo make this None or so
     fragment_size = 500
+    one_contig_per_process=False
     max_time_per_segment = args.max_time_per_segment
 
     ### Method specific configuration ###
@@ -773,6 +798,8 @@ def run_multiome_tagging(args):
         molecule_class = singlecellmultiomics.molecule.AnnotatedTAPSNlaIIIMolecule
         fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
 
+        molecule_class_args.update(transcriptome_feature_args)
+
         molecule_class_args.update({
             'reference': reference,
             'taps': singlecellmultiomics.molecule.TAPS()
@@ -784,7 +811,7 @@ def run_multiome_tagging(args):
     elif args.method == 'nla_tapsp_transcriptome': # Annotates reads in transcriptome
         molecule_class = singlecellmultiomics.molecule.TAPSPTaggedMolecule
         fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
-
+        molecule_class_args.update(transcriptome_feature_args)
         molecule_class_args.update({
             'reference': reference,
             'taps': singlecellmultiomics.molecule.TAPS()
@@ -803,6 +830,7 @@ def run_multiome_tagging(args):
             'taps': singlecellmultiomics.molecule.TAPS(),
             'taps_strand':'R'
         })
+        molecule_class_args.update(transcriptome_feature_args)
         molecule_class = singlecellmultiomics.molecule.AnnotatedTAPSCHICMolecule
         fragment_class = singlecellmultiomics.fragment.CHICFragment
 
@@ -819,13 +847,17 @@ def run_multiome_tagging(args):
         fragment_class = singlecellmultiomics.fragment.CHICFragment
 
     elif args.method == 'vasa' or args.method == 'cs':
-        molecule_class = singlecellmultiomics.molecule.VASA
-        fragment_class = singlecellmultiomics.fragment.SingleEndTranscript
+        one_contig_per_process=True
+        bp_per_job = 5_000_000
+        bp_per_segment = 1_000_000
+        fragment_size = 100_000
 
-        molecule_class_args.update({
-            #'pooling_method': 1,  # all data from the same cell can be dealt with separately
-            'stranded': True,  # data is stranded
-        })
+        molecule_class = singlecellmultiomics.molecule.TranscriptMolecule
+        fragment_class = singlecellmultiomics.fragment.SingleEndTranscriptFragment
+        #molecule_class_args.update(transcriptome_feature_args)
+        fragment_class_args.update(transcriptome_feature_args)
+        fragment_class_args.update({'stranded': True })
+
 
     elif args.method == 'scartrace':
 
@@ -1068,7 +1100,7 @@ def run_multiome_tagging(args):
                                       head=args.head, no_source_reads=args.no_source_reads,
                                       fragment_size=fragment_size, blacklist_path=args.blacklist,bp_per_job=bp_per_job,
                                       bp_per_segment=bp_per_segment, temp_folder_root=args.temp_folder, max_time_per_segment=max_time_per_segment,
-                                      additional_args=consensus_model_args, n_threads=args.tagthreads
+                                      additional_args=consensus_model_args, n_threads=args.tagthreads, one_contig_per_process=one_contig_per_process
                                       )
     else:
 
