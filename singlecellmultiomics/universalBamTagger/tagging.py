@@ -16,9 +16,9 @@ def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
 
     new_kwarg_dict = {}
     for iterator_arg, iterator_value in molecule_iterator_args.items():
-        if 'molecule_class_args'==iterator_arg:
+        if iterator_arg in ('molecule_class_args','fragment_class_args'):
             new_args = {}
-            for key, value in molecule_iterator_args['molecule_class_args'].items():
+            for key, value in molecule_iterator_args[iterator_arg].items():
                 if key == 'features':
                     value = value.prefetch(contig,start,end)
                 if key == 'mappability_reader':
