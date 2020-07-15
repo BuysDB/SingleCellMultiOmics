@@ -7,7 +7,7 @@ class CHICFragment(Fragment):
                  reads,
                  R1_primer_length=4,
                  R2_primer_length=6,
-                 assignment_radius=1_000,
+                 assignment_radius=0,
                  umi_hamming_distance=1,
                  invert_strand=False,
                  no_umi_cigar_processing=False,
@@ -32,13 +32,22 @@ class CHICFragment(Fragment):
         self.site_location = None
         self.cut_site_strand = None
         self.identify_site()
+
+
         if self.is_valid():
-            self.match_hash = (
-                self.strand,
-                self.cut_site_strand,
-                self.site_location[0],
-                self.site_location[1],
-                self.sample)
+
+            if self.assignment_radius==0:
+                self.match_hash = (
+                    self.strand,
+                    self.cut_site_strand,
+                    self.site_location[0],
+                    self.site_location[1],
+                    self.sample)
+            else:
+                self.match_hash = (
+                    self.cut_site_strand,
+                    self.site_location[0],
+                    self.sample)
         else:
             self.match_hash = None
 
@@ -142,6 +151,14 @@ class CHICFragment(Fragment):
         # Make sure fragments map to the same strand, cheap comparisons
         if self.match_hash != other.match_hash:
             return False
+
+        if self.site_location is None or other.site_location is None:
+            return False
+
+        # Check distance between the fragments:
+        if self.assignment_radius>0 and abs(self.site_location[1]-other.site_location[1])>self.assignment_radius:
+            return False
+
 
         # Make sure UMI's are similar enough, more expensive hamming distance
         # calculation
