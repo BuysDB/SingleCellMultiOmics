@@ -989,7 +989,7 @@ def run_multiome_tagging(args):
             for reference in input_bam.references:
                 if not is_main_chromosome(reference):
                     molecule_iterator_args['contig'] = reference
-                    yield from MoleculeIterator(**molecule_iterator_args)
+                    yield from MoleculeIterator(input_bam, **molecule_iterator_args)
 
         molecule_iterator = Misc_contig_molecule_generator
     else:
