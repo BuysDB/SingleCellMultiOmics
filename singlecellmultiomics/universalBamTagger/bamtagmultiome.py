@@ -30,6 +30,7 @@ import colorama
 import pkg_resources
 import pickle
 from datetime import datetime
+from time import sleep
 
 
 argparser = argparse.ArgumentParser(
@@ -378,7 +379,9 @@ def tag_multiome_multi_processing(
     merge_bams(list(tagged_bam_generator), out_bam_path)
     if use_pool:
         workers.close()
+        
     # Remove the temp dir:
+    sleep(5)
     try:
         os.rmdir(temp_folder)
     except Exception:
