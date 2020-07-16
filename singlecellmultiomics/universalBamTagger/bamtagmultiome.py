@@ -296,6 +296,8 @@ def tag_multiome_multi_processing(
     if one_contig_per_process:
 
         #job_gen = [ [(contig,0,contig_len,0,contig_len),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True)  ]
+        if blacklist_path is not None:
+            raise NotImplementedError('A blacklist is currently incompatible with --multiprocessing in single contig mode')
         job_gen = [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True)  ]
 
     else:
