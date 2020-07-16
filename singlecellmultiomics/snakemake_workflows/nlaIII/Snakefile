@@ -11,6 +11,7 @@ This workflow:
     - Trims using cutadapt
     - Maps, sorts and indexes the reads per library
     - Deduplicates and identifies molecules in parallel per contig
+    - Performs base recallibration
     - Creates QC plots
     - Creates count tables
 """
@@ -35,6 +36,12 @@ for lib,lane_dict in LIBRARIES.items():
         fastq_per_lib[lib] += read_dict['R1']
         fastq_per_lib[lib] += read_dict['R2']
 libraries =  list( fastq_per_lib.keys() )
+
+if len(libraries)==0:
+    # Try to look for folders with .tagged bam files in them
+    for tagpath in glob('./*/tagged.bam'):
+        libraries.append(tagpath.split('/')[1])
+
 
 ################## configuration end ##################
 
@@ -119,19 +126,19 @@ rule map:
 
     params:
         ref=config['reference_file_for_mapper']
-        
+
     output:
         bam = temp("processed/{library}/sorted.bam"),
         bam_index = temp("processed/{library}/sorted.bam.bai")
 
     log:
         stdout="log/map/{library}.stdout",
-        stderr="log/map/{library}.stderr"
-           
+        stderr="log/map/{library}.stderr",
+        stderr2="log/map/{library}.sort.stderr"
     threads: 8
     params: runtime="30h"
     resources:
-        mem_mb=lambda wildcards, attempt: attempt * 8000
+        mem_mb=lambda wildcards, attempt: 20000 + attempt * 8000
 
     run:
         # https://stackoverflow.com/questions/40996597/snakemake-remove-output-file this is probably pretier
@@ -139,21 +146,23 @@ rule map:
             # The sorting and mapping has been disconnected
             shell(
                 "bwa mem -t {threads} {params.ref} {input.r1} {input.r2}  2> {log.stderr} |  samtools view -bS - > processed/{wildcards.library}/unsorted.bam; \
-                samtools sort -T processed/{wildcards.library}/temp_sort -@ {threads} processed/{wildcards.library}/unsorted.bam > processed/{wildcards.library}/sorted.unfinished.bam; \
-                mv processed/{wildcards.library}/sorted.unfinished.bam {output.bam}; rm processed/{wildcards.library}/unsorted.bam; samtools index {output.bam} > {log.stdout}"
+                        samtools sort -T processed/{wildcards.library}/temp_sort -@ {threads} processed/{wildcards.library}/unsorted.bam > processed/{wildcards.library}/sorted.unfinished.bam 2>{log.stderr2}; \
+                        mv processed/{wildcards.library}/sorted.unfinished.bam {output.bam}; rm processed/{wildcards.library}/unsorted.bam; samtools index {output.bam} > {log.stdout}"
                 )
         elif config['mapper']=='bowtie2':
             shell(
-                "bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1 -x {params.ref} -1 {input.r1} -2 {input.r2} | samtools view -Sb > processed/{wildcards.library}/unsorted.bam; \
-                samtools sort -T processed/{wildcards.library}/temp_sort -@ {threads} processed/{wildcards.library}/unsorted.bam > processed/{wildcards.library}/sorted.unfinished.bam; \
-                mv processed/{wildcards.library}/sorted.unfinished.bam {output.bam}; rm processed/{wildcards.library}/unsorted.bam; samtools index {output.bam} > {log.stdout} 2> {log.stderr} "
+                "bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1 -x {params.ref} -1 {input.r1} -2 {input.r2} 2>{log.stderr}  > {log.stdout} | samtools view -Sb > processed/{wildcards.library}/unsorted.bam; \
+                samtools sort -T processed/{wildcards.library}/temp_sort -@ {threads} processed/{wildcards.library}/unsorted.bam > processed/{wildcards.library}/sorted.unfinished.bam  2> {log.stderr2}; \
+                mv processed/{wildcards.library}/sorted.unfinished.bam {output.bam}; rm processed/{wildcards.library}/unsorted.bam; samtools index {output.bam}"
                 )
 
 
 rule SCMO_tagmultiome_NLA_parallel_scatter:
     input:
         bam = "processed/{library}/sorted.bam",
-        bam_index = "processed/{library}/sorted.bam.bai"
+
+        bam_index = "processed/{library}/sorted.bam.bai",
+        mapfile = config['mapfile']
 
     output:
         bam = temp("processed/{library}/TEMP_CONTIG/{contig}.bam"),
@@ -174,7 +183,7 @@ rule SCMO_tagmultiome_NLA_parallel_scatter:
         mem_mb=lambda wildcards, attempt: attempt * 10000
 
     shell:
-        "bamtagmultiome.py -method nla -allele_samples {params.allele_samples} -alleles {params.alleles} -contig {wildcards.contig} {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
+        "bamtagmultiome.py -method nla -allele_samples {params.allele_samples} -alleles {params.alleles} -mapfile {input.mapfile} -contig {wildcards.contig} {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
 
 
 rule SCMO_tagmultiome_NLA_parallel_gather:
@@ -203,7 +212,8 @@ rule SCMO_library_stats:
         r1="processed/{library}/demultiplexedR1.fastq.gz", # Its need these to count how many raw reads were present in the lib.
         r2="processed/{library}/demultiplexedR2.fastq.gz",
         r1_rejects="processed/{library}/rejectsR1.fastq.gz",
-        r2_rejects="processed/{library}/rejectsR2.fastq.gz"
+        r2_rejects="processed/{library}/rejectsR2.fastq.gz",
+        reference_file=config['reference_file']
     output:
         "processed/{library}/plots/ReadCount.png"
 
@@ -216,6 +226,37 @@ rule SCMO_library_stats:
 
     shell:
         "libraryStatistics.py processed/{wildcards.library} -tagged_bam /tagged.bam > {log.stdout} 2> {log.stderr}"
+
+rule SCMO_CN:
+    input:
+        bam = "processed/{library}/tagged.bam",
+        ref = config['reference_file']
+    output:
+        rawmatplot = "processed/{library}/raw_cn_{counting_bin_size}bp.png",
+        rawmat = "processed/{library}/raw_cn_{counting_bin_size}bp.pickle.gz",
+        gcmatplot = "processed/{library}/gc_corrected_cn_{counting_bin_size}bp.png",
+        gcmat = "processed/{library}/gc_corrected_cn_{counting_bin_size}bp.pickle.gz",
+        histplot = "processed/{library}/cell_histogram_{counting_bin_size}.png",
+    params:
+        molecule_threshold=config['molecule_threshold'],
+        counting_min_mq = config['counting_min_mq']
+
+    log:
+        stdout="log/cn_table/{library}_{counting_bin_size}.stdout",
+        stderr="log/cn_table/{library}_{counting_bin_size}.stderr"
+
+    shell:
+        "bamCopyNumber.py -ref {input.reference_file}  \
+        -bin_size {wildcards.counting_bin_size} \
+        -threads 16 \
+        -min_mq {params.counting_min_mq} \
+        -molecule_threshold {params.molecule_threshold} \
+        -bins_per_job 5 \
+        -rawmatplot {output.rawmatplot} \
+        -gcmatplot {output.gcmatplot} \
+        -gcmat {output.gcmat} \
+        -rawmat {output.rawmat} \
+        -histplot {output.histplot}"
 
 
 rule SCMO_count_table:
