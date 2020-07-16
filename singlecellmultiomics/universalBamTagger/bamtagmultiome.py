@@ -902,7 +902,8 @@ def run_multiome_tagging(args):
     if args.assignment_radius is not None:
         fragment_class_args['assignment_radius'] = args.assignment_radius
         if args.multiprocess:
-            raise NotImplementedError('-assignment_radius is currently incompatible with --multiprocess')
+            one_contig_per_process=True
+            #raise NotImplementedError('-assignment_radius is currently incompatible with --multiprocess')
 
 
     # This decides what molecules we will traverse
