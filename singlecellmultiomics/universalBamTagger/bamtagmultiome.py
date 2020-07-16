@@ -30,6 +30,7 @@ import colorama
 import pkg_resources
 import pickle
 from datetime import datetime
+from time import sleep
 
 
 argparser = argparse.ArgumentParser(
@@ -295,6 +296,8 @@ def tag_multiome_multi_processing(
     if one_contig_per_process:
 
         #job_gen = [ [(contig,0,contig_len,0,contig_len),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True)  ]
+        if blacklist_path is not None:
+            raise NotImplementedError('A blacklist is currently incompatible with --multiprocessing in single contig mode')
         job_gen = [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True)  ]
 
     else:
@@ -378,7 +381,9 @@ def tag_multiome_multi_processing(
     merge_bams(list(tagged_bam_generator), out_bam_path)
     if use_pool:
         workers.close()
+
     # Remove the temp dir:
+    sleep(5)
     try:
         os.rmdir(temp_folder)
     except Exception:
@@ -650,7 +655,7 @@ def run_multiome_tagging(args):
     if args.method == 'nla_taps' or args.method == 'chic_taps':
         ignore_conversions = set([('C', 'T'), ('G', 'A')])
 
-    if args.alleles is not None:
+    if args.alleles is not None and args.alleles!='none':
         molecule_class_args['allele_resolver'] = singlecellmultiomics.alleleTools.AlleleResolver(
             args.alleles,
             select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
@@ -899,7 +904,8 @@ def run_multiome_tagging(args):
     if args.assignment_radius is not None:
         fragment_class_args['assignment_radius'] = args.assignment_radius
         if args.multiprocess:
-            raise NotImplementedError('-assignment_radius is currently incompatible with --multiprocess')
+            one_contig_per_process=True
+            #raise NotImplementedError('-assignment_radius is currently incompatible with --multiprocess')
 
 
     # This decides what molecules we will traverse
@@ -982,11 +988,11 @@ def run_multiome_tagging(args):
         # mapping to a contig returning True from the is_main_chromosome
         # function are used
 
-        def Misc_contig_molecule_generator(molecule_iterator_args):
+        def Misc_contig_molecule_generator(input_bam, **molecule_iterator_args):
             for reference in input_bam.references:
                 if not is_main_chromosome(reference):
                     molecule_iterator_args['contig'] = reference
-                    yield from MoleculeIterator(**molecule_iterator_args)
+                    yield from MoleculeIterator(input_bam, **molecule_iterator_args)
 
         molecule_iterator = Misc_contig_molecule_generator
     else:
