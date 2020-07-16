@@ -653,7 +653,7 @@ def run_multiome_tagging(args):
     if args.method == 'nla_taps' or args.method == 'chic_taps':
         ignore_conversions = set([('C', 'T'), ('G', 'A')])
 
-    if args.alleles is not None:
+    if args.alleles is not None and args.alleles!='none':
         molecule_class_args['allele_resolver'] = singlecellmultiomics.alleleTools.AlleleResolver(
             args.alleles,
             select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
