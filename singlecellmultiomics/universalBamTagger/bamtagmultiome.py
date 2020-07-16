@@ -985,8 +985,7 @@ def run_multiome_tagging(args):
         # mapping to a contig returning True from the is_main_chromosome
         # function are used
 
-        def Misc_contig_molecule_generator(molecule_iterator_args, **kwargs):
-            print('MISC_ALT_CONTIGS_SCMO: ignoring these parameters:',kwargs)
+        def Misc_contig_molecule_generator(**molecule_iterator_args):
             for reference in input_bam.references:
                 if not is_main_chromosome(reference):
                     molecule_iterator_args['contig'] = reference
