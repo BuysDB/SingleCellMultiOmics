@@ -379,7 +379,7 @@ def tag_multiome_multi_processing(
     merge_bams(list(tagged_bam_generator), out_bam_path)
     if use_pool:
         workers.close()
-        
+
     # Remove the temp dir:
     sleep(5)
     try:
@@ -985,7 +985,8 @@ def run_multiome_tagging(args):
         # mapping to a contig returning True from the is_main_chromosome
         # function are used
 
-        def Misc_contig_molecule_generator(molecule_iterator_args):
+        def Misc_contig_molecule_generator(molecule_iterator_args, **kwargs):
+            print('MISC_ALT_CONTIGS_SCMO: ignoring these parameters:',kwargs)
             for reference in input_bam.references:
                 if not is_main_chromosome(reference):
                     molecule_iterator_args['contig'] = reference
