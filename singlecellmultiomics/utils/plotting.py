@@ -94,10 +94,12 @@ class GenomicPlot():
                 yticklabels=True, figsize=figsize, **kwargs)
             ax_heatmap = clmap.ax_heatmap
         except Exception as e:
+            print(e)
             print('Falling back on heatmap without clustering')
+
             fig, ax_heatmap = plt.subplots(figsize=figsize)
             clmap = sns.heatmap(df.sort_index(1)[self.contigs],cmap=cmap,
-                vmax=max_cn,vmin=0, yticklabels=True, ax=ax_heatmap)
+                vmax=max_cn,vmin=0, yticklabels=True, ax=ax_heatmap, **kwargs)
 
 
         prev = None
