@@ -695,7 +695,7 @@ if __name__ == '__main__':
 
     filters.add_argument(
         '-max_base_edits',
-        type='int',
+        type=int,
         help='Count reads with at most this value of bases being different than the reference')
 
 
