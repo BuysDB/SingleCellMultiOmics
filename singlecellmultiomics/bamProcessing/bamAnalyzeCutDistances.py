@@ -445,10 +445,8 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots(figsize=(15, 8))
 
-    for mark, cells in marks.groupby('library'):
-        # if mark!='K9m3':
-        #    continue
-        df[cells.index].T.iloc[:, 1:].mean(0).iloc[20:].plot(label=f'{mark}, {window}bp window', ax=ax)
+    for library, cells in marks.groupby('library'):
+        df[cells.index].T.iloc[:, 1:].mean(0).iloc[20:].plot(label=f'{library}, {window}bp window', ax=ax)
 
     sns.despine()
     ax = plt.gca()
