@@ -24,12 +24,12 @@ class DivCounter(Counter):
 
 def _get_sc_cut_dictionary(args):
 
-    bam, contig, strand_specific = args
+    bam, contig, strand_specific, filter_function = args
     cut_positions = defaultdict(Counter)
     with pysam.AlignmentFile(bam) as alignments:
         for read in alignments.fetch(contig):
 
-            if not read.is_read1 or read.is_duplicate or read.is_qcfail or read.mapping_quality==0:
+            if not filter_function(read):
                 continue
             cut_positions[read.get_tag('SM')][
                 (read.is_reverse, read.get_tag('DS'))
@@ -40,17 +40,24 @@ def _get_sc_cut_dictionary(args):
     return contig,cut_positions
 
 
-def get_sc_cut_dictionary(bam_path: str, strand_specific=False):
+def read_counts_function(read):
+    if not read.is_read1 or read.is_duplicate or read.is_qcfail or read.mapping_quality==0:
+        return False
+    return True
+
+def get_sc_cut_dictionary(bam_path: str, filter_function=None, strand_specific=False):
     """
     Generates cut distribution dictionary  (contig)->sample->position->obs
 
     """
+    if filter_function is None:
+        filter_function = read_counts_function
     cut_sites = {}
     with Pool() as workers:
         with pysam.AlignmentFile(bam_path) as alignments:
             for contig,r in workers.imap_unordered(
                 _get_sc_cut_dictionary, (
-                    (bam_path, contig,strand_specific)
+                    (bam_path, contig,strand_specific, filter_function)
                     for contig in get_contigs_with_reads(bam_path) )):
                 cut_sites[contig]=r
 
