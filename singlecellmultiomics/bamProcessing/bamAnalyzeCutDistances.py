@@ -420,7 +420,7 @@ if __name__ == '__main__':
                         {'cell_cuts': cell_cuts,
                          'window_radius': window_radius,
                          'cell': cell,
-                         'log_distance': log_distance,
+                         'log_distance': False,
                          'n_bins': n_bins,
                          'bin_size': bin_size,
                          'take_n_samples': None  # sample_target[contig]
