@@ -403,16 +403,10 @@ if __name__ == '__main__':
 
     # Calculate distance from one position within a window
     window_radius = args.max_distance
-    log_distance = False
     bin_size = 1
 
-    if log_distance:
-        n_bins = int(np.ceil(np.log2(window_radius) * 100)) + 1
-        x_obs = np.power(2, np.arange(1, n_bins + 1) / 100)
-
-    else:
-        n_bins = int(np.ceil(window_radius / bin_size))
-        x_obs = np.linspace(1, window_radius + 1, n_bins)  # the associated distance per bin
+    n_bins = int(np.ceil(window_radius / bin_size))
+    x_obs = np.linspace(1, window_radius , n_bins)  # the associated distance per bin
 
     # Single cell and one-sided
     # This is a histogram of the amount of observed fragments at distances x:
@@ -442,8 +436,9 @@ if __name__ == '__main__':
     # Means per library:
     counts = pd.Series(cpr).sort_values()
     window = 35
+    p_obs.to_csv(f'{args.o}/strand_unspecific_density_raw.csv')
     df = p_obs.rolling(center=True, window=window).mean()
-    df.to_csv(f'{args.o}/strand_unspecific_density.csv')
+    df.to_csv(f'{args.o}/strand_unspecific_density_smooth.csv')
     df = df[counts[counts > 1_000].index]
     marks = pd.DataFrame({'library': {cell: cell.split('_')[0] for cell in df.columns}})
 
