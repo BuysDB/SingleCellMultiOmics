@@ -7,6 +7,7 @@ import os
 from scipy.optimize import curve_fit
 import argparse
 from singlecellmultiomics.bamProcessing.bamFunctions import get_contigs_with_reads, get_r1_counts_per_cell
+from singlecellmultiomics.bamProcessing.bamBinCounts import merge_overlapping_ranges
 from collections import Counter, defaultdict
 import numpy as np
 import seaborn as sns
@@ -394,13 +395,15 @@ if __name__ == '__main__':
     argparser.add_argument('alignmentfiles', type=str, nargs='+')
     argparser.add_argument('-o', type=str, required=True, help='Output folder')
     argparser.add_argument('-regions', type=str, help='Restrict analysis to these regions (bed file)')
+    argparser.add_argument('-region_radius', type=int, default=0, help='Add extra radius to the regions')
     argparser.add_argument('-min_region_len', type=int, default=1000)
     argparser.add_argument('-max_distance', type=int,default=2000, help='Maximum distance in both plots and output tables')
     args = argparser.parse_args()
 
     if args.regions is not None:
-        regions = []
+        regions_per_contig = defaultdict(list)
         with open(args.regions) as f:
+            rc = 0
             for line in f:
                 if line.startswith('#'):
                     continue
@@ -408,12 +411,21 @@ if __name__ == '__main__':
                 if len(parts)<3:
                     continue
                 contig = parts[0]
-                start = int(parts[1])
-                end = int(parts[1])
+                start = int(parts[1]) - args.region_radius
+                end = int(parts[1]) + args.region_radius
                 if end-start < args.min_region_len:
                     print('skipping region', contig, start, end)
-                regions.append( (contig,start,end) )
-        print(f'{len(regions)} regions left')
+                    continue
+                regions_per_contig[contig].append( (start,end) )
+                rc+=1
+
+        print(f'{rc} regions left after size filter')
+        regions = []
+        for contig, contig_regions in regions_per_contig.items():
+            for start, end in merge_overlapping_ranges(contig_regions):
+                regions.append( (contig, start, end) )
+        print(f'{len(regions)} regions left after merging overlapping regions')
+
     else:
         regions=None
 
@@ -499,7 +511,7 @@ if __name__ == '__main__':
     df = p_obs.rolling(center=True, window=window).mean()
     df.to_csv(f'{args.o}/strand_unspecific_density_smooth.csv')
     df.to_pickle(f'{args.o}/strand_unspecific_density_smooth.pickle.gz')
-    df = df[counts[counts > 1_000].index]
+    df = df[ [cell for cell in counts[counts > 1_000].index if cell in df.columns]]
     print(df)
     groups = pd.DataFrame({'library': {cell: cell.split('_')[0] if not prefix_with_bam else cell[0] for cell in df.columns}})
 
