@@ -49,7 +49,7 @@ def dictionary_to_diff_vector(d,sample: str, vmin: float, vmax: float):
             [np.diff(sorted(d[contig][sample])) for contig in d])
             ,vmin,vmax) if v>vmin and v<vmax])
 
-def get_sc_cut_dictionary(bam_path: str, filter_function=None, strand_specific=False):
+def get_sc_cut_dictionary(bam_path: str, filter_function=None, strand_specific=False, prefix_with_bam=False, regions=None):
     """
     Generates cut distribution dictionary  (contig)->sample->position->obs
 
@@ -57,13 +57,38 @@ def get_sc_cut_dictionary(bam_path: str, filter_function=None, strand_specific=F
     if filter_function is None:
         filter_function = read_counts_function
     cut_sites = {}
+
+    if type(bam_path) is str:
+        bam_paths = [bam_path]
+    else:
+        bam_paths=bam_path
+
+
+
+
     with Pool() as workers:
-        with pysam.AlignmentFile(bam_path) as alignments:
-            for contig,r in workers.imap_unordered(
-                _get_sc_cut_dictionary, (
-                    (bam_path, contig,strand_specific, filter_function)
-                    for contig in get_contigs_with_reads(bam_path) )):
-                cut_sites[contig]=r
+        for bam_path in bam_paths:
+            if prefix_with_bam:
+                prefix = bam_path.split('/')[-1].replace('.bam','')
+            else:
+                prefix=None
+
+            if regions is None:
+                regions = [(contig, None, None) for contig in get_contigs_with_reads(bam_path)]
+
+            with pysam.AlignmentFile(bam_path) as alignments:
+                start = None
+                end= None
+                for contig,r in workers.imap_unordered(
+                    _get_sc_cut_dictionary, (
+                        (bam_path, contig, strand_specific, filter_function, prefix, start, end)
+                        for contig, start, end in regions )):
+                    # Perform merge:
+                    if not contig in cut_sites:
+                        cut_sites[contig]=r
+                    else:
+                        for sample, positions in r.items():
+                            cut_sites[contig][sample].update(positions)
 
     return cut_sites
 
@@ -161,14 +186,17 @@ def strict_read_counts_function(read):
 
 def _get_sc_cut_dictionary(args):
 
-    bam, contig, strand_specific, filter_function = args
+    bam, contig, strand_specific, filter_function, prefix, start, end = args
     cut_positions = defaultdict(Counter)
     with pysam.AlignmentFile(bam) as alignments:
-        for read in alignments.fetch(contig):
+        for read in alignments.fetch(contig, start, end):
 
             if not filter_function(read):
                 continue
-            cut_positions[read.get_tag('SM')][
+
+            k = read.get_tag('SM') if prefix is None else (prefix, read.get_tag('SM'))
+
+            cut_positions[k][
                 (read.is_reverse, read.get_tag('DS'))
                     if strand_specific else
                 read.get_tag('DS')
@@ -363,10 +391,28 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Extract cut distribution from bam file')
 
-    argparser.add_argument('alignmentfile', type=str)
+    argparser.add_argument('alignmentfiles', type=str, nargs='+')
     argparser.add_argument('-o', type=str, required=True, help='Output folder')
+    argparser.add_argument('-regions', type=str, help='Restrict analysis to these regions (bed file)')
     argparser.add_argument('-max_distance', type=int,default=2000, help='Maximum distance in both plots and output tables')
     args = argparser.parse_args()
+
+    if args.regions is not None:
+        regions = []
+        with open(args.regions) as f:
+            for line in f:
+                if line.startswith('#'):
+                    continue
+                parts = line.split()
+                if len(parts)<3:
+                    continue
+                contig = line[0]
+                start = int(line[1])
+                end = int(line[1])
+                regions.append( (contig,start,end) )
+    else:
+        regions=None
+
 
     if not os.path.exists(args.o):
         os.makedirs(args.o)
@@ -375,7 +421,7 @@ if __name__ == '__main__':
     #analyse(args.alignmentfile, args.o, create_plot=True, verbose=True,strand_specific=False,max_distance=args.max_distance)
 
     # Stranded analysis:
-    sc_cut_dict_stranded = get_sc_cut_dictionary( args.alignmentfile,strand_specific=True,filter_function=strict_read_counts_function)
+    sc_cut_dict_stranded = get_sc_cut_dictionary( args.alignmentfiles,strand_specific=True,filter_function=strict_read_counts_function, regions=regions)
     distance_counter_fwd_above, distance_counter_fwd_below, distance_counter_rev_above, distance_counter_rev_below = get_stranded_pairwise_counts(sc_cut_dict_stranded)
 
     # Write tables:
@@ -386,10 +432,18 @@ if __name__ == '__main__':
 
     del sc_cut_dict_stranded
 
+
+
+
     #################
     # Unstranded density analysis:
-    sc_cut_dict = get_sc_cut_dictionary( args.alignmentfile,strand_specific=False,filter_function=strict_read_counts_function)
-    cpr = get_r1_counts_per_cell(args.alignmentfile)
+    prefix_with_bam=False if len(args.alignmentfiles)==1 else True
+    sc_cut_dict = get_sc_cut_dictionary( args.alignmentfiles,strand_specific=False,filter_function=strict_read_counts_function, prefix_with_bam=prefix_with_bam, regions=regions)
+    cpr = get_r1_counts_per_cell(args.alignmentfiles, prefix_with_bam=prefix_with_bam)
+    counts = pd.Series(cpr).sort_values()
+    print(counts)
+
+
 
     def get_commands(one_contig=None):
         for contig in sc_cut_dict:  # sc_cut_dict:
@@ -434,18 +488,21 @@ if __name__ == '__main__':
     p_obs.index = x_obs
 
     # Means per library:
-    counts = pd.Series(cpr).sort_values()
+
     window = 35
     p_obs.to_csv(f'{args.o}/strand_unspecific_density_raw.csv')
+    p_obs.to_pickle(f'{args.o}/strand_unspecific_density_raw.pickle.gz')
     df = p_obs.rolling(center=True, window=window).mean()
     df.to_csv(f'{args.o}/strand_unspecific_density_smooth.csv')
+    df.to_pickle(f'{args.o}/strand_unspecific_density_smooth.pickle.gz')
     df = df[counts[counts > 1_000].index]
-    marks = pd.DataFrame({'library': {cell: cell.split('_')[0] for cell in df.columns}})
+    print(df)
+    groups = pd.DataFrame({'library': {cell: cell.split('_')[0] if not prefix_with_bam else cell[0] for cell in df.columns}})
 
 
     fig, ax = plt.subplots(figsize=(15, 8))
 
-    for library, cells in marks.groupby('library'):
+    for library, cells in groups.groupby('library'):
         df[cells.index].T.iloc[:, 1:].mean(0).iloc[20:].plot(label=f'{library}, {window}bp window', ax=ax)
 
     sns.despine()
