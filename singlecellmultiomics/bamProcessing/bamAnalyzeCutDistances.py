@@ -413,18 +413,19 @@ if __name__ == '__main__':
                 contig = parts[0]
                 start = int(parts[1]) - args.region_radius
                 end = int(parts[1]) + args.region_radius
-                if end-start < args.min_region_len:
-                    print('skipping region', contig, start, end)
-                    continue
+
                 regions_per_contig[contig].append( (start,end) )
                 rc+=1
 
-        print(f'{rc} regions left after size filter')
+        print(f'{rc} regions read from bed file')
         regions = []
         for contig, contig_regions in regions_per_contig.items():
             for start, end in merge_overlapping_ranges(contig_regions):
+                if end-start < args.min_region_len:
+                    print('skipping region', contig, start, end)
+                    continue
                 regions.append( (contig, start, end) )
-        print(f'{len(regions)} regions left after merging overlapping regions')
+        print(f'{len(regions)} regions left after merging overlapping regions and filtering for small regions')
 
     else:
         regions=None
