@@ -394,6 +394,7 @@ if __name__ == '__main__':
     argparser.add_argument('alignmentfiles', type=str, nargs='+')
     argparser.add_argument('-o', type=str, required=True, help='Output folder')
     argparser.add_argument('-regions', type=str, help='Restrict analysis to these regions (bed file)')
+    argparser.add_argument('-min_region_len', type=int, default=1000)
     argparser.add_argument('-max_distance', type=int,default=2000, help='Maximum distance in both plots and output tables')
     args = argparser.parse_args()
 
@@ -409,7 +410,10 @@ if __name__ == '__main__':
                 contig = parts[0]
                 start = int(parts[1])
                 end = int(parts[1])
+                if end-start < args.min_region_len:
+                    print('skipping region', contig, start, end)
                 regions.append( (contig,start,end) )
+        print(f'{len(regions)} regions left')
     else:
         regions=None
 
