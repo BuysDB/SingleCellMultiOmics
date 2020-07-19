@@ -406,9 +406,9 @@ if __name__ == '__main__':
                 parts = line.split()
                 if len(parts)<3:
                     continue
-                contig = line[0]
-                start = int(line[1])
-                end = int(line[1])
+                contig = parts[0]
+                start = int(parts[1])
+                end = int(parts[1])
                 regions.append( (contig,start,end) )
     else:
         regions=None
