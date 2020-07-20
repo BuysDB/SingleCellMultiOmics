@@ -114,6 +114,7 @@ setup(
 
         # Utility: (SGE wrapper)
         'singlecellmultiomics/utils/submission.py',
+        'singlecellmultiomics/utils/ftp_upload.py',
 
         #Worfklow
         'singlecellmultiomics/snakemake_workflows/scmo_workflow.py',
