@@ -437,7 +437,7 @@ def generate_jobs(alignments_path, bin_size=1_000_000, bins_per_job=10):
         yield from job_group
 
 
-def generate_commands(alignments_path,
+def generate_commands(alignment_path=None,
                       bin_size=1_000_000,
                       bins_per_job=10,
                       alt_spans=None,
@@ -449,16 +449,23 @@ def generate_commands(alignments_path,
                       kwargs=None,
                       skip_contigs=None
                       ):
-    for i, (contig, start, end) in enumerate(
-            generate_jobs(alignments_path=alignments_path, bin_size=bin_size, bins_per_job=bins_per_job)):
 
-        if skip_contigs is not None and contig in skip_contigs:
-            continue
-        yield (alignments_path, bin_size, max_fragment_size, \
-               contig, start, end, \
-               min_mq, alt_spans, key_tags, dedup, kwargs)
-        if head is not None and i >= (head - 1):
-            break
+    if type(alignment_path) is list:
+        iterfiles =  alignment_path
+    else:
+        iterfiles = alignment_path
+
+    for alignments_path in iterfiles:
+        for i, (contig, start, end) in enumerate(
+                generate_jobs(alignments_path=alignments_path, bin_size=bin_size, bins_per_job=bins_per_job)):
+
+            if skip_contigs is not None and contig in skip_contigs:
+                continue
+            yield (alignments_path, bin_size, max_fragment_size, \
+                   contig, start, end, \
+                   min_mq, alt_spans, key_tags, dedup, kwargs)
+            if head is not None and i >= (head - 1):
+                break
 
 
 def count_methylation_binned(args):
