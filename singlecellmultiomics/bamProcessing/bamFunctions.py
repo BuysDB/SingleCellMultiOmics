@@ -13,6 +13,19 @@ import pandas as pd
 from typing import Generator
 from multiprocessing import Pool
 
+def get_index_path(bam_path: str):
+    """
+    Obtain path to bam index
+
+    Returns:
+        path_to_index(str) : path to the index file, None if not available
+    """
+    for p in [bam_path+'.bai', bam_path.replace('.bam','.bai')]:
+        if os.path.exists(p):
+            return p
+    return None
+
+
 def _get_r1_counts_per_cell(args):
     """Obtain the amount of unique read1 reads per cell (Function is used as Pool chunk)
 
@@ -114,6 +127,7 @@ def merge_bams( bams: list, output_path: str, threads: int=4 ):
 def verify_and_fix_bam(bam_path):
     """
     Check if the bam file is not truncated and indexed.
+    Also regenerates index when its older than the bam file
     If not, apply index
 
     Args:
@@ -140,8 +154,16 @@ def verify_and_fix_bam(bam_path):
         except Exception as e:
             index_missing = True
 
+        # Check index modification time
+        if not index_missing:
+            index_path = get_index_path(bam_path)
+            if index_path is None or os.path.getmtime(index_path) < os.path.getmtime(bam_path):
+                index_missing = True
+
         if index_missing:
+            print(f"The bam file {bam_path} has an older index, attempting an index re-build ..")
             pysam.index(bam_path)
+            print(f"Succes!")
 
     if index_missing:
         with pysam.AlignmentFile(bam_path, "rb") as alignments:
