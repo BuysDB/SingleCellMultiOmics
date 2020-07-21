@@ -15,6 +15,7 @@ import numpy as np
 import multiprocessing
 from datetime import datetime
 from singlecellmultiomics.utils.plotting import GenomicPlot
+from singlecellmultiomics.bamProcessing.bamFunctions import verify_and_fix_bam
 from singlecellmultiomics.bamProcessing.bamBinCounts import count_fragments_binned, generate_commands, gc_correct_cn_frame, obtain_counts
 import os
 import argparse
@@ -526,7 +527,7 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="""Export and plot copy number profiles
     """)
-    argparser.add_argument('bamfile', metavar='bamfile', type=str)
+    argparser.add_argument('bamfiles', metavar='bamfiles', type=str, nargs='+')
     argparser.add_argument('-ref', help='path to reference fasta', type=str, required=True)
     argparser.add_argument('-bin_size', default=500_000, type=int)
     argparser.add_argument('-max_cp', default=5, type=int)
@@ -555,7 +556,7 @@ if __name__ == '__main__':
 
     args = argparser.parse_args()
 
-    alignments_path = args.bamfile
+    alignments_paths = args.bamfiles
     bin_size = args.bin_size
     MAXCP = args.max_cp
     pct_clip = args.pct_clip
@@ -576,8 +577,13 @@ if __name__ == '__main__':
 
     kwargs = {'ignore_mp':args.ignore_mp}
     print("Creating count matrix ... ", end="")
+
+    # Check if the bam files are in good shape:
+    for path in alignments_paths:
+        verify_and_fix_bam(path)
+
     commands = generate_commands(
-                alignments_path=alignments_path,
+                alignments_paths,
                 bin_size=bin_size,key_tags=None,
                 bins_per_job=5,head=None,min_mq=min_mapping_qual,kwargs=kwargs )
 
@@ -603,6 +609,9 @@ if __name__ == '__main__':
         plt.savefig(histplot)
         print(f"\rCreating molecule histogram [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
         plt.close()
+
+    if df.shape[0]==0:
+        raise ValueError('Resulting count matrix is empty. Is this file correctly tagged? Try adding the --ignore_mp flag')
 
     # Convert the count dictionary to a dataframe
     print("Filtering count matrix ... ", end="")
