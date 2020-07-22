@@ -296,7 +296,16 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
 
         for i, result in enumerate(workers.imap_unordered(count_function,
                                                           commands)):
-            counts.update(result)
+            # Result is of the format: counts[bin_id][sample] = obs (int)
+            #counts.update(result)
+            for bin_id, sample_dict in result.items():
+                if not bin_id in counts:
+                    counts[bin_id] =  sample_dict
+                else:
+                    counts[bin_id].update(sample_dict)
+
+
+
             if live_update and update_method == 'partial_df':
                 if (datetime.now() - start_time).total_seconds() > 2 and (
                         prev is None or (datetime.now() - prev).total_seconds() >= update_interval):
