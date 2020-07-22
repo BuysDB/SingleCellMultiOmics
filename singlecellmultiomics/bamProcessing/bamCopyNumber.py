@@ -593,6 +593,8 @@ if __name__ == '__main__':
                             live_update=False,
                             show_n_cells=None,
                             update_interval=None )
+
+
     print(f"\rCreating count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
     if histplot is not None:
@@ -610,12 +612,14 @@ if __name__ == '__main__':
         print(f"\rCreating molecule histogram [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
         plt.close()
 
-    if df.shape[0]==0:
-        raise ValueError('Resulting count matrix is empty. Is this file correctly tagged? Try adding the --ignore_mp flag')
 
     # Convert the count dictionary to a dataframe
     print("Filtering count matrix ... ", end="")
     df = pd.DataFrame(counts).T.fillna(0)
+
+    if df.shape[0]==0:
+        raise ValueError('Resulting count matrix is empty. Is this file correctly tagged? Try adding the --ignore_mp flag')
+
     # remove cells were the median is zero
     if args.norm_method=='median':
         try:
