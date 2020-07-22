@@ -51,7 +51,8 @@ class Fragment():
                  max_fragment_size = None,
                  mapping_dir=(False, True),
                  max_NUC_stretch = None,
-                 read_group_format=0  # R1 forward, R2 reverse
+                 read_group_format=0,  # R1 forward, R2 reverse
+                 library_name=None # Overwrites the library name
                  ):
         """
         Initialise Fragment
@@ -150,7 +151,8 @@ class Fragment():
                 read.is_read1 = False
                 read.is_read2 = True
 
-        self.set_sample()
+
+        self.set_sample(library_name=library_name)
         if self.qcfail:
             return
         self.set_strand(self.identify_strand())
@@ -519,7 +521,7 @@ class Fragment():
 
         return True
 
-    def set_sample(self, sample=None):
+    def set_sample(self, sample=None, library_name=None):
         """Force sample name or obtain sample name from associated reads"""
         if sample is not None:
             self.sample = sample
@@ -528,6 +530,14 @@ class Fragment():
                 if read is not None and read.has_tag('SM'):
                     self.sample = read.get_tag('SM')
                     break
+
+        if library_name is not None:
+            sample = self.sample.split('_',1)[-1]
+            self.sample = library_name+'_'+sample
+            for read in self.reads:
+                if read is not None:
+                    read.set_tag('SM',self.sample)
+                    read.set_tag('LY',library_name)
 
     def get_sample(self):
         """ Obtain the sample name associated with the fragment
