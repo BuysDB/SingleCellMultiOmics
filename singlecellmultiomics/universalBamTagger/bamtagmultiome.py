@@ -148,11 +148,16 @@ fragment_settings.add_argument(
     type=int,
     help='Molecule assignment radius')
 
+fragment_settings.add_argument(
+    '-libname',type=str,
+    help='Overwrite library name with this value')
+
 
 fragment_settings.add_argument(
     '--no_rejects',
     action='store_true',
     help='Do not write rejected reads to output file')
+
 fragment_settings.add_argument(
     '--no_overflow',
     action='store_true',
@@ -907,6 +912,8 @@ def run_multiome_tagging(args):
             one_contig_per_process=True
             #raise NotImplementedError('-assignment_radius is currently incompatible with --multiprocess')
 
+    if args.libname is not None:
+        fragment_class_args['library_name'] = args.libname
 
     # This decides what molecules we will traverse
     if args.contig == MISC_ALT_CONTIGS_SCMO:
