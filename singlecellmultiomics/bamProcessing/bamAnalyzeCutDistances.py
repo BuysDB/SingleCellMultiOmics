@@ -397,6 +397,7 @@ if __name__ == '__main__':
     argparser.add_argument('-regions', type=str, help='Restrict analysis to these regions (bed file)')
     argparser.add_argument('-region_radius', type=int, default=0, help='Add extra radius to the regions')
     argparser.add_argument('-min_region_len', type=int, default=1000)
+    argparser.add_argument('--legacy', action='store_true', help='Create legacy unstranded anaylsis plots and files')
     argparser.add_argument('-max_distance', type=int,default=2000, help='Maximum distance in both plots and output tables')
     args = argparser.parse_args()
 
@@ -435,7 +436,11 @@ if __name__ == '__main__':
         os.makedirs(args.o)
 
     # 'Original' analysis
-    #analyse(args.alignmentfile, args.o, create_plot=True, verbose=True,strand_specific=False,max_distance=args.max_distance)
+    if args.legacy:
+        print('Performing legacy analysis')
+        if len(args.alignmentfiles)!=1:
+            raise ValueError('The legacy analysis only works on a single bam file')
+        analyse(args.alignmentfiles[0], args.o, create_plot=True, verbose=True,strand_specific=False,max_distance=args.max_distance)
 
     # Stranded analysis:
     sc_cut_dict_stranded = get_sc_cut_dictionary( args.alignmentfiles,strand_specific=True,filter_function=strict_read_counts_function, regions=regions)
