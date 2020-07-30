@@ -446,7 +446,7 @@ def generate_jobs(alignments_path, bin_size=1_000_000, bins_per_job=10):
         yield from job_group
 
 
-def generate_commands(alignment_path=None,
+def generate_commands(alignments_path,
                       bin_size=1_000_000,
                       bins_per_job=10,
                       alt_spans=None,
@@ -459,10 +459,11 @@ def generate_commands(alignment_path=None,
                       skip_contigs=None
                       ):
 
-    if type(alignment_path) is list:
-        iterfiles =  alignment_path
+
+    if type(alignments_path) is list:
+        iterfiles =  alignments_path
     else:
-        iterfiles = alignment_path
+        iterfiles = [alignments_path]
 
     for alignments_path in iterfiles:
         for i, (contig, start, end) in enumerate(
