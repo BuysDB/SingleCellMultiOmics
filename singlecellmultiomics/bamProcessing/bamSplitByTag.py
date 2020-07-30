@@ -6,7 +6,7 @@ import argparse
 import sys
 import collections
 from multiprocessing import Pool
-from singlecellmultiomics.utils import get_valid_filename
+from singlecellmultiomics.utils.path import get_valid_filename
 
 def index_bam(path):
     try:
