@@ -1,13 +1,22 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from multiprocessing import Pool
 from pysam import AlignmentFile, FastaFile
 import pysam
 from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs
 from singlecellmultiomics.utils.sequtils import reverse_complement, get_context
+from singlecellmultiomics.utils import prob_to_phred
 from pysamiterators import CachedFasta
 from array import array
 from uuid import uuid4
-from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads
-
+from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads, has_variant_reads
+import argparse
+import pickle
+import gzip
+import pandas as pd
+import numpy as np
+import os
 
 def get_covariate_key(read, qpos, refpos, reference, refbase, cycle_bin_size=3, k_rad=1):
 
@@ -18,9 +27,13 @@ def get_covariate_key(read, qpos, refpos, reference, refbase, cycle_bin_size=3, 
         return None
 
     context = get_context(read.reference_name, refpos, reference, qbase, k_rad)
+    if 'N' in context or len(context)!=(2*k_rad+1):
+        context=get_context(read.reference_name, refpos, reference, qbase, 0)
+        assert len(context)==1
 
     if 'N' in context:
         return None
+
 
     if read.is_reverse:
         cycle = len(read.query_sequence) - qpos  # -1
@@ -30,6 +43,36 @@ def get_covariate_key(read, qpos, refpos, reference, refbase, cycle_bin_size=3, 
 
     return qual, read.is_read2, int(round(cycle / cycle_bin_size)) * cycle_bin_size, context
 
+
+def add_keys_excluding_context_covar(covariates, covar_phreds, k_rad=1):
+    k_rad = 1
+    for base in 'ACTG':
+        pd.DataFrame({ (key[0],key[1],key[2],key[3][k_rad]):value for key,value in covariates.items() if len(key[3])==k_rad*2+1 and key[3][k_rad]==base }).T
+
+    index = []
+    values = []
+    for key,(t,f) in [((key[0],key[1],key[2],key[3][k_rad]), value) for key,value in covariates.items() if len(key[3])==k_rad*2+1 and key[3][k_rad]==base ]:
+        index.append(key)
+        values.append([t,f])
+
+    for indices, base_data in pd.DataFrame(values,index=pd.MultiIndex.from_tuples(index)).groupby(level=(0,1,2,3)):
+        t,f = base_data.sum()
+        covar_phreds[indices] = prob_to_phred( f/(t+f) )
+
+def covariate_obs_to_phreds(covariates, k_rad):
+    covar_phreds = {}
+
+    for k,(p_base_true,p_base_false) in covariates.items():
+        covar_phreds[k] = prob_to_phred( p_base_false/(p_base_true+p_base_false) )
+
+    # Add values for context not available:
+    add_keys_excluding_context_covar(covariates, covar_phreds,k_rad=k_rad)
+
+    # Add value for when everything fails (just mean):
+    t,f = pd.DataFrame(covariates).mean(1)
+    covar_phreds[None] = prob_to_phred( f/(t+f) )
+
+    return covar_phreds
 
 def extract_covariates(bam_path: str,
                        reference_path: str,
@@ -56,6 +99,17 @@ def extract_covariates(bam_path: str,
     min_mapping_quality = filter_kwargs.get('min_mapping_quality', 0)
     deduplicate = filter_kwargs.get('deduplicate', False)
     filter_qcfailed = filter_kwargs.get('filter_qcfailed', False)
+    variant_blacklist_vcf_files = filter_kwargs.get('variant_blacklist_vcf_files', None)
+
+    # Obtain all variants in the selected range:
+    blacklist = set()
+    if variant_blacklist_vcf_files is not None:
+
+        for path in variant_blacklist_vcf_files:
+            with pysam.VariantFile(path) as bf:
+                for record in bf.fetch(contig, start_fetch, end_fetch):
+                    blacklist.add(record.pos)
+
 
     with AlignmentFile(bam_path) as alignments,  FastaFile(reference_path) as fa:
         reference = CachedFasta(fa)  # @todo: prefetch selected region
@@ -68,6 +122,9 @@ def extract_covariates(bam_path: str,
             for qpos, refpos, refbase in read.get_aligned_pairs(matches_only=True, with_seq=True):
 
                 if refpos > end or refpos < start:  # Prevent the same location to be counted multiple times
+                    continue
+
+                if refpos in blacklist:
                     continue
 
                 refbase = refbase.upper()
@@ -96,7 +153,9 @@ def extract_covariates_wrapper(kwargs):
 def extract_covariates_from_bam(bam_path, reference_path, known_variants, n_processes=None, bin_size=10_000_000,
             min_mapping_quality = 40,
             deduplicate = True,
-            filter_qcfailed = True  ):
+            filter_qcfailed = True,
+            variant_blacklist_vcf_files = None
+            ):
 
     global known
     known = known_variants
@@ -111,7 +170,8 @@ def extract_covariates_from_bam(bam_path, reference_path, known_variants, n_proc
     filter_kwargs = {
         'min_mapping_quality': 40,
         'deduplicate': True,
-        'filter_qcfailed': True
+        'filter_qcfailed': True,
+        'variant_blacklist_vcf_files':variant_blacklist_vcf_files
     }
 
     covariate_kwargs = {
@@ -206,7 +266,7 @@ def recalibrate_reads(bam_path, target_bam_path, reference_path, n_processes, co
     global joined_prob
     joined_prob = covariates
 
-
+    print(len(covariates), 'discrete elements')
     with Pool(n_processes) as workers:
         intermediate_bams = list( workers.imap_unordered(__recalibrate_reads, (
                         {
@@ -224,3 +284,85 @@ def recalibrate_reads(bam_path, target_bam_path, reference_path, n_processes, co
                         #blacklisted_binning_contigs(**job_generation_args))))
 
         merge_bams(intermediate_bams, target_bam_path)
+
+
+
+
+if __name__=='__main__':
+
+    argparser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="""Obtain base calling biases using complete posterior distribution and perform corrections. Both identifying the covariates and the recallibration are multithreaded""")
+    argparser.add_argument('bamfile', metavar='bamfile', type=str)
+    argparser.add_argument('-reference', help="Path to reference fasta file used to generate the bamfile", required=True)
+    argparser.add_argument('-known', help="vcf file with known variation", required=False)
+
+
+    argparser.add_argument('-threads', help="Amount of threads to use. Uses all when not set")
+
+    argparser.add_argument(
+        '-covariates_out',
+        type=str,
+        help='Write covariates to this file, ends in .pickle.gz. ')
+
+    argparser.add_argument(
+        '-covariates_in',
+        type=str,
+        help='Read in existing covariates, ends in .pickle.gz')
+
+    argparser.add_argument(
+        '-bam_out',
+        type=str,
+        required=False,
+        help='Write corrected bam file here')
+
+    argparser.add_argument(
+        '--f',
+        action= 'store_true')
+
+    args = argparser.parse_args()
+
+    assert args.bam_out!=args.bamfile, 'The input bam file name cannot match the output bam file'
+
+    if args.covariates_in is None and args.covariates_out is not None and args.bam_out is None and os.path.exists(args.covariates_out) and not args.f:
+        print('Output covariate file already exists. Use -f to overwrite.')
+        exit()
+
+    # Set defaults  when nothing is supplied
+    if args.covariates_in is None and args.bam_out is None and args.covariates_out is None:
+        args.bam_out = args.bamfile.replace('.bam','.recall.bam')
+        if args.covariates_out is None:
+            args.covariates_out = args.bamfile.replace('.bam','.covariates.pickle.gz')
+
+
+    if args.covariates_in is not None:
+        print(f'Loading covariates from {args.covariates_in} ')
+        with gzip.open(args.covariates_in,'rb') as i:
+            covariates = pickle.load(i)
+    else:
+        covariates = extract_covariates_from_bam(args.bamfile,
+                            reference_path=args.reference,
+                               variant_blacklist_vcf_files= [] if args.known is None else [args.known],
+                                         known_variants=set()
+                           )
+        if args.covariates_out is not None:
+
+            print(f'Writing covariates to {args.covariates_out}')
+            with gzip.open(args.covariates_out,'wb') as o:
+                pickle.dump(covariates, o)
+
+    if args.bam_out is not None:
+        # Create cov probs
+
+        covar_phreds =  covariate_obs_to_phreds(covariates ,k_rad=1)
+
+        print(f'Writing corrected bam file to {args.bam_out}')
+        recalibrate_reads(bam_path=args.bamfile,
+                            target_bam_path=args.bam_out,
+                            reference_path=args.reference,
+                            n_processes=args.threads,
+                            covariates=covar_phreds,
+                            covariate_kwargs = {
+                                'cycle_bin_size': 3,
+                                'k_rad' : 1
+                            })

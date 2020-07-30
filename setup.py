@@ -98,6 +98,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamBinCounts.py',
         'singlecellmultiomics/bamProcessing/split_double_BAM.py',
         'singlecellmultiomics/bamProcessing/bamOverseq.py',
+        'singlecellmultiomics/utils/base_call_covariates.py',
 
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py',
@@ -111,6 +112,7 @@ setup(
         'singlecellmultiomics/variants/postProcessVariants.py',
         'singlecellmultiomics/variants/vcfFilterAlleleFreq.py',
         'singlecellmultiomics/variants/vcfMutProfiler.py',
+        'singlecellmultiomics/variants/plotCovariates.py',
 
         # Utility: (SGE wrapper)
         'singlecellmultiomics/utils/submission.py',
