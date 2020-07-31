@@ -63,6 +63,8 @@ def _vcf_to_variant_contexts_detect(args):
         for record in detected_vcf.fetch(contig):
             if len(record.ref) != 1:
                 continue
+            if len(record.alts[0])!=1:
+                continue
 
             if blacklist is not None and (record.chrom, record.pos) in blacklist:
                 continue
