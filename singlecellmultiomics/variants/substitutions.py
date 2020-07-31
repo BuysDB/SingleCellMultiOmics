@@ -15,6 +15,8 @@ def substitution_plot(pattern_counts: dict,
                       conversion_colors: tuple = ('b', 'k', 'r', 'grey', 'g', 'pink'),
                       ylabel: str = '# conversions per molecule',
                       add_main_group_labels: bool = True,
+                      fig=None,
+                      ax=None,
                       **plot_args
                       ):
     """
@@ -62,18 +64,23 @@ def substitution_plot(pattern_counts: dict,
     color_d = dict(zip(conversions_single_nuc, conversion_colors))
     colors = [color_d.get(f'{context[1]}{to}') for context, to in pattern_counts.keys()]
 
-    fig, ax = plt.subplots(figsize=figsize)
+    if fig is None or ax is None:
+        assert fig is None and ax is None
+        fig, ax = plt.subplots(figsize=figsize)
 
     substitution_dataframe = pd.DataFrame(pattern_counts.values(), index=list(pattern_counts.keys())).T
     substitution_dataframe.plot(kind='bar', color=colors, legend=False, width=1.0, ax=ax, edgecolor='k', **plot_args)
     offset = (1 / 96) * 0.5  # Amount of distance for a half bar
 
     # Add 3bp context ticks:
-    plt.xticks(np.linspace(-0.5 + offset, 0.5 - offset, len(pattern_counts)),
-               [context for context, to in pattern_counts.keys()],
-               rotation=90, size=6)
+    #plt.xticks(np.linspace(-0.5 + offset, 0.5 - offset, len(pattern_counts)),
+    #           [context for context, to in pattern_counts.keys()],
+    #              rotation=90, size=6)
 
+    ax.set_xticks(np.linspace(-0.5 + offset, 0.5 - offset, len(pattern_counts)))
+    ax.set_xticklabels( [context for context, to in pattern_counts.keys()], rotation=90, size=6)
     ax.set_ylabel(ylabel)
+    
     ax.set_xlim((-0.5, 0.5))
     sns.despine()
     if add_main_group_labels:
@@ -85,4 +92,3 @@ def substitution_plot(pattern_counts: dict,
             )
 
     return fig, ax
-

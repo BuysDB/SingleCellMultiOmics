@@ -243,36 +243,44 @@ class AlleleResolver(Prefetcher):
                         set)  # base -> samples
 
                     if self.phased:  # variants are phased, assign a random allele
-                        samples_assigned = set()
-                        most_assigned_base = 0
-                        monomorphic=False
-                        for sample, sampleData in rec.samples.items():
 
-                            if self.select_samples is not None and sample not in self.select_samples:
-                                continue
-                            for base in sampleData.alleles:
-                                if base is None:
-                                    # This site is monomorphic:
-                                    monomorphic=True
+                        if len(rec.samples)==0: # File without samples
+
+                            bases_to_alleles[rec.ref]=set('r')
+                            bases_to_alleles[rec.alts[0]]=set('a')
+                            self.locationToAllele[rec.chrom][rec.pos - 1]=bases_to_alleles
+
+                        else:
+                            samples_assigned = set()
+                            most_assigned_base = 0
+                            monomorphic=False
+                            for sample, sampleData in rec.samples.items():
+
+                                if self.select_samples is not None and sample not in self.select_samples:
                                     continue
-                                if len(base) == 1:
-                                    bases_to_alleles[base].add(sample)
-                                    used = True
-                                    samples_assigned.add(sample)
-                                else:  # This location cannot be trusted:
+                                for base in sampleData.alleles:
+                                    if base is None:
+                                        # This site is monomorphic:
+                                        monomorphic=True
+                                        continue
+                                    if len(base) == 1:
+                                        bases_to_alleles[base].add(sample)
+                                        used = True
+                                        samples_assigned.add(sample)
+                                    else:  # This location cannot be trusted:
+                                        bad = True
+                            # We can prune this site if all samples are associated
+                            # with the same base
+                            if self.select_samples is not None and used:
+                                if len(samples_assigned) != len(
+                                        self.select_samples):
+                                    # The site is not informative
                                     bad = True
-                        # We can prune this site if all samples are associated
-                        # with the same base
-                        if self.select_samples is not None and used:
-                            if len(samples_assigned) != len(
-                                    self.select_samples):
-                                # The site is not informative
+                            if monomorphic and len(bases_to_alleles)>0:
+                                bad=False
+                            elif len(bases_to_alleles) < 2:
                                 bad = True
-                        if monomorphic and len(bases_to_alleles)>0:
-                            bad=False
-                        elif len(bases_to_alleles) < 2:
-                            bad = True
-                            # The site is not informative
+                                # The site is not informative
                     else:  # not phased
                         if not all(
                                 len(allele) == 1 for allele in rec.alleles):  # only select SNVs

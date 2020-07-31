@@ -63,6 +63,8 @@ def _vcf_to_variant_contexts_detect(args):
         for record in detected_vcf.fetch(contig):
             if len(record.ref) != 1:
                 continue
+            if len(record.alts[0])!=1:
+                continue
 
             if blacklist is not None and (record.chrom, record.pos) in blacklist:
                 continue
@@ -70,22 +72,34 @@ def _vcf_to_variant_contexts_detect(args):
                 continue
 
             origin_context = reference.fetch(record.contig, record.pos - 2, record.pos + 1).upper()
-            for sample in record.samples:
-                for allele in record.samples[sample].alleles:
-                    if allele is None:
-                        continue
-                    if len(allele) != 1:
-                        continue
-                    if allele == record.ref:
-                        continue
+            if len(record.samples)==0:
+                sample='no_sample'
+                allele = record.alts[1]
+                if not (record.ref + allele in set( ("CA", "CG", "CT", "TA", "TC", "TG"))):
+                    context = reverse_complement(origin_context)
+                    allele = reverse_complement(allele)
+                else:
+                    context = origin_context
+                # print(allele,record.ref, context)
+                pattern_obs[sample][context, allele] += 1
 
-                    if not (record.ref + allele in set( ("CA", "CG", "CT", "TA", "TC", "TG"))):
-                        context = reverse_complement(origin_context)
-                        allele = reverse_complement(allele)
-                    else:
-                        context = origin_context
-                    # print(allele,record.ref, context)
-                    pattern_obs[sample][context, allele] += 1
+            else:
+                for sample in record.samples:
+                    for allele in record.samples[sample].alleles:
+                        if allele is None:
+                            continue
+                        if len(allele) != 1:
+                            continue
+                        if allele == record.ref:
+                            continue
+
+                        if not (record.ref + allele in set( ("CA", "CG", "CT", "TA", "TC", "TG"))):
+                            context = reverse_complement(origin_context)
+                            allele = reverse_complement(allele)
+                        else:
+                            context = origin_context
+                        # print(allele,record.ref, context)
+                        pattern_obs[sample][context, allele] += 1
     return pattern_obs
 
 
