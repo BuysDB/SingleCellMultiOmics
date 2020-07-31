@@ -728,6 +728,10 @@ if __name__ == '__main__':
                      row_colors=cell_annot_df,
                      figsize=(30,30), row_cluster=False)
         plt.savefig(f'{clustering_plot_folder}/segment_based_clustering_wo_variance_filter.png',dpi=150)
+        cell_annot_df.to_csv(f'{args.clustering_output_folder}/cell_clusters_wo_variance_filter.csv')
+        cell_annot_df.to_pickle(f'{args.clustering_output_folder}/cell_clusters_wo_variance_filter.pickle.gz')
+        segmented_matrix.to_csv(f'{args.clustering_output_folder}/segmented_matrix_wo_variance_filter.csv')
+        segmented_matrix.to_pickle(f'{args.clustering_output_folder}/segmented_matrix_wo_variance_filter.pickle.gz')
 
         # Variance filter
         print("Variance filter")
@@ -743,6 +747,7 @@ if __name__ == '__main__':
         cell_annot_df = pd.DataFrame([cell_cluster_names, [cell.split('_')[0] for cell in cell_order]],
                                      columns=cell_order)
         cell_annot_df.to_csv(f'{args.clustering_output_folder}/cell_clusters.csv')
+        cell_annot_df.to_csv(f'{args.clustering_output_folder}/cell_clusters.pickle.gz')
         cell_annot_df, lut = createRowColorDataFrame(cell_annot_df.T)
         cell_annot_df.columns=['cluster','library']
 
@@ -756,6 +761,7 @@ if __name__ == '__main__':
         plt.savefig(f'{clustering_plot_folder}/segment_clustering.png',dpi=150)
         plt.close()
         segmented_matrix_f.to_csv(f'{args.clustering_output_folder}/segmented_matrix.csv')
+        segmented_matrix_f.to_pickle(f'{args.clustering_output_folder}/segmented_matrix.pickle.gz')
 
         # Create bulk trace plot:
         bulk_trace(f'{clustering_plot_folder}/segments.pdf', copy_mat, cell_cluster_names, cell_order,segmented_matrix_floating,segmented_matrix_f)
