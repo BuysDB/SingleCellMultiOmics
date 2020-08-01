@@ -537,11 +537,13 @@ if __name__ == '__main__':
     argparser.add_argument('-min_mapping_qual', default=40, type=int)
     argparser.add_argument('-molecule_threshold', default=5_000, type=int)
     argparser.add_argument('--ignore_mp',action='store_true',help='Ignore mp tag value')
+    argparser.add_argument('--allelic',action='store_true',help='Perform allele specific analysis (requires DA tag)')
     argparser.add_argument('-rawmatplot', type=str, help='Path to raw matrix, plot is not made when this path is not supplied ')
     argparser.add_argument('-gcmatplot', type=str, help='Path to gc corrected matrix, plot is not made when this path is not supplied ')
     argparser.add_argument('-histplot', type=str, help='Path to histogram ')
 
     argparser.add_argument('-rawmat', type=str)
+    argparser.add_argument('-countmat', type=str)
     argparser.add_argument('-gcmat', type=str)
 
     argparser.add_argument('-norm_method', default='median', type=str, help='Either mean or median')
@@ -582,9 +584,14 @@ if __name__ == '__main__':
     for path in alignments_paths:
         verify_and_fix_bam(path)
 
+    if args.allelic:
+        key_tags=['DA']
+    else:
+        key_tags=None
+
     commands = generate_commands(
                 alignments_paths,
-                bin_size=bin_size,key_tags=None,
+                bin_size=bin_size,key_tags=key_tags,
                 bins_per_job=5,head=None,min_mq=min_mapping_qual,kwargs=kwargs )
 
     counts = obtain_counts(commands,
@@ -594,8 +601,9 @@ if __name__ == '__main__':
                             show_n_cells=None,
                             update_interval=None )
 
-
     print(f"\rCreating count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
+
+
 
     if histplot is not None:
         print("Creating molecule histogram ... ",end="")
@@ -614,12 +622,27 @@ if __name__ == '__main__':
 
 
     # Convert the count dictionary to a dataframe
-    print("Filtering count matrix ... ", end="")
+
     df = pd.DataFrame(counts).T.fillna(0)
 
     if df.shape[0]==0:
         raise ValueError('Resulting count matrix is empty. Is this file correctly tagged? Try adding the --ignore_mp flag')
 
+    if args.countmat is not None:
+        print("Exporting count matrix ... ", end="")
+        if args.countmat.endswith('.pickle.gz'):
+            df.to_pickle(args.countmat)
+        else:
+            df.to_csv(args.countmat)
+
+        print(f"\rExporting count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
+
+    if args.allelic:
+        alleles = [allele for allele in df.index.get_level_values(0).unique() if not pd.isna(allele)]
+        print(f'Found alleles: {", ".join(alleles)}')
+        df = df.loc[alleles]
+
+    print("Filtering count matrix ... ", end="")
     # remove cells were the median is zero
     if args.norm_method=='median':
         try:
@@ -630,7 +653,7 @@ if __name__ == '__main__':
             # Remove rows with little counts
             df = df.T[df.sum()>molecule_threshold].T
             df = df / np.percentile(df,pct_clip,axis=0)
-            df = np.clip(0,MAXCP,(df / df.median())*2)
+            df = np.clip(0,MAXCP,(df / df.median())*(2 if not args.allelic else 1))
             df = df.T
         except Exception as e:
             print(f"\rMedian normalisation [ {Fore.RED}FAIL{Style.RESET_ALL} ] ")
@@ -643,7 +666,7 @@ if __name__ == '__main__':
         # Remove rows with little counts
         df = df.T[df.sum()>molecule_threshold].T
         df = df / np.percentile(df,pct_clip,axis=0)
-        df = np.clip(0,MAXCP,(df / df.mean())*2)
+        df = np.clip(0,MAXCP,(df / df.mean())* (2 if not args.allelic else 1))
         df = df.T
 
 
@@ -667,7 +690,7 @@ if __name__ == '__main__':
 
     if rawmatplot is not None:
         print("Creating raw heatmap ...", end="")
-        h.cn_heatmap(df, figsize=(15,15+(0.05)*df.shape[0]))
+        h.cn_heatmap(df, figsize=(15*(2 if args.allelic else 1),15+(0.05)*df.shape[0]))
         plt.savefig(rawmatplot)
         print(f"\rCreating raw heatmap [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
         plt.close('all')
@@ -679,7 +702,7 @@ if __name__ == '__main__':
 
     if gcmatplot is not None:
         print("Creating heatmap ...", end="")
-        h.cn_heatmap(corrected_cells,figsize=(15,15))
+        h.cn_heatmap(corrected_cells,figsize=(15*(2 if args.allelic else 1),15))
         plt.savefig(gcmatplot)
         plt.close('all')
         print(f"\rCreating heatmap [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
