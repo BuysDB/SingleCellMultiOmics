@@ -1,6 +1,6 @@
 import matplotlib
 import numpy as np
-
+import pandas as pd
 from singlecellmultiomics.utils import is_main_chromosome, get_contig_list_from_fasta
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -82,13 +82,29 @@ class GenomicPlot():
 
         """
 
+        allelic_mode = len(df.columns[0])==4
+        if allelic_mode:
+            alleles = [allele for allele in df.columns.get_level_values(0).unique() if not pd.isna(allele)]
+            contigs_to_plot = [contig for contig in self.contigs if contig in set(df.columns.get_level_values(1))]
+            # Resample the dataframe, drop columns with no allele assigned:
+            df = df.loc[:,df.columns.isin(contigs_to_plot, level=1)][alleles].sort_index(1)
 
-        # Figure out what contigs are present in the dataframe:
-        contigs_to_plot = [contig for contig in self.contigs if contig in set(df.columns.get_level_values(0))]
+            def m(k):
+                allele,contig,start,end=k
+                return  self.contigs.index(contig), alleles.index(allele),start
 
+
+            desired_order = sorted( list(df.loc[:,df.columns.isin(self.contigs, level=1)][alleles].sort_index(1).columns), key=m)
+            df = df[desired_order]
+
+        else:
+
+            # Figure out what contigs are present in the dataframe:
+            contigs_to_plot = [contig for contig in self.contigs if contig in set(df.columns.get_level_values(0))]
+            df = df.sort_index(1)[contigs_to_plot]
         try:
 
-            clmap = sns.clustermap(df.sort_index(1)[contigs_to_plot],
+            clmap = sns.clustermap(df,
                 col_cluster=False,method=method,
                 cmap=cmap, vmax=max_cn,vmin=0,
                 yticklabels=True, figsize=figsize, **kwargs)
@@ -98,7 +114,7 @@ class GenomicPlot():
             print('Falling back on heatmap without clustering')
 
             fig, ax_heatmap = plt.subplots(figsize=figsize)
-            clmap = sns.heatmap(df.sort_index(1)[self.contigs],cmap=cmap,
+            clmap = sns.heatmap(df,cmap=cmap,
                 vmax=max_cn,vmin=0, yticklabels=True, ax=ax_heatmap, **kwargs)
 
 
@@ -106,15 +122,28 @@ class GenomicPlot():
         xtick_pos = []
         xtick_label = []
         last_idx = 0
-        for idx, (contig, start, end) in enumerate(df.sort_index(1)[contigs_to_plot].columns):
+
+        allele = None
+        for idx, key in enumerate(df.columns):
+            if allelic_mode:
+                (allele, contig, start, end)  = key
+            else:
+                (contig, start, end)  = key
+
             # Clean up contig label:
             contig = contig.replace('chr', '')
+            if allele is not None:
+                contig = f'{contig}:{allele}'
             if prev is not None and prev != contig:
                 ax_heatmap.axvline(idx-0.5, c='k',lw=1.5, zorder=10)
                 xtick_pos.append( (idx+last_idx) / 2)
                 xtick_label.append(prev)
                 last_idx=idx
             prev = contig
+
+        # Plot last tick..
+        xtick_pos.append( (idx+last_idx) / 2)
+        xtick_label.append(contig)
 
         ax_heatmap.set_xticks(xtick_pos)
         ax_heatmap.set_xticklabels(xtick_label,rotation=0, fontsize=8)

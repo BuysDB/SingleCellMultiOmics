@@ -401,8 +401,11 @@ def gc_correct_cn_frame(df, reference, MAXCP, threads, norm_method='median'):
     # Extract GC percentage from reference for the selected bin size:
     bins_to_gc = {}
 
-    for contig, start, end in df.columns:
-        k = (contig, start, end)
+    for k in df.columns:
+        if len(k)==4:
+            (allele, contig, start, end) = k
+        else:
+            (contig, start, end) = k
         if not k in bins_to_gc:
             sequence = reference.fetch(contig, start, end).upper()
             gc = sequence.count('G') + sequence.count('C')
