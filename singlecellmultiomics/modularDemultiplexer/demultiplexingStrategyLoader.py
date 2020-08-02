@@ -54,6 +54,7 @@ class DemultiplexingStrategyLoader:
             dm.NLAIII_96w_c8_u3,
             dm.Nla_384w_u8_c8_ad3_is15,
             dm.NLAIII_384w_c8_u3_SINGLE_END,
+            dm.NLAIII_96w_c8_u3_SINGLE_END,
 
             dm.SCCHIC_384w_c8_u3,
             dm.SCCHIC_384w_c8_u3_cs2,
