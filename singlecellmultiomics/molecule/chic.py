@@ -129,7 +129,7 @@ class CHICNLAMolecule(Molecule):
         if read is None:
             raise ValueError() # Read 1 is not mapped
 
-        if self.strand==1:
+        if self.strand==0:
             start = read.reference_start
             return self.reference.fetch( self.chromosome, start-4, start)
         else:
