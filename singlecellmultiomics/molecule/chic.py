@@ -119,7 +119,7 @@ class CHICNLAMolecule(Molecule):
         **kwargs: extra args
 
     """
-    def get_upstream_site(self):
+    def get_upstream_site(self, scan_extra_bp=3):
         read = None
         for fragment in self:
             if fragment[0] is not None:
@@ -131,10 +131,10 @@ class CHICNLAMolecule(Molecule):
 
         if self.strand==0:
             start = read.reference_start
-            return self.reference.fetch( self.chromosome, start-4, start)
+            return self.reference.fetch( self.chromosome, start-4-scan_extra_bp, start)
         else:
             start = read.reference_end
-            return self.reference.fetch( self.chromosome, start, start+4)
+            return self.reference.fetch( self.chromosome, start, start+4+scan_extra_bp)
 
 
     def __init__(self, fragment, reference, **kwargs):
@@ -144,9 +144,10 @@ class CHICNLAMolecule(Molecule):
     def write_tags(self):
         try:
             site = self.get_upstream_site()
+            self.set_meta('RZ',site)
             if 'N' in site:
                 self.set_meta('dt','UNK')
-            elif site=='CATG':
+            elif 'CATG' in site:
                 self.set_meta('dt','NLA')
             else:
                 self.set_meta('dt','CHIC')
