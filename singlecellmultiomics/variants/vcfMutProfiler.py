@@ -86,22 +86,37 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="""Export and plot copy number profiles
     """)
-    argparser.add_argument('detected_vcf',type=str)
+    argparser.add_argument('detected_vcf',type=str, nargs='+')
     argparser.add_argument('-known',type=str)
     argparser.add_argument('-ref', help='path to reference fasta', type=str, required=True)
     argparser.add_argument('-rawmat', type=str, help='Path to write conversions table to (.csv / .pickle.gz)')
     argparser.add_argument('-heatmap', type=str, help='Path to write heatmap to (.png/.svg)')
-    argparser.add_argument('-mut_count_threshold', default=80, type=int)
+
+    argparser.add_argument('-mut_count_threshold', default=0, type=int)
+
+    argparser.add_argument('-bars', type=str, help='Path to write bargraphs to (.pdf)')
+
     args = argparser.parse_args()
 
-    assert  args.rawmat is not None or args.heatmap is not None
+    assert  args.rawmat is not None or args.heatmap is not None or args.bars is not None
 
     # Prune cells with very low counts:
-    df = pd.DataFrame(get_conversions_per_cell(
-                                detected_variants_path = args.detected_vcf,
+    convs=None
+
+    for vcf in args.detected_vcf:
+
+        conversions = get_conversions_per_cell(
+                                detected_variants_path = vcf,
                                 known_variants_path = args.known,
-                                reference_path=args.ref ))
-    df = df.loc[:,df.sum()>args.mut_count_threshold]
+                                reference_path=args.ref, prefix=(None if len(args.detected_vcf)==1 else vcf.split('/')[-1].replace('vcf','').replace('.gz','')) )
+        if convs is None:
+            convs = conversions
+        else:
+            convs.update(conversions)
+
+
+    df = pd.DataFrame(convs)
+    df = df.loc[:,df.sum()>=args.mut_count_threshold]
 
     # Write counts to disk:
     if  args.rawmat is not None:
@@ -118,6 +133,31 @@ if __name__ == '__main__':
         plt.savefig(args.heatmap)
         print(f"\rCreating heatmap [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
         plt.close('all')
+
+    if args.bars is not None:
+
+        if args.mut_count_threshold>0:
+            print('mut_count_threshold is ignored for -bars')
+
+        from matplotlib.backends.backend_pdf import PdfPages
+
+        with PdfPages(args.bars,
+                      metadata={'Creator': f'SingleCellMultiOmics {singlecellmultiomics.__version__}', 'Author': 'SCMO',
+                                'Title': 'Mutation profiles'}) as pdf:
+
+
+
+            for sample, pattern_counts in convs.items():
+                print(sample)
+                fig, ax = plt.subplots(figsize=(10,4))
+
+                substitution_plot(pattern_counts, fig=fig, ax=ax, ylabel='# mutations')
+
+                plt.suptitle(f'{sample}')
+                pdf.savefig(fig)
+                plt.close()
+
+
 
 
     print('All done')
