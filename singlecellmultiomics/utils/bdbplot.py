@@ -2249,11 +2249,10 @@ def testHeatmap():
 
 def histogram(values = [1,7,3,2,1,0,0,0,1], rebin=False, binCount=9, reScale=False, logScale=False, logScaleData=False):
 
-    from sortedcontainers import SortedDict
     if rebin:
         newBars = {}
         bars = [0]*(binCount+1)
-        frequencies = SortedDict({})
+        frequencies = dict()
         for v in values:
             if not v in frequencies:
                 frequencies[v]=1
