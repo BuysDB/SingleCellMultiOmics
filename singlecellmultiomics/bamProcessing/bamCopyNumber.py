@@ -567,6 +567,7 @@ if __name__ == '__main__':
     argparser.add_argument('-min_mapping_qual', default=40, type=int)
     argparser.add_argument('-molecule_threshold', default=5_000, type=int)
     argparser.add_argument('--ignore_mp',action='store_true',help='Ignore mp tag value')
+    argparser.add_argument('--ignore_qcfail',action='store_true',help='Ignore qcfail tag value')
     argparser.add_argument('--allelic',action='store_true',help='Perform allele specific analysis (requires DA tag)')
     argparser.add_argument('-rawmatplot', type=str, help='Path to raw matrix, plot is not made when this path is not supplied ')
     argparser.add_argument('-gcmatplot', type=str, help='Path to gc corrected matrix, plot is not made when this path is not supplied ')
@@ -607,7 +608,7 @@ if __name__ == '__main__':
     h=GenomicPlot(reference)
     contigs = GenomicPlot(reference).contigs
 
-    kwargs = {'ignore_mp':args.ignore_mp}
+    kwargs = {'ignore_mp':args.ignore_mp,'ignore_qcfail':args.ignore_qcfail}
     print("Creating count matrix ... ", end="")
 
     # Check if the bam files are in good shape:
@@ -701,7 +702,11 @@ if __name__ == '__main__':
 
     # Perform peak transfromation to ensure integer copy numbers with median of ~2 :
     if args.norm_method=='median':
-        df = minimize_peak_to_integer(df)
+        try:
+            df = minimize_peak_to_integer(df)
+        except Exception as e:
+            print("minimize_peak_to_integer, failed:")
+            print(e)
 
     if df.shape[0]==0:
         print(f"\rRaw count matrix [ {Fore.RED}FAIL{Style.RESET_ALL} ] ")
@@ -734,7 +739,11 @@ if __name__ == '__main__':
 
         # Perform peak transform to ensure integer copy numbers with median of ~2 :
         if args.norm_method=='median':
-            corrected_cells = minimize_peak_to_integer(corrected_cells)
+            try:
+                corrected_cells = minimize_peak_to_integer(corrected_cells)
+            except Exception as e:
+                print("minimize_peak_to_integer, failed:")
+                print(e)
 
     if gcmatplot is not None:
         print("Creating heatmap ...", end="")
