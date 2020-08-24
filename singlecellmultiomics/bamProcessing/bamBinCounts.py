@@ -356,14 +356,14 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
     return counts
 
 
-def read_counts(read, min_mq, dedup=True, read1_only=False,ignore_mp=False, verbose=False):
+def read_counts(read, min_mq, dedup=True, read1_only=False,ignore_mp=False, ignore_qcfail=False, verbose=False):
 
     if read1_only and (not read.is_read1 or read is None):
         if verbose:
             print('NOT READ1')
         return False
 
-    if read.is_qcfail:
+    if read.is_qcfail and not ignore_qcfail:
         if verbose:
             print('QCFAIL')
         return False
