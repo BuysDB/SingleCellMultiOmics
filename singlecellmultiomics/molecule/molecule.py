@@ -2,10 +2,10 @@ from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
 import singlecellmultiomics.bamProcessing
 from singlecellmultiomics.fragment import Fragment
-import collections
+
 import itertools
 import numpy as np
-from singlecellmultiomics.utils import style_str, phredscores_to_base_call
+from singlecellmultiomics.utils import style_str, prob_to_phred, phredscores_to_base_call, base_probabilities_to_likelihood
 import textwrap
 import singlecellmultiomics.alleleTools
 import functools
@@ -15,6 +15,8 @@ import pysamiterators
 from singlecellmultiomics.utils import find_ranges, create_MD_tag
 import pandas as pd
 from uuid import uuid4
+from cached_property import cached_property
+from collections import Counter, defaultdict
 
 
 ###############
@@ -42,7 +44,7 @@ def detect_alleles(molecules,
         classifier (obj) : classifier used for consensus call, when no classifier is supplied a mayority vote is used
 
     """
-    observed_alleles = collections.defaultdict(set)  # cell -> { base_call , .. }
+    observed_alleles = defaultdict(set)  # cell -> { base_call , .. }
     for molecule in molecules:
         base_call = molecule.get_consensus_base(contig, position, classifier=classifier)
 
@@ -56,7 +58,7 @@ def detect_alleles(molecules,
 def get_variant_phase(molecules, contig, position, variant_base, allele_resolver,
                       phasing_ratio_threshold=None):  # (location,base) -> [( location, base, idenfifier)]
     alleles = [variant_base]
-    phases = collections.defaultdict(collections.Counter)  # Allele_id -> variant->obs
+    phases = defaultdict(Counter)  # Allele_id -> variant->obs
     for molecule in molecules:
         # allele_obs = molecule.get_allele(return_allele_informative_base_dict=True,allele_resolver=allele_resolver)
         allele = list(molecule.get_allele(allele_resolver))
@@ -105,7 +107,7 @@ def molecule_to_random_primer_dict(
         primer_length=6,
         primer_read=2,
         max_N_distance=0):
-    rp = collections.defaultdict(list)
+    rp = defaultdict(list)
 
     # First add all reactions without a N in the sequence:
     for fragment in molecule:
@@ -182,6 +184,7 @@ class Molecule():
                  mapability_reader: typing.Optional[singlecellmultiomics.bamProcessing.MapabilityReader] = None,
                  allele_resolver: typing.Optional[singlecellmultiomics.alleleTools.AlleleResolver] = None,
                  max_associated_fragments=None,
+                 allele_assingment_method=1, # 0: all variants from the same allele, 1: likelihood
                  **kwargs
 
                  ):
@@ -203,7 +206,7 @@ class Molecule():
         max_associated_fragments(int) : Maximum amount of fragments associated to molecule. If more fragments are added using add_fragment() they are not added anymore to the molecule
 
         """
-
+        self.kwargs = kwargs
         self.reference = reference
         self.fragments = []
         self.spanStart = None
@@ -218,7 +221,7 @@ class Molecule():
         # to match this hash
         self.fragment_match = None
         self.min_max_mapping_quality = min_max_mapping_quality
-        self.umi_counter = collections.Counter()  # Observations of umis
+        self.umi_counter = Counter()  # Observations of umis
         self.max_associated_fragments = max_associated_fragments
         if fragments is not None:
             if isinstance(fragments, list):
@@ -229,10 +232,44 @@ class Molecule():
 
         self.allele_resolver = allele_resolver
         self.mapability_reader = mapability_reader
-        self.allele = None
+        self.allele_assingment_method = allele_assingment_method
         self.methylation_call_dict = None
         self.finalised = False
 
+    @property
+    def can_be_split_into_allele_molecules(self):
+        l = self.allele_likelihoods
+        if l is None or len(l)<=1:
+            return False
+        return True
+
+    def split_into_allele_molecules(self):
+        """
+        Split this molecule into multiple molecules, associated to multiple alleles
+        Returns:
+            list_of_molecules: list
+        """
+        # Perform allele based clustering
+        allele_clustered_frags = {}
+        for fragment in self:
+            n = self.get_empty_clone(fragment)
+            if n.allele not in allele_clustered_frags:
+                allele_clustered_frags[n.allele] = []
+            allele_clustered_frags[n.allele].append(n)
+
+        allele_clustered = {}
+        for allele, assigned_molecules in allele_clustered_frags.items():
+            for i, m in enumerate(assigned_molecules):
+                if i == 0:
+                    allele_clustered[allele] = m
+                else:
+                    allele_clustered[allele].add_molecule(m)
+
+        if len(allele_clustered)>1:
+            for m in allele_clustered.values():
+                m.set_meta('cr', 'SplitUponAlleleClustering')
+
+        return list(allele_clustered.values())
 
     @property
     def allele(self):
@@ -257,16 +294,9 @@ class Molecule():
 
     def __finalise__(self):
         """This function is called when all associated fragments have been gathered"""
-        # Obtain allele if available
-        if self.allele_resolver is not None:
-            try:
-                hits = self.get_allele(self.allele_resolver)
-                # Only store when we have a unique single hit:
-                if len(hits) == 1:
-                    self.allele = list(hits)[0]
-            except ValueError as e:
-                # This happens when a consensus can not be obtained
-                pass
+
+        # Perfom allele assignment based on likelihood:
+        # this is now only generated upon demand, see .allele method
 
         if self.mapability_reader is not None:
             self.update_mapability()
@@ -456,12 +486,12 @@ class Molecule():
         Obtain a dictionary with tag -> value -> frequency
 
         Returns:
-            tag_obs (collections.defaultdict(collections.Counter)):
+            tag_obs (defaultdict(Counter)):
                 { tag(str) : { value(int/str): frequency:(int) }
 
 
         """
-        tags_obs = collections.defaultdict(collections.Counter)
+        tags_obs = defaultdict(Counter)
         for tag, value in itertools.chain(
                 *[r.tags for r in self.iter_reads()]):
             try:
@@ -712,18 +742,28 @@ class Molecule():
                            )).astype('B')
         return predicted_sequence, phred_scores
 
-    def deduplicate_majority(self, target_bam, read_name, max_N_span=None):
+    def get_base_confidence_dict(self):
+        """
+        Get dictionary containing base calls per position and the corresponding confidences
 
+        Returns:
+            obs (dict) :  (contig (str), position  (int) ) : base (str) : prob correct (list)
+        """
         # Convert (contig, position) -> (base_call) into:
         # (contig, position) -> (base_call, confidence)
-
-        obs = collections.defaultdict(lambda: collections.defaultdict(list))
+        obs = defaultdict(lambda: defaultdict(list))
         for read in self.iter_reads():
             for qpos, rpos in read.get_aligned_pairs(matches_only=True):
                 qbase = read.seq[qpos]
                 qqual = read.query_qualities[qpos]
                 # @ todo reads which span multiple chromosomes
                 obs[(self.chromosome, rpos)][qbase].append(1 - np.power(10, -qqual / 10))
+        return obs
+
+
+    def deduplicate_majority(self, target_bam, read_name, max_N_span=None):
+
+        obs = self.get_consensus_confidence_dict()
 
         reads = list(self.get_dedup_reads(read_name,
                                      target_bam,
@@ -1322,9 +1362,9 @@ class Molecule():
         """Obtain the frequency of bases in the molecule consensus sequence
 
         Returns:
-            base_frequencies (collections.Counter) : Counter containing base frequecies, for example: { 'A':10,'T':3, C:4 }
+            base_frequencies (Counter) : Counter containing base frequecies, for example: { 'A':10,'T':3, C:4 }
         """
-        return collections.Counter(
+        return Counter(
             self.get_consensus(
                 allow_N=allow_N).values())
 
@@ -1571,6 +1611,14 @@ class Molecule():
                 return False
         return True
 
+    def add_molecule(self, other):
+        """
+        Merge other molecule into this molecule.
+        Merges by assigning all fragments in other to this molecule.
+        """
+        for fragment in other:
+            self._add_fragment(fragment)
+
     def _add_fragment(self, fragment):
 
         # Do not process the fragment when the max_associated_fragments threshold is exceeded
@@ -1790,7 +1838,7 @@ class Molecule():
         self.methylation_call_dict = call_dict
 
         # molecule_XM dictionary containing count of contexts
-        molecule_XM = collections.Counter(
+        molecule_XM = Counter(
             list(
                 d.get(
                     'context',
