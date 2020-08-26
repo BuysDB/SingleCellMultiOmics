@@ -233,6 +233,28 @@ class Molecule():
         self.methylation_call_dict = None
         self.finalised = False
 
+
+    @property
+    def allele(self):
+        if self.allele_assingment_method == 0:
+            # Obtain allele if available
+            if self.allele_resolver is not None:
+                try:
+                    hits = self.get_allele(self.allele_resolver)
+                    # Only store when we have a unique single hit:
+                    if len(hits) == 1:
+                        self.allele = list(hits)[0]
+                except ValueError as e:
+                    # This happens when a consensus can not be obtained
+                    pass
+        elif self.allele_assingment_method == 1:
+            al = Counter(self.allele_likelihoods)
+            if al is None or len(al)<1:
+                return None
+            return al.most_common(1)[0][0]
+
+        raise NotImplementedError(f'allele_assingment_method {self.allele_assingment_method} is not defined')
+
     def __finalise__(self):
         """This function is called when all associated fragments have been gathered"""
         # Obtain allele if available
