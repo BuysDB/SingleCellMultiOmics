@@ -161,6 +161,16 @@ class Molecule():
             False when strand is FORWARD
             None when strand is not determined
     """
+    def get_empty_clone(self, fragments=None):
+        return type(self)(fragments,
+                          cache_size = self.cache_size,
+                          reference=self.reference,
+                          min_max_mapping_quality=self.min_max_mapping_quality,
+                          allele_assingment_method=self.allele_assingment_method,
+                          allele_resolver=self.allele_resolver,
+                          mapability_reader=self.mapability_reader,
+                          max_associated_fragments=self.max_associated_fragments,
+                          **self.kwargs)
 
     def __init__(self,
                  fragments: typing.Optional[typing.Iterable] = None,
