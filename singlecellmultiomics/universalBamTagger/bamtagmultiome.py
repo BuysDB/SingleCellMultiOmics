@@ -976,13 +976,14 @@ def run_multiome_tagging(args):
         'fragment_class_args': fragment_class_args,
         'yield_invalid': yield_invalid,
         'yield_overflow': yield_overflow,
-        'start':region_start,
-        'end':region_end,
+        'start': region_start,
+        'end': region_end,
         'contig': contig,
         'every_fragment_as_molecule': every_fragment_as_molecule,
         'skip_contigs':skip_contig,
         'progress_callback_function':progress_callback_function,
-        'pooling_method' : pooling_method
+        'pooling_method' : pooling_method,
+        'perform_allele_clustering': molecule_class_args.get('allele_resolver', None) is not None
     }
 
 
