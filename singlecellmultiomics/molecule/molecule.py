@@ -1970,6 +1970,103 @@ class Molecule():
                 "There are no observations if the supplied base/location combination")
         return np.mean(qualities)
 
+    @property
+    def allele_likelihoods(self):
+        """
+        Per allele likelihood
+
+        Returns:
+            likelihoods (dict) : {allele_name : likelihood}
+
+        """
+        return self.get_allele_likelihoods(scale_to_prob=False)
+
+    @property
+    def allele_probabilities(self):
+        """
+        Per allele probability
+
+        Returns:
+            likelihoods (dict) : {allele_name : prob}
+
+        """
+        return self.get_allele_likelihoods(scale_to_prob=True)
+
+
+    @property
+    def allele_confidence(self) -> int:
+        """
+        Returns
+            confidence(int) : a phred scalled confidence value for the allele
+            assignment, returns zero when no allele is associated to the molecule
+        """
+        l = self.allele_probabilities
+        if l is None or len(l) == 0 :
+            return 0
+        return int(prob_to_phred( Counter(l).most_common(1)[0][1] ))
+
+
+    def get_allele_likelihoods(self, allele_resolver=None,
+            return_allele_informative_base_dict=False, scale_to_prob=False):
+        """Obtain the allele(s) this molecule maps to
+
+        Args:
+            allele_resolver(singlecellmultiomics.alleleTools.AlleleResolver)  : resolver used
+            return_allele_informative_base_dict(bool) : return dictionary containing the bases used for allele determination
+            defaultdict(list,
+            {'allele1': [
+              ('chr18', 410937, 'T'),
+              ('chr18', 410943, 'G'),
+              ('chr18', 410996, 'G'),
+              ('chr18', 411068, 'A')]})
+
+        Returns:
+            { 'allele_a': likelihood, 'allele_b':likelihood }
+        """
+
+        if return_allele_informative_base_dict:
+            aibd = defaultdict(list)
+
+        if allele_resolver is None:
+            if self.allele_resolver is not None:
+                allele_resolver = self.allele_resolver
+            else:
+                raise ValueError(
+                    "Supply allele resolver or set it to molecule.allele_resolver")
+
+        base_confidences = self.get_base_confidence_dict()
+        allele_likelihoods = Counter()  # Allele -> [prob, prob, prob]
+
+        for (chrom, pos), base_probs in base_confidences.items():
+
+            likelihoods = base_probabilities_to_likelihood(base_probs)
+            total_likelihood = sum(likelihoods.values())
+            base_probs = {base: p / total_likelihood for base, p in likelihoods.items()}
+
+            for base, p in base_probs.items():
+                if base == 'N':
+                    continue
+
+                assoc_alleles = allele_resolver.getAllelesAt(chrom, pos, base)
+                if assoc_alleles is not None and len(assoc_alleles) == 1:
+                    allele = list(assoc_alleles)[0]
+                    allele_likelihoods[allele] += p
+
+                    if return_allele_informative_base_dict:
+                        aibd[allele].append((chrom, pos, base, p))
+        if scale_to_prob:
+            total_likelihood = sum(allele_likelihoods.values())
+            likelihood_per_allele = {allele: value / total_likelihood
+            for allele, value in allele_likelihoods.items()}
+        else:
+            likelihood_per_allele = allele_likelihoods
+
+        if return_allele_informative_base_dict:
+            return likelihood_per_allele, aibd
+        else:
+            return likelihood_per_allele
+
+
     def get_allele(
             self,
             allele_resolver=None,
@@ -1998,7 +2095,7 @@ class Molecule():
 
         alleles = set()
         if return_allele_informative_base_dict:
-            aibd = collections.defaultdict(list)
+            aibd = defaultdict(list)
         try:
             for (chrom, pos), base in self.get_consensus(
                     base_obs=self.get_base_observation_dict_NOREF()).items():
@@ -2030,25 +2127,50 @@ class Molecule():
         if reads is None:
             reads = self.iter_reads()
 
-        haplotype = self.get_allele(
-            return_allele_informative_base_dict=True,
-            allele_resolver=allele_resolver)
+        use_likelihood = (self.allele_assingment_method==1)
 
-        phased_locations = [
-            (allele, chromosome, position, base)
-            for allele, bps in haplotype.items()
-            for chromosome, position, base in bps]
+        if not use_likelihood:
+            haplotype = self.get_allele(
+                return_allele_informative_base_dict=True,
+                allele_resolver=allele_resolver)
 
-        phase_str = '|'.join(
-            [
-                f'{chromosome},{position},{base},{allele}' for allele,
-                                                               chromosome,
-                                                               position,
-                                                               base in phased_locations])
+            phased_locations = [
+                (allele, chromosome, position, base)
+                for allele, bps in haplotype.items()
+                for chromosome, position, base in bps]
+
+            phase_str = '|'.join(
+                [
+                    f'{chromosome},{position},{base},{allele}' for allele,
+                                                                   chromosome,
+                                                                   position,
+                                                                   base in phased_locations])
+        else:
+
+            allele_likelihoods, aibd = self.get_allele_likelihoods(
+                                                        allele_resolver=allele_resolver,
+                                                        return_allele_informative_base_dict=True, scale_to_prob=True)
+
+            phased_locations = [
+                (allele, chromosome, position, base, confidence)
+                for allele, bps in aibd.items()
+                for chromosome, position, base, confidence in bps]
+
+            phase_str = '|'.join(
+                [
+                    f'{chromosome},{position},{base},{allele},{ prob_to_phred(confidence) }' for allele,
+                                                                   chromosome,
+                                                                   position,
+                                                                   base,
+                                                                   confidence in phased_locations])
+
+
 
         if len(phase_str) > 0:
             for read in reads:
                 read.set_tag(tag, phase_str)
+                if use_likelihood:
+                    read.set_tag('al', self.allele_confidence)
 
     def get_base_observation_dict_NOREF(self, allow_N=False):
         '''
@@ -2064,7 +2186,7 @@ class Molecule():
             { genome_location (tuple) : base (string) if return_refbases is True }
         '''
 
-        base_obs = collections.defaultdict(collections.Counter)
+        base_obs = defaultdict(Counter)
 
         used = 0  # some alignments yielded valid calls
         ignored = 0
@@ -2112,7 +2234,7 @@ class Molecule():
                 if self.saved_base_obs[1] is not None:
                     return self.saved_base_obs
 
-        base_obs = collections.defaultdict(collections.Counter)
+        base_obs = defaultdict(Counter)
 
         ref_bases = {}
         used = 0  # some alignments yielded valid calls
@@ -2208,7 +2330,7 @@ class Molecule():
         By default mayority voting is used to determine the consensus base. If a classifier is supplied the classifier is used to determine the consensus base.
 
         Args:
-            base_obs (collections.defaultdict(collections.Counter)) :
+            base_obs (defaultdict(Counter)) :
                 { genome_location (tuple) : base (string) : obs (int) }
 
             classifier : fitted classifier to use for consensus calling. When no classifier is provided the consensus is determined by majority voting
@@ -2300,7 +2422,7 @@ class Molecule():
             variants (pysam.VariantFile) : Variant file handle to extract variants from
 
         Returns:
-            dict (collections.defaultdict( collections.Counter )) : { (chrom,pos) : ( call (str) ): observations  (int) }
+            dict (defaultdict( Counter )) : { (chrom,pos) : ( call (str) ): observations  (int) }
         """
         variant_dict = {}
         for variant in variants.fetch(
@@ -2310,7 +2432,7 @@ class Molecule():
             variant_dict[(variant.chrom, variant.pos - 1)
             ] = (variant.ref, variant.alts)
 
-        variant_calls = collections.defaultdict(collections.Counter)
+        variant_calls = defaultdict(Counter)
         for fragment in self:
 
             _, start, end = fragment.span
@@ -2379,10 +2501,10 @@ class Molecule():
             context (int) : 3 or 4 base context
 
         Returns:
-            r (collections.Counter) : sum of methylated bases in contexts
+            r (Counter) : sum of methylated bases in contexts
         """
 
-        r = collections.Counter()
+        r = Counter()
 
     def get_html(
             self,
@@ -2466,7 +2588,7 @@ class Molecule():
         """Obtain methylation dictionary
 
         Returns:
-            methylated_positions (collections.Counter):
+            methylated_positions (Counter):
                 (read.reference_name, rpos) : times seen methylated
 
             methylated_state (dict):
@@ -2476,7 +2598,7 @@ class Molecule():
                 -1 for unknown
 
         """
-        methylated_positions = collections.Counter()  # chrom-pos->count
+        methylated_positions = Counter()  # chrom-pos->count
         methylated_state = dict()  # chrom-pos->1, 0, -1
         for fragment in self:
             for read in fragment:
