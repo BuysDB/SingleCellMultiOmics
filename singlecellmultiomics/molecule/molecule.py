@@ -273,6 +273,8 @@ class Molecule():
 
     @property
     def allele(self):
+        if self.allele_resolver is None:
+            return None
         if self.allele_assingment_method == 0:
             # Obtain allele if available
             if self.allele_resolver is not None:
