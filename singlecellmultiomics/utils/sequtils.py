@@ -207,6 +207,12 @@ def base_probabilities_to_likelihood(probs: dict):
     probs['N'] = [1-p  for base, ps in probs.items() for p in ps ]
     return {base:np.product(v)/np.power(0.25, len(v)-1) for base,v in probs.items() }
 
+def likelihood_to_prob(likelihoods):
+    total_likelihood = sum(likelihoods.values())
+    return {key: value / total_likelihood
+    for key, value in likelihoods.items()}
+
+
 
 def phredscores_to_base_call(probs: dict):
     """
