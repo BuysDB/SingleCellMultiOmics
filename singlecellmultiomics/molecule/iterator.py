@@ -264,8 +264,11 @@ class MoleculeIterator():
     def yield_func(self, molecule_to_be_emitted):
         if self.perform_allele_clustering:
             if molecule_to_be_emitted.can_be_split_into_allele_molecules:
-                for molecule in molecule_to_be_emitted.split_into_allele_molecules():
-                    yield molecule
+                new_molecules = molecule_to_be_emitted.split_into_allele_molecules()
+                if len(new_molecules)>1:
+                    yield from new_molecules    
+                else:
+                    yield molecule_to_be_emitted
             else:
                 yield molecule_to_be_emitted
         else:
