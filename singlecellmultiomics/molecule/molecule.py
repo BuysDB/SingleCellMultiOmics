@@ -235,6 +235,7 @@ class Molecule():
         self.allele_assingment_method = allele_assingment_method
         self.methylation_call_dict = None
         self.finalised = False
+        self.obtained_allele_likelihoods = None
 
     @cached_property
     def can_be_split_into_allele_molecules(self):
@@ -324,6 +325,8 @@ class Molecule():
         try:
             mapable = self.mapability_reader.site_is_mapable(
                 *self.get_cut_site())
+        except TypeError:
+            pass
         except Exception as e:
             raise
 
@@ -2051,7 +2054,7 @@ class Molecule():
             likelihoods (dict) : {allele_name : likelihood}
 
         """
-        return self.get_allele_likelihoods()
+        return self.get_allele_likelihoods()[0]
 
     @cached_property
     def allele_probabilities(self):
@@ -2062,7 +2065,7 @@ class Molecule():
             likelihoods (dict) : {allele_name : prob}
 
         """
-        return likelihood_to_prob( self.get_allele_likelihoods() )
+        return likelihood_to_prob( self.get_allele_likelihoods()[0] )
 
 
     @cached_property
@@ -2081,8 +2084,63 @@ class Molecule():
     def base_confidences(self):
         return self.get_base_confidence_dict()
 
-    def get_allele_likelihoods(self, allele_resolver=None,
-            return_allele_informative_base_dict=False):
+    @cached_property
+    def base_likelihoods(self):
+        return {(chrom, pos):base_probabilities_to_likelihood(probs) for (chrom, pos),probs in self.base_confidences.items()}
+
+    @cached_property
+    def base_probabilities(self):
+        # Optimization which is equal to {location:likelihood_to_prob(liks) for location,liks in self.base_likelihoods.items()}
+        obs = {}
+        for read in self.iter_reads():
+            for qpos, rpos in read.get_aligned_pairs(matches_only=True):
+                qbase = read.seq[qpos]
+                qqual = read.query_qualities[qpos]
+                if qbase=='N':
+                    continue
+                # @ todo reads which span multiple chromosomes
+                k = (self.chromosome, rpos)
+                p = 1 - np.power(10, -qqual / 10)
+
+                if not k in obs:
+                    obs[k] = {}
+                if not qbase in obs[k]:
+                    obs[k][qbase] = [p,1] # likelihood, n
+                    obs[k]['N'] = [1-p,1] # likelihood, n
+                else:
+                    obs[k][qbase][0] *= p
+                    obs[k][qbase][1] += 1
+
+                    obs[k]['N'][0] *= 1-p # likelihood, n
+                    obs[k]['N'][1] += 1 # likelihood, n
+        # Perform likelihood conversion and convert to probs
+        return { location: likelihood_to_prob({
+            base:likelihood/np.power(0.25,n-1)
+                    for base,(likelihood,n) in base_likelihoods.items() })
+                    for location,base_likelihoods in obs.items()}
+
+
+
+    def calculate_allele_likelihoods(self):
+        self.aibd = defaultdict(list)
+        self.obtained_allele_likelihoods = Counter()  # Allele -> [prob, prob, prob]
+
+        for (chrom, pos), base_probs in self.base_probabilities.items():
+
+            for base, p in base_probs.items():
+                if base == 'N':
+                    continue
+
+                assoc_alleles = self.allele_resolver.getAllelesAt(chrom, pos, base)
+                if assoc_alleles is not None and len(assoc_alleles) == 1:
+                    allele = list(assoc_alleles)[0]
+                    self.obtained_allele_likelihoods[allele] += p
+
+                    self.aibd[allele].append((chrom, pos, base, p))
+
+
+
+    def get_allele_likelihoods(self,):
         """Obtain the allele(s) this molecule maps to
 
         Args:
@@ -2098,42 +2156,11 @@ class Molecule():
         Returns:
             { 'allele_a': likelihood, 'allele_b':likelihood }
         """
+        if self.obtained_allele_likelihoods is None:
+            self.calculate_allele_likelihoods()
 
-        if return_allele_informative_base_dict:
-            aibd = defaultdict(list)
+        return self.obtained_allele_likelihoods, self.aibd
 
-        if allele_resolver is None:
-            if self.allele_resolver is not None:
-                allele_resolver = self.allele_resolver
-            else:
-                raise ValueError(
-                    "Supply allele resolver or set it to molecule.allele_resolver")
-
-        base_confidences = self.base_confidences
-        allele_likelihoods = Counter()  # Allele -> [prob, prob, prob]
-
-        for (chrom, pos), base_probs in base_confidences.items():
-
-            likelihoods = base_probabilities_to_likelihood(base_probs)
-            total_likelihood = sum(likelihoods.values())
-            base_probs = {base: p / total_likelihood for base, p in likelihoods.items()}
-
-            for base, p in base_probs.items():
-                if base == 'N':
-                    continue
-
-                assoc_alleles = allele_resolver.getAllelesAt(chrom, pos, base)
-                if assoc_alleles is not None and len(assoc_alleles) == 1:
-                    allele = list(assoc_alleles)[0]
-                    allele_likelihoods[allele] += p
-
-                    if return_allele_informative_base_dict:
-                        aibd[allele].append((chrom, pos, base, p))
-
-        if return_allele_informative_base_dict:
-            return allele_likelihoods, aibd
-        else:
-            return allele_likelihoods
 
 
     def get_allele(
@@ -2216,9 +2243,7 @@ class Molecule():
                                                                    base in phased_locations])
         else:
 
-            allele_likelihoods, aibd = self.get_allele_likelihoods(
-                                                        allele_resolver=allele_resolver,
-                                                        return_allele_informative_base_dict=True)
+            allele_likelihoods, aibd = self.get_allele_likelihoods()
             allele_likelihoods = likelihood_to_prob(allele_likelihoods)
 
             phased_locations = [
