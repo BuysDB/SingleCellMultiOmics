@@ -42,7 +42,8 @@ def get_methylation_count_matrix(bam_path,
                                  maxtime: int = None,
                                  head: int=None,
                                  threads: int = None,
-                                **kwargs
+                                 count_reads: bool = True,
+                                 **kwargs
                                  ):
 
 
@@ -51,7 +52,8 @@ def get_methylation_count_matrix(bam_path,
             'single_location':bin_size==1,
             'min_samples':min_samples,
             'min_variance':min_variance,
-            'threads':threads
+            'threads':threads,
+            'count_reads':count_reads
             }
 
     all_kwargs.update(kwargs)
@@ -69,19 +71,26 @@ def get_methylation_count_matrix(bam_path,
 
 
     count_mat = MethylationCountMatrix()
+    read_count_mat = dict()
+
     if threads==1:
         for command in commands:
-            result = count_methylation_binned(command)
+            result, result_read_counts = count_methylation_binned(command)
             #result.prune(min_samples=min_samples, min_variance=min_variance)
             count_mat.update( result )
+            if count_reads:
+                read_count_mat.update(result_read_counts)
+
     else:
         with multiprocessing.Pool(threads) as workers:
 
-            for result in workers.imap_unordered(count_methylation_binned, commands):
+            for result,result_read_counts in workers.imap_unordered(count_methylation_binned, commands):
                 #result.prune(min_samples=min_samples, min_variance=min_variance)
                 count_mat.update(result)
+                if count_reads:
+                    read_count_mat.update(result_read_counts)
 
-    return count_mat
+    return count_mat, read_count_mat
 
 
 
@@ -111,14 +120,14 @@ if __name__ == '__main__':
                            help='VCF file with known variants, will be not taken into account as methylated/unmethylated',
                            type=str)
 
-    fi.add_argument('-contexts_to_capture', default=None, type=str, help='Contexts to capture, comma separated')
-
+    fi.add_argument('-contexts_to_capture', default=None, type=str, help='Contexts to capture, comma separated')\
 
     og = argparser.add_argument_group("Output")
     #og.add_argument('-bed', type=str, help='Bed file to write methylation calls to')
     og.add_argument('-default_sample_name', type=str, help='Default sample name to use when SM tag is not available in the read')
     og.add_argument('-wig_beta', type=str, help='WIG file to write mean methylation per bin to')
     og.add_argument('-wig_n_samples', type=str, help='WIG file to write amount of samples covering to')
+    og.add_argument('-capture_read_depth', default=None, type=str, help='Capture read depth into this csv file')
 
     og.add_argument('-betas', type=str, help='CSV or pickle file to write single cell methylation betas to')
     #og.add_argument('-mets', type=str, help='CSV or pickle file to write single cell methylation unmethylated frame to')
@@ -156,7 +165,7 @@ if __name__ == '__main__':
         args.distmat_plot += '.png'
 
     print('Obtaining counts ', end="")
-    counts = get_methylation_count_matrix(bam_path=args.bamfile,
+    counts, read_dictionary = get_methylation_count_matrix(bam_path=args.bamfile,
                                           bin_size=args.bin_size,
                                           bp_per_job=args.bp_per_job,
                                           min_samples=args.min_samples,
@@ -171,13 +180,19 @@ if __name__ == '__main__':
                                           context_radius=context_radius,
                                           reference_path=args.reference,
                                           dyad_mode=args.mirror_cpg_dyad,
-                                          stranded=args.stranded
+                                          stranded=args.stranded,
+                                          count_reads=args.capture_read_depth is not None
 
     )
     print(f" [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
-    print(counts)
+    if args.capture_read_depth:
+        print('Writing read depth file ', end="")
+        pd.DataFrame(read_dictionary).sort_index().sort_index(1).to_csv(args.capture_read_depth)
+        print(f" [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
+
+    print(counts)
 
     if args.betas is not None:
         print('Writing counts ', end="")
