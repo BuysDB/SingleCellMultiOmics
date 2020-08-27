@@ -202,16 +202,14 @@ def get_context(contig: str, position: int, reference: FastaFile, ibase: str = N
     else:
         return reference.fetch(contig, position-k_rad, position+k_rad+1).upper()
 
-
 def base_probabilities_to_likelihood(probs: dict):
-    probs['N'] = [1-p  for base, ps in probs.items() for p in ps ]
+    probs['N'] = [1-p  for base, ps in probs.items() for p in ps if base != 'N' ]
     return {base:np.product(v)/np.power(0.25, len(v)-1) for base,v in probs.items() }
 
 def likelihood_to_prob(likelihoods):
     total_likelihood = sum(likelihoods.values())
     return {key: value / total_likelihood
     for key, value in likelihoods.items()}
-
 
 
 def phredscores_to_base_call(probs: dict):
