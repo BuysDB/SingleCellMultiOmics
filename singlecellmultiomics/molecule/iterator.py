@@ -266,7 +266,8 @@ class MoleculeIterator():
             if molecule_to_be_emitted.can_be_split_into_allele_molecules:
                 for molecule in molecule_to_be_emitted.split_into_allele_molecules():
                     yield molecule
-
+            else:
+                yield molecule_to_be_emitted
         else:
             yield molecule_to_be_emitted
 
