@@ -5,7 +5,7 @@ from singlecellmultiomics.fragment import Fragment
 
 import itertools
 import numpy as np
-from singlecellmultiomics.utils import style_str, prob_to_phred, phredscores_to_base_call, base_probabilities_to_likelihood
+from singlecellmultiomics.utils import style_str, prob_to_phred, phredscores_to_base_call, base_probabilities_to_likelihood, likelihood_to_prob
 import textwrap
 import singlecellmultiomics.alleleTools
 import functools
@@ -236,7 +236,7 @@ class Molecule():
         self.methylation_call_dict = None
         self.finalised = False
 
-    @property
+    @cached_property
     def can_be_split_into_allele_molecules(self):
         l = self.allele_likelihoods
         if l is None or len(l)<=1:
@@ -271,7 +271,7 @@ class Molecule():
 
         return list(allele_clustered.values())
 
-    @property
+    @cached_property
     def allele(self):
         if self.allele_resolver is None:
             return None
@@ -325,7 +325,7 @@ class Molecule():
             mapable = self.mapability_reader.site_is_mapable(
                 *self.get_cut_site())
         except Exception as e:
-            pass
+            raise
 
         if mapable is False:
             self.set_meta('mp', 'bad')
@@ -2042,7 +2042,7 @@ class Molecule():
                 "There are no observations if the supplied base/location combination")
         return np.mean(qualities)
 
-    @property
+    @cached_property
     def allele_likelihoods(self):
         """
         Per allele likelihood
@@ -2051,9 +2051,9 @@ class Molecule():
             likelihoods (dict) : {allele_name : likelihood}
 
         """
-        return self.get_allele_likelihoods(scale_to_prob=False)
+        return self.get_allele_likelihoods()
 
-    @property
+    @cached_property
     def allele_probabilities(self):
         """
         Per allele probability
@@ -2062,10 +2062,10 @@ class Molecule():
             likelihoods (dict) : {allele_name : prob}
 
         """
-        return self.get_allele_likelihoods(scale_to_prob=True)
+        return likelihood_to_prob( self.get_allele_likelihoods() )
 
 
-    @property
+    @cached_property
     def allele_confidence(self) -> int:
         """
         Returns
@@ -2077,9 +2077,12 @@ class Molecule():
             return 0
         return int(prob_to_phred( Counter(l).most_common(1)[0][1] ))
 
+    @cached_property
+    def base_confidences(self):
+        return self.get_base_confidence_dict()
 
     def get_allele_likelihoods(self, allele_resolver=None,
-            return_allele_informative_base_dict=False, scale_to_prob=False):
+            return_allele_informative_base_dict=False):
         """Obtain the allele(s) this molecule maps to
 
         Args:
@@ -2106,7 +2109,7 @@ class Molecule():
                 raise ValueError(
                     "Supply allele resolver or set it to molecule.allele_resolver")
 
-        base_confidences = self.get_base_confidence_dict()
+        base_confidences = self.base_confidences
         allele_likelihoods = Counter()  # Allele -> [prob, prob, prob]
 
         for (chrom, pos), base_probs in base_confidences.items():
@@ -2126,17 +2129,11 @@ class Molecule():
 
                     if return_allele_informative_base_dict:
                         aibd[allele].append((chrom, pos, base, p))
-        if scale_to_prob:
-            total_likelihood = sum(allele_likelihoods.values())
-            likelihood_per_allele = {allele: value / total_likelihood
-            for allele, value in allele_likelihoods.items()}
-        else:
-            likelihood_per_allele = allele_likelihoods
 
         if return_allele_informative_base_dict:
-            return likelihood_per_allele, aibd
+            return allele_likelihoods, aibd
         else:
-            return likelihood_per_allele
+            return allele_likelihoods
 
 
     def get_allele(
@@ -2221,7 +2218,8 @@ class Molecule():
 
             allele_likelihoods, aibd = self.get_allele_likelihoods(
                                                         allele_resolver=allele_resolver,
-                                                        return_allele_informative_base_dict=True, scale_to_prob=True)
+                                                        return_allele_informative_base_dict=True)
+            allele_likelihoods = likelihood_to_prob(allele_likelihoods)
 
             phased_locations = [
                 (allele, chromosome, position, base, confidence)
