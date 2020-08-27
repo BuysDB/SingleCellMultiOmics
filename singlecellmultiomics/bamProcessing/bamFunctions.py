@@ -663,15 +663,21 @@ class MapabilityReader(Prefetcher):
 
     def __init__(self, mapability_safe_file_path, read_all=False, dont_open=True):
         self.args = locals().copy()
+        self.handle = None
         del self.args['self']
         self.mapability_safe_file_path = mapability_safe_file_path
         if not dont_open:
             self.handle = BlockZip(mapability_safe_file_path, 'r')
 
 
-    def instance(self, arg_update):
+    def instance(self, arg_update=None):
+
         if 'self' in self.args:
             del self.args['self']
+
+        if arg_update is not None:
+            self.args.update(arg_update)
+
         clone = MapabilityReader(**self.args, dont_open=False)
         return clone
 
