@@ -2119,13 +2119,47 @@ class Molecule():
                     for base,(likelihood,n) in base_likelihoods.items() })
                     for location,base_likelihoods in obs.items()}
 
+    ## This is a duplicat of the above but only calculates for allele informative positions
+    @cached_property
+    def allele_informative_base_probabilities(self):
+        # Optimization which is equal to {location:likelihood_to_prob(liks) for location,liks in self.base_likelihoods.items()}
+        obs = {}
+        for read in self.iter_reads():
+            for qpos, rpos in read.get_aligned_pairs(matches_only=True):
+                if not self.allele_resolver.has_location( read.reference_name, rpos ):
+                    continue
+                qbase = read.seq[qpos]
+                qqual = read.query_qualities[qpos]
+                if qbase=='N':
+                    continue
+                # @ todo reads which span multiple chromosomes
+                k = (self.chromosome, rpos)
+                p = 1 - np.power(10, -qqual / 10)
+
+                if not k in obs:
+                    obs[k] = {}
+                if not qbase in obs[k]:
+                    obs[k][qbase] = [p,1] # likelihood, n
+                    obs[k]['N'] = [1-p,1] # likelihood, n
+                else:
+                    obs[k][qbase][0] *= p
+                    obs[k][qbase][1] += 1
+
+                    obs[k]['N'][0] *= 1-p # likelihood, n
+                    obs[k]['N'][1] += 1 # likelihood, n
+        # Perform likelihood conversion and convert to probs
+        return { location: likelihood_to_prob({
+            base:likelihood/np.power(0.25,n-1)
+                    for base,(likelihood,n) in base_likelihoods.items() })
+                    for location,base_likelihoods in obs.items()}
+
 
 
     def calculate_allele_likelihoods(self):
         self.aibd = defaultdict(list)
         self.obtained_allele_likelihoods = Counter()  # Allele -> [prob, prob, prob]
 
-        for (chrom, pos), base_probs in self.base_probabilities.items():
+        for (chrom, pos), base_probs in self.allele_informative_base_probabilities.items():
 
             for base, p in base_probs.items():
                 if base == 'N':
