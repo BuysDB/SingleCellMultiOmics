@@ -18,6 +18,7 @@ from singlecellmultiomics.methylation import MethylationCountMatrix
 from pysamiterators import CachedFasta
 from pysam import FastaFile
 from singlecellmultiomics.utils import reverse_complement
+from collections import defaultdict, Counter
 
 def fill_range(start, end, step):
     """
@@ -356,14 +357,14 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
     return counts
 
 
-def read_counts(read, min_mq, dedup=True, read1_only=False,ignore_mp=False, verbose=False):
+def read_counts(read, min_mq, dedup=True, read1_only=False,ignore_mp=False, ignore_qcfail=False, verbose=False):
 
     if read1_only and (not read.is_read1 or read is None):
         if verbose:
             print('NOT READ1')
         return False
 
-    if read.is_qcfail:
+    if read.is_qcfail and not ignore_qcfail:
         if verbose:
             print('QCFAIL')
         return False
@@ -492,9 +493,11 @@ def count_methylation_binned(args):
     dyad_mode =  kwargs.get('dyad_mode', False)
 
     # Stranded mode:
-    stranded =  kwargs.get('stranded', False)
+    stranded = kwargs.get('stranded', False)
 
     contexts_to_capture = kwargs.get('contexts_to_capture', None) # List
+
+    count_reads = kwargs.get('count_reads', False)
 
     reference = None
 
@@ -512,6 +515,9 @@ def count_methylation_binned(args):
     # Cant use defaultdict because of pickles :\
     met_counts = MethylationCountMatrix(threads=kwargs.get('threads', None))  # Sample->(contig,bin_start,bin_end)-> [methylated_counts, unmethylated]
 
+    if count_reads:
+        read_count_dict = defaultdict(Counter)  # location > sample > read_obs
+
     # Define which reads we want to count:
     known =  set()
     if 'known' in kwargs and kwargs['known'] is not None:
@@ -528,7 +534,6 @@ def count_methylation_binned(args):
             pass
 
     p = 0
-
     start_time = datetime.now()
     with pysam.AlignmentFile(alignments_path, threads=4) as alignments:
         # Obtain size of selected contig:
@@ -546,14 +551,28 @@ def count_methylation_binned(args):
             if p%50==0 and 'maxtime' in kwargs and kwargs['maxtime'] is not None:
                 if (datetime.now() - start_time).total_seconds() > kwargs['maxtime']:
                     print(f'Gave up on {contig}:{start}-{end}')
-
                     break
 
             if not read_counts(read, min_mq=min_mq, dedup=dedup, verbose=False):
                 continue
 
-
             tags = dict(read.tags)
+            sample = tags.get('SM', default_sample_name)
+
+            if count_reads and (read.is_read1 or not read.is_paired):
+
+                site = tags.get('DS', (read.reference_end if read.is_reverse else read.reference_start))
+                # Obtain the bin index
+                if single_location:
+                    bin_start = site
+                    bin_end = site + 1
+                else:
+                    bin_i = int(site / bin_size)
+                    bin_start = bin_size * bin_i
+                    bin_end = min(bin_size * (bin_i + 1), contig_size)
+
+                read_count_dict[(read.reference_name,bin_start, bin_end)][sample] += 1
+
             for i, (qpos, site) in enumerate(read.get_aligned_pairs(matches_only=True)):
 
                 # Don't count sites outside the selected bounds
@@ -601,8 +620,6 @@ def count_methylation_binned(args):
                         continue
 
 
-
-
                 elif call in 'Zz':
 
                     final_call = call=='Z'
@@ -616,10 +633,6 @@ def count_methylation_binned(args):
                 else:
                     continue
 
-                if read.has_tag('SM'):
-                    sample = read.get_tag('SM')
-                else:
-                    sample = default_sample_name
 
                 # Process alternative contig counts:
                 if alt_spans is not None and contig in alt_spans:
@@ -659,7 +672,8 @@ def count_methylation_binned(args):
     if reference is not None:
         reference.handle.close()
 
-    return met_counts
+    return met_counts, (read_count_dict if count_reads else None)
+
 
 
 def count_fragments_binned(args):

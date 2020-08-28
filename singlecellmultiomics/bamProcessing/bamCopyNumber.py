@@ -33,6 +33,36 @@ from singlecellmultiomics.utils.pandas import  createRowColorDataFrame
 from matplotlib.ticker import MaxNLocator
 from matplotlib.backends.backend_pdf import PdfPages
 
+from multiprocessing import Pool
+from scipy.optimize import minimize
+
+def square_integer_dist( args,v):
+    (amp,offset) = args
+
+    int_distance = np.sum( np.power( (v*amp + offset) - (v*amp + offset).round(),2) )
+    distance_from_median =  np.power(np.median((v*amp + offset))-2,2)*30
+    return distance_from_median+int_distance
+
+def minimize_square_int_dist(v):
+    return minimize(square_integer_dist,
+                    x0=[1,0],
+                    args=(v, ),
+                    bounds=[
+                        (0.7,1.3),
+                        (-0.01,0.01)]
+                   ).x
+
+def minimize_peak_to_integer(df):
+    #Calculate amplification factor such that the distance to integers is smallest
+    with Pool() as workers:
+        minimized = list(workers.imap(minimize_square_int_dist, (row for _,row in df.iterrows() )))
+
+    amps = np.array(minimized)[:,0]
+    offsets = np.array(minimized)[:,1]
+
+    return (df.T*amps + offsets).T
+
+
 def variance_filter(copy_mat, final_segments, segmented_matrix, plot_path=None, vlim=0.025, min_cells_per_seg_call = 5):
 
     d = copy_mat
@@ -537,6 +567,7 @@ if __name__ == '__main__':
     argparser.add_argument('-min_mapping_qual', default=40, type=int)
     argparser.add_argument('-molecule_threshold', default=5_000, type=int)
     argparser.add_argument('--ignore_mp',action='store_true',help='Ignore mp tag value')
+    argparser.add_argument('--ignore_qcfail',action='store_true',help='Ignore qcfail tag value')
     argparser.add_argument('--allelic',action='store_true',help='Perform allele specific analysis (requires DA tag)')
     argparser.add_argument('-rawmatplot', type=str, help='Path to raw matrix, plot is not made when this path is not supplied ')
     argparser.add_argument('-gcmatplot', type=str, help='Path to gc corrected matrix, plot is not made when this path is not supplied ')
@@ -577,7 +608,7 @@ if __name__ == '__main__':
     h=GenomicPlot(reference)
     contigs = GenomicPlot(reference).contigs
 
-    kwargs = {'ignore_mp':args.ignore_mp}
+    kwargs = {'ignore_mp':args.ignore_mp,'ignore_qcfail':args.ignore_qcfail}
     print("Creating count matrix ... ", end="")
 
     # Check if the bam files are in good shape:
@@ -669,7 +700,13 @@ if __name__ == '__main__':
         df = np.clip(0,MAXCP,(df / df.mean())* (2 if not args.allelic else 1))
         df = df.T
 
-
+    # Perform peak transfromation to ensure integer copy numbers with median of ~2 :
+    if args.norm_method=='median':
+        try:
+            df = minimize_peak_to_integer(df)
+        except Exception as e:
+            print("minimize_peak_to_integer, failed:")
+            print(e)
 
     if df.shape[0]==0:
         print(f"\rRaw count matrix [ {Fore.RED}FAIL{Style.RESET_ALL} ] ")
@@ -699,6 +736,14 @@ if __name__ == '__main__':
         print("Performing GC correction ...", end="")
         corrected_cells = gc_correct_cn_frame(df, reference, MAXCP, threads, norm_method=args.norm_method)
         print(f"\rPerforming GC correction [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
+
+        # Perform peak transform to ensure integer copy numbers with median of ~2 :
+        if args.norm_method=='median':
+            try:
+                corrected_cells = minimize_peak_to_integer(corrected_cells)
+            except Exception as e:
+                print("minimize_peak_to_integer, failed:")
+                print(e)
 
     if gcmatplot is not None:
         print("Creating heatmap ...", end="")
@@ -770,7 +815,7 @@ if __name__ == '__main__':
         cell_annot_df = pd.DataFrame([cell_cluster_names, [cell.split('_')[0] for cell in cell_order]],
                                      columns=cell_order)
         cell_annot_df.to_csv(f'{args.clustering_output_folder}/cell_clusters.csv')
-        cell_annot_df.to_csv(f'{args.clustering_output_folder}/cell_clusters.pickle.gz')
+        cell_annot_df.to_pickle(f'{args.clustering_output_folder}/cell_clusters.pickle.gz')
         cell_annot_df, lut = createRowColorDataFrame(cell_annot_df.T)
         cell_annot_df.columns=['cluster','library']
 

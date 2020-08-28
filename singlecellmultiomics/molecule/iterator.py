@@ -161,6 +161,7 @@ class MoleculeIterator():
                  skip_contigs=None,
                  progress_callback_function=None,
                  min_mapping_qual = None,
+                 perform_allele_clustering = False,
 
                  **pysamArgs):
         """Iterate over molecules in pysam.AlignmentFile
@@ -225,6 +226,7 @@ class MoleculeIterator():
         self.iterator_class = iterator_class
         self.max_buffer_size=max_buffer_size
         self.min_mapping_qual = min_mapping_qual
+        self.perform_allele_clustering = perform_allele_clustering
 
         self._clear_cache()
 
@@ -257,6 +259,21 @@ class MoleculeIterator():
 
         else:
             raise NotImplementedError()
+
+
+    def yield_func(self, molecule_to_be_emitted):
+        if self.perform_allele_clustering:
+            if molecule_to_be_emitted.can_be_split_into_allele_molecules:
+                new_molecules = molecule_to_be_emitted.split_into_allele_molecules()
+                if len(new_molecules)>1:
+                    yield from new_molecules    
+                else:
+                    yield molecule_to_be_emitted
+            else:
+                yield molecule_to_be_emitted
+        else:
+            yield molecule_to_be_emitted
+
 
     def __iter__(self):
         if self.perform_qflag:
@@ -349,7 +366,7 @@ class MoleculeIterator():
                     m = self.molecule_class(fragment, **self.molecule_class_args)
                     m.set_rejection_reason('overflow')
                     m.__finalise__()
-                    yield m
+                    yield from self.yield_func(m)
                 else:
                     self.deleted_fragments+=1
                 continue
@@ -386,7 +403,7 @@ class MoleculeIterator():
                     for i, j in enumerate(to_pop):
                         m = self.molecules.pop(i - j)
                         m.__finalise__()
-                        yield m
+                        yield from self.yield_func(m)
                 else:
                     for hash_group, molecules in self.molecules_per_cell.items():
 
@@ -401,17 +418,18 @@ class MoleculeIterator():
                         for i, j in enumerate(to_pop):
                             m = self.molecules_per_cell[hash_group].pop(i - j)
                             m.__finalise__()
-                            yield m
+                            yield from self.yield_func(m)
 
         # Yield remains
         if self.pooling_method == 0:
             for m in self.molecules:
                 m.__finalise__()
-            yield from iter(self.molecules)
+                yield from self.yield_func(m)
+            #yield from iter(self.molecules)
         else:
 
             for hash_group, molecules in self.molecules_per_cell.items():
                 for i, m in enumerate(molecules):
                     m.__finalise__()
-                    yield m
+                    yield from self.yield_func(m)
         self._clear_cache()

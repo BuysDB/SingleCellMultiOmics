@@ -100,6 +100,12 @@ allele_gr.add_argument(
     help='Makes the allele resolver print more')
 
 allele_gr.add_argument(
+    '--haplo_molecule_assignment',
+    action='store_true',
+    help='Take allele information into account during molecule assignment ')
+
+
+allele_gr.add_argument(
     '--use_allele_cache',
     action='store_true',
     help='''Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not yet available.
@@ -976,13 +982,14 @@ def run_multiome_tagging(args):
         'fragment_class_args': fragment_class_args,
         'yield_invalid': yield_invalid,
         'yield_overflow': yield_overflow,
-        'start':region_start,
-        'end':region_end,
+        'start': region_start,
+        'end': region_end,
         'contig': contig,
         'every_fragment_as_molecule': every_fragment_as_molecule,
         'skip_contigs':skip_contig,
         'progress_callback_function':progress_callback_function,
-        'pooling_method' : pooling_method
+        'pooling_method' : pooling_method,
+        'perform_allele_clustering': args.haplo_molecule_assignment and molecule_class_args.get('allele_resolver', None) is not None
     }
 
 

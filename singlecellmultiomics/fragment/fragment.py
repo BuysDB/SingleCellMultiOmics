@@ -697,7 +697,7 @@ class Fragment():
             >>> read_B.reference_start = 150
             >>> read_A.reference_start = 100
             >>> frag_B = Fragment([read_B],assignment_radius=300)
-            >>> frag_A = Fragment([read_A],,assignment_radius=300)
+            >>> frag_A = Fragment([read_A],assignment_radius=300)
             >>> frag_A == frag_B
             True
 

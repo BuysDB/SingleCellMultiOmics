@@ -85,6 +85,8 @@ class AlleleResolver(Prefetcher):
             return
         self.vcffile = self.clean_vcf_name(vcffile)
         self.use_cache = use_cache
+        if use_cache:
+            lazyLoad = True
 
         try:
             with pysam.VariantFile(vcffile) as f:

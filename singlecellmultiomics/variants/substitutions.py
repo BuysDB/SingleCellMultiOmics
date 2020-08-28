@@ -6,13 +6,32 @@ import numpy as np
 import matplotlib as mpl
 import pandas as pd
 import seaborn as sns
+from collections import OrderedDict
+from itertools import product
 
 mpl.rcParams['figure.dpi'] = 300
 
 
+def conversion_dict():
+    conversions_single_nuc = ("CA", "CG", "CT", "TA", "TC", "TG")
+    pattern_counts = OrderedDict()
+    for ref, to in conversions_single_nuc:
+        for context in product('ACGT',repeat=2 ):
+            pattern_counts[(f'{context[0]}{ref}{context[1]}', to)] = 0
+    return pattern_counts
+
+def conversion_dict_stranded():
+    conversions_single_nuc = ('AC', 'AG', 'AT', 'CA', 'CG', 'CT', 'GA', 'GC', 'GT', 'TA', 'TC', 'TG')
+    pattern_counts = OrderedDict()
+    for ref, to in conversions_single_nuc:
+        for context in product('ACGT',repeat=2 ):
+            pattern_counts[(f'{context[0]}{ref}{context[1]}', to)] = 0
+    return pattern_counts
+
 def substitution_plot(pattern_counts: dict,
                       figsize: tuple = (10, 4),
                       conversion_colors: tuple = ('b', 'k', 'r', 'grey', 'g', 'pink'),
+
                       ylabel: str = '# conversions per molecule',
                       add_main_group_labels: bool = True,
                       fig=None,
@@ -57,8 +76,8 @@ def substitution_plot(pattern_counts: dict,
         >>>     plt.show()
 
     """
-
     conversions_single_nuc = ("CA", "CG", "CT", "TA", "TC", "TG")
+
 
     # Colors for the conversion groups:
     color_d = dict(zip(conversions_single_nuc, conversion_colors))
@@ -80,7 +99,7 @@ def substitution_plot(pattern_counts: dict,
     ax.set_xticks(np.linspace(-0.5 + offset, 0.5 - offset, len(pattern_counts)))
     ax.set_xticklabels( [context for context, to in pattern_counts.keys()], rotation=90, size=6)
     ax.set_ylabel(ylabel)
-    
+
     ax.set_xlim((-0.5, 0.5))
     sns.despine()
     if add_main_group_labels:
