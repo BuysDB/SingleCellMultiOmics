@@ -333,6 +333,17 @@ class AlleleResolver(Prefetcher):
         return alleles
 
     # @functools.lru_cache(maxsize=1000) not necessary anymore... complete data is already saved in dict
+    def has_location(self, chrom ,pos):
+        if self.lazyLoad and chrom not in self.locationToAllele:
+            try:
+                self.fetchChromosome(self.vcffile, chrom, clear=True)
+            except Exception as e:
+                print(e)
+                pass
+        if chrom not in self.locationToAllele or pos not in self.locationToAllele[chrom]:
+            return False
+        return True
+
 
     def getAllelesAt(self, chrom, pos, base):
         if self.lazyLoad and chrom not in self.locationToAllele:
