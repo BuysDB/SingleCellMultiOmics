@@ -17,7 +17,7 @@ from pysamiterators import MatePairIteratorIncludingNonProper, MatePairIterator
 from singlecellmultiomics.universalBamTagger.tagging import generate_tasks, prefetch, run_tagging_tasks
 from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs,get_bins_from_bed_iter
 from singlecellmultiomics.utils.binning import bp_chunked
-from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads
+from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads, sam_to_bam
 from singlecellmultiomics.fastaProcessing import CachedFastaNoHandle
 from singlecellmultiomics.utils.prefetch import UnitialisedClass
 from multiprocessing import Pool
@@ -36,7 +36,7 @@ from time import sleep
 argparser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     description='Assign molecules, set sample tags, set alleles')
-argparser.add_argument('bamin', type=str)
+argparser.add_argument('bamin', type=str, help='Input BAM file, SAM files can also be supplied but will be converted to BAM')
 argparser.add_argument(
     '-ref',
     type=str,
@@ -512,7 +512,7 @@ def run_multiome_tagging(args):
 
     Arguments:
 
-        bamin (str) : bam file to process
+        bamin (str) : bam file to process, sam files can also be supplied but will be converted
 
         o(str) : path to output bam file
 
@@ -598,6 +598,12 @@ def run_multiome_tagging(args):
             "Supply an output which ends in .bam, for example -o output.bam")
 
     write_status(args.o,'unfinished')
+
+    # verify wether the input is SAM, if so we need to convert:
+    if args.bamin.endswith('.sam'):
+        print('Input file is in SAM format. Performing conversion.')
+        bam_path =  args.bamin.replace('.sam','.bam')
+        args.bamin, _ = bam_path, sam_to_bam(args.bamin, bam_path)
 
     # Verify wether the input file is indexed and sorted...
     if not args.ignore_bam_issues:
