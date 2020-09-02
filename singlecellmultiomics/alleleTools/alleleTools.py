@@ -338,7 +338,9 @@ class AlleleResolver(Prefetcher):
             try:
                 self.fetchChromosome(self.vcffile, chrom, clear=True)
             except Exception as e:
-                print(e)
+                if 'fetch requires an index' in str(e):
+                    raise Exception('The variant file used for allele resolving does not have an index file. Use bcftools index, or vcftools index to generate an index')
+                print('ERROR, in has_location (Allele Resolver):', e)
                 pass
         if chrom not in self.locationToAllele or pos not in self.locationToAllele[chrom]:
             return False
@@ -350,8 +352,12 @@ class AlleleResolver(Prefetcher):
             try:
                 self.fetchChromosome(self.vcffile, chrom, clear=True)
             except Exception as e:
-                print(e)
+                if 'fetch requires an index' in str(e):
+                    raise Exception('The variant file used for allele resolving does not have an index file. Use bcftools index, or vcftools index to generate an index')
+
+                print('ERROR, in getAllelesAt:', e)
                 pass
+
 
         if chrom not in self.locationToAllele or pos not in self.locationToAllele[chrom]:
             return None
