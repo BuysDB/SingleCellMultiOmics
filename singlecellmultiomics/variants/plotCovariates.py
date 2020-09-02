@@ -68,3 +68,19 @@ if __name__=='__main__':
         ax.grid()
         plt.savefig(f'{args.o}/contexts_cycle_{alias}.png')
         plt.close()
+
+        # Zoomins:
+        for mate_select in (True, False):
+            qf = pd.DataFrame(
+                [(cycle, neg / (pos + neg), context) for (qual, mate, cycle, context), (pos, neg) in covariates.items()
+                 if mate == mate_select and qual >= 36 and cycle < 65])
+            qf.columns = ['Cycle', 'Accuracy', 'Context']
+            qf = qf.sort_values('Cycle')
+            sns.boxplot(data=qf, x=qf.columns[0], y=qf.columns[1])
+            sns.despine()
+            ax.grid()
+
+            plt.savefig(f'{args.o}/contexts_cycle_zoomed_{alias}.png')
+            plt.ylim(0.996, 1.0001)
+
+            plt.show()
