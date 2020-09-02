@@ -22,7 +22,7 @@ class NLAIII_96w_c8_u3(UmiBarcodeDemuxMethod):
         self.shortName = 'NLAIII96C8U3'
         self.longName = 'NLAIII, 96well CB: 8bp UMI: 3bp RP: 6bp'
         self.autoDetectable = True
-        self.description = '96 well format. 3bp umi followed by 8bp barcode. R2 ends with a 6bp random primer'
+        self.description = '96 well format. 3bp umi followed by 8bp barcode. R2 starts with a 6bp random primer'
 
 
 # NLAIII, 384 well format with 3bp UMI
@@ -45,7 +45,7 @@ class NLAIII_384w_c8_u3(UmiBarcodeDemuxMethod):
         self.shortName = 'NLAIII384C8U3'
         self.longName = 'NLAIII, 384well CB: 8bp UMI: 3bp RP:6bp'
         self.autoDetectable = True
-        self.description = '384 well format. 3bp umi followed by 8bp barcode. R2 ends with a 6bp random primer'
+        self.description = '384 well format. 3bp umi followed by 8bp barcode. R2 starts with a 6bp random primer'
 
     def demultiplex(self, records, **kwargs):
         if kwargs.get('probe') and records[0].sequence[self.barcodeLength + \
@@ -55,6 +55,8 @@ class NLAIII_384w_c8_u3(UmiBarcodeDemuxMethod):
         taggedRecords = UmiBarcodeDemuxMethod.demultiplex(
             self, records, **kwargs)
         return taggedRecords
+
+
 
 # NLAIII, 384 well format with 3bp UMI, single end, because? Why? Lets make ourselves unable to deduplicate IVT
 class NLAIII_384w_c8_u3_SINGLE_END(UmiBarcodeDemuxMethod):
@@ -88,7 +90,7 @@ class NLAIII_384w_c8_u3_SINGLE_END(UmiBarcodeDemuxMethod):
             self, records, **kwargs)
         return taggedRecords
 
-        
+
 class NLAIII_96w_c8_u3_SINGLE_END(UmiBarcodeDemuxMethod):
     def __init__(self, barcodeFileParser, **kwargs):
         self.barcodeFileAlias = 'lennart96NLA'

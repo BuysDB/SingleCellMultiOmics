@@ -115,7 +115,7 @@ def molecule_to_random_primer_dict(
         h_contig, hstart, hseq = fragment.get_random_primer_hash()
         if hseq is None:
             # This should really not happen with freshly demultiplexed data, it means we cannot extract the random primer sequence
-            # which should be present as a tag (rP) in the record
+            # which should be present as a tag (rS) in the record
             rp[None, None, None].append(fragment)
         elif 'N' not in hseq:
             rp[h_contig, hstart, hseq].append(fragment)
@@ -540,11 +540,13 @@ class Molecule():
 
         # Write RT reaction tags (rt: rt reaction index, rd rt duplicate index)
         rt_reaction_index = None
-        for rt_reaction_index, (_, frags) in enumerate(
+        for rt_reaction_index, ( (contig, random_primer_start, random_primer_sequence), frags) in enumerate(
                 self.get_rt_reactions().items()):
+            
             for rt_duplicate_index, frag in enumerate(frags):
                 frag.set_meta('rt', rt_reaction_index)
                 frag.set_meta('rd', rt_duplicate_index)
+                frag.set_meta('rp', random_primer_start)
         self.set_meta('TR', 0 if (rt_reaction_index is None) else rt_reaction_index + 1)
 
         if self.allele_resolver is not None:
@@ -2340,7 +2342,9 @@ class Molecule():
 
         return base_obs
 
-    def get_base_observation_dict(self, return_refbases=False, allow_N=False, allow_unsafe=True):
+    def get_base_observation_dict(self, return_refbases=False, allow_N=False,
+        allow_unsafe=True, one_call_per_frag=False, min_cycle_r1=None,
+         max_cycle_r1=None, min_cycle_r2=None, max_cycle_r2=None, use_cache=True, min_bq=None):
         '''
         Obtain observed bases at reference aligned locations
 
@@ -2349,6 +2353,15 @@ class Molecule():
                 return both observed bases and reference bases
             allow_N (bool): Keep N base calls in observations
 
+            min_cycle_r1(int) : Exclude read 1 base calls with a cycle smaller than this value (excludes bases which are trimmed before mapping)
+
+            max_cycle_r1(int) : Exclude read 1 base calls with a cycle larger than this value (excludes bases which are trimmed before mapping)
+
+            min_cycle_r2(int) : Exclude read 2 base calls with a cycle smaller than this value (excludes bases which are trimmed before mapping)
+
+            max_cycle_r2(int) : Exclude read 2 base calls with a cycle larger than this value (excludes bases which are trimmed before mapping)
+
+
         Returns:
             { genome_location (tuple) : base (string) : obs (int) }
             and
@@ -2356,12 +2369,13 @@ class Molecule():
         '''
 
         # Check if cached is available
-        if self.saved_base_obs is not None:
-            if not return_refbases:
-                return self.saved_base_obs[0]
-            else:
-                if self.saved_base_obs[1] is not None:
-                    return self.saved_base_obs
+        if use_cache:
+            if self.saved_base_obs is not None :
+                if not return_refbases:
+                    return self.saved_base_obs[0]
+                else:
+                    if self.saved_base_obs[1] is not None:
+                        return self.saved_base_obs
 
         base_obs = defaultdict(Counter)
 
@@ -2373,6 +2387,10 @@ class Molecule():
             _, start, end = fragment.span
 
             used += 1
+
+            if one_call_per_frag:
+                frag_location_obs = set()
+
             for read in fragment:
                 if read is None:
                     continue
@@ -2381,15 +2399,28 @@ class Molecule():
                     for query_pos, ref_pos, ref_base in read.get_aligned_pairs(matches_only=True, with_seq=True):
                         if query_pos is None or ref_pos is None:  # or ref_pos < start or ref_pos > end:
                             continue
+
                         query_base = read.seq[query_pos]
                         # query_qual = read.qual[query_pos]
+                        if min_bq is not None and read.query_qualities[query_pos]<min_bq:
+                            continue
+
                         if query_base == 'N':
                             continue
-                        base_obs[(read.reference_name, ref_pos)][query_base] += 1
+
+                        k = (read.reference_name, ref_pos)
+
+                        if one_call_per_frag:
+                            if k in frag_location_obs:
+                                continue
+                            frag_location_obs.add(k)
+
+                        base_obs[k][query_base] += 1
 
                         if return_refbases:
                             ref_bases[(read.reference_name, ref_pos)
                             ] = ref_base.upper()
+
 
                 else:
                     for cycle, query_pos, ref_pos, ref_base in pysamiterators.iterators.ReadCycleIterator(
@@ -2397,10 +2428,32 @@ class Molecule():
 
                         if query_pos is None or ref_pos is None:  # or ref_pos < start or ref_pos > end:
                             continue
+
+                        # Verify cycle filters:
+                        if (not read.is_paired or read.is_read1) and (
+                                ( min_cycle_r1 is not None and cycle <  min_cycle_r1 ) or
+                                ( max_cycle_r1 is not None and  cycle >  max_cycle_r1 )):
+                            continue
+
+                        if (read.is_paired and read.is_read2) and (
+                                ( min_cycle_r2 is not None and cycle <  min_cycle_r2 ) or
+                                ( max_cycle_r2 is not None and cycle >  max_cycle_r2 )):
+                            continue
+
                         query_base = read.seq[query_pos]
-                        # query_qual = read.qual[query_pos]
+                        # Skip bases with low bq:
+                        if min_bq is not None and read.query_qualities[query_pos]<min_bq:
+                            continue
+
                         if query_base == 'N':
                             continue
+
+                        k = (read.reference_name, ref_pos)
+                        if one_call_per_frag:
+                            if k in frag_location_obs:
+                                continue
+                            frag_location_obs.add(k)
+
                         base_obs[(read.reference_name, ref_pos)][query_base] += 1
 
                         if return_refbases:
