@@ -806,6 +806,18 @@ def get_random_locations(bam, n):
 
     return zip(random_contigs, random_positions)
 
+def sam_to_bam(sam_in, bam_out, threads = 4):
+    """
+    Convert sam file to sorted bam file
+
+    Args:
+
+        sam_in(str) : input sam file path
+
+        bam_out(str) : output bam file path
+        
+    """
+    os.system(f'samtools view {sam_in} -b | samtools sort -@ {threads} > {bam_out}; samtools index {bam_out};')
 
 
 def sample_location(handle, contig, pos,dedup=True, qc=True):
