@@ -467,6 +467,7 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
             indexFileAlias='illumina_merged_ThruPlex48S_RP',
             random_primer_read=None,
             random_primer_length=6,
+            random_primer_end=False, # True for end, False for start
             **kwargs):
         self.description = ''
         self.barcodeFileAlias = barcodeFileAlias
@@ -487,6 +488,7 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
 
         self.random_primer_read = random_primer_read
         self.random_primer_length = random_primer_length
+        self.random_primer_end = random_primer_end
 
         # ranges to capture for read 1 and read 2
         self.sequenceCapture = [slice(None), slice(None)]
@@ -509,12 +511,21 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
 
             if self.sequenceCapture[random_primer_read].stop is not None:
                 raise NotImplementedError()
-            self.sequenceCapture[random_primer_read] = slice(
-                self.sequenceCapture[random_primer_read].start,
-                -random_primer_length,
-                self.sequenceCapture[random_primer_read].step
-            )
-            self.random_primer_slice = slice(-random_primer_length, None, None)
+            if random_primer_end:
+
+                self.sequenceCapture[random_primer_read] = slice(
+                    self.sequenceCapture[random_primer_read].start,
+                    -random_primer_length,
+                    self.sequenceCapture[random_primer_read].step
+                )
+                self.random_primer_slice = slice(-random_primer_length, None, None)
+            else:
+                self.sequenceCapture[random_primer_read] = slice(
+                    random_primer_length,
+                    None,
+                    self.sequenceCapture[random_primer_read].step
+                )
+                self.random_primer_slice = slice(0, random_primer_length, None)
 
     def __repr__(self):
         return f'{self.longName} bc: {self.barcodeStart}:{self.barcodeLength}, umi: {self.umiStart}:{self.umiLength} {self.description}'
