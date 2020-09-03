@@ -2058,6 +2058,19 @@ class Molecule():
         """
         return self.get_allele_likelihoods()[0]
 
+    @property
+    def library(self):
+        """
+        Associated library
+
+        Returns:
+           library (str) : Library associated with the first read of this molecule
+
+        """
+        for read in self.iter_reads():
+            if read.has_tag('LY'):
+                return read.get_tag('LY')
+
     @cached_property
     def allele_probabilities(self):
         """
