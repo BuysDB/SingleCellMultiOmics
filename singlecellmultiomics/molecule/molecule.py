@@ -542,7 +542,7 @@ class Molecule():
         rt_reaction_index = None
         for rt_reaction_index, ( (contig, random_primer_start, random_primer_sequence), frags) in enumerate(
                 self.get_rt_reactions().items()):
-            
+
             for rt_duplicate_index, frag in enumerate(frags):
                 frag.set_meta('rt', rt_reaction_index)
                 frag.set_meta('rd', rt_duplicate_index)
@@ -770,7 +770,7 @@ class Molecule():
 
     def deduplicate_majority(self, target_bam, read_name, max_N_span=None):
 
-        obs = self.get_consensus_confidence_dict()
+        obs = self.get_base_confidence_dict()
 
         reads = list(self.get_dedup_reads(read_name,
                                      target_bam,
@@ -2134,7 +2134,7 @@ class Molecule():
                     for base,(likelihood,n) in base_likelihoods.items() })
                     for location,base_likelihoods in obs.items()}
 
-    ## This is a duplicat of the above but only calculates for allele informative positions
+    ## This is a duplicate of the above but only calculates for allele informative positions
     @cached_property
     def allele_informative_base_probabilities(self):
         # Optimization which is equal to {location:likelihood_to_prob(liks) for location,liks in self.base_likelihoods.items()}
