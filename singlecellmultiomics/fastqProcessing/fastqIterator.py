@@ -29,7 +29,13 @@ class FastqIterator():
     def _readFastqRecord(self, handle):
         # Read four lines and load them into a FastqRecord
         return(
-            FastqRecord(*tuple(handle.readline().rstrip() for i in range(4)))
+            #FastqRecord(*tuple(handle.readline().rstrip() for i in range(4)))
+            FastqRecord(
+                handle.readline().rstrip(),
+                handle.readline().rstrip(),
+                handle.readline().rstrip(),
+                handle.readline().rstrip()
+            )
         )
 
     def __iter__(self):
