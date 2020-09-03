@@ -42,8 +42,16 @@ def metaFromRead(read, tag):
 # Clean a string to be able to be used in a fastq file header
 fastqCleanerRegex = re.compile('[^a-zA-Z0-9-_]', re.UNICODE)
 
+def fqSafe(string) -> str:
+    """
+    Convert input string into a representation which can be stored in a fastq header
 
-def fqSafe(string):
+    Input:
+        string(str) : string to clean
+
+    Returns:
+        cleaned(str)
+    """
     global fastqCleanerRegex
     return(fastqCleanerRegex.sub('', string))
 
@@ -133,12 +141,7 @@ class TaggedRecord():
         if len(header) > 255:  # the header length is stored as uint_8 and includes a null character. The maximum length is thus 255
             raise ValueError(
                 f"The length of the demultiplexed header is longer than 255 characters. Try to keep your library name below 60 characters. Reduce the length of the header. For example by using -merge _ which will not put the flow cell in the sample name. The header looks like this: {header}")
-        return "@%s\n%s\n%s\n%s\n" % (
-            header,
-            sequence,
-            dirAtt,
-            baseQualities
-        )
+        return f'@{header}\n{sequence}\n{dirAtt}\n{baseQualities}'
 
     def has_tag(self, tag):
         return tag in self.tags
