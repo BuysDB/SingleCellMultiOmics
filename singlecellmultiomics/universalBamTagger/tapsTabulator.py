@@ -139,7 +139,7 @@ if __name__ == '__main__':
 
                 if args.fmt == "table":
                     print(
-                        f"{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
+                        f"{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.get_cut_site()[1]}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
                 elif args.fmt == "bed":
                     sample = molecule.sample.split("_")[-1]
                     print(
