@@ -86,7 +86,7 @@ if __name__ == '__main__':
             raise ValueError("Supply reference, -ref")
 
     reference = pysamiterators.iterators.CachedFasta(pysam.FastaFile(args.ref))
-    taps = singlecellmultiomics.molecule.TAPS(reference=reference)
+    taps = singlecellmultiomics.molecule.TAPS()
 
     molecule_class_args = {
         'reference': reference,
