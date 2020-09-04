@@ -114,6 +114,7 @@ if __name__ == '__main__':
                 molecule_class_args=molecule_class_args,
                 contig=args.contig)):
 
+            molecule.set_meta('mi',i)
             if args.head and (i - 1) >= args.head:
                 break
 
@@ -128,6 +129,7 @@ if __name__ == '__main__':
                 if output is not None:
                     molecule.write_pysam(output)
                 continue
+
 
             for (chromosome, location), call in molecule.methylation_call_dict.items():
                 if call['context'] == '.':  # Only print calls concerning C's
