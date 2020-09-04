@@ -114,6 +114,7 @@ if __name__ == '__main__':
                 molecule_class_args=molecule_class_args,
                 contig=args.contig)):
 
+            molecule.set_meta('mi',i)
             if args.head and (i - 1) >= args.head:
                 break
 
@@ -129,6 +130,7 @@ if __name__ == '__main__':
                     molecule.write_pysam(output)
                 continue
 
+
             for (chromosome, location), call in molecule.methylation_call_dict.items():
                 if call['context'] == '.':  # Only print calls concerning C's
                     continue
@@ -139,11 +141,16 @@ if __name__ == '__main__':
 
                 if args.fmt == "table":
                     print(
-                        f"{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
+                        f"{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.get_cut_site()[1]}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
                 elif args.fmt == "bed":
                     sample = molecule.sample.split("_")[-1]
                     print(
                         f'{chromosome}\t{location}\t{location+1}\t{sample}\t1\t{molecule.get_strand_repr()}')
+
+            if output is not None:
+                molecule.write_tags()
+                molecule.write_pysam(output)
+
 
     except (KeyboardInterrupt, BrokenPipeError) as e:
         pass
