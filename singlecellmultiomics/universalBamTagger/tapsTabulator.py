@@ -145,6 +145,11 @@ if __name__ == '__main__':
                     print(
                         f'{chromosome}\t{location}\t{location+1}\t{sample}\t1\t{molecule.get_strand_repr()}')
 
+            if output is not None:
+                molecule.write_tags()
+                molecule.write_pysam(output)
+
+
     except (KeyboardInterrupt, BrokenPipeError) as e:
         pass
 
