@@ -96,7 +96,7 @@ if __name__ == '__main__':
     if args.method == 'nla':
         molecule_class = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
         fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
-        molecule_class_args.update({'site_has_to_be_mapped': True})
+        molecule_class_args.update({'site_has_to_be_mapped': True, 'allow_unsafe_base_calls':False})
     elif args.method == 'chic':
         molecule_class = singlecellmultiomics.molecule.TAPSCHICMolecule
         fragment_class = singlecellmultiomics.fragment.CHICFragment
@@ -144,8 +144,12 @@ if __name__ == '__main__':
                         f"{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.get_cut_site()[1]}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
                 elif args.fmt == "bed":
                     sample = molecule.sample.split("_")[-1]
+                    if call['context'].isupper():
+                        val = 1
+                    else:
+                        val = 0
                     print(
-                        f'{chromosome}\t{location}\t{location+1}\t{sample}\t1\t{molecule.get_strand_repr()}')
+                        f'{chromosome}\t{location}\t{location+1}\t{sample}\t{val}\t{molecule.get_strand_repr()}')
 
             if output is not None:
                 molecule.write_tags()

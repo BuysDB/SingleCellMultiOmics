@@ -2357,7 +2357,7 @@ class Molecule():
 
     def get_base_observation_dict(self, return_refbases=False, allow_N=False,
         allow_unsafe=True, one_call_per_frag=False, min_cycle_r1=None,
-         max_cycle_r1=None, min_cycle_r2=None, max_cycle_r2=None, use_cache=True, min_bq=None):
+         max_cycle_r1=None, min_cycle_r2=7, max_cycle_r2=None, use_cache=True, min_bq=None):
         '''
         Obtain observed bases at reference aligned locations
 
@@ -2404,9 +2404,16 @@ class Molecule():
             if one_call_per_frag:
                 frag_location_obs = set()
 
-            for read in fragment:
+            if not fragment.has_R2():
+                continue
+
+            R1, R2 = fragment.get_R1(), fragment.get_R2()
+
+
+            for read in [R2]:
                 if read is None:
                     continue
+
 
                 if allow_unsafe:
                     for query_pos, ref_pos, ref_base in read.get_aligned_pairs(matches_only=True, with_seq=True):
@@ -2441,6 +2448,27 @@ class Molecule():
 
                         if query_pos is None or ref_pos is None:  # or ref_pos < start or ref_pos > end:
                             continue
+
+
+
+                        if not R1.is_reverse: ### R1---->  <---- R2
+                            if not R2.is_reverse:
+                                # Invalid mapping config
+                                continue
+                            if read==R1 and ref_pos>=(R2.reference_end-2):
+                                continue
+                            if read==R2 and ref_pos<=R1.reference_start+2:
+                                continue
+                        else:
+                            ### R2---->  <---- R1
+                            if R2.is_reverse:
+                                # Invalid mapping config
+                                continue
+                            if read==R1 and ref_pos<=(R2.reference_start+1):
+                                continue
+                            if read==R2 and ref_pos>=R1.reference_end-2:
+                                continue
+
 
                         # Verify cycle filters:
                         if (not read.is_paired or read.is_read1) and (
