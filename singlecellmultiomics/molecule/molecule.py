@@ -2410,7 +2410,7 @@ class Molecule():
             R1, R2 = fragment.get_R1(), fragment.get_R2()
 
 
-            for read in [R2]:
+            for read in [R1, R2]:
                 if read is None:
                     continue
 
