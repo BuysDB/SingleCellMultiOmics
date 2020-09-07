@@ -2455,7 +2455,7 @@ class Molecule():
                             if not R2.is_reverse:
                                 # Invalid mapping config
                                 continue
-                            if read==R1 and ref_pos>=(R2.reference_end-2):
+                            if read==R1 and ref_pos>=(R2.reference_end-6):
                                 continue
                             if read==R2 and ref_pos<=R1.reference_start+2:
                                 continue
@@ -2464,7 +2464,7 @@ class Molecule():
                             if R2.is_reverse:
                                 # Invalid mapping config
                                 continue
-                            if read==R1 and ref_pos<=(R2.reference_start+1):
+                            if read==R1 and ref_pos<=(R2.reference_start+6):
                                 continue
                             if read==R2 and ref_pos>=R1.reference_end-2:
                                 continue
