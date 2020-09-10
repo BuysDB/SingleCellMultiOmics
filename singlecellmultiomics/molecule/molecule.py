@@ -2736,6 +2736,10 @@ class Molecule():
         for fragment in self.fragments:
             yield fragment
 
+    @property
+    def span_len(self):
+        return abs(self.spanEnd - self.spanStart)
+
     def get_methylated_count(self, context=3):
         """Get the total amount of methylated bases
 
