@@ -291,3 +291,19 @@ def read_to_consensus_dict(read, start, end, only_include_refbase=None):
          if refpos>=start and refpos<=end and \
             (only_include_refbase is None or refbase.upper()==only_include_refbase)
            }
+
+
+def get_consensus_dove_safe(R1, R2, only_include_refbase=None):
+
+    if R1 is None or R2 is None:
+        raise ValueError('Its not possible to determine a safe region when the alignment of R1 or R2 is not specified')
+
+    if R1.is_reverse and not R2.is_reverse:
+        start, end = R2.reference_start, R1.reference_end
+    elif not R1.is_reverse and R2.is_reverse:
+        start, end = R1.reference_start, R2.reference_end
+    else:
+        raise ValueError('This method only works for inwards facing reads')
+
+    return read_to_consensus_dict(R1, start, end, only_include_refbase=only_include_refbase), \
+           read_to_consensus_dict(R2, start, end, only_include_refbase=only_include_refbase)
