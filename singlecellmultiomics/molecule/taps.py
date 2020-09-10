@@ -67,7 +67,7 @@ class TAPS():
             chromosome,
             position,
             observed_base='N',
-            strand=0,
+            strand=False,
             reference=None,
         ):
         """Extract bismark call letter from a chromosomal location given the observed base
@@ -80,7 +80,7 @@ class TAPS():
 
             observed_base(str) : base observed in the read
 
-            strand(str) : mapping strand
+            strand(int) : mapping strand, False: forward, True: Reverse
 
         Returns:
             context(str) : 3 basepair context
@@ -132,14 +132,14 @@ class TAPS():
                                                        position=pos,
                                                        reference=molecule.reference,
                                                        observed_base=base,
-                                                       strand=molecule.get_strand())
+                                                       strand=molecule.strand)
             if letter is not None:
                 call_dict[(chrom, pos)] = letter
         return call_dict
 
 
 class TAPSMolecule(Molecule):
-    def __init__(self, fragments=None, taps=None, classifier=None, taps_strand='F', allow_unsafe_base_calls=True, **kwargs):
+    def __init__(self, fragments=None, taps=None, classifier=None, taps_strand='F', allow_unsafe_base_calls=True, methylation_consensus_kwargs=None, **kwargs):
         """ TAPSMolecule
 
         Args:
@@ -151,13 +151,14 @@ class TAPSMolecule(Molecule):
         Molecule.__init__(self, fragments=fragments, **kwargs)
         if taps is None:
             raise ValueError("""Supply initialised TAPS class
-                taps = singlecellmultiomics.molecule.TAPS( reference )
+                taps = singlecellmultiomics.molecule.TAPS( )
             """)
         self.taps = taps  # initialised TAPS class
         self.methylation_call_dict = None
         self.classifier = classifier
         self.taps_strand = taps_strand
         self.allow_unsafe_base_calls = allow_unsafe_base_calls
+        self.methylation_consensus_kwargs = methylation_consensus_kwargs if methylation_consensus_kwargs is not None else dict()
 
     def add_cpg_color_tag_to_read(self, read):
         try:
@@ -171,10 +172,7 @@ class TAPSMolecule(Molecule):
     def __finalise__(self):
         super().__finalise__()
 
-        try:
-            self.obtain_methylation_calls(classifier=self.classifier, allow_unsafe=self.allow_unsafe_base_calls)
-        except ValueError:
-            self.obtain_methylation_calls(classifier=self.classifier, allow_unsafe=True)
+        self.obtain_methylation_calls()
 
         for read in self.iter_reads():
             try:
@@ -214,7 +212,13 @@ class TAPSMolecule(Molecule):
 
         return True
 
-    def obtain_methylation_calls(self, classifier=None, allow_unsafe=True):
+
+    #def obtain_methylation_calls_experimental(self):
+
+
+
+
+    def obtain_methylation_calls(self):
         """ This methods returns a methylation call dictionary
             Args:
                 classifier : classifier used for consensus determination
@@ -222,65 +226,28 @@ class TAPSMolecule(Molecule):
                 mcalls(dict) : (chrom,pos) : {'consensus': consensusBase, 'reference': referenceBase, 'call': call}
         """
 
-        # Find all aligned positions and corresponding reference bases:
         try:
-            aligned_reference_positions = {}  # (chrom,pos)->base
-            for read in self.iter_reads():
-                for read_pos, ref_pos, ref_base in read.get_aligned_pairs(
-                        with_seq=True, matches_only=True):
-                    aligned_reference_positions[(
-                        read.reference_name, ref_pos)] = ref_base.upper()
+            c_pos_consensus = self.get_consensus(dove_safe = True,
+                                                 only_include_refbase='G' if self.strand else 'C')
+
         except ValueError as e:
             if 'MD tag not present' in str(e):
                 self.set_rejection_reason("MD_TAG_MISSING")
                 return None
             raise
 
-
-            # Obtain consensus:
-        try:
-            consensus = self.get_consensus(classifier=classifier, allow_unsafe=allow_unsafe)
-        except ValueError as e:
-            if 'MD tag not present' in str(e):
-                self.set_rejection_reason("MD_TAG_MISSING")
-                return None
-            raise
-
-        # find all locations where a C/G was converted into A/T, now strand
-        # specific
-        converted_bases = 0
-        conversions = {}
-        for location, reference_base in aligned_reference_positions.items():
-            if location not in consensus:
-                continue
-            qbase = consensus[location]
-            if self.taps_strand=='F':
-                #C->A, G->T, A>C, T>G
-
-                if (not self.strand and reference_base == 'C' and qbase in 'CT') or \
-                        self.strand and reference_base == 'G' and qbase in 'AG':
-                    conversions[location] = {
-                        'ref': reference_base, 'obs': qbase}
-                    if qbase in 'TA':
-                        converted_bases += 1
-            else:
-                if (self.strand and reference_base == 'C' and qbase in 'CT') or (not self.strand and reference_base == 'G' and consensus[location] in 'AG'):
-                    conversions[location] = {
-                        'ref': reference_base, 'obs': qbase}
-                    if qbase in 'TA':
-                        converted_bases += 1
 
         # obtain the context of the conversions:
         conversion_contexts = {
-            location:
-            {'consensus': consensus[location],
-             'reference_base': conversions[location]['ref'],
+            (self.chromosome, position):
+            {'consensus': base_call,
+             'reference_base': 'G' if self.strand else 'C',
              'context': self.taps.position_to_context(
-                *location,
+                self.chromosome, position,
                 reference=self.reference,
-                observed_base=observations['obs'],
+                observed_base=base_call,
                 strand=(self.strand if self.taps_strand=='F' else  not self.strand))[1]}
-            for location, observations in conversions.items()}
+            for position, base_call in c_pos_consensus.items()}
 
         # Write bismark tags:
         self.set_methylation_call_tags(conversion_contexts)

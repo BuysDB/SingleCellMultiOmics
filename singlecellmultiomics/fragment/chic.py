@@ -109,7 +109,7 @@ class CHICFragment(Fragment):
             # already set, this can be copied to RZ
 
             self.set_site(
-                site_strand=R1.is_reverse if not self.invert_strand else not R1.is_reverse,
+                site_strand=not R1.is_reverse if self.invert_strand else R1.is_reverse,
                 # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
                 # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
                 site_chrom=R1.reference_name,
@@ -120,7 +120,7 @@ class CHICFragment(Fragment):
         else:
 
             self.set_site(
-                site_strand=R1.is_reverse if not self.invert_strand else not R1.is_reverse,
+                site_strand=not R1.is_reverse if self.invert_strand else R1.is_reverse,
                 # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
                 # On the next line we asume that the mnsase cut is one base after the ligated A, but it can be more bases upstream
                 site_chrom=R1.reference_name,

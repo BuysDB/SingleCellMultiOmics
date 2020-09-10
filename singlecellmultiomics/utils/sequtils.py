@@ -253,7 +253,7 @@ def pick_best_base_call( *calls ) -> tuple:
         calls (generator) : generator/list containing tuples
 
     Returns:
-        tuple (best_base, best_q) or None when there is a tie
+        tuple (best_base, best_q) or ('N',0) when there is a tie
     """
     # (q_base, quality, ...)
     best_base, best_q = None, -1
@@ -266,19 +266,23 @@ def pick_best_base_call( *calls ) -> tuple:
             best_base= call[0]
             best_q=call[1]
             tie=False
-        elif call[1]==best_q:
+        elif call[1]==best_q and call[0]!=best_base:
             tie=True
 
     if tie or best_base is None:
-        return None
+        return ('N',0)
 
     return best_base, best_q
 
 
-def read_to_consensus_dict(read, start, end, only_include_refbase=None):
+def read_to_consensus_dict(read, start: int = None, end: int = None, only_include_refbase: str = None):
     """
     Obtain consensus calls for read, between start and end
     """
+
+    if read is None:
+        return dict()
+
     return {refpos:
                     (read.query_sequence[qpos],
                      read.query_alignment_qualities[qpos],
@@ -288,22 +292,27 @@ def read_to_consensus_dict(read, start, end, only_include_refbase=None):
          for qpos, refpos, refbase in read.get_aligned_pairs(
                                              matches_only=True,
                                              with_seq=True)
-         if refpos>=start and refpos<=end and \
+         if (start is None or refpos>=start) and \
+            (end is None or refpos<=end) and
             (only_include_refbase is None or refbase.upper()==only_include_refbase)
            }
 
 
-def get_consensus_dove_safe(R1, R2, only_include_refbase=None):
+def get_consensus_dictionaries(R1, R2, only_include_refbase=None, dove_safe=False):
 
-    if R1 is None or R2 is None:
-        raise ValueError('Its not possible to determine a safe region when the alignment of R1 or R2 is not specified')
+    if dove_safe:
+        if R1 is None or R2 is None:
+            raise ValueError(
+                'Its not possible to determine a safe region when the alignment of R1 or R2 is not specified')
 
-    if R1.is_reverse and not R2.is_reverse:
-        start, end = R2.reference_start, R1.reference_end
-    elif not R1.is_reverse and R2.is_reverse:
-        start, end = R1.reference_start, R2.reference_end
+        if R1.is_reverse and not R2.is_reverse:
+            start, end = R2.reference_start, R1.reference_end
+        elif not R1.is_reverse and R2.is_reverse:
+            start, end = R1.reference_start, R2.reference_end
+        else:
+            raise ValueError('This method only works for inwards facing reads')
     else:
-        raise ValueError('This method only works for inwards facing reads')
+        start, end = None, None
 
     return read_to_consensus_dict(R1, start, end, only_include_refbase=only_include_refbase), \
            read_to_consensus_dict(R2, start, end, only_include_refbase=only_include_refbase)

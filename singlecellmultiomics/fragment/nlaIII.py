@@ -194,26 +194,26 @@ class NlaIIIFragment(Fragment):
                 if R1.cigartuples[0][0]==4: # softclipped at start
                     r1_start-=R1.cigartuples[0][1]
 
-        if forward_motif == 'CATG' and not R1.is_reverse:
+        if forward_motif == 'CATG' and not R1.is_reverse: # Not reverse = forward
             rpos = (R1.reference_name, r1_start)
-            self.set_site(site_strand=1, site_chrom=rpos[0], site_pos=rpos[1])
+            self.set_site(site_strand=R1.is_reverse, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('CATG')
             return(rpos)
         elif rev_motif == 'CATG' and R1.is_reverse:
             rpos = (R1.reference_name, r1_start - 4)
-            self.set_site(site_strand=0, site_chrom=rpos[0], site_pos=rpos[1])
+            self.set_site(site_strand=R1.is_reverse, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('CATG')
             return(rpos)
 
         # Sometimes the cycle is off, this is dangerous though because the cell barcode and UMI might be shifted too!
         elif self.allow_cycle_shift and  forward_motif.startswith( 'ATG') and not R1.is_reverse:
             rpos = (R1.reference_name, R1.reference_start - 1)
-            self.set_site(site_strand=1, site_chrom=rpos[0], site_pos=rpos[1])
+            self.set_site(site_strand=R1.is_reverse, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('ATG')
             return(rpos)
         elif self.allow_cycle_shift and rev_motif.startswith( 'ATG') and R1.is_reverse:  # First base was trimmed or lost
             rpos = (R1.reference_name, R1.reference_end - 3)
-            self.set_site(site_strand=0, site_chrom=rpos[0], site_pos=rpos[1])
+            self.set_site(site_strand=R1.is_reverse, site_chrom=rpos[0], site_pos=rpos[1])
             self.set_recognized_sequence('CAT')
             return(rpos)
 

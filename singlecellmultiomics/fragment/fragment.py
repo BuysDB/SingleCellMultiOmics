@@ -1,10 +1,11 @@
 import itertools
-from singlecellmultiomics.utils.sequtils import hamming_distance
+from singlecellmultiomics.utils.sequtils import hamming_distance, get_consensus_dictionaries, pick_best_base_call
 import pysamiterators.iterators
 import singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods
 from singlecellmultiomics.utils import style_str
 from singlecellmultiomics.bamProcessing import get_read_group_from_read
 from singlecellmultiomics.features import FeatureAnnotatedObject
+
 complement = str.maketrans('ATCGN', 'TAGCN')
 
 
@@ -44,15 +45,17 @@ class Fragment():
 
     """
 
-    def __init__(self, reads, assignment_radius=3, umi_hamming_distance=1,
-                 R1_primer_length=0,
-                 R2_primer_length=6,
-                 tag_definitions=None,
-                 max_fragment_size = None,
+    def __init__(self, reads,
+                 assignment_radius: int = 3,
+                 umi_hamming_distance: int = 1,
+                 R1_primer_length: int = 0,
+                 R2_primer_length: int = 6,
+                 tag_definitions: list = None,
+                 max_fragment_size: int = None,
                  mapping_dir=(False, True),
-                 max_NUC_stretch = None,
-                 read_group_format=0,  # R1 forward, R2 reverse
-                 library_name=None # Overwrites the library name
+                 max_NUC_stretch: int = None,
+                 read_group_format: int = 0,  # R1 forward, R2 reverse
+                 library_name: str = None # Overwrites the library name
                  ):
         """
         Initialise Fragment
@@ -124,10 +127,11 @@ class Fragment():
                 continue
 
             if self.max_NUC_stretch is not None and (
-                self.max_NUC_stretch*'A' in read.seq or \
-                self.max_NUC_stretch*'G' in read.seq or \
-                self.max_NUC_stretch*'T' in read.seq or \
-                self.max_NUC_stretch*'C' in read.seq ):
+                self.max_NUC_stretch*'A' in read.seq or
+                self.max_NUC_stretch*'G' in read.seq or
+                self.max_NUC_stretch*'T' in read.seq or
+                self.max_NUC_stretch*'C' in read.seq):
+
                 self.set_rejection_reason('HomoPolymer', set_qcfail=True)
                 self.qcfail=True
                 break
@@ -150,8 +154,6 @@ class Fragment():
             elif i == 1:
                 read.is_read1 = False
                 read.is_read2 = True
-
-
         self.set_sample(library_name=library_name)
         if self.qcfail:
             return
@@ -304,11 +306,9 @@ class Fragment():
         else:
             return ri + index_start + 1
 
+    def get_read_group(self, with_attr_dict=False) -> str:
 
-    def get_read_group(self, with_attr_dict=False):
-
-
-        rg_id=None
+        r = None
         for read in self.reads:
             if read is None:
                 continue
@@ -472,6 +472,35 @@ class Fragment():
             return False
         return self.reads[1] is not None
 
+    @property
+    def R1(self):
+        return self.reads[0]
+
+    @property
+    def R2(self):
+        return self.reads[1]
+
+    def get_consensus(self, only_include_refbase: str = None, dove_safe: bool = False) -> dict:
+        """
+        a dictionary of (reference_pos) : (qbase, quality, reference_base) tuples
+
+        Args:
+            only_include_refbase(str) : Only report bases aligned to this reference base, uppercase only
+            dove_safe(bool) : Only report bases supported within R1 and R2 start and end coordinates
+
+        Returns:
+            consensus(dict) : {reference_position: (qbase, quality)
+        """
+        r1_consensus, r2_consensus = get_consensus_dictionaries(self.R1,
+                                                                self.R2,
+                                                                only_include_refbase=only_include_refbase,
+                                                                dove_safe=dove_safe)
+
+        return {
+            ref_pos:pick_best_base_call( r1_consensus.get(ref_pos) , r2_consensus.get(ref_pos) )
+            for ref_pos in set(r1_consensus.keys()).union(set(r2_consensus.keys()))
+        }
+
     def update_span(self):
         """
         Update the span (the location the fragment maps to) stored in Fragment
@@ -504,11 +533,10 @@ class Fragment():
 
         self.span = (contig, start, end)
 
-
-    def get_span(self):
+    def get_span(self) -> tuple:
         return self.span
 
-    def has_valid_span(self):
+    def has_valid_span(self) -> bool:
 
         # Check if the span could be calculated:
         defined_span = not any([x is None for x in self.get_span()])
@@ -518,10 +546,9 @@ class Fragment():
         if self.max_fragment_size is not None and self.get_fragment_size()>self.max_fragment_size:
             return False
 
-
         return True
 
-    def set_sample(self, sample=None, library_name=None):
+    def set_sample(self, sample: str = None, library_name: str = None):
         """Force sample name or obtain sample name from associated reads"""
         if sample is not None:
             self.sample = sample
@@ -532,14 +559,14 @@ class Fragment():
                     break
 
         if library_name is not None:
-            sample = self.sample.split('_',1)[-1]
+            sample = self.sample.split('_', 1)[-1]
             self.sample = library_name+'_'+sample
             for read in self.reads:
                 if read is not None:
-                    read.set_tag('SM',self.sample)
-                    read.set_tag('LY',library_name)
+                    read.set_tag('SM', self.sample)
+                    read.set_tag('LY', library_name)
 
-    def get_sample(self):
+    def get_sample(self) -> str:
         """ Obtain the sample name associated with the fragment
         The sample name is extracted from the SM tag of any of the associated reads.
 
@@ -556,7 +583,7 @@ class Fragment():
         """
         return(sum(read is not None for read in self.reads))
 
-    def set_strand(self, strand):
+    def set_strand(self, strand: bool):
         """Set mapping strand
 
         Args:

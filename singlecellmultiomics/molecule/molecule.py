@@ -2560,7 +2560,31 @@ class Molecule():
 
         return matches, mismatches
 
-    def get_consensus(
+    def get_consensus(self, dove_safe: bool = False, only_include_refbase: str = None, **kwargs):
+
+        consensii = defaultdict(lambda: np.zeros(5))  # location -> obs (A,C,G,T,N)
+        for fragment in self:
+
+            for position, (q_base, phred_score) in fragment.get_consensus(dove_safe=dove_safe,
+                                                                          only_include_refbase=only_include_refbase).items():
+
+                if q_base == 'N':
+                    continue
+                #    consensii[position][4] += phred_score
+                # else:
+                consensii[position]['ACGTN'.index(q_base)] += 1
+
+        locations = np.array(list(consensii.keys()))
+        v = np.vstack(list(consensii.values()))
+        majority_base_indices = np.argmax(v, axis=1)
+
+        # Check if there is ties, this result in multiple hits for argmax (majority_base_indices)
+        proper = (v == v[np.arange(v.shape[0]), majority_base_indices][:, np.newaxis]).sum(1) == 1
+
+        return  dict(zip(locations[proper], ['ACGTN'[idx] for idx in majority_base_indices[proper]]))
+
+
+    def get_consensus_old(
             self,
             base_obs=None,
             classifier=None,
