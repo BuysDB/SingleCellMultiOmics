@@ -285,7 +285,7 @@ def read_to_consensus_dict(read, start: int = None, end: int = None, only_includ
 
     return {refpos:
                     (read.query_sequence[qpos],
-                     read.query_alignment_qualities[qpos],
+                     read.query_qualities[qpos],
                      refbase
                     )
 

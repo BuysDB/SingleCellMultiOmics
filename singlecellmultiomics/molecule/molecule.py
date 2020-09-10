@@ -2574,8 +2574,8 @@ class Molecule():
                 # else:
                 consensii[position]['ACGTN'.index(q_base)] += 1
 
-        locations = np.array(list(consensii.keys()))
-        v = np.vstack(list(consensii.values()))
+        locations = np.array(sorted(list(consensii.keys())))
+        v = np.vstack([ consensii[location] for location in locations])
         majority_base_indices = np.argmax(v, axis=1)
 
         # Check if there is ties, this result in multiple hits for argmax (majority_base_indices)
