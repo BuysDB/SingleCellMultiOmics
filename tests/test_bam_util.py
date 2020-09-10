@@ -11,7 +11,7 @@ import os
 import sys
 from shutil import copyfile,rmtree
 from singlecellmultiomics.bamProcessing import get_contigs_with_reads
-from singlecellmultiomics.utils.sequtils import pick_best_base_call, get_consensus_dove_safe
+from singlecellmultiomics.utils.sequtils import pick_best_base_call
 
 class TestFunctions(unittest.TestCase):
 
@@ -232,7 +232,7 @@ class TestBaseCalling(unittest.TestCase):
 
         self.assertTrue( pick_best_base_call( ('A',32), ('C',22) ) == ('A', 32) )
         self.assertTrue( pick_best_base_call( ('C',22), ('A',32) ) == ('A', 32))
-        self.assertTrue( pick_best_base_call( ('C',32), ('A',32) ) is None  )
+        self.assertTrue( pick_best_base_call( ('C',32), ('A',32) ) == ('N',0) )
 
 
 
