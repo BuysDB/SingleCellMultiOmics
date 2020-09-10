@@ -2005,13 +2005,13 @@ class Molecule():
             'alt_per_read': alt_per_read
         }
 
-    def get_mean_base_quality(
+    def get_mean_cycle(
             self,
             chromosome,
             position,
             base=None,
             not_base=None):
-        """Get the mean phred score at the supplied coordinate and base-call
+        """Get the mean cycle at the supplied coordinate and base-call
 
         Args:
             chromosome (str)
@@ -2020,18 +2020,20 @@ class Molecule():
             not_base(str) : select only reads without this base
 
         Returns:
-            mean_phred_score (float)
+            mean_cycles (tuple): mean cycle for R1 and R2
         """
         assert (base is not None or not_base is not None), "Supply base or not_base"
 
-        qualities = []
+        cycles_R1 = []
+        cycles_R2 = []
         for read in self.iter_reads():
 
             if read is None or read.reference_name != chromosome:
                 continue
 
-            for query_pos, ref_pos in read.get_aligned_pairs(
-                    with_seq=False, matches_only=True):
+
+            for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(
+                    read, with_seq=False):
 
                 if query_pos is None or ref_pos != position:
                     continue
@@ -2041,11 +2043,15 @@ class Molecule():
                 if base is not None and read.seq[query_pos] != base:
                     continue
 
-                qualities.append(ord(read.qual[query_pos]))
-        if len(qualities) == 0:
+                if read.is_read2:
+                    cycles_R2.append(cycle)
+                else:
+                    cycles_R1.append(cycle)
+        if len(cycles_R2) == 0 and len(cycles_R1)==0:
             raise IndexError(
                 "There are no observations if the supplied base/location combination")
-        return np.mean(qualities)
+        return (np.mean(cycles_R1) if len(cycles_R1) else np.nan),  (np.mean(cycles_R2) if len(cycles_R2) else np.nan)
+
 
     @cached_property
     def allele_likelihoods(self):
