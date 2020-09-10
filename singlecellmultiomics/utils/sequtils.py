@@ -273,3 +273,21 @@ def pick_best_base_call( *calls ) -> tuple:
         return None
 
     return best_base, best_q
+
+
+def read_to_consensus_dict(read, start, end, only_include_refbase=None):
+    """
+    Obtain consensus calls for read, between start and end
+    """
+    return {refpos:
+                    (read.query_sequence[qpos],
+                     read.query_alignment_qualities[qpos],
+                     refbase
+                    )
+
+         for qpos, refpos, refbase in read.get_aligned_pairs(
+                                             matches_only=True,
+                                             with_seq=True)
+         if refpos>=start and refpos<=end and \
+            (only_include_refbase is None or refbase.upper()==only_include_refbase)
+           }
