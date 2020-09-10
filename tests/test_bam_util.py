@@ -11,6 +11,7 @@ import os
 import sys
 from shutil import copyfile,rmtree
 from singlecellmultiomics.bamProcessing import get_contigs_with_reads
+from singlecellmultiomics.utils.sequtils import pick_best_base_call, get_consensus_dove_safe
 
 class TestFunctions(unittest.TestCase):
 
@@ -224,6 +225,17 @@ class TestSorted(unittest.TestCase):
                 os.remove(f'{p}.bai')
             except Exception as e:
                 pass
+
+class TestBaseCalling(unittest.TestCase):
+
+    def test_pick_best(self):
+
+        self.assertTrue( pick_best_base_call( ('A',32), ('C',22) ) == ('A', 32) )
+        self.assertTrue( pick_best_base_call( ('C',22), ('A',32) ) == ('A', 32))
+        self.assertTrue( pick_best_base_call( ('C',32), ('A',32) ) is None  )
+
+
+
 
 
 if __name__ == '__main__':
