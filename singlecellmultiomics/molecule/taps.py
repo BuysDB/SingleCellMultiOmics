@@ -100,7 +100,6 @@ class TAPS:
         rpos = position
         if ref_base == 'C' and not strand:
             context = reference.fetch(chromosome, rpos, rpos + 3).upper()
-            print(context)
             if qbase == 'T':
                 methylated = True
 
@@ -232,8 +231,6 @@ class TAPSMolecule(Molecule):
                 self.set_rejection_reason("MD_TAG_MISSING")
                 return None
             raise
-
-        print(c_pos_consensus)
 
         # obtain the context of the conversions:
         conversion_contexts = {

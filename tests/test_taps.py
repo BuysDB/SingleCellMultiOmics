@@ -8,16 +8,18 @@ from singlecellmultiomics.molecule import TAPSNlaIIIMolecule, TAPS
 from singlecellmultiomics.fragment import NlaIIIFragment
 from singlecellmultiomics.utils import create_MD_tag
 
+from singlecellmultiomics.utils import complement
+
 
 class TestTAPs(unittest.TestCase):
 
     def test_all(self):
         temp_folder = 'data'
 
-        enable_ref_write=False
+        enable_ref_write=True
 
-        if enable_ref_write:
-            ref_path = f'{temp_folder}/ref.fa'
+
+        ref_path = f'{temp_folder}/ref.fa'
         alignments_path = f'{temp_folder}/alignments.bam'
 
         if not os.path.exists(temp_folder):
@@ -27,9 +29,7 @@ class TestTAPs(unittest.TestCase):
         refseq = 'TTAATCATGAAACCGTGGAGGCAAATCGGAGTGTAAGGCTTGACTGGATTCCTACGTTGCGTAGGTT'
         if enable_ref_write:
             with open(ref_path, 'w') as f:
-                f.write(f""">chr1
-            {refseq}
-            """)
+                f.write(f">chr1\n{refseq}\n>chr2\n{complement(refseq)}\n""")
 
             # This command needs to finish, which is not working properly during testing
             pysam.faidx(ref_path)
@@ -145,21 +145,22 @@ class TestTAPs(unittest.TestCase):
         pysam.index(alignments_path)
 
         taps = TAPS()
-        reference = pysam.FastaFile(ref_path)
+        with pysam.FastaFile(ref_path) as reference:
 
-        molecule = TAPSNlaIIIMolecule(
-            NlaIIIFragment([read_A, read_B], invert_strand=False),
-            reference=reference,
-            taps=taps,
-            taps_strand='F'
-        )
-        molecule.__finalise__()
+            self.assertEqual(reference.fetch('chr1', 26, 26 + 3),'CGG')
+            molecule = TAPSNlaIIIMolecule(
+                NlaIIIFragment([read_A, read_B], invert_strand=False),
+                reference=reference,
+                taps=taps,
+                taps_strand='F'
+            )
+            molecule.__finalise__()
 
-        calls = molecule.methylation_call_dict
-        print(calls[('chr1', 54)])
-        self.assertEqual( calls['chr1', 54]['context'], 'Z')
-        self.assertEqual( calls['chr1', 26]['context'], 'Z')
-        self.assertNotIn(  ('chr1', 26 + 6), calls)
+            calls = molecule.methylation_call_dict
+            print(calls[('chr1', 54)])
+            self.assertEqual( calls['chr1', 54]['context'], 'Z')
+            self.assertEqual( calls['chr1', 26]['context'], 'Z')
+            self.assertNotIn(  ('chr1', 26 + 6), calls)
 
         """
         molecule = TAPSNlaIIIMolecule(
