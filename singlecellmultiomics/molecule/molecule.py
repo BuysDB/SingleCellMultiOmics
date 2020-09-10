@@ -2052,6 +2052,47 @@ class Molecule():
                 "There are no observations if the supplied base/location combination")
         return (np.mean(cycles_R1) if len(cycles_R1) else np.nan),  (np.mean(cycles_R2) if len(cycles_R2) else np.nan)
 
+    def get_mean_base_quality(
+                self,
+                chromosome,
+                position,
+                base=None,
+                not_base=None):
+            """Get the mean phred score at the supplied coordinate and base-call
+
+            Args:
+                chromosome (str)
+                position (int)
+                base (str) : select only reads with this base
+                not_base(str) : select only reads without this base
+
+            Returns:
+                mean_phred_score (float)
+            """
+            assert (base is not None or not_base is not None), "Supply base or not_base"
+
+            qualities = []
+            for read in self.iter_reads():
+
+                if read is None or read.reference_name != chromosome:
+                    continue
+
+                for query_pos, ref_pos in read.get_aligned_pairs(
+                        with_seq=False, matches_only=True):
+
+                    if query_pos is None or ref_pos != position:
+                        continue
+
+                    if not_base is not None and read.seq[query_pos] == not_base:
+                        continue
+                    if base is not None and read.seq[query_pos] != base:
+                        continue
+
+                    qualities.append(ord(read.qual[query_pos]))
+            if len(qualities) == 0:
+                raise IndexError(
+                    "There are no observations if the supplied base/location combination")
+            return np.mean(qualities) 
 
     @cached_property
     def allele_likelihoods(self):
