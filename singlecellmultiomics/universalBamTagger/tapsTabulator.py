@@ -33,6 +33,10 @@ if __name__ == '__main__':
         type=str,
         help='path to reference fasta file, auto detected from bamfile')
     argparser.add_argument(
+        '--every_fragment_as_molecule',
+        action='store_true',
+        help='Assign every fragment as a molecule, this effectively disables UMI deduplication and consensus calls based on multiple fragments')
+    argparser.add_argument(
         '-head',
         type=int,
         help='Tabulate the first N valid molecules')
@@ -41,12 +45,15 @@ if __name__ == '__main__':
         '-contig',
         type=str,
         help='contig to run on, all when not specified')
-    argparser.add_argument('-method', type=str, default='nla')
+    argparser.add_argument('-method', type=str, default='nla', help='nla, or chic')
+
     argparser.add_argument(
         '-fmt',
         type=str,
         default='table',
-        help="output format (options are: 'bed' or 'table')")
+        help="""output format (options are: 'bed' or 'table' or 'table_more'), Columns are:
+        sample, cut_site, molecule_span, mean_R1_cyle, mean_R2_cycle, mean_phred_score, umi, strand, chromosome, location (1 based), context
+         """)
     argparser.add_argument(
         '-moleculeNameSep',
         type=str,
@@ -103,11 +110,14 @@ if __name__ == '__main__':
     else:
         raise ValueError("Supply 'nla' or 'chic' for -method")
 
+
+    s = args.moleculeNameSep
     try:
         for i, molecule in enumerate(singlecellmultiomics.molecule.MoleculeIterator(
             alignments=alignments,
             molecule_class=molecule_class,
             yield_invalid=(output is not None),
+            every_fragment_as_molecule=args.every_fragment_as_molecule,
             fragment_class=fragment_class,
             fragment_class_args={'umi_hamming_distance': 1},
 
@@ -130,6 +140,8 @@ if __name__ == '__main__':
                     molecule.write_pysam(output)
                 continue
 
+            if args.fmt == "table_more":
+                consensus = molecule.get_consensus(allow_unsafe=True)
 
             for (chromosome, location), call in molecule.methylation_call_dict.items():
                 if call['context'] == '.':  # Only print calls concerning C's
@@ -141,7 +153,15 @@ if __name__ == '__main__':
 
                 if args.fmt == "table":
                     print(
-                        f"{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.get_cut_site()[1]}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
+                        f"{molecule.sample}{s}{i}{s}{molecule.get_cut_site()[1]}{s}{molecule.umi}{s}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
+
+                elif args.fmt == "table_more":
+
+                    base = consensus[chromosome, location]
+                    bq = molecule.get_mean_base_quality(chromosome, location, base=base)
+                    R1_cycle, R2_cycle = molecule.get_mean_cycle(chromosome, location, base=base)
+                    print(
+                        f"{molecule.sample}{s}{i}{s}{molecule.get_cut_site()[1]}{s}{molecule.span_len}{s}{R1_cycle:.0f}{s}{R2_cycle:.0f}{s}{bq:.0f}{s}{molecule.umi}{s}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
                 elif args.fmt == "bed":
                     sample = molecule.sample.split("_")[-1]
                     print(
