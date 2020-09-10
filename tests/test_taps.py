@@ -3,33 +3,36 @@
 import unittest
 import pysam
 import os
-import random
 
-from singlecellmultiomics.molecule import TAPSNlaIIIMolecule, TAPS, TAPSCHICMolecule
-from singlecellmultiomics.fragment import NlaIIIFragment, CHICFragment
+from singlecellmultiomics.molecule import TAPSNlaIIIMolecule, TAPS
+from singlecellmultiomics.fragment import NlaIIIFragment
 from singlecellmultiomics.utils import create_MD_tag
+
 
 class TestTAPs(unittest.TestCase):
 
     def test_all(self):
-        # TAPS test cases
+        temp_folder = 'data'
 
-        ## Set up test dataset:
-        temp_folder = 'tmp/scmo'
-        ref_path = f'{temp_folder}/ref.fa'
+        enable_ref_write=False
+
+        if enable_ref_write:
+            ref_path = f'{temp_folder}/ref.fa'
         alignments_path = f'{temp_folder}/alignments.bam'
-        tagged_path = f'{temp_folder}/alignments_tagged.bam'
 
         if not os.path.exists(temp_folder):
             os.makedirs(temp_folder)
         # Create reference bam file
-        refseq = 'TTAATCATGAAACCGTGGAGGCAAATCGGAGTGTAAGGCTTGACTGGATTCCTACGTTGCGTAGGTT'
-        with open(ref_path, 'w') as f:
-            f.write(f""">chr1
-        {refseq}
-        """)
 
-        pysam.faidx(ref_path)
+        refseq = 'TTAATCATGAAACCGTGGAGGCAAATCGGAGTGTAAGGCTTGACTGGATTCCTACGTTGCGTAGGTT'
+        if enable_ref_write:
+            with open(ref_path, 'w') as f:
+                f.write(f""">chr1
+            {refseq}
+            """)
+
+            # This command needs to finish, which is not working properly during testing
+            pysam.faidx(ref_path)
 
         # CATG at base 5
         # Create BAM file with NLA fragment:
@@ -141,13 +144,11 @@ class TestTAPs(unittest.TestCase):
         pysam.sort(alignments_path_unsorted, '-o', alignments_path)
         pysam.index(alignments_path)
 
-        ####
         taps = TAPS()
         reference = pysam.FastaFile(ref_path)
 
         molecule = TAPSNlaIIIMolecule(
-            NlaIIIFragment([read_A, read_B],
-            invert_strand = False),
+            NlaIIIFragment([read_A, read_B], invert_strand=False),
             reference=reference,
             taps=taps,
             taps_strand='F'
@@ -155,7 +156,7 @@ class TestTAPs(unittest.TestCase):
         molecule.__finalise__()
 
         calls = molecule.methylation_call_dict
-        print(molecule.strand, calls)
+        print(calls[('chr1', 54)])
         self.assertEqual( calls['chr1', 54]['context'], 'Z')
         self.assertEqual( calls['chr1', 26]['context'], 'Z')
         self.assertNotIn(  ('chr1', 26 + 6), calls)

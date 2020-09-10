@@ -4,14 +4,14 @@ from singlecellmultiomics.molecule.nlaIII import NlaIIIMolecule
 from singlecellmultiomics.molecule.nlaIII import AnnotatedNLAIIIMolecule
 from singlecellmultiomics.molecule.chic import CHICMolecule
 from singlecellmultiomics.molecule.chic import AnnotatedCHICMolecule
-from uuid import uuid4
 from collections import Counter
-complement_trans = str.maketrans('ATGC', 'TACG')
 from singlecellmultiomics.utils.sequtils import complement
 from itertools import product
 from matplotlib.pyplot import get_cmap
+complement_trans = str.maketrans('ATGC', 'TACG')
 
-class TAPS():
+
+class TAPS:
     # Methylated Cs get converted into T readout
     def __init__(self, reference=None, reference_variants=None, taps_strand='F', **kwargs):
         """
@@ -37,7 +37,7 @@ class TAPS():
         h unmethylated C in CHH context ( C[ACT][ACT] )
         H methylated C in CHH context ( C[ACT][ACT] )
         """
-        self.context_mapping = {}
+        self.context_mapping = dict()
         self.context_mapping[False] = {
             'CGA': 'z',
             'CGT': 'z',
@@ -57,7 +57,6 @@ class TAPS():
         for x in list(itertools.product('ACT', repeat=2)):
             self.context_mapping[True][''.join(['C'] + list(x))] = 'H'
             self.context_mapping[False][''.join(['C'] + list(x))] = 'h'
-
 
         self.colormap = get_cmap('RdYlBu_r')
         self.colormap.set_bad((0,0,0)) # For reads without C's
@@ -91,8 +90,7 @@ class TAPS():
 
         qbase = observed_base.upper()
 
-        ref_base = reference.fetch(
-            chromosome, position, position + 1).upper()
+        ref_base = reference.fetch( chromosome, position, position + 1).upper()
 
         # if a vcf file is supplied  we can extract the possible reference bases
         # @todo
@@ -102,16 +100,16 @@ class TAPS():
         rpos = position
         if ref_base == 'C' and not strand:
             context = reference.fetch(chromosome, rpos, rpos + 3).upper()
-
-            if (qbase == 'T' and self.taps_strand=='F') or (qbase=='A' and self.taps_strand=='R'):
+            print(context)
+            if qbase == 'T':
                 methylated = True
-            #methylationStateString = self.context_mapping[methylated].get(context, 'uU'[methylated])
+
 
         elif ref_base == 'G' and strand:
             origin = reference.fetch(
                 chromosome, rpos - 2, rpos + 1).upper()
             context = origin.translate(complement_trans)[::-1]
-            if (qbase == 'A' and self.taps_strand=='F') or (qbase=='T' and self.taps_strand=='R'):
+            if qbase == 'A':
                 methylated = True
 
         symbol = self.context_mapping[methylated].get(context, '.')
@@ -220,8 +218,7 @@ class TAPSMolecule(Molecule):
 
     def obtain_methylation_calls(self):
         """ This methods returns a methylation call dictionary
-            Args:
-                classifier : classifier used for consensus determination
+
             returns:
                 mcalls(dict) : (chrom,pos) : {'consensus': consensusBase, 'reference': referenceBase, 'call': call}
         """
@@ -236,6 +233,7 @@ class TAPSMolecule(Molecule):
                 return None
             raise
 
+        print(c_pos_consensus)
 
         # obtain the context of the conversions:
         conversion_contexts = {
@@ -251,6 +249,7 @@ class TAPSMolecule(Molecule):
 
         # Write bismark tags:
         self.set_methylation_call_tags(conversion_contexts)
+        return conversion_contexts
 
 
 class TAPSNlaIIIMolecule(NlaIIIMolecule, TAPSMolecule):
@@ -434,8 +433,6 @@ class TAPSPTaggedMolecule(AnnotatedTAPSNlaIIIMolecule):
         self.rev_counts = rev_counts
         self.forward_counts = forward_counts
         self.conversion_locations=conversion_locations
-
-        #strip_array_tags(self)
 
     def write_tags_to_psuedoreads(self, reads):
         AnnotatedTAPSNlaIIIMolecule.write_tags_to_psuedoreads(self,reads)
