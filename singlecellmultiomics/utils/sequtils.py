@@ -237,3 +237,39 @@ def phredscores_to_base_call(probs: dict):
         return 'N', 0
 
     return (base_probs[0][0],  base_probs[0][1])
+
+
+def pick_best_base_call( *calls ) -> tuple:
+    """ Pick the best base-call from a list of base calls
+
+    Example:
+        >>> pick_best_base_call( ('A',32), ('C',22) ) )
+        ('A', 32)
+
+        >>> pick_best_base_call( ('A',32), ('C',32) ) )
+        None
+
+    Args:
+        calls (generator) : generator/list containing tuples
+
+    Returns:
+        tuple (best_base, best_q) or None when there is a tie
+    """
+    # (q_base, quality, ...)
+    best_base, best_q = None, -1
+    tie = False
+
+    for call in calls:
+        if call is None:
+            continue
+        if call[1]>best_q:
+            best_base= call[0]
+            best_q=call[1]
+            tie=False
+        elif call[1]==best_q:
+            tie=True
+
+    if tie or best_base is None:
+        return None
+
+    return best_base, best_q
