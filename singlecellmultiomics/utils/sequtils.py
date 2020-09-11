@@ -302,21 +302,26 @@ def read_to_consensus_dict(read, start: int = None, end: int = None, only_includ
            }
 
 
-def get_consensus_dictionaries(R1, R2, only_include_refbase=None, dove_safe=False):
+def get_consensus_dictionaries(R1, R2, only_include_refbase=None, dove_safe=False, min_phred_score=None, skip_first_n_cycles_R1=None, skip_last_n_cycles_R1=None,skip_first_n_cycles_R2=None, skip_last_n_cycles_R2=None, dove_R2_distance=0, dove_R1_distance=0  ):
+
+    assert R1.is_read1 and R2.is_read2
+    assert R1.reference_start < R1.reference_end
+    assert R2.reference_start < R2.reference_end
 
     if dove_safe:
         if R1 is None or R2 is None:
             raise ValueError(
                 'Its not possible to determine a safe region when the alignment of R1 or R2 is not specified')
 
+
         if R1.is_reverse and not R2.is_reverse:
-            start, end = R2.reference_start, R1.reference_end
+            start, end = R2.reference_start + dove_R2_distance, R1.reference_end - dove_R1_distance -1
         elif not R1.is_reverse and R2.is_reverse:
-            start, end = R1.reference_start, R2.reference_end
+            start, end = R1.reference_start + dove_R1_distance, R2.reference_end - dove_R2_distance -1
         else:
             raise ValueError('This method only works for inwards facing reads')
     else:
         start, end = None, None
 
-    return read_to_consensus_dict(R1, start, end, only_include_refbase=only_include_refbase), \
-           read_to_consensus_dict(R2, start, end, only_include_refbase=only_include_refbase)
+    return read_to_consensus_dict(R1, start, end, only_include_refbase=only_include_refbase, skip_last_n_cycles=skip_last_n_cycles_R1, skip_first_n_cycles=skip_first_n_cycles_R1,min_phred_score=min_phred_score), \
+           read_to_consensus_dict(R2, start, end, only_include_refbase=only_include_refbase, skip_last_n_cycles=skip_last_n_cycles_R2, skip_first_n_cycles=skip_last_n_cycles_R2, min_phred_score=min_phred_score)
