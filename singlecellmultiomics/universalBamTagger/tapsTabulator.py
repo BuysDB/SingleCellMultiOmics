@@ -92,6 +92,9 @@ if __name__ == '__main__':
         type=str,
         default='table',
         help="""output format (options are: 'bed' or 'table' or 'table_more'), Columns are:
+        table:
+        sample, cut_site, molecule_span, umi, strand, chromosome, location (1 based), context
+        long format (slower):
         sample, cut_site, molecule_span, mean_R1_cyle, mean_R2_cycle, mean_phred_score, umi, strand, chromosome, location (1 based), context
          """)
     argparser.add_argument(
