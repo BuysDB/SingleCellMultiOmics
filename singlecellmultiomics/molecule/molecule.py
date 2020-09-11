@@ -2005,13 +2005,13 @@ class Molecule():
             'alt_per_read': alt_per_read
         }
 
-    def get_mean_base_quality(
+    def get_mean_cycle(
             self,
             chromosome,
             position,
             base=None,
             not_base=None):
-        """Get the mean phred score at the supplied coordinate and base-call
+        """Get the mean cycle at the supplied coordinate and base-call
 
         Args:
             chromosome (str)
@@ -2020,18 +2020,20 @@ class Molecule():
             not_base(str) : select only reads without this base
 
         Returns:
-            mean_phred_score (float)
+            mean_cycles (tuple): mean cycle for R1 and R2
         """
         assert (base is not None or not_base is not None), "Supply base or not_base"
 
-        qualities = []
+        cycles_R1 = []
+        cycles_R2 = []
         for read in self.iter_reads():
 
             if read is None or read.reference_name != chromosome:
                 continue
 
-            for query_pos, ref_pos in read.get_aligned_pairs(
-                    with_seq=False, matches_only=True):
+
+            for cycle, query_pos, ref_pos in pysamiterators.iterators.ReadCycleIterator(
+                    read, with_seq=False):
 
                 if query_pos is None or ref_pos != position:
                     continue
@@ -2041,11 +2043,56 @@ class Molecule():
                 if base is not None and read.seq[query_pos] != base:
                     continue
 
-                qualities.append(ord(read.qual[query_pos]))
-        if len(qualities) == 0:
+                if read.is_read2:
+                    cycles_R2.append(cycle)
+                else:
+                    cycles_R1.append(cycle)
+        if len(cycles_R2) == 0 and len(cycles_R1)==0:
             raise IndexError(
                 "There are no observations if the supplied base/location combination")
-        return np.mean(qualities)
+        return (np.mean(cycles_R1) if len(cycles_R1) else np.nan),  (np.mean(cycles_R2) if len(cycles_R2) else np.nan)
+
+    def get_mean_base_quality(
+                self,
+                chromosome,
+                position,
+                base=None,
+                not_base=None):
+            """Get the mean phred score at the supplied coordinate and base-call
+
+            Args:
+                chromosome (str)
+                position (int)
+                base (str) : select only reads with this base
+                not_base(str) : select only reads without this base
+
+            Returns:
+                mean_phred_score (float)
+            """
+            assert (base is not None or not_base is not None), "Supply base or not_base"
+
+            qualities = []
+            for read in self.iter_reads():
+
+                if read is None or read.reference_name != chromosome:
+                    continue
+
+                for query_pos, ref_pos in read.get_aligned_pairs(
+                        with_seq=False, matches_only=True):
+
+                    if query_pos is None or ref_pos != position:
+                        continue
+
+                    if not_base is not None and read.seq[query_pos] == not_base:
+                        continue
+                    if base is not None and read.seq[query_pos] != base:
+                        continue
+
+                    qualities.append(ord(read.qual[query_pos]))
+            if len(qualities) == 0:
+                raise IndexError(
+                    "There are no observations if the supplied base/location combination")
+            return np.mean(qualities)
 
     @cached_property
     def allele_likelihoods(self):
@@ -2513,7 +2560,44 @@ class Molecule():
 
         return matches, mismatches
 
-    def get_consensus(
+    def get_consensus(self, dove_safe: bool = False, only_include_refbase: str = None, allow_N=False, **get_consensus_dictionaries_kwargs):
+
+        if allow_N:
+            raise NotImplementedError()
+            
+        consensii = defaultdict(lambda: np.zeros(5))  # location -> obs (A,C,G,T,N)
+        for fragment in self:
+            if dove_safe and not fragment.has_R2() or not fragment.has_R1():
+                #print('Skipping ', fragment)
+                continue
+
+            try:
+                for position, (q_base, phred_score) in fragment.get_consensus(dove_safe=dove_safe,
+                                                                              only_include_refbase=only_include_refbase, **get_consensus_dictionaries_kwargs).items():
+
+                    if q_base == 'N':
+                        continue
+                    #    consensii[position][4] += phred_score
+                    # else:
+                    consensii[position]['ACGTN'.index(q_base)] += 1
+            except ValueError as e:
+                # For example: ValueError('This method only works for inwards facing reads')
+                pass
+        if len(consensii)==0:
+            return dict()
+
+        locations = np.array(sorted(list(consensii.keys())))
+
+        v = np.vstack([ consensii[location] for location in locations])
+        majority_base_indices = np.argmax(v, axis=1)
+
+        # Check if there is ties, this result in multiple hits for argmax (majority_base_indices)
+        proper = (v == v[np.arange(v.shape[0]), majority_base_indices][:, np.newaxis]).sum(1) == 1
+
+        return  dict(zip(locations[proper], ['ACGTN'[idx] for idx in majority_base_indices[proper]]))
+
+
+    def get_consensus_old(
             self,
             base_obs=None,
             classifier=None,
@@ -2688,6 +2772,10 @@ class Molecule():
         """
         for fragment in self.fragments:
             yield fragment
+
+    @property
+    def span_len(self):
+        return abs(self.spanEnd - self.spanStart)
 
     def get_methylated_count(self, context=3):
         """Get the total amount of methylated bases

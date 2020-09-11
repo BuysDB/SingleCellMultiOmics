@@ -33,20 +33,70 @@ if __name__ == '__main__':
         type=str,
         help='path to reference fasta file, auto detected from bamfile')
     argparser.add_argument(
+        '--every_fragment_as_molecule',
+        action='store_true',
+        help='Assign every fragment as a molecule, this effectively disables UMI deduplication and consensus calls based on multiple fragments')
+    argparser.add_argument(
         '-head',
         type=int,
         help='Tabulate the first N valid molecules')
+
+    argparser.add_argument(
+        '-min_phred_score',
+        type=int,
+        help='Do not call methylation for bases with a phred score lower than "min_phred_score"',default=None)
+
+
+    argparser.add_argument(
+        '-dove_R1_distance',
+        type=int,
+        help='Do not call methylation N bases form the end of R1',default=2)
+
+    argparser.add_argument(
+        '-dove_R2_distance',
+        type=int,
+        help='Do not call methylation N bases form the end of R2',default=2)
+
+    argparser.add_argument(
+        '-skip_last_n_cycles_R1',
+        type=int,
+        help='Do not call methylation N bases form the end of R1',default=2)
+
+
+
+    argparser.add_argument(
+        '-skip_first_n_cycles_R1',
+        type=int,
+        help='Do not call methylation N bases form the start of R1',default=2)
+
+    argparser.add_argument(
+        '-skip_last_n_cycles_R2',
+        type=int,
+        help='Do not call methylation N bases form the end of R2',default=2)
+
+    argparser.add_argument(
+        '-skip_first_n_cycles_R2',
+        type=int,
+        help='Do not call methylation N bases form the start of R2',default=2)
+
+
     argparser.add_argument('-minmq', type=int, default=50)
     argparser.add_argument(
         '-contig',
         type=str,
         help='contig to run on, all when not specified')
-    argparser.add_argument('-method', type=str, default='nla')
+    argparser.add_argument('-method', type=str, default='nla', help='nla, or chic')
+
     argparser.add_argument(
         '-fmt',
         type=str,
         default='table',
-        help="output format (options are: 'bed' or 'table')")
+        help="""output format (options are: 'bed' or 'table' or 'table_more'), Columns are:
+        table:
+        sample, cut_site, molecule_span, umi, strand, chromosome, location (1 based), context
+        long format (slower):
+        sample, cut_site, molecule_span, mean_R1_cyle, mean_R2_cycle, mean_phred_score, umi, strand, chromosome, location (1 based), context
+         """)
     argparser.add_argument(
         '-moleculeNameSep',
         type=str,
@@ -103,13 +153,30 @@ if __name__ == '__main__':
     else:
         raise ValueError("Supply 'nla' or 'chic' for -method")
 
+
+    molecule_class_args['methylation_consensus_kwargs'] = {
+
+        'skip_first_n_cycles_R1':args.skip_first_n_cycles_R1,
+        'skip_first_n_cycles_R2':args.skip_first_n_cycles_R2,
+        'dove_R1_distance':args.dove_R1_distance,
+        'dove_R2_distance':args.dove_R2_distance,
+        'skip_last_n_cycles_R1':args.skip_last_n_cycles_R1,
+        'skip_last_n_cycles_R2':args.skip_last_n_cycles_R2,
+        'min_phred_score':args.min_phred_score
+        }
+
+    s = args.moleculeNameSep
     try:
         for i, molecule in enumerate(singlecellmultiomics.molecule.MoleculeIterator(
             alignments=alignments,
             molecule_class=molecule_class,
             yield_invalid=(output is not None),
+            every_fragment_as_molecule=args.every_fragment_as_molecule,
             fragment_class=fragment_class,
-            fragment_class_args={'umi_hamming_distance': 1},
+            fragment_class_args={'umi_hamming_distance': 1,
+                                 'no_umi_cigar_processing':True,
+
+                                 },
 
                 molecule_class_args=molecule_class_args,
                 contig=args.contig)):
@@ -130,6 +197,10 @@ if __name__ == '__main__':
                     molecule.write_pysam(output)
                 continue
 
+            if args.fmt == "table_more":
+                consensus = molecule.get_consensus()
+
+            CUT_SITE = molecule.get_cut_site()[1]
 
             for (chromosome, location), call in molecule.methylation_call_dict.items():
                 if call['context'] == '.':  # Only print calls concerning C's
@@ -140,8 +211,18 @@ if __name__ == '__main__':
                     continue
 
                 if args.fmt == "table":
+
                     print(
-                        f"{molecule.sample}{args.moleculeNameSep}{i}{args.moleculeNameSep}{molecule.get_cut_site()[1]}{args.moleculeNameSep}{molecule.umi}{args.moleculeNameSep}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
+                        f"{molecule.sample}{s}{i}{s}{CUT_SITE}{s}{molecule.span_len}{s}{molecule.umi}{s}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
+
+                elif args.fmt == "table_more":
+
+                    base = consensus[chromosome, location]
+                    bq = molecule.get_mean_base_quality(chromosome, location, base=base)
+                    R1_cycle, R2_cycle = molecule.get_mean_cycle(chromosome, location, base=base)
+
+                    print(
+                        f"{molecule.sample}{s}{i}{s}{molecule.get_cut_site()[1]}{s}{molecule.span_len}{s}{R1_cycle:.0f}{s}{R2_cycle:.0f}{s}{bq:.0f}{s}{molecule.umi}{s}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
                 elif args.fmt == "bed":
                     sample = molecule.sample.split("_")[-1]
                     print(

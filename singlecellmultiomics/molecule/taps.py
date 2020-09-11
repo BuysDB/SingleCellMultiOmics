@@ -4,14 +4,14 @@ from singlecellmultiomics.molecule.nlaIII import NlaIIIMolecule
 from singlecellmultiomics.molecule.nlaIII import AnnotatedNLAIIIMolecule
 from singlecellmultiomics.molecule.chic import CHICMolecule
 from singlecellmultiomics.molecule.chic import AnnotatedCHICMolecule
-from uuid import uuid4
 from collections import Counter
-complement_trans = str.maketrans('ATGC', 'TACG')
 from singlecellmultiomics.utils.sequtils import complement
 from itertools import product
 from matplotlib.pyplot import get_cmap
+complement_trans = str.maketrans('ATGC', 'TACG')
 
-class TAPS():
+
+class TAPS:
     # Methylated Cs get converted into T readout
     def __init__(self, reference=None, reference_variants=None, taps_strand='F', **kwargs):
         """
@@ -37,7 +37,7 @@ class TAPS():
         h unmethylated C in CHH context ( C[ACT][ACT] )
         H methylated C in CHH context ( C[ACT][ACT] )
         """
-        self.context_mapping = {}
+        self.context_mapping = dict()
         self.context_mapping[False] = {
             'CGA': 'z',
             'CGT': 'z',
@@ -58,7 +58,6 @@ class TAPS():
             self.context_mapping[True][''.join(['C'] + list(x))] = 'H'
             self.context_mapping[False][''.join(['C'] + list(x))] = 'h'
 
-
         self.colormap = get_cmap('RdYlBu_r')
         self.colormap.set_bad((0,0,0)) # For reads without C's
 
@@ -66,9 +65,10 @@ class TAPS():
             self,
             chromosome,
             position,
+            ref_base,
             observed_base='N',
-            strand=0,
-            reference=None,
+            strand=None,
+            reference=None
         ):
         """Extract bismark call letter from a chromosomal location given the observed base
 
@@ -80,7 +80,7 @@ class TAPS():
 
             observed_base(str) : base observed in the read
 
-            strand(str) : mapping strand
+            strand(int) : mapping strand, False: forward, True: Reverse
 
         Returns:
             context(str) : 3 basepair context
@@ -88,33 +88,44 @@ class TAPS():
         """
 
         assert reference is not None
+        assert strand is not None
 
         qbase = observed_base.upper()
 
-        ref_base = reference.fetch(
-            chromosome, position, position + 1).upper()
+        #ref_base = reference.fetch( chromosome, position, position + 1).upper()
+
 
         # if a vcf file is supplied  we can extract the possible reference bases
         # @todo
 
         context = None
-        methylated = False
-        rpos = position
-        if ref_base == 'C' and not strand:
-            context = reference.fetch(chromosome, rpos, rpos + 3).upper()
+        methylated = None
 
-            if (qbase == 'T' and self.taps_strand=='F') or (qbase=='A' and self.taps_strand=='R'):
+
+        if ref_base == 'C':
+            context = reference.fetch(chromosome, position, position + 3).upper()
+            if qbase == 'T':
                 methylated = True
-            #methylationStateString = self.context_mapping[methylated].get(context, 'uU'[methylated])
+            elif qbase=='C':
+                methylated = False
 
-        elif ref_base == 'G' and strand:
-            origin = reference.fetch(
-                chromosome, rpos - 2, rpos + 1).upper()
+        elif ref_base == 'G':
+            origin = reference.fetch( chromosome, position - 2, position + 1).upper()
             context = origin.translate(complement_trans)[::-1]
-            if (qbase == 'A' and self.taps_strand=='F') or (qbase=='T' and self.taps_strand=='R'):
+            if qbase == 'A':
                 methylated = True
+            elif qbase == 'G':
+                methylated = False
 
-        symbol = self.context_mapping[methylated].get(context, '.')
+        else:
+            raise ValueError('Only supply reference C or G')
+
+        #print(ref_base, qbase,  strand, position, chromosome,context, '?' if methylated is None  else ('methylated' if methylated else  'not methylated'))
+
+        if methylated is None:
+            symbol='.'
+        else:
+            symbol = self.context_mapping[methylated].get(context, '.')
         return context, symbol
 
     def molecule_to_context_call_dict(self, molecule):
@@ -132,14 +143,14 @@ class TAPS():
                                                        position=pos,
                                                        reference=molecule.reference,
                                                        observed_base=base,
-                                                       strand=molecule.get_strand())
+                                                       strand=molecule.strand)
             if letter is not None:
                 call_dict[(chrom, pos)] = letter
         return call_dict
 
 
 class TAPSMolecule(Molecule):
-    def __init__(self, fragments=None, taps=None, classifier=None, taps_strand='F', allow_unsafe_base_calls=True, **kwargs):
+    def __init__(self, fragments=None, taps=None, classifier=None, taps_strand='F', allow_unsafe_base_calls=False, methylation_consensus_kwargs=None, **kwargs):
         """ TAPSMolecule
 
         Args:
@@ -151,13 +162,14 @@ class TAPSMolecule(Molecule):
         Molecule.__init__(self, fragments=fragments, **kwargs)
         if taps is None:
             raise ValueError("""Supply initialised TAPS class
-                taps = singlecellmultiomics.molecule.TAPS( reference )
+                taps = singlecellmultiomics.molecule.TAPS( )
             """)
-        self.taps = taps  # initialised TAPS class
+        self.taps = taps  # initialised TAPS class**self.
         self.methylation_call_dict = None
         self.classifier = classifier
         self.taps_strand = taps_strand
         self.allow_unsafe_base_calls = allow_unsafe_base_calls
+        self.get_consensus_dictionaries_kwargs = methylation_consensus_kwargs if methylation_consensus_kwargs is not None else dict()
 
     def add_cpg_color_tag_to_read(self, read):
         try:
@@ -171,10 +183,7 @@ class TAPSMolecule(Molecule):
     def __finalise__(self):
         super().__finalise__()
 
-        try:
-            self.obtain_methylation_calls(classifier=self.classifier, allow_unsafe=self.allow_unsafe_base_calls)
-        except ValueError:
-            self.obtain_methylation_calls(classifier=self.classifier, allow_unsafe=True)
+        self.obtain_methylation_calls(**self.get_consensus_dictionaries_kwargs)
 
         for read in self.iter_reads():
             try:
@@ -195,18 +204,19 @@ class TAPSMolecule(Molecule):
     def is_valid(self, set_rejection_reasons=False):
         if not super().is_valid(set_rejection_reasons=set_rejection_reasons):
             return False
-
+        """
         try:
             consensus = self.get_consensus(allow_unsafe=self.allow_unsafe_base_calls)
         except ValueError:
             if set_rejection_reasons:
                 self.set_rejection_reason('no_consensus')
             return False
+
         except TypeError:
             if set_rejection_reasons:
                 self.set_rejection_reason('getPairGenomicLocations_failed')
             return False
-
+        """
         if self.methylation_call_dict is None:
             if set_rejection_reasons:
                 self.set_rejection_reason('methylation_calls_failed')
@@ -214,76 +224,47 @@ class TAPSMolecule(Molecule):
 
         return True
 
-    def obtain_methylation_calls(self, classifier=None, allow_unsafe=True):
+
+    #def obtain_methylation_calls_experimental(self):
+
+
+
+
+    def obtain_methylation_calls(self, **get_consensus_dictionaries_kwargs):
         """ This methods returns a methylation call dictionary
-            Args:
-                classifier : classifier used for consensus determination
+
             returns:
                 mcalls(dict) : (chrom,pos) : {'consensus': consensusBase, 'reference': referenceBase, 'call': call}
         """
+        expected_base_to_be_converted = ('G' if self.strand else 'C') if self.taps_strand=='F' else ('C' if self.strand else 'G')
 
-        # Find all aligned positions and corresponding reference bases:
         try:
-            aligned_reference_positions = {}  # (chrom,pos)->base
-            for read in self.iter_reads():
-                for read_pos, ref_pos, ref_base in read.get_aligned_pairs(
-                        with_seq=True, matches_only=True):
-                    aligned_reference_positions[(
-                        read.reference_name, ref_pos)] = ref_base.upper()
+            c_pos_consensus = self.get_consensus(dove_safe = not self.allow_unsafe_base_calls,
+                                                 only_include_refbase=expected_base_to_be_converted, **get_consensus_dictionaries_kwargs)
+
         except ValueError as e:
             if 'MD tag not present' in str(e):
                 self.set_rejection_reason("MD_TAG_MISSING")
                 return None
             raise
-
-
-            # Obtain consensus:
-        try:
-            consensus = self.get_consensus(classifier=classifier, allow_unsafe=allow_unsafe)
-        except ValueError as e:
-            if 'MD tag not present' in str(e):
-                self.set_rejection_reason("MD_TAG_MISSING")
-                return None
-            raise
-
-        # find all locations where a C/G was converted into A/T, now strand
-        # specific
-        converted_bases = 0
-        conversions = {}
-        for location, reference_base in aligned_reference_positions.items():
-            if location not in consensus:
-                continue
-            qbase = consensus[location]
-            if self.taps_strand=='F':
-                #C->A, G->T, A>C, T>G
-
-                if (not self.strand and reference_base == 'C' and qbase in 'CT') or \
-                        self.strand and reference_base == 'G' and qbase in 'AG':
-                    conversions[location] = {
-                        'ref': reference_base, 'obs': qbase}
-                    if qbase in 'TA':
-                        converted_bases += 1
-            else:
-                if (self.strand and reference_base == 'C' and qbase in 'CT') or (not self.strand and reference_base == 'G' and consensus[location] in 'AG'):
-                    conversions[location] = {
-                        'ref': reference_base, 'obs': qbase}
-                    if qbase in 'TA':
-                        converted_bases += 1
 
         # obtain the context of the conversions:
         conversion_contexts = {
-            location:
-            {'consensus': consensus[location],
-             'reference_base': conversions[location]['ref'],
+            (self.chromosome, position):
+            {'consensus': base_call,
+             'reference_base': expected_base_to_be_converted,
              'context': self.taps.position_to_context(
-                *location,
+                chromosome=self.chromosome,
+                position=position,
                 reference=self.reference,
-                observed_base=observations['obs'],
-                strand=(self.strand if self.taps_strand=='F' else  not self.strand))[1]}
-            for location, observations in conversions.items()}
+                observed_base=base_call,
+                ref_base=expected_base_to_be_converted,
+                strand=self.strand)[1]}
+            for position, base_call in c_pos_consensus.items()}
 
         # Write bismark tags:
         self.set_methylation_call_tags(conversion_contexts)
+        return conversion_contexts
 
 
 class TAPSNlaIIIMolecule(NlaIIIMolecule, TAPSMolecule):
@@ -426,10 +407,10 @@ class TAPSPTaggedMolecule(AnnotatedTAPSNlaIIIMolecule):
                 #    continue
 
                 query = read.seq[qpos]
-                context = self.reference.fetch(self.chromosome,refpos-1,refpos+2).upper()
+                context = self.reference.fetch(self.chromosome, refpos-1, refpos+2).upper()
 
                 # Check if call is the same as the consensus call:
-                if query!=consensus.get((read.reference_name,refpos),'X'):
+                if query!=consensus.get((read.reference_name,refpos), 'X'):
                     #print(query, consensus.get((read.reference_name,refpos),'X'))
                     #print(read.reference_name, refpos,)
                     continue
@@ -467,8 +448,6 @@ class TAPSPTaggedMolecule(AnnotatedTAPSNlaIIIMolecule):
         self.rev_counts = rev_counts
         self.forward_counts = forward_counts
         self.conversion_locations=conversion_locations
-
-        #strip_array_tags(self)
 
     def write_tags_to_psuedoreads(self, reads):
         AnnotatedTAPSNlaIIIMolecule.write_tags_to_psuedoreads(self,reads)
