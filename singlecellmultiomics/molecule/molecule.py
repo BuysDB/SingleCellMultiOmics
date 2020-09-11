@@ -2092,7 +2092,7 @@ class Molecule():
             if len(qualities) == 0:
                 raise IndexError(
                     "There are no observations if the supplied base/location combination")
-            return np.mean(qualities) 
+            return np.mean(qualities)
 
     @cached_property
     def allele_likelihoods(self):
@@ -2560,21 +2560,34 @@ class Molecule():
 
         return matches, mismatches
 
-    def get_consensus(self, dove_safe: bool = False, only_include_refbase: str = None, **kwargs):
+    def get_consensus(self, dove_safe: bool = False, only_include_refbase: str = None, allow_N=False, **get_consensus_dictionaries_kwargs):
 
+        if allow_N:
+            raise NotImplementedError()
+            
         consensii = defaultdict(lambda: np.zeros(5))  # location -> obs (A,C,G,T,N)
         for fragment in self:
+            if dove_safe and not fragment.has_R2() or not fragment.has_R1():
+                #print('Skipping ', fragment)
+                continue
 
-            for position, (q_base, phred_score) in fragment.get_consensus(dove_safe=dove_safe,
-                                                                          only_include_refbase=only_include_refbase).items():
+            try:
+                for position, (q_base, phred_score) in fragment.get_consensus(dove_safe=dove_safe,
+                                                                              only_include_refbase=only_include_refbase, **get_consensus_dictionaries_kwargs).items():
 
-                if q_base == 'N':
-                    continue
-                #    consensii[position][4] += phred_score
-                # else:
-                consensii[position]['ACGTN'.index(q_base)] += 1
+                    if q_base == 'N':
+                        continue
+                    #    consensii[position][4] += phred_score
+                    # else:
+                    consensii[position]['ACGTN'.index(q_base)] += 1
+            except ValueError as e:
+                # For example: ValueError('This method only works for inwards facing reads')
+                pass
+        if len(consensii)==0:
+            return dict()
 
         locations = np.array(sorted(list(consensii.keys())))
+
         v = np.vstack([ consensii[location] for location in locations])
         majority_base_indices = np.argmax(v, axis=1)
 
