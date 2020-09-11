@@ -275,7 +275,7 @@ def pick_best_base_call( *calls ) -> tuple:
     return best_base, best_q
 
 
-def read_to_consensus_dict(read, start: int = None, end: int = None, only_include_refbase: str = None):
+def read_to_consensus_dict(read, start: int = None, end: int = None, only_include_refbase: str = None, skip_first_n_cycles:int = None, skip_last_n_cycles: int = None, min_phred_score: int  = None):
     """
     Obtain consensus calls for read, between start and end
     """
@@ -292,8 +292,12 @@ def read_to_consensus_dict(read, start: int = None, end: int = None, only_includ
          for qpos, refpos, refbase in read.get_aligned_pairs(
                                              matches_only=True,
                                              with_seq=True)
+
          if (start is None or refpos>=start) and \
-            (end is None or refpos<=end) and
+            (end is None or refpos<=end) and \
+            (min_phred_score is None or read.query_qualities[qpos]>=min_phred_score) and \
+            (skip_last_n_cycles is None or ( read.is_reverse and qpos>skip_last_n_cycles) or (not read.is_reverse and qpos<read.infer_query_length()-skip_last_n_cycles)) and \
+            (skip_first_n_cycles is None or ( not read.is_reverse and qpos>skip_first_n_cycles) or ( read.is_reverse and qpos<read.infer_query_length()-skip_first_n_cycles)) and \
             (only_include_refbase is None or refbase.upper()==only_include_refbase)
            }
 
