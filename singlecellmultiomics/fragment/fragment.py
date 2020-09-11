@@ -480,7 +480,7 @@ class Fragment():
     def R2(self):
         return self.reads[1]
 
-    def get_consensus(self, only_include_refbase: str = None, dove_safe: bool = False) -> dict:
+    def get_consensus(self, only_include_refbase: str = None, dove_safe: bool = False, **get_consensus_dictionaries_kwargs) -> dict:
         """
         a dictionary of (reference_pos) : (qbase, quality, reference_base) tuples
 
@@ -494,7 +494,7 @@ class Fragment():
         r1_consensus, r2_consensus = get_consensus_dictionaries(self.R1,
                                                                 self.R2,
                                                                 only_include_refbase=only_include_refbase,
-                                                                dove_safe=dove_safe)
+                                                                dove_safe=dove_safe, **get_consensus_dictionaries_kwargs)
 
         return {
             ref_pos:pick_best_base_call( r1_consensus.get(ref_pos) , r2_consensus.get(ref_pos) )
