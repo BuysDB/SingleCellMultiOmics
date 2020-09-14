@@ -94,6 +94,20 @@ class CHICFragment(Fragment):
             self.set_rejection_reason("R1_unmapped")
             return(None)
 
+        ### Check if the orientation of the reads makes sense, reads need to point inwards
+        # | ----- >   < ---- |
+        if R2 is not None and not R2.is_unmapped:
+            if R1.is_reverse and not R2.is_reverse:
+                pass
+            elif not R1.is_reverse and R2.is_reverse:
+                pass
+            else:
+                # it does not make sense ...
+                self.set_rejection_reason("orientation")
+                return(None)
+
+
+
         # Identify the start coordinate of Read 1 by reading the amount of softclips on the start of the read
         r1_start =(R1.reference_end if R1.is_reverse else R1.reference_start)
         if not self.no_umi_cigar_processing:
