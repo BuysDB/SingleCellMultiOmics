@@ -136,19 +136,25 @@ class Fragment():
                 self.qcfail=True
                 break
 
+            if read.is_qcfail:
+                self.qcfail = True
+
             if read.has_tag('rS'):
                 self.random_primer_sequence = read.get_tag('rS')
                 self.unsafe_trimmed = True
                 self.R2_primer_length = 0 # Set R2 primer length to zero, as the primer has been removed
+
             if not read.is_unmapped:
                 self.is_mapped = True
             if read.mapping_quality > 0:
                 self.is_multimapped = False
             self.mapping_quality = max(
                 self.mapping_quality, read.mapping_quality)
+
             if i == 0:
                 if read.is_read2:
-                    raise ValueError('Supply first R1 then R2')
+                    if not read.is_qcfail:
+                        raise ValueError('Supply first R1 then R2')
                 read.is_read1 = True
                 read.is_read2 = False
             elif i == 1:
