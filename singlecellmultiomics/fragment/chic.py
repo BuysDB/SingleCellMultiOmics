@@ -96,15 +96,17 @@ class CHICFragment(Fragment):
 
         ### Check if the orientation of the reads makes sense, reads need to point inwards
         # | ----- >   < ---- |
-        if R2 is not None and not R2.is_unmapped:
-            if R1.is_reverse and not R2.is_reverse:
-                pass
-            elif not R1.is_reverse and R2.is_reverse:
-                pass
-            else:
-                # it does not make sense ...
-                self.set_rejection_reason("orientation")
-                return(None)
+        if self.has_R2():
+            R2 = self.get_R2()
+            if not R2.is_unmapped:
+                if R1.is_reverse and not R2.is_reverse:
+                    pass
+                elif not R1.is_reverse and R2.is_reverse:
+                    pass
+                else:
+                    # it does not make sense ...
+                    self.set_rejection_reason("orientation")
+                    return(None)
 
 
 
