@@ -2564,7 +2564,7 @@ class Molecule():
 
         if allow_N:
             raise NotImplementedError()
-            
+
         consensii = defaultdict(lambda: np.zeros(5))  # location -> obs (A,C,G,T,N)
         for fragment in self:
             if dove_safe and not fragment.has_R2() or not fragment.has_R1():
@@ -2573,7 +2573,8 @@ class Molecule():
 
             try:
                 for position, (q_base, phred_score) in fragment.get_consensus(dove_safe=dove_safe,
-                                                                              only_include_refbase=only_include_refbase, **get_consensus_dictionaries_kwargs).items():
+                                                                              only_include_refbase=only_include_refbase,
+                                                                              **get_consensus_dictionaries_kwargs).items():
 
                     if q_base == 'N':
                         continue
@@ -2586,7 +2587,8 @@ class Molecule():
         if len(consensii)==0:
             return dict()
 
-        locations = np.array(sorted(list(consensii.keys())))
+        locations = np.empty(len(consensii), dtype=object)
+        locations[:] = sorted(list(consensii.keys()))
 
         v = np.vstack([ consensii[location] for location in locations])
         majority_base_indices = np.argmax(v, axis=1)

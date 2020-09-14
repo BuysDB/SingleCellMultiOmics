@@ -46,7 +46,7 @@ class Fragment():
     """
 
     def __init__(self, reads,
-                 assignment_radius: int = 3,
+                 assignment_radius: int = 0,
                  umi_hamming_distance: int = 1,
                  R1_primer_length: int = 0,
                  R2_primer_length: int = 6,
