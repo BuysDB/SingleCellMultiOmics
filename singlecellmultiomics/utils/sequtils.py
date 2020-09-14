@@ -304,7 +304,7 @@ def read_to_consensus_dict(read, start: int = None, end: int = None, only_includ
 
 def get_consensus_dictionaries(R1, R2, only_include_refbase=None, dove_safe=False, min_phred_score=None, skip_first_n_cycles_R1=None, skip_last_n_cycles_R1=None,skip_first_n_cycles_R2=None, skip_last_n_cycles_R2=None, dove_R2_distance=0, dove_R1_distance=0  ):
 
-    assert R1.is_read1 and R2.is_read2
+    assert (R1 is None or R1.is_read1) and (R2 is None or R2.is_read2)
 
     if dove_safe:
         if R1 is None or R2 is None:
