@@ -201,7 +201,7 @@ if __name__=='__main__':
 
 
         try:
-            with pysam.AlignmentFile(single_cell_bam_path) as alignments, \
+            with pysam.AlignmentFile(single_cell_bam_path, threads=4) as alignments, \
                  pysam.VariantFile(known_vcf_path) as known, \
                  sorted_bam_file(temp_bam_path, origin_bam=single_cell_bam_path) as out, \
                  pysam.FastaFile(reference_path) as reference_handle:

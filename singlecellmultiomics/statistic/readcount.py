@@ -101,7 +101,7 @@ class ReadCount(Statistic):
 
         else:
             if not read.is_unmapped:
-                if read.has_tag('DS'):
+                if (read.has_tag('DS') or read.has_tag('GN')) and not read.is_qcfail:
                     if read.is_read1:
                         self.totalAssignedSiteReads['R1'] += 1
                     elif read.is_read2:
