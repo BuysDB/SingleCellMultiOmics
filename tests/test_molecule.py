@@ -71,7 +71,7 @@ class TestMolecule(unittest.TestCase):
 
             # A proper pair
             read_G_a = get_chic_read(test_sam.header, 'read_G', start=102,  paired=True)
-            read_G_b = get_chic_read(test_sam.header, 'read_G', start=130, read1=False, paired=True)
+            read_G_b = get_chic_read(test_sam.header, 'read_G', start=130, read1=False, paired=True, is_reverse=True)
 
             # A stale R2
             read_H = get_chic_read(test_sam.header, 'read_H', start=130,  paired=True, proper_pair=False, read1=False)
@@ -111,8 +111,7 @@ class TestMolecule(unittest.TestCase):
 
             self.assertTrue(frag_A==frag_B)
 
-            print(frag_G, frag_I)
-            self.assertTrue(frag_G==frag_I)
+            self.assertEqual(frag_G, frag_I)
             self.assertFalse(frag_A==frag_C)
             self.assertFalse(frag_A==frag_D)
             self.assertFalse(frag_C==frag_D)
