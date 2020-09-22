@@ -1,4 +1,5 @@
 from .sequtils import *
+from .poolutils import *
 from .html import *
 from .binning import *
 from .iteration import *
