@@ -20,6 +20,7 @@ def conversion_dict():
             pattern_counts[(f'{context[0]}{ref}{context[1]}', to)] = 0
     return pattern_counts
 
+
 def conversion_dict_stranded():
     conversions_single_nuc = ('AC', 'AG', 'AT', 'CA', 'CG', 'CT', 'GA', 'GC', 'GT', 'TA', 'TC', 'TG')
     pattern_counts = OrderedDict()
@@ -28,14 +29,16 @@ def conversion_dict_stranded():
             pattern_counts[(f'{context[0]}{ref}{context[1]}', to)] = 0
     return pattern_counts
 
+
 def substitution_plot(pattern_counts: dict,
                       figsize: tuple = (10, 4),
-                      conversion_colors: tuple = ('b', 'k', 'r', 'grey', 'g', 'pink'),
+                      conversion_colors: tuple = None,
 
                       ylabel: str = '# conversions per molecule',
                       add_main_group_labels: bool = True,
                       fig=None,
                       ax=None,
+                      stranded=False,
                       **plot_args
                       ):
     """
@@ -76,8 +79,12 @@ def substitution_plot(pattern_counts: dict,
         >>>     plt.show()
 
     """
-    conversions_single_nuc = ("CA", "CG", "CT", "TA", "TC", "TG")
-
+    if stranded:
+        conversions_single_nuc = ('AC', 'AG', 'AT', 'CA', 'CG', 'CT', 'GA', 'GC', 'GT', 'TA', 'TC', 'TG')
+        conversion_colors = conversion_colors if conversion_colors is not None else ('b', 'k', 'r', 'grey', 'g', 'pink', 'b', 'k', 'r', 'k', 'w', 'g'),
+    else:
+        conversions_single_nuc = ("CA", "CG", "CT", "TA", "TC", "TG")
+        conversion_colors = conversion_colors if conversion_colors is not None else ('b', 'k', 'r', 'grey', 'g', 'pink')
 
     # Colors for the conversion groups:
     color_d = dict(zip(conversions_single_nuc, conversion_colors))
@@ -89,25 +96,24 @@ def substitution_plot(pattern_counts: dict,
 
     substitution_dataframe = pd.DataFrame(pattern_counts.values(), index=list(pattern_counts.keys())).T
     substitution_dataframe.plot(kind='bar', color=colors, legend=False, width=1.0, ax=ax, edgecolor='k', **plot_args)
-    offset = (1 / 96) * 0.5  # Amount of distance for a half bar
+    offset = (1 / len(pattern_counts)) * 0.5  # Amount of distance for a half bar
 
     # Add 3bp context ticks:
-    #plt.xticks(np.linspace(-0.5 + offset, 0.5 - offset, len(pattern_counts)),
-    #           [context for context, to in pattern_counts.keys()],
-    #              rotation=90, size=6)
-
     ax.set_xticks(np.linspace(-0.5 + offset, 0.5 - offset, len(pattern_counts)))
     ax.set_xticklabels( [context for context, to in pattern_counts.keys()], rotation=90, size=6)
     ax.set_ylabel(ylabel)
-
     ax.set_xlim((-0.5, 0.5))
+
     sns.despine()
     if add_main_group_labels:
         for i, (u, v) in enumerate(conversions_single_nuc):
-            plt.text(  # position text relative to Axes
-                (i + 0.5) / 6, 1.0, f'{u}>{v}', fontsize=8,
+            ax.text(  # position text relative to Axes
+                (i + 0.5) / len(conversions_single_nuc), 1.0, f'{u}>{v}', fontsize=8,
                 ha='center', va='top',
-                transform=ax.transAxes
+                transform=ax.transAxes, bbox=dict(facecolor='white', alpha=1, lw=0)
             )
+
+    ax.set_axisbelow(True)
+    ax.grid(axis='y')
 
     return fig, ax
