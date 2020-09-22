@@ -50,7 +50,19 @@ def dictionary_to_diff_vector(d,sample: str, vmin: float, vmax: float):
             [np.diff(sorted(d[contig][sample])) for contig in d])
             ,vmin,vmax) if v>vmin and v<vmax])
 
-def get_sc_cut_dictionary(bam_path: str, filter_function=None, strand_specific=False, prefix_with_bam=False, regions=None):
+
+
+def generate_prefix(prefix, prefix_with_region, contig, start, end ):
+    if prefix_with_region:
+        if prefix is None:
+            return (contig, start, end )
+        else:
+            return (prefix,contig, start, end )
+    else:
+        return prefix
+
+
+def get_sc_cut_dictionary(bam_path: str, filter_function=None, strand_specific=False, prefix_with_bam=False, regions=None, prefix_with_region=False):
     """
     Generates cut distribution dictionary  (contig)->sample->position->obs
 
@@ -82,7 +94,12 @@ def get_sc_cut_dictionary(bam_path: str, filter_function=None, strand_specific=F
                 end= None
                 for contig,r in workers.imap_unordered(
                     _get_sc_cut_dictionary, (
-                        (bam_path, contig, strand_specific, filter_function, prefix, start, end)
+                        (bam_path,
+                        contig,
+                        strand_specific,
+                        filter_function,
+                        generate_prefix(prefix,prefix_with_region,contig,start,end)
+                        , start, end)
                         for contig, start, end in regions )):
                     # Perform merge:
                     if not contig in cut_sites:
