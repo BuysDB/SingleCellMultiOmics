@@ -1,5 +1,5 @@
 {
     "reference_file_for_mapper" : "/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/SNP_MASKED",
-    "GTF":"/hpc/hub_oudenaarden/group_references/ensembl/95/mus_musculus/annotations.gtf",
-    "STAR_index":"/hpc/hub_oudenaarden/group_references/ensembl/95/mus_musculus/star_NOMASK_index_74/"
+    "GTF":"/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/annotations.gtf",
+    "STAR_index":"/hpc/hub_oudenaarden/group_references/ensembl/97/mus_musculus/NOMASK_star_index_75/"
 }
