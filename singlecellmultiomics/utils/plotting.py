@@ -24,7 +24,10 @@ def sort_chromosome_names(l):
         elif chrom=='MISC_ALT_CONTIGS_SCMO':
             chrom_value=999
         else:
-            chrom_value = int(chrom)
+            try:
+                chrom_value = int(chrom)
+            except Exception as e:
+                chrom_value = 999 + sum((ord(x) for x in chrom))
         chrom_values.append(chrom_value)
 
     indices = sorted(range(len(chrom_values)),key=lambda x:chrom_values[x])
@@ -57,7 +60,7 @@ class GenomicPlot():
         # Prune contigs with no length:
         self.contigs = [contig for contig in self.contigs if contig in self.lengths]
 
-    def cn_heatmap(self, df,cell_font_size=3, max_cn=4, method='ward', cmap='bwr',
+    def cn_heatmap(self, df,cell_font_size=3, max_cn=4, method='ward', cmap='bwr', yticklabels=True,
             figsize=(15,20), xlabel = 'Contigs', ylabel='Cells', **kwargs ):
         """
         Create a heatmap from a copy number matrix
@@ -107,7 +110,7 @@ class GenomicPlot():
             clmap = sns.clustermap(df,
                 col_cluster=False,method=method,
                 cmap=cmap, vmax=max_cn,vmin=0,
-                yticklabels=True, figsize=figsize, **kwargs)
+                yticklabels=yticklabels, figsize=figsize, **kwargs)
             ax_heatmap = clmap.ax_heatmap
         except Exception as e:
             print(e)

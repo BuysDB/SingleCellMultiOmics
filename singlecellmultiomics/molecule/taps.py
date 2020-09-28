@@ -250,17 +250,17 @@ class TAPSMolecule(Molecule):
 
         # obtain the context of the conversions:
         conversion_contexts = {
-            (self.chromosome, position):
+            (contig, position):
             {'consensus': base_call,
              'reference_base': expected_base_to_be_converted,
              'context': self.taps.position_to_context(
-                chromosome=self.chromosome,
+                chromosome=contig,
                 position=position,
                 reference=self.reference,
                 observed_base=base_call,
                 ref_base=expected_base_to_be_converted,
                 strand=self.strand)[1]}
-            for position, base_call in c_pos_consensus.items()}
+            for (contig, position), base_call in c_pos_consensus.items()}
 
         # Write bismark tags:
         self.set_methylation_call_tags(conversion_contexts)
