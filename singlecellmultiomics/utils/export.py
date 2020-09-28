@@ -1,7 +1,7 @@
 import pandas as pd
 
 def dataframe_to_wig(df: pd.DataFrame, wig_path: str, span: int = 1, stepper: str = "variableStep",
-                     graphType: str = "points", offset: int = 1):
+                     graphType: str = "points", offset: int = 1, extra_header=''):
     """
     Args:
         df: pandas.DataFrame to export to wig, expected format: multi_index (chrom,position)
@@ -16,7 +16,7 @@ def dataframe_to_wig(df: pd.DataFrame, wig_path: str, span: int = 1, stepper: st
     with open(wig_path, 'w') as out:
         for chrom, chrom_data in df.sort_index().groupby(level=0):
             # Write the header:
-            out.write(f'{stepper} chrom={chrom} graphType={graphType} span={span}\n')
+            out.write(f'{stepper} chrom={chrom} graphType={graphType} span={span} {extra_header}\n')
             for k, row in chrom_data.iterrows():
                 if len(k) == 2:
                     (chrom, pos) = k
