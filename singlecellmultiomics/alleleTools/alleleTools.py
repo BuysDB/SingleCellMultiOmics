@@ -338,6 +338,9 @@ class AlleleResolver(Prefetcher):
             try:
                 self.fetchChromosome(self.vcffile, chrom, clear=True)
             except Exception as e:
+                if 'invalid contig' in str(e):
+                    # The contig does not exists
+                    return True
                 if 'fetch requires an index' in str(e):
                     raise Exception('The variant file used for allele resolving does not have an index file. Use bcftools index, or vcftools index to generate an index')
                 print('ERROR, in has_location (Allele Resolver):', e)
