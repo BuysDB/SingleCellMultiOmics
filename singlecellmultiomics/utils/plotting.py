@@ -36,7 +36,7 @@ def sort_chromosome_names(l):
 
 
 class GenomicPlot():
-    def __init__(self, ref_path, contigs=None):
+    def __init__(self, ref_path, contigs=None, ignore_contigs=None):
         """
         Initialise genomic plot
 
@@ -45,7 +45,7 @@ class GenomicPlot():
         """
 
         if contigs is None:
-            self.contigs = sort_chromosome_names(list(filter(is_main_chromosome, get_contig_list_from_fasta(ref_path))))
+            self.contigs = sort_chromosome_names(list(filter(lambda x: is_main_chromosome(x) and (ignore_contigs is None or x not in ignore_contigs) , get_contig_list_from_fasta(ref_path))))
         else:
             self.contigs = contigs
 
