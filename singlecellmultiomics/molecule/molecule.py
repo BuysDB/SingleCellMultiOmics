@@ -1830,7 +1830,7 @@ class Molecule():
 
         Args:
             call_dict (dict) : Dictionary containing bismark calls (chrom,pos) :
-                        {'context':letter,'reference_base': letter   , 'consensus': letter }
+                        {'context':letter,'reference_base': letter   , 'consensus': letter, optiona: 'qual': pred_score (int) }
 
             bismark_call_tag (str) : tag to write bismark call string
 
@@ -1910,26 +1910,29 @@ class Molecule():
 
             # Set XR (Read conversion string)
             # @todo: this is TAPS specific, inneficient, ugly
+            try:
+                fwd = 0
+                rev = 0
+                for (qpos, rpos, ref_base), call in zip(
+                    read.get_aligned_pairs(matches_only=True,with_seq=True),
+                    bis_met_call_string):
+                    qbase = read.query_sequence[qpos]
+                    if call.isupper():
+                        if qbase=='A':
+                            rev+=1
+                        elif qbase=='T':
+                            fwd+=1
 
-            fwd = 0
-            rev = 0
-            for (qpos, rpos, ref_base), call in zip(
-                read.get_aligned_pairs(matches_only=True,with_seq=True),
-                bis_met_call_string):
-                qbase = read.query_sequence[qpos]
-                if call.isupper():
-                    if qbase=='A':
-                        rev+=1
-                    elif qbase=='T':
-                        fwd+=1
-
-            # Set XG (genome conversion string)
-            if rev>fwd:
-                read.set_tag('XR','CT')
-                read.set_tag('XG','GA')
-            else:
-                read.set_tag('XR','CT')
-                read.set_tag('XG','CT')
+                # Set XG (genome conversion string)
+                if rev>fwd:
+                    read.set_tag('XR','CT')
+                    read.set_tag('XG','GA')
+                else:
+                    read.set_tag('XR','CT')
+                    read.set_tag('XG','CT')
+            except ValueError:
+                # Dont set the tag
+                pass
 
     def set_meta(self, tag, value):
         """Set meta information to all fragments
