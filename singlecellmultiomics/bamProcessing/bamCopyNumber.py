@@ -195,7 +195,7 @@ def filter_segment_size(segment_bounds, min_segment_size):
             final_segments.append( (chrom,seg) )
     return final_segments
 
-def generate_intitial_clustering(copy_mat, plot_directory, MAXCP=4, chrom_order=None, hand_picked_thresholds={}, seed=42 ):
+def generate_intitial_clustering(copy_mat, plot_directory, MAXCP=4, chrom_order=None, cn_difference_threshold=0.7, hand_picked_thresholds={}, seed=42 ):
 
     if plot_directory is not None and not os.path.exists(plot_directory):
         os.makedirs(plot_directory)
@@ -210,7 +210,11 @@ def generate_intitial_clustering(copy_mat, plot_directory, MAXCP=4, chrom_order=
         d = copy_mat[chromosome].clip(0,MAXCP)
         L = linkage(d, method='ward')
         scores = []
-        thresholds = list(range(1,12))
+
+        if chromosome in hand_picked_thresholds:
+            target = hand_picked_thresholds[chromosome]
+            print(f'Setting threshold for {chromosome} to {target} clusters')
+        thresholds = list(range(1,max(12,target+1)))
         cluster_count = []
         max_value = None
         max_threshold = None
@@ -236,6 +240,9 @@ def generate_intitial_clustering(copy_mat, plot_directory, MAXCP=4, chrom_order=
                 max_value = scores[-1]
                 max_clustering = z
                 max_threshold = t
+
+
+        print(f'Clustering {chromosome} into {max_threshold} initial clusters')
 
         if max_threshold+1 in clusterings:
             max_threshold+=1
@@ -295,7 +302,7 @@ def generate_intitial_clustering(copy_mat, plot_directory, MAXCP=4, chrom_order=
                 [data.iloc[start:end].median() for start, end in segments] )):
                 delta_cn_hist[delta_cn] += 1
 
-                if abs(delta_cn)>0.7:
+                if abs(delta_cn)>cn_difference_threshold:
                     #egment_bounds[chromosome][data.index[min(breakpoint,len(data)-1)]]+=len(data)
                     bps.append(breakpoint)
 
@@ -364,6 +371,10 @@ def tstat(x, i):
     s0 = np.mean(x[:i])
     s1 = np.mean(x[i:])
     return (n-i)*i/n*(s0-s1)**2
+
+
+
+
 
 
 def cbs(x, shuffles=1000, p=.05):
@@ -566,6 +577,11 @@ if __name__ == '__main__':
     argparser.add_argument('-pct_clip', default=99.999, type=float)
     argparser.add_argument('-min_mapping_qual', default=40, type=int)
     argparser.add_argument('-molecule_threshold', default=5_000, type=int)
+    argparser.add_argument('-ignore_contigs', default=None, type=str, help='Comma separated contigs to ignore for the analysis')
+
+
+
+
     argparser.add_argument('--ignore_mp',action='store_true',help='Ignore mp tag value')
     argparser.add_argument('--ignore_qcfail',action='store_true',help='Ignore qcfail tag value')
     argparser.add_argument('--allelic',action='store_true',help='Perform allele specific analysis (requires DA tag)')
@@ -586,6 +602,12 @@ if __name__ == '__main__':
     cops.add_argument('-min_segment_size', default=5, type=int)
     cops.add_argument('-min_cells_per_cluster', default=8, type=int)
     cops.add_argument('-vlim', default=0.04, type=float, help= 'variance limit')
+    cops.add_argument('-cn_difference_threshold', default=0.7, type=int)
+    cops.add_argument('-n_clusters_for_contig', default=None, type=str,
+        help="""Use to manually set the amount of clusters present at a contig
+            when the algorithm is underclustering.
+            Format: chr1:10,chr3:7
+            , when not supplied the silhouette_score is used to determine the amount of clusters""")
 
     args = argparser.parse_args()
 
@@ -604,8 +626,10 @@ if __name__ == '__main__':
     rawmat=args.rawmat
     gcmat=args.gcmat
 
+    ignore_contigs = None if args.ignore_contigs is None else args.ignore_contigs.split(',')
+
     reference = pysam.FastaFile(args.ref)
-    h=GenomicPlot(reference)
+    h=GenomicPlot(reference, ignore_contigs=ignore_contigs)
     contigs = GenomicPlot(reference).contigs
 
     kwargs = {'ignore_mp':args.ignore_mp,'ignore_qcfail':args.ignore_qcfail}
@@ -700,6 +724,12 @@ if __name__ == '__main__':
         df = np.clip(0,MAXCP,(df / df.mean())* (2 if not args.allelic else 1))
         df = df.T
 
+    if args.norm_method == 'spikein':
+        print(df)
+        df =  (df.T/(df['J02459.1'].sum()) ).T
+
+        df = np.clip(0,MAXCP,df)
+
     # Perform peak transfromation to ensure integer copy numbers with median of ~2 :
     if args.norm_method=='median':
         try:
@@ -745,6 +775,7 @@ if __name__ == '__main__':
                 print("minimize_peak_to_integer, failed:")
                 print(e)
 
+
     if gcmatplot is not None:
         print("Creating heatmap ...", end="")
         h.cn_heatmap(corrected_cells,figsize=(15*(2 if args.allelic else 1),15))
@@ -767,17 +798,35 @@ if __name__ == '__main__':
         if not os.path.exists( clustering_plot_folder ):
             os.makedirs(clustering_plot_folder)
 
+        segmentation_plot_folder = f'{args.clustering_output_folder}/plots/initial_segmentation'
+        if not os.path.exists( segmentation_plot_folder ):
+            os.makedirs(segmentation_plot_folder)
+
+
         copy_mat = corrected_cells
-        chrom_order = [c for c in h.contigs if c not in ('MT','chrM')]
+        chrom_order = [c for c in h.contigs]
         min_cells_per_cluster = args.min_cells_per_cluster
         min_segment_size = args.min_segment_size # segment size in bins
 
         print("Creating first rough clustering")
+        if args.n_clusters_for_contig is not None:
+
+
+            hand_picked_thresholds = {
+                contig_n.split(':')[0]:int(contig_n.split(':')[1])
+                for contig_n in args.n_clusters_for_contig.split(',')
+                }
+
+            for c in hand_picked_thresholds:
+                if c not in chrom_order:
+                    print(f"The contig {c} of which a threshold of {hand_picked_thresholds[c]} was set, is not part of the clustering. Make sure the name of the contig is correct. For example, it could be that the supplied reference does not use a chr prefix. Pick from: {chrom_order[:30]} ..." )
+
         segment_bounds = generate_intitial_clustering(copy_mat,
-                             plot_directory=None,
+                             plot_directory=segmentation_plot_folder,
                              MAXCP=MAXCP,
                              chrom_order=chrom_order,
-                             hand_picked_thresholds={},
+                             hand_picked_thresholds=hand_picked_thresholds,
+                             cn_difference_threshold=args.cn_difference_threshold,
                              seed=42 )
 
         # Filter for segment size

@@ -187,10 +187,15 @@ if __name__ == '__main__':
         default=None,
         help='use these demultplexing strategies, comma separate to select multiple. For example for cellseq 2 data with 6 basepair umi: -use CS2C8U6 , for combined mspji and Celseq2: MSPJIC8U3,CS2C8U6 if nothing is specified, the best scoring method is selected')
 
+    #argparser.add_argument(
+#        '-ignoreMethods',
+        #help='Do not try to load these methods',
+        #default="scarsMiSeq")
+
     argparser.add_argument(
-        '-ignoreMethods',
-        help='Do not try to load these methods',
-        default="scarsMiSeq")
+        '-only_detect_methods',
+        help='Only auto detect these methods, use a comma as a separator',
+        default=None)
 
     argparser.add_argument(
         '-maxAutoDetectMethods',
@@ -207,7 +212,8 @@ if __name__ == '__main__':
     args = argparser.parse_args()
     verbosity = 1
 
-    ignoreMethods = args.ignoreMethods.split(',')
+    #ignoreMethods = args.ignoreMethods.split(',')
+    only_detect_methods = args.only_detect_methods.split(',') if args.only_detect_methods is not None else None
     if any(('*' in fq_file for fq_file in args.fastqfiles)):
         raise ValueError(
             "One or more of the fastq file paths contain a '*', these files cannot be interpreted, review your input files")
@@ -270,7 +276,8 @@ if __name__ == '__main__':
     dmx = DemultiplexingStrategyLoader(
         barcodeParser=barcodeParser,
         indexParser=indexParser,
-        ignoreMethods=ignoreMethods,
+        #ignoreMethods=ignoreMethods,
+        only_detect_methods = only_detect_methods,
         indexFileAlias=indexFileAlias)
     dmx.list()
 
