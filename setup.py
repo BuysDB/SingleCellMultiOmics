@@ -114,6 +114,9 @@ setup(
         'singlecellmultiomics/variants/vcfMutProfiler.py',
         'singlecellmultiomics/variants/plotCovariates.py',
 
+        # Trimming:
+        'singlecellmultiomics/fastqProcessing/trim_vasa.py',
+
         # Utility: (SGE wrapper)
         'singlecellmultiomics/utils/submission.py',
         'singlecellmultiomics/utils/ftp_upload.py',
