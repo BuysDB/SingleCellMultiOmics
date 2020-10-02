@@ -136,8 +136,14 @@ if __name__ == '__main__':
     outtab = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mappability.stats.bgzf'
     outtabsafe = f'simulated_{args.digest_sequence}_single_{r1_read_length}.mappability.safe.bgzf'
 
+    keys = sorted(
+    [(contig, pos, strand)
+     for  (contig, pos, strand) in sites.keys()
+     if contig is not None])
+
     with BlockZip(outtab, 'w') as stats, BlockZip(outtabsafe, 'w') as safe:
-        for (contig, pos, strand), measured in sites.items():
+        for (contig, pos, strand) in keys:
+            measured= sites[(contig, pos, strand)]
             stats.write(
                 contig,
                 pos,
