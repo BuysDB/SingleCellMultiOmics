@@ -687,6 +687,14 @@ class MapabilityReader(Prefetcher):
         clone.handle.read_contig_to_cache( contig, region_start=start, region_end=end)
         return clone
 
+
+    def __getitem__(self, contig_ds_strand):
+        if self.handle is None:
+            self.handle = BlockZip(self.mapability_safe_file_path, 'r')
+
+        contig, ds, strand = contig_ds_strand
+        return self.handle[contig, ds, strand]
+
     def site_is_mapable(self, contig, ds, strand):
 
         if self.handle is None:
@@ -815,7 +823,7 @@ def sam_to_bam(sam_in, bam_out, threads = 4):
         sam_in(str) : input sam file path
 
         bam_out(str) : output bam file path
-        
+
     """
     os.system(f'samtools view {sam_in} -b | samtools sort -@ {threads} > {bam_out}; samtools index {bam_out};')
 
