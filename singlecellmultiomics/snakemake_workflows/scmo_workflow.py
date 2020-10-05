@@ -9,7 +9,9 @@ from shutil import copyfile
 
 
 def get_workflow_list(include_hidden=False):
-    return [ workflow for workflow  in pkg_resources.resource_listdir('singlecellmultiomics','snakemake_workflows') if not workflow.endswith('.py') and (include_hidden or not workflow.startswith('_') ) ]
+    return [ workflow
+        for workflow in pkg_resources.resource_listdir('singlecellmultiomics','snakemake_workflows')
+         if not workflow.endswith('.py') and (include_hidden or not workflow.startswith('_') ) ]
 
 
 def deploy_workflow_files(name, clean=False, directory='./'):
@@ -55,7 +57,7 @@ if __name__=='__main__':
 
     else:
         deploy_workflow_files(args.alias, clean=args.clean)
-        deploy_workflow_files('_general', clean=args.clean)
+        #deploy_workflow_files('_general', clean=args.clean)
 
         print(f"""\nEdit config.json and then run either;\n
         On local computer:\n
