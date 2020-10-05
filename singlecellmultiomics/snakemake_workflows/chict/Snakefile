@@ -1,0 +1,440 @@
+from singlecellmultiomics.libraryDetection.sequencingLibraryListing import SequencingLibraryLister
+from glob import glob
+import collections
+from singlecellmultiomics.utils import get_contig_list_from_fasta
+
+"""
+This workflow:
+    Starts off from a folder containing fastq files
+    - Detects libraries
+    - Demultiplexes per librar into a chic and transcriptome fraction
+    - Trims ChiC adapters using cutadapt
+    - Trims VASA adapters using trim_vasa.py
+    - Maps, sorts and indexes the reads per library
+    - Deduplicates and identifies ChiC molecules in parallel per contig
+    - Deduplicates and identifies transcriptome molecules in parallel per contig
+    - Creates QC plots per plate
+    - Creates count tables
+    - Merges all tagged bam files into one
+    - Creates QC plots for the merged libraries
+    - Creates one count table combining all plates, and one table for Jake's filtering script
+
+"""
+################## configuration ##################
+configfile: "config.json"
+# config
+counting_bin_sizes = config['counting_bin_sizes']
+plot_bin_sizes = config['plot_bin_sizes']
+
+# This code detects which libraries are present in the current folder:
+l = SequencingLibraryLister()
+LIBRARIES = l.detect(glob('*.fastq.gz'), merge='_')
+# Flatten to library:[fastqfile, fastqfile, ...]
+fastq_per_lib = collections.defaultdict(list)
+for lib,lane_dict in LIBRARIES.items():
+    for lane,read_dict in lane_dict.items():
+        fastq_per_lib[lib] += read_dict['R1']
+        fastq_per_lib[lib] += read_dict['R2']
+libraries =  list( fastq_per_lib.keys() )
+
+################## configuration end ##################
+
+def get_fastq_file_list(wildcards):
+    # Obtain a list of fastq files associated to wildcards.library
+    global libraries
+    return sorted( fastq_per_lib[wildcards.library] )
+
+def get_target_demux_list():
+    global libraries
+    targets = []
+    for lib in libraries:
+        targets.append('processed_chic/' + lib + "/demultiplexedR1.fastq.gz" )
+        targets.append('processed_chic/' + lib + "/demultiplexedR2.fastq.gz" )
+    return targets
+
+def get_target_tagged_bam_list():
+    return [f"processed_chic/{library}/tagged.bam" for library in libraries] + [f"processed_transcriptome/{library}/tagged.bam" for library in libraries]
+
+
+rule all:
+    input:
+        # get_target_demux_list() use this for demux only
+        get_target_tagged_bam_list(),
+        expand("processed_chic/{library}/count_table_{counting_bin_size}.csv",
+            library=libraries,
+            counting_bin_size=counting_bin_sizes),
+        expand("processed_chic/merged_tagged.bam"),
+        expand("processed_chic/merged_count_table_{counting_bin_size}.csv",
+               counting_bin_size=counting_bin_sizes),
+        expand("processed_chic/merged_infilerz_{counting_bin_size}.csv",
+               counting_bin_size=counting_bin_sizes),
+        expand("processed_chic/{library}/plots/ReadCount.png", library=libraries),
+        expand("processed_chic/GC_plots/gcmat_{plot_bin_size}.png", plot_bin_size=plot_bin_sizes),
+        expand("processed_chic/GC_plots/rawmat_{plot_bin_size}.png", plot_bin_size=plot_bin_sizes),
+        expand("processed_chic/GC_plots/histplot_{plot_bin_size}.png", plot_bin_size=plot_bin_sizes),
+        expand("processed_chic/plots/ReadCount.png", library=libraries),
+        expand("processed_chic/tables/ScCHICLigation_merged_tagged.bamTA_obs_per_cell.csv", library=libraries)
+
+
+rule SCMO_demux_chic:
+    input:
+        fastqfiles = get_fastq_file_list
+    output:
+        temp("processed_chic/{library}/demultiplexedR1.fastq.gz"),
+        temp("processed_chic/{library}/demultiplexedR2.fastq.gz"),
+        temp("processed_chic/{library}/rejectsR1.fastq.gz"),
+        temp("processed_chic/{library}/rejectsR2.fastq.gz")
+    log:
+        stdout="log/demux/{library}.stdout",
+        stderr="log/demux/{library}.stderr"
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 4000
+
+    shell:
+        "demux.py -merge _ {input.fastqfiles} -use scCHIC384C8U3 -hd 0 -o processed_chic --y > {log.stdout} 2> {log.stderr}"
+
+
+
+rule SCMO_demux_transcriptome:
+    input:
+        fastqfiles = get_fastq_file_list
+    output:
+        temp("processed_transcriptome/{library}/demultiplexedR1.fastq.gz"),
+        temp("processed_transcriptome/{library}/demultiplexedR2.fastq.gz"),
+        temp("processed_transcriptome/{library}/rejectsR1.fastq.gz"),
+        temp("processed_transcriptome/{library}/rejectsR2.fastq.gz")
+    log:
+        stdout="log/demux_transcriptome/{library}.stdout",
+        stderr="log/demux_transcriptome/{library}.stderr"
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 4000
+
+    shell:
+        "demux.py -merge _ {input.fastqfiles} -use CS2C8U6NH -hd 0 -o processed_transcriptome --y > {log.stdout} 2> {log.stderr}"
+
+
+rule Trim:
+    input:
+        r1="processed_chic/{library}/demultiplexedR1.fastq.gz",
+        r2="processed_chic/{library}/demultiplexedR2.fastq.gz"
+    log:
+        stdout="log/trim/{library}.stdout",
+        stderr="log/trim/{library}.stderr"
+    output:
+        r1=temp("processed_chic/{library}/trimmed.R1.fastq.gz"),
+        r2=temp("processed_chic/{library}/trimmed.R2.fastq.gz")
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 4000
+
+    shell:
+        'cutadapt -o {output.r1} -p {output.r2} \
+        {input.r1} {input.r2} \
+        -m 3 -a "IlluminaSmallAdapterConcatBait=GGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTT" \
+        -a "IlluminaIndexAdapter=GGAATTCTCGGGTGCCAAGGAACTCCAGTCACN{{6}}ATCTCGTATGCCGTCTTCTGCTTG" \
+        -A "IlluminaPairedEndPCRPrimer2.0=AGATCGGAAGAGCGN{{6}}CAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" \
+        -A "universalPrimer=GATCGTCGGACTGTAGAACTCTGAACGTGTAGATCTCGGTGGTCGCCGTATCATT;min_overlap=5" \
+        -a  "IlluminaGEX=TTTTTAATGATACGGCGACCACCGAGATCTACACGTTCAGAGTTCTACAGTCCGACGATC;min_overlap=5" \
+        -a "IlluminaMultiplexingPCRPrimer=GGAACTCCAGTCACN{{6}}TCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" \
+        -A "Aseq=TGGCACCCGAGAATTCCA" -a "Aseq=TGGCACCCGAGAATTCCA"  \
+        -a "illuminaSmallRNAAdapter=TCGTATGCCGTCTTCTGCTTGT" > {log.stdout} 2> {log.stderr}'
+
+
+rule sort:
+    input:
+        unsortedbam = "processed_chic/{library}/unsorted.bam"
+    output:
+        bam = temp("processed_chic/{library}/sorted.bam"),
+        bam_index = temp("processed_chic/{library}/sorted.bam.bai")
+
+    shell:
+        "samtools sort -T processed_chic/{wildcards.library}/temp_sort -@ {threads} {input.unsortedbam} > processed_chic/{wildcards.library}/sorted.unfinished.bam && mv processed_chic/{wildcards.library}/sorted.unfinished.bam {output.bam} && samtools index {output.bam}"
+
+
+rule map:
+    input:
+        ref=config['chic_reference_file'],
+        r1="processed_chic/{library}/trimmed.R1.fastq.gz",
+        r2="processed_chic/{library}/trimmed.R2.fastq.gz"
+    output:
+        unsortedbam = temp("processed_chic/{library}/unsorted.bam"),
+    log:
+        stdout="log/map/{library}.stdout",
+        stderr="log/map/{library}.stderr"
+    threads: 8
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: 20000 + attempt * 8000
+
+    run:
+        # https://stackoverflow.com/questions/40996597/snakemake-remove-output-file this is probably pretier
+        if config['chic_mapper']=='bwa':
+            # The sorting and mapping has been disconnected
+            shell(
+                "bwa mem -t {threads} {input.ref} {input.r1} {input.r2}  2> {log.stdout} |  samtools view -b - > processed_chic/{wildcards.library}/unsorted.bam 2> {log.stderr}"
+                )
+        elif config['chic_mapper']=='bowtie2':
+            shell(
+                "bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1 -x {input.ref} -1 {input.r1} -2 {input.r2} 2>  | samtools view -b - > processed_chic/{wildcards.library}/unsorted.bam"
+                )
+
+
+rule SCMO_tagmultiome_VASA:
+    input:
+        bam = "processed_transcriptome/{library}/sorted.bam",
+        bam_index = "processed_transcriptome/{library}/sorted.bam.bai",
+        introns = config['introns'],
+        exons = config['exons'],
+    output:
+        bam = "processed_transcriptome/{library}/tagged.bam",
+        bam_index = "processed_transcriptome/{library}/tagged.bam.bai"
+    log:
+        stdout="log/tag_transcriptome/{library}.stdout",
+        stderr="log/tag_transcriptome/{library}.stderr"
+    threads: 8
+    params: runtime="20h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 6000 # The amount of memory required is dependent on whether alleles or consensus caller are used
+
+    shell:
+        "bamtagmultiome.py --multiprocess -tagthreads {threads} -introns {input.introns} -exons {input.exons} -method vasa {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
+
+
+rule SCMO_tagmultiome_ChiC:
+    input:
+        bam = "processed_chic/{library}/sorted.bam",
+        bam_index = "processed_chic/{library}/sorted.bam.bai",
+        blacklist = config['blacklist'],
+        introns = config['introns'],
+        exons = config['exons'],
+    output:
+        bam = "processed_chic/{library}/tagged.bam",
+        bam_index = "processed_chic/{library}/tagged.bam.bai"
+    log:
+        stdout="log/tag/{library}.stdout",
+        stderr="log/tag/{library}.stderr"
+    threads: 8
+    params: runtime="20h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 6000 # The amount of memory required is dependent on whether alleles or consensus caller are used
+
+    shell:
+        "bamtagmultiome.py --multiprocess -tagthreads {threads} -blacklist {input.blacklist} -introns {input.introns} -exons {input.exons} -method chict {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
+
+
+
+rule SCMO_tagmultiome_ChiC_no_bl:
+    input:
+        bam = "processed_chic/{library}/sorted.bam",
+        bam_index = "processed_chic/{library}/sorted.bam.bai",
+        introns = config['introns'],
+        exons = config['exons']
+    output:
+        bam = "processed_chic/{library}/tagged.bam",
+        bam_index = "processed_chic/{library}/tagged.bam.bai"
+    log:
+        stdout="log/tag/{library}.stdout",
+        stderr="log/tag/{library}.stderr"
+    threads: 8
+    params: runtime="20h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 6000 # The amount of memory required is dependent on whether alleles or consensus caller are used
+
+    shell:
+        "bamtagmultiome.py --multiprocess -method chict -tagthreads {threads} -introns {input.introns} -exons {input.exons} {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
+
+
+rule SCMO_library_stats:
+    input:
+        bam = "processed_chic/{library}/tagged.bam",
+        r1="processed_chic/{library}/demultiplexedR1.fastq.gz", # It needs these to count how many raw reads were present in the lib.
+        r2="processed_chic/{library}/demultiplexedR2.fastq.gz",
+        r1_rejects="processed_chic/{library}/rejectsR1.fastq.gz",
+        r2_rejects="processed_chic/{library}/rejectsR2.fastq.gz"
+    output:
+      "processed_chic/{library}/plots/ReadCount.png"
+    log:
+        stdout="log/library_stats/{library}.stdout",
+        stderr="log/library_stats/{library}.stderr"
+    threads: 1
+    params: runtime="30h"
+
+    shell:
+        "libraryStatistics.py processed_chic/{wildcards.library} -tagged_bam /tagged.bam > {log.stdout} 2> {log.stdout}"
+
+
+# individual count tables per library
+rule SCMO_count_table:
+    input:
+        bam = "processed_chic/{library}/tagged.bam"
+    output:
+        csv = "processed_chic/{library}/count_table_{counting_bin_size}.csv"
+    threads: 1
+    params:
+        runtime="50h",
+        counting_min_mq = config['counting_min_mq']
+    log:
+        stdout="log/count_table/{library}_{counting_bin_size}.stdout",
+        stderr="log/count_table/{library}_{counting_bin_size}.stderr"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 8000
+
+    shell:
+        "bamToCountTable.py -bin {wildcards.counting_bin_size} \
+        -minMQ {params.counting_min_mq} \
+        --noNames \
+        {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS -o {output.csv} --dedup --r1only > {log.stdout} 2> {log.stderr}"
+
+
+## for merged file:
+rule merge_tagged_bam:
+   input:
+      tagged_bams = expand("processed_chic/{library}/tagged.bam", library=libraries),
+      tagged_bams_indices = expand("processed_chic/{library}/tagged.bam.bai", library=libraries)
+   output:
+      merged_bam = "processed_chic/merged_tagged.bam",
+      merged_bam_index = "processed_chic/merged_tagged.bam.bai"
+   log:
+      stdout="log/merge_bam/merge_bam.stdout",
+      stderr="log/merge_bam/merge_bam.stderr"
+   threads: 1
+   params:
+      runtime="8h"
+   message:
+        'Merging tagged BAM files'
+
+   shell:
+        "samtools merge -c {output.merged_bam} {input.tagged_bams} > {log.stdout} 2> {log.stderr}; samtools index {output.merged_bam}"
+
+
+rule SCMO_merged_library_stats:
+    input:
+        bam = "processed_chic/merged_tagged.bam"
+    output:
+        plots = "processed_chic/plots/ReadCount.png",
+        tables = "processed_chic/tables/ScCHICLigation_merged_tagged.bamTA_obs_per_cell.csv"
+    log:
+        stdout="log/merged_library_stats/merged_library_stats.stdout",
+        stderr="log/merged_library_stats/merged_library_stats.stderr"
+    threads: 1
+    params: runtime="30h"
+
+    shell:
+        "libraryStatistics.py -t chic-stats {input.bam} > {log.stdout} 2> {log.stderr}"
+
+
+rule SCMO_GC_plots:
+   input:
+      merged_bam = "processed_chic/merged_tagged.bam",
+      merged_bam_index = "processed_chic/merged_tagged.bam.bai",
+      ref = config['chic_reference_file']
+   output:
+      GCmatplot = "processed_chic/GC_plots/gcmat_{plot_bin_size}.png",
+      rawmat = "processed_chic/GC_plots/rawmat_{plot_bin_size}.png",
+      histplot = "processed_chic/GC_plots/histplot_{plot_bin_size}.png"
+   params:
+      min_mq = config['counting_min_mq']
+   log:
+        stdout = "log/GC_plots/GC_plots_{plot_bin_size}.stdout",
+        stderr = "log/GC_plots/GC_plots_{plot_bin_size}.stderr"
+   threads: 1
+   resources:
+        mem_mb=lambda wildcards, attempt: attempt * 6000 # The amount of memory reqiored is dependent on wether alleles or consensus caller are used
+
+   shell:
+        "bamCopyNumber.py -bin_size {wildcards.plot_bin_size} -min_mapping_qual {params.min_mq} {input.merged_bam} -gcmatplot {output.GCmatplot} -rawmat {output.rawmat} -histplot {output.histplot} -ref {input.ref}  > {log.stdout} 2> {log.stderr}"
+
+
+# count table for merged bam
+rule SCMO_merged_count_table:
+    input:
+        bam = "processed_chic/merged_tagged.bam"
+    output:
+        csv = "processed_chic/merged_count_table_{counting_bin_size}.csv"
+    threads: 1
+    params:
+        runtime="50h",
+        counting_min_mq = config['counting_min_mq']
+    log:
+        stdout="log/merged_count_table/merged_count_table_{counting_bin_size}.stdout",
+        stderr="log/merged_count_table/merged_count_table_{counting_bin_size}.stderr"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 8000
+
+    shell:
+        "bamToCountTable.py -bin {wildcards.counting_bin_size} \
+        -minMQ {params.counting_min_mq} \
+        --noNames \
+        {input.bam} -sampleTags SM -joinedFeatureTags reference_name -binTag DS --r1only -o {output.csv} --dedup > {log.stdout} 2> {log.stderr}"
+
+
+rule SCMO_merged_infilerz:
+    input:
+        bam = "processed_chic/merged_tagged.bam"
+    output:
+        csv = "processed_chic/merged_infilerz_{counting_bin_size}.csv"
+    threads: 1
+    params:
+        runtime="50h",
+        counting_min_mq = config['counting_min_mq']
+    log:
+        stdout="log/merged_count_table/merged_infilerz_{counting_bin_size}.stdout",
+        stderr="log/merged_count_table/merged_infilerz_{counting_bin_size}.stderr"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 8000
+
+    shell:
+      "bamToCountTable.py -minMQ {params.counting_min_mq} {input.bam} -sampleTags SM -joinedFeatureTags lh -o {output.csv} --filterXA --dedup --r1only > {log.stdout} 2> {log.stderr}"
+
+
+
+rule trim_transcriptome:
+    input:
+        r1="processed_transcriptome/{library}/demultiplexedR1.fastq.gz",
+        r2="processed_transcriptome/{library}/demultiplexedR2.fastq.gz"
+    log:
+        stdout="log/trim_transcriptome/{library}.stdout",
+        stderr="log/trim_transcriptome/{library}.stderr"
+    output:
+        r1=temp("processed_transcriptome/{library}/trimmed.R1.fastq.gz"),
+        r2=temp("processed_transcriptome/{library}/trimmed.R2.fastq.gz"),
+        singleton=temp("processed_transcriptome/{library}/trimmed.singletons.fastq.gz")
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 4000
+
+    shell:
+        'trim_vasa.py {input.r1} {input.r2} {output.r1} {output.r2} {output.singleton} > {log.stdout} 2> {log.stderr}'
+
+
+rule map_transcriptome:
+    input:
+        ref=config['trans_reference_file'],
+        r1="processed_transcriptome/{library}/trimmed.R1.fastq.gz",
+        r2="processed_transcriptome/{library}/trimmed.R2.fastq.gz",
+        single="processed_transcriptome/{library}/trimmed.singletons.fastq.gz"
+    output:
+        transcriptome_pe_bam = temp("processed_transcriptome/{library}/STAR_mapped_PEAligned.sortedByCoord.out.bam"),
+        transcriptome_se_bam = temp("processed_transcriptome/{library}/STAR_mapped_SEAligned.sortedByCoord.out.bam"),
+        transcriptome_merged = temp("processed_transcriptome/{library}/sorted.bam"),
+        transcriptome_merged_index = temp("processed_transcriptome/{library}/sorted.bam.bai")
+    log:
+        stdout="log/map_trans/{library}.stdout",
+        stderr="log/map_trans/{library}.stderr"
+    threads: 8
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: 50000 + attempt * 8000
+
+    shell:
+        "STAR --runThreadN {threads} --readFilesCommand zcat --outSAMtype BAM SortedByCoordinate --outMultimapperOrder Random --outSAMmultNmax 10 \
+        --outFilterMultimapNmax 10 \
+        --genomeDir {input.ref}  \
+        --outSAMattributes All --readFilesIn {input.r1} {input.r2} --outFileNamePrefix processed_transcriptome/{wildcards.library}/STAR_mapped_PE  2> {log.stderr}; \
+        STAR --runThreadN {threads} --readFilesCommand zcat --outSAMtype BAM SortedByCoordinate --outMultimapperOrder Random --outSAMmultNmax 10 \
+        --outFilterMultimapNmax 10 \
+        --genomeDir {input.ref}  \
+        --outSAMattributes All --readFilesIn {input.single} --outFileNamePrefix processed_transcriptome/{wildcards.library}/STAR_mapped_SE 2>> {log.stderr}; \
+        samtools merge -c -f -@{threads} {output.transcriptome_merged} {output.transcriptome_pe_bam} {output.transcriptome_se_bam}; samtools index -@ {threads} {output.transcriptome_merged} 2>> {log.stderr};"
