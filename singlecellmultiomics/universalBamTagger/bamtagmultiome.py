@@ -757,6 +757,8 @@ def run_multiome_tagging(args):
         if max_time_per_segment is None:
             max_time_per_segment = 120 # 120 seconds should be plenty for 50kb
 
+
+
     elif args.method == 'nla' or args.method == 'nla_no_overhang':
         molecule_class = singlecellmultiomics.molecule.NlaIIIMolecule
         fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
@@ -810,6 +812,9 @@ def run_multiome_tagging(args):
         bp_per_job = 5_000_000
         bp_per_segment = 500_000
         fragment_size = 50_000
+
+        molecule_class_args.update(transcriptome_feature_args)
+
 
     elif args.method == 'nla_taps':
         molecule_class = singlecellmultiomics.molecule.TAPSNlaIIIMolecule
