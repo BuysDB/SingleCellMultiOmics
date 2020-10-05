@@ -396,6 +396,7 @@ def sorted_bam_file(
         input_is_sorted=False,
         mode='wb',
         fast_compression=False, # Use fast compression for merge (-1 flag)
+        temp_prefix = 'SCMO',
         **kwargs
         ):
     """ Get writing handle to a sorted bam file
@@ -515,7 +516,8 @@ def sorted_bam_file(
             write_path,
             remove_unsorted=True,
             local_temp_sort=local_temp_sort,
-            fast_compression=fast_compression
+            fast_compression=fast_compression,
+            prefix=temp_prefix
             )
     else:
         os.rename(unsorted_path, write_path)
@@ -610,7 +612,8 @@ def sort_and_index(
         sorted_path,
         remove_unsorted=False,
         local_temp_sort=True,
-        fast_compression=False
+        fast_compression=False,
+        prefix='TMP'
         ):
     """ Sort and index a bam file
     Args:
@@ -626,7 +629,7 @@ def sort_and_index(
     """
     if local_temp_sort:
         base_directory = os.path.abspath( os.path.dirname(sorted_path) )
-        prefix = f'TMP.{uuid.uuid4()}'
+        prefix = f'{prefix}.{uuid.uuid4()}'
         temp_path_first = f'{base_directory}/{prefix}'
         if temp_path_first.startswith('/TMP'):
             # Perform sort in current directory
@@ -686,6 +689,14 @@ class MapabilityReader(Prefetcher):
         clone = self.instance()
         clone.handle.read_contig_to_cache( contig, region_start=start, region_end=end)
         return clone
+
+
+    def __getitem__(self, contig_ds_strand):
+        if self.handle is None:
+            self.handle = BlockZip(self.mapability_safe_file_path, 'r')
+
+        contig, ds, strand = contig_ds_strand
+        return self.handle[contig, ds, strand]
 
     def site_is_mapable(self, contig, ds, strand):
 
@@ -815,7 +826,7 @@ def sam_to_bam(sam_in, bam_out, threads = 4):
         sam_in(str) : input sam file path
 
         bam_out(str) : output bam file path
-        
+
     """
     os.system(f'samtools view {sam_in} -b | samtools sort -@ {threads} > {bam_out}; samtools index {bam_out};')
 

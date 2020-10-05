@@ -158,7 +158,7 @@ class CHICNLAMolecule(Molecule):
 
 
 
-class AnnotatedCHICMolecule(FeatureAnnotatedMolecule, CHICMolecule):
+class AnnotatedCHICMolecule(CHICMolecule, FeatureAnnotatedMolecule):
     """Chic Molecule which is annotated with features (genes/exons/introns, .. )
 
     Args:
@@ -173,5 +173,5 @@ class AnnotatedCHICMolecule(FeatureAnnotatedMolecule, CHICMolecule):
         FeatureAnnotatedMolecule.write_tags(self)
 
     def __init__(self, fragment, features, **kwargs):
-        FeatureAnnotatedMolecule.__init__(self, fragment, features, **kwargs)
         CHICMolecule.__init__(self, fragment, **kwargs)
+        FeatureAnnotatedMolecule.__init__(self, fragment, features, **kwargs)

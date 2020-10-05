@@ -1,0 +1,7 @@
+{
+    "trans_reference_file"  :  "/media/buysdb/eightA/references/ensembl/97/homo_sapiens/star_index_120",
+    "introns" : "/media/buysdb/eightA/references/ensembl/97/homo_sapiens/introns.gtf.gz",
+    "exons" : "/media/buysdb/eightA/references/ensembl/97/homo_sapiens/exons.gtf.gz",
+    "trans_mapper":"STAR",
+
+}
