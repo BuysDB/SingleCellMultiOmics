@@ -378,8 +378,163 @@ if __name__=='__main__':
                 four_su_per_cell_per_gene[(library,cell)][gene].append(foursu/foursu_contexts)
             assert not (foursu>0 and foursu_contexts==0)
 
+    four_su_per_gene_per_cell_mean = defaultdict(dict)
+    four_su_per_gene_per_cell_total= defaultdict(dict)
+    for gene  in four_su_per_gene_per_cell:
+        for cell, fsu_obs in four_su_per_gene_per_cell[gene].items():
+            four_su_per_gene_per_cell_mean[gene][cell] = np.mean(fsu_obs)
+            four_su_per_gene_per_cell_total[gene][cell] = np.sum( np.array(fsu_obs)>0 )
+    four_su_per_gene_per_cell_mean = pd.DataFrame(four_su_per_gene_per_cell_mean).T
+    four_su_per_gene_per_cell_total = pd.DataFrame(four_su_per_gene_per_cell_total).T
 
+
+    four_su_per_gene_per_cell_mean.to_csv(tagged_output_path.replace('.bam','4sU_labeled_ratio.csv.gz'))
 
     expression_matrix = pd.DataFrame(four_su_per_gene_per_cell).T.fillna(0)
-    expression_matrix.head().sort_index(0).sort_index(1)
-    expression_matrix.to_csv(tagged_output_path.replace('.bam','4su_rate.csv'))
+    libraries = expression_matrix.columns.get_level_values(0).unique()
+
+    ############
+    fig, ax = plt.subplots(figsize=(7,7))
+
+    min_molecules = 100
+
+    conversion_ratios = {} # cell->gene->ratio
+
+    for library in sorted(list(libraries)):
+
+        if not '4s' in library:
+            continue
+
+        cell_efficiencies = {}
+        cell_molecules = Counter()
+
+
+
+        for cell, genes in  four_su_per_cell_per_gene.items():
+            target_cell_name = cell
+            if cell[0]!=library:
+                continue
+            if '100cells' in library:
+                target_cell_name = 'bulk'
+
+            conversions_total = []
+            for gene, conversions in genes.items():
+                conversions_total+= conversions
+                cell_molecules[target_cell_name]+=len(conversions)
+            cell_efficiencies[target_cell_name] = np.mean(conversions_total)*100
+
+
+
+        selected_cells = [cell for cell in cell_efficiencies if cell_molecules[cell]>min_molecules]
+
+        cell_efficiencies = {cell:cell_efficiencies[cell] for cell in selected_cells}
+
+        scatter = plt.scatter( [cell_molecules[cell] for cell in selected_cells],
+                              cell_efficiencies.values(),
+                              label=library.replace('NOA-K562-AcAc-',''), s=2 )
+        plt.scatter(
+              np.median([cell_molecules[cell] for cell in selected_cells]),
+               np.median( list(cell_efficiencies.values())),
+            facecolors = 'k',
+            s=250,
+            marker='+',edgecolors='black', lw=3
+        )
+        plt.scatter(
+              np.median([cell_molecules[cell] for cell in cell_efficiencies]),
+               np.median( list(cell_efficiencies.values())),
+            facecolors = scatter.get_facecolors(),
+            s=250,
+            marker='+',edgecolors='black', lw=1
+        )
+
+
+
+    plt.ylabel('4sU conversion rate (%)')
+    plt.xlabel('total molecules')
+    plt.xscale('log')
+    ax.set_axisbelow(True)
+    ax.grid()
+    plt.legend( bbox_to_anchor=(0.6, 1))
+    sns.despine()
+    plt.title('4sU conversion rate per cell')
+    plt.savefig(tagged_output_path.replace('.bam','conversion_rate.png'), dpi=200)
+
+
+    ##########
+
+
+
+fig, axes = plt.subplots(6,4,figsize=(13,17), squeeze=True)
+axes = axes.flatten()
+axes_index = 0
+
+
+
+for gene in expression_matrix.mean(1).sort_values()[-100:].index:
+
+    fraction_hits = defaultdict(list)
+    labeled = defaultdict(list)
+    total = defaultdict(list)
+
+
+    if gene=='MALAT1':
+        continue
+
+    for (library, cell), labeled_4su_fraction in four_su_per_gene_per_cell[gene].items():
+
+        #if not '4sU' in library and not 'LIVE' in library:
+        #    continue
+
+        if '4sU' in library:
+            library = '4sU'
+        else:
+            library= 'unlabeled'
+
+        fraction_hits[library] += labeled_4su_fraction
+        labeled[library].append( sum([ l>0 for l in labeled_4su_fraction]) )
+        total[library].append(len(labeled_4su_fraction))
+
+
+    try:
+        max_x = max( ( max(total[library]) for library in total))
+
+
+        slope, intercept, r_value, p_value, std_err = stats.linregress(total['4sU'],labeled['4sU'])
+        if slope<0.001 or p_value>0.05 or np.isnan(p_value):
+            continue
+
+        slope, intercept, r_value, p_value, std_err = stats.linregress(total['unlabeled'],labeled['unlabeled'])
+        if p_value>0.05 or np.isnan(p_value) :
+            continue
+    except Exception as e:
+        continue
+    ax = axes[axes_index]
+    axes_index+=1
+
+
+    for library in total:
+        slope, intercept, r_value, p_value, std_err = stats.linregress(total[library],labeled[library])
+
+        #max_x = max(total[library])
+        ax.plot([0,max_x],[intercept,max_x*slope + intercept],c='red' if '4sU' in library else 'k' )
+
+
+
+
+    for library in total:
+        ax.scatter(total[library],labeled[library], label=library , s=10, alpha=0.5, c='red' if '4sU' in library else 'k' )
+
+
+
+    slope, intercept, r_value, p_value, std_err = stats.linregress(total['4sU'],labeled['4sU'])
+    ax.legend()
+    ax.set_xlabel('total molecules')
+    ax.set_ylabel('4sU labeled molecules')
+    ax.set_title(f'{gene}\nslope:{slope:.2f}')
+    sns.despine()
+
+    if axes_index>=len(axes):
+        break
+
+    fig.tight_layout(pad=1.0)
+    plt.savefig( (tagged_output_path.replace('.bam','slopes.png')) , dpi=200)
