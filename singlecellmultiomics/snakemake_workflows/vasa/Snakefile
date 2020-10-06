@@ -54,7 +54,9 @@ rule all:
         # get_target_demux_list() use this for demux only
         get_target_tagged_bam_list(),
 
-        expand("processed_transcriptome/{library}/plots/ReadCount.png", library=libraries)
+        expand("processed_transcriptome/{library}/plots/ReadCount.png", library=libraries),
+        expand("processed_transcriptome/{library}/gene_counts.csv", library=libraries),
+        expand("processed_transcriptome/{library}/intron_counts.csv", library=libraries)
 
 
 
@@ -80,10 +82,13 @@ rule SCMO_demux_transcriptome:
 
 rule SCMO_tagmultiome_VASA:
     input:
-        bam = "processed_transcriptome/{library}/sorted.bam",
-        bam_index = "processed_transcriptome/{library}/sorted.bam.bai",
+        bam = "processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam",
+        bam_index = "processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam.bai",
         introns = config['introns'],
         exons = config['exons'],
+        reference_fasta = config['reference_fasta'],
+        known_variants =  config['known_variants']
+
     output:
         bam = "processed_transcriptome/{library}/tagged.bam",
         bam_index = "processed_transcriptome/{library}/tagged.bam.bai"
@@ -95,8 +100,11 @@ rule SCMO_tagmultiome_VASA:
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 6000 # The amount of memory required is dependent on whether alleles or consensus caller are used
 
-    shell:
-        "bamtagmultiome.py --multiprocess -tagthreads {threads} -introns {input.introns} -exons {input.exons} -method vasa {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
+    run:
+        if config.get('4sU','disabled')=='enabled':
+            shell("4SUtagger.py {input.bam} --R2_based  -known {input.known_variants} -reference {input.reference_fasta} -temp_dir processed_transcriptome/{wildcards.library}/scmo_temp -tagthreads {threads} -introns {input.introns} -exons {input.exons} -o {output.bam} > {log.stdout} 2> {log.stderr}")
+        else:
+            shell("bamtagmultiome.py --multiprocess -tagthreads {threads} -introns {input.introns} -exons {input.exons} -method vasa {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}")
 
 
 
@@ -121,34 +129,33 @@ rule SCMO_library_stats:
 
 rule trim_transcriptome:
     input:
-        r1="processed_transcriptome/{library}/demultiplexedR1.fastq.gz",
         r2="processed_transcriptome/{library}/demultiplexedR2.fastq.gz"
     log:
         stdout="log/trim_transcriptome/{library}.stdout",
         stderr="log/trim_transcriptome/{library}.stderr"
     output:
-        r1=temp("processed_transcriptome/{library}/trimmed.R1.fastq.gz"),
-        r2=temp("processed_transcriptome/{library}/trimmed.R2.fastq.gz"),
-        singleton=temp("processed_transcriptome/{library}/trimmed.singletons.fastq.gz")
+        singleton=temp("processed_transcriptome/{library}/trimmed.R2.fastq.gz"),
     params: runtime="30h"
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 4000
 
     shell:
-        'trim_vasa.py {input.r1} {input.r2} {output.r1} {output.r2} {output.singleton} > {log.stdout} 2> {log.stderr}'
+        'trim_vasa.py {input.r2} {output.singleton} -min_read_len 20 > {log.stdout} 2> {log.stderr}'
 
 
 rule map_transcriptome:
     input:
         ref=config['trans_reference_file'],
-        r1="processed_transcriptome/{library}/trimmed.R1.fastq.gz",
+        #r1="processed_transcriptome/{library}/trimmed.R1.fastq.gz",
         r2="processed_transcriptome/{library}/trimmed.R2.fastq.gz",
-        single="processed_transcriptome/{library}/trimmed.singletons.fastq.gz"
+        #single="processed_transcriptome/{library}/trimmed.singletons.fastq.gz"
     output:
-        transcriptome_pe_bam = temp("processed_transcriptome/{library}/STAR_mapped_PEAligned.sortedByCoord.out.bam"),
-        transcriptome_se_bam = temp("processed_transcriptome/{library}/STAR_mapped_SEAligned.sortedByCoord.out.bam"),
-        transcriptome_merged = temp("processed_transcriptome/{library}/sorted.bam"),
-        transcriptome_merged_index = temp("processed_transcriptome/{library}/sorted.bam.bai")
+        #transcriptome_pe_bam = temp("processed_transcriptome/{library}/STAR_mapped_PEAligned.sortedByCoord.out.bam"),
+        transcriptome_se_bam = temp("processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam"),
+        index = temp("processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam.bai"),
+        #transcriptome_r2_bam = temp("processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam"),
+        #transcriptome_merged = temp("processed_transcriptome/{library}/sorted.bam"),
+        #transcriptome_merged_index = temp("processed_transcriptome/{library}/sorted.bam.bai"),
     log:
         stdout="log/map_trans/{library}.stdout",
         stderr="log/map_trans/{library}.stderr"
@@ -158,12 +165,44 @@ rule map_transcriptome:
         mem_mb=lambda wildcards, attempt: 50000 + attempt * 8000
 
     shell:
-        "STAR --runThreadN {threads} --readFilesCommand zcat --outSAMtype BAM SortedByCoordinate --outMultimapperOrder Random --outSAMmultNmax 10 \
+        "STAR --runThreadN {threads} --readFilesCommand zcat  --outSAMtype BAM SortedByCoordinate --outMultimapperOrder Random --outSAMmultNmax 10 \
         --outFilterMultimapNmax 10 \
         --genomeDir {input.ref}  \
-        --outSAMattributes All --readFilesIn {input.r1} {input.r2} --outFileNamePrefix processed_transcriptome/{wildcards.library}/STAR_mapped_PE  2> {log.stderr}; \
-        STAR --runThreadN {threads} --readFilesCommand zcat --outSAMtype BAM SortedByCoordinate --outMultimapperOrder Random --outSAMmultNmax 10 \
-        --outFilterMultimapNmax 10 \
-        --genomeDir {input.ref}  \
-        --outSAMattributes All --readFilesIn {input.single} --outFileNamePrefix processed_transcriptome/{wildcards.library}/STAR_mapped_SE 2>> {log.stderr}; \
-        samtools merge -c -f -@{threads} {output.transcriptome_merged} {output.transcriptome_pe_bam} {output.transcriptome_se_bam}; samtools index -@ {threads} {output.transcriptome_merged} 2>> {log.stderr};"
+        --outSAMattributes All --readFilesIn {input.r2} --outSAMunmapped Within --outFileNamePrefix processed_transcriptome/{wildcards.library}/STAR_mapped_R2 2>> {log.stderr}; samtools index -@{threads} {output.transcriptome_se_bam};"
+
+
+rule count_genes:
+    input:
+        bam = "processed_transcriptome/{library}/tagged.bam"
+    output:
+        csv = "processed_transcriptome/{library}/gene_counts.csv"
+    threads: 1
+    params:
+        runtime="50h",
+        counting_min_mq = config['counting_min_mq']
+    log:
+        stdout="log/counting/{library}.stdout",
+        stderr="log/counting/{library}.stderr",
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 8000
+
+    shell:
+      "bamToCountTable.py {input.bam} -sampleTags SM -joinedFeatureTags reference_name,GN,gn -o {output.csv} --dedup --r1only > {log.stdout} 2> {log.stderr}"
+
+rule count_introns:
+    input:
+        bam = "processed_transcriptome/{library}/tagged.bam"
+    output:
+        csv = "processed_transcriptome/{library}/intron_counts.csv"
+    threads: 1
+    params:
+        runtime="50h",
+        counting_min_mq = config.get('counting_min_mq',0)
+    log:
+        stdout="log/counting/{library}.stdout",
+        stderr="log/counting/{library}.stderr",
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 8000
+
+    shell:
+      "bamToCountTable.py {input.bam} -sampleTags SM -joinedFeatureTags reference_name,IN -o {output.csv} --dedup --r1only > {log.stdout} 2> {log.stderr}"

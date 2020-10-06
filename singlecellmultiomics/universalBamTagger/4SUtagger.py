@@ -115,20 +115,27 @@ if __name__=='__main__':
 
     argparser = argparse.ArgumentParser(
       formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-      description='Assign molecules, set sample tags, set alleles')
+      description='Assign molecules')
     argparser.add_argument('bamin', type=str, help='Input BAM file')
 
 
-    argparser.add_argument('-o', type=str, help="output bam file", required=True)
+    argparser.add_argument('-o', type=str, help="output bam file (.bam)", required=True)
 
-
-    argparser.add_argument('-reference', type=str, help="Reference_path", required=True)
+    argparser.add_argument('-reference', type=str, help="Reference_path (.fasta)", required=True)
 
     argparser.add_argument('-known', type=str, help="Known variants (vcf)", required=True)
 
-    argparser.add_argument('-exons', type=str, help="Known variants (vcf)", required=True)
+    argparser.add_argument('-exons', type=str, help="exons (gtf.gz)", required=True)
 
-    argparser.add_argument('-introns', type=str, help="Known variants (vcf)", required=True)
+    argparser.add_argument('-introns', type=str, help="introns (gtf.gz)", required=True)
+
+    argparser.add_argument('--R2_based', help="The input is only R2 sequences, the molcule mapping direction will be inverted", action='store_true')
+
+    argparser.add_argument('-temp_dir', type=str, help="scmo_temp")
+
+    argparser.add_argument('-tagthreads', type=int, help="Amount of threads used (int)", required=True)
+
+
 
     args = argparser.parse_args()
 
@@ -147,7 +154,6 @@ if __name__=='__main__':
     tagged_output_path = args.o
 
     #####
-
 
 
     def obtain_conversions(contig : str):
@@ -171,7 +177,7 @@ if __name__=='__main__':
         from singlecellmultiomics.molecule import might_be_variant
 
         # Create temp directory to write tagged bam file to:
-        temp_dir = 'scmo_temp'
+        temp_dir = args.temp_dir
         temp_bam_path = f'{temp_dir}/{contig}.bam'
         if not os.path.exists('scmo_temp'):
             try:
@@ -200,6 +206,11 @@ if __name__=='__main__':
             head=None)
 
 
+
+        colormap = plt.get_cmap('RdYlBu_r')
+        colormap.set_bad((0,0,0))
+
+
         try:
             with pysam.AlignmentFile(single_cell_bam_path, threads=4) as alignments, \
                  pysam.VariantFile(known_vcf_path) as known, \
@@ -224,6 +235,8 @@ if __name__=='__main__':
                                                  )):
                     # Read out mut spectrum
                     consensus = molecule.get_consensus()
+                    if args.R2_based:
+                        molecule.strand =  not molecule.strand # Invert becayse its R2 based.
                     n_molecules_per_library[molecule.library] += 1
 
                     n_4su_mutations = 0
@@ -258,6 +271,16 @@ if __name__=='__main__':
                     # Write 4su modification to molecule
                     molecule.set_meta('4S',n_4su_mutations)
                     molecule.set_meta('4c',n_4su_contexts)
+                    # Set read color based on conversion rate:
+
+                    try:
+                        cfloat = colormap( (n_4su_mutations/n_4su_contexts) )[:3]
+                    except Exception as e:
+                        cfloat = colormap._rgba_bad[:3]
+                    molecule.set_meta('YC', '%s,%s,%s' % tuple((int(x * 255) for x in cfloat)))
+
+
+                    molecule.set_meta('4c',n_4su_contexts)
                     molecule.write_tags()
                     # Write tagged molecule to output file
                     molecule.write_pysam(out)
@@ -269,12 +292,8 @@ if __name__=='__main__':
         return conversions_per_library, n_molecules_per_library, contig, temp_bam_path
 
 
-####
-
-
-
     n_molecules_per_library = Counter()
-    with Pool() as workers:
+    with Pool(args.tagthreads) as workers:
         conversions_per_library = defaultdict( conversion_dict_stranded ) # library : (context, query) : obs (int)
 
         # Obtain all contigs from the input bam file, exclude scaffolds:
@@ -312,8 +331,9 @@ if __name__=='__main__':
 
 
     try:
-        fig, axes = plt.subplots(len(conversions_per_library),1, figsize=(16,22), sharey=True )
-
+        fig, axes = plt.subplots(len(conversions_per_library),1, figsize=(16,4*(len(conversions_per_library))), sharey=True )
+        if len(conversions_per_library)==1:
+            axes = [axes]
         for ax, (library, conversions) in zip(axes,conversions_per_library.items()):
 
             substitution_plot_stranded(conversions,fig=fig, ax=ax,ylabel='conversions seen per molecule')
@@ -323,6 +343,198 @@ if __name__=='__main__':
             ax.set_title(f'{library}, {n_molecules_per_library[library]} molecules')
 
         fig.tight_layout(pad=3.0)
-        plt.savefig(f'conversions.png')
+        plt.savefig(tagged_output_path.replace('.bam','conversions.png'))
     except Exception as e:
-        pass
+        print(e)
+
+
+
+
+    # Count amount of 4sU conversions per cell, per gene
+
+    expression_per_cell_per_gene = defaultdict(Counter) # gene -> cell -> obs
+    four_su_per_cell_per_gene = defaultdict(lambda: defaultdict(list) ) # cell -> gene -> [] 4_su observation counts per molecule
+    four_su_per_gene_per_cell = defaultdict(lambda: defaultdict(list) ) # gene -> cell -> [] 4_su observation counts per molecule
+
+    with pysam.AlignmentFile(tagged_output_path) as reads:
+        for R1,R2 in MatePairIterator(reads):
+
+            for read in (R1,R2): # Count every fragment only once by selecting one of the two reads.
+                if read is not None:
+                    break
+
+            if read.is_duplicate or not read.has_tag('gn'):
+                continue
+
+            cell = read.get_tag('SM')
+            gene = read.get_tag('gn')
+            foursu = read.get_tag('4S')
+            foursu_contexts = read.get_tag('4c')
+            library = read.get_tag('LY')
+            cell = cell.split('_')[1] # Remove library part
+            expression_per_cell_per_gene[gene][(library,cell)] += 1
+            if foursu_contexts>0:
+                four_su_per_gene_per_cell[gene][(library,cell)].append(foursu/foursu_contexts)
+                four_su_per_cell_per_gene[(library,cell)][gene].append(foursu/foursu_contexts)
+            assert not (foursu>0 and foursu_contexts==0)
+
+    four_su_per_gene_per_cell_mean = defaultdict(dict)
+    four_su_per_gene_per_cell_total= defaultdict(dict)
+    for gene  in four_su_per_gene_per_cell:
+        for cell, fsu_obs in four_su_per_gene_per_cell[gene].items():
+            four_su_per_gene_per_cell_mean[gene][cell] = np.mean(fsu_obs)
+            four_su_per_gene_per_cell_total[gene][cell] = np.sum( np.array(fsu_obs)>0 )
+    four_su_per_gene_per_cell_mean = pd.DataFrame(four_su_per_gene_per_cell_mean).T
+    four_su_per_gene_per_cell_total = pd.DataFrame(four_su_per_gene_per_cell_total).T
+
+
+    four_su_per_gene_per_cell_mean.to_csv(tagged_output_path.replace('.bam','4sU_labeled_ratio.csv.gz'))
+
+    expression_matrix = pd.DataFrame(four_su_per_gene_per_cell).T.fillna(0)
+    libraries = expression_matrix.columns.get_level_values(0).unique()
+
+    ############
+    fig, ax = plt.subplots(figsize=(7,7))
+
+    min_molecules = 100
+
+    conversion_ratios = {} # cell->gene->ratio
+
+    for library in sorted(list(libraries)):
+
+        if not '4s' in library:
+            continue
+
+        cell_efficiencies = {}
+        cell_molecules = Counter()
+
+
+
+        for cell, genes in  four_su_per_cell_per_gene.items():
+            target_cell_name = cell
+            if cell[0]!=library:
+                continue
+            if '100cells' in library:
+                target_cell_name = 'bulk'
+
+            conversions_total = []
+            for gene, conversions in genes.items():
+                conversions_total+= conversions
+                cell_molecules[target_cell_name]+=len(conversions)
+            cell_efficiencies[target_cell_name] = np.mean(conversions_total)*100
+
+
+
+        selected_cells = [cell for cell in cell_efficiencies if cell_molecules[cell]>min_molecules]
+
+        cell_efficiencies = {cell:cell_efficiencies[cell] for cell in selected_cells}
+
+        scatter = plt.scatter( [cell_molecules[cell] for cell in selected_cells],
+                              cell_efficiencies.values(),
+                              label=library.replace('NOA-K562-AcAc-',''), s=2 )
+        plt.scatter(
+              np.median([cell_molecules[cell] for cell in selected_cells]),
+               np.median( list(cell_efficiencies.values())),
+            facecolors = 'k',
+            s=250,
+            marker='+',edgecolors='black', lw=3
+        )
+        plt.scatter(
+              np.median([cell_molecules[cell] for cell in cell_efficiencies]),
+               np.median( list(cell_efficiencies.values())),
+            facecolors = scatter.get_facecolors(),
+            s=250,
+            marker='+',edgecolors='black', lw=1
+        )
+
+
+
+    plt.ylabel('4sU conversion rate (%)')
+    plt.xlabel('total molecules')
+    plt.xscale('log')
+    ax.set_axisbelow(True)
+    ax.grid()
+    plt.legend( bbox_to_anchor=(0.6, 1))
+    sns.despine()
+    plt.title('4sU conversion rate per cell')
+    plt.savefig(tagged_output_path.replace('.bam','conversion_rate.png'), dpi=200)
+
+
+    ##########
+
+
+
+fig, axes = plt.subplots(6,4,figsize=(13,17), squeeze=True)
+axes = axes.flatten()
+axes_index = 0
+
+
+
+for gene in expression_matrix.mean(1).sort_values()[-100:].index:
+
+    fraction_hits = defaultdict(list)
+    labeled = defaultdict(list)
+    total = defaultdict(list)
+
+
+    if gene=='MALAT1':
+        continue
+
+    for (library, cell), labeled_4su_fraction in four_su_per_gene_per_cell[gene].items():
+
+        #if not '4sU' in library and not 'LIVE' in library:
+        #    continue
+
+        if '4sU' in library:
+            library = '4sU'
+        else:
+            library= 'unlabeled'
+
+        fraction_hits[library] += labeled_4su_fraction
+        labeled[library].append( sum([ l>0 for l in labeled_4su_fraction]) )
+        total[library].append(len(labeled_4su_fraction))
+
+
+    try:
+        max_x = max( ( max(total[library]) for library in total))
+
+
+        slope, intercept, r_value, p_value, std_err = stats.linregress(total['4sU'],labeled['4sU'])
+        if slope<0.001 or p_value>0.05 or np.isnan(p_value):
+            continue
+
+        slope, intercept, r_value, p_value, std_err = stats.linregress(total['unlabeled'],labeled['unlabeled'])
+        if p_value>0.05 or np.isnan(p_value) :
+            continue
+    except Exception as e:
+        continue
+    ax = axes[axes_index]
+    axes_index+=1
+
+
+    for library in total:
+        slope, intercept, r_value, p_value, std_err = stats.linregress(total[library],labeled[library])
+
+        #max_x = max(total[library])
+        ax.plot([0,max_x],[intercept,max_x*slope + intercept],c='red' if '4sU' in library else 'k' )
+
+
+
+
+    for library in total:
+        ax.scatter(total[library],labeled[library], label=library , s=10, alpha=0.5, c='red' if '4sU' in library else 'k' )
+
+
+
+    slope, intercept, r_value, p_value, std_err = stats.linregress(total['4sU'],labeled['4sU'])
+    ax.legend()
+    ax.set_xlabel('total molecules')
+    ax.set_ylabel('4sU labeled molecules')
+    ax.set_title(f'{gene}\nslope:{slope:.2f}')
+    sns.despine()
+
+    if axes_index>=len(axes):
+        break
+
+    fig.tight_layout(pad=1.0)
+    plt.savefig( (tagged_output_path.replace('.bam','slopes.png')) , dpi=200)

@@ -6,14 +6,15 @@ import gzip
 if __name__=='__main__':
     argparser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="""Extract methylation calls from bam file
+        description="""Trim vasa fastq files for homo-polymers
     """)
-    argparser.add_argument('R1_fastq', metavar='R1_fastq', type=str)
+
+
     argparser.add_argument('R2_fastq', metavar='R2_fastq', type=str)
-    argparser.add_argument('R1_fastq_out', type=str)
-    argparser.add_argument('R2_fastq_out', type=str)
-    argparser.add_argument('R1_singletons_out', type=str)
+    argparser.add_argument('R2_singletons_out', type=str)
+
     argparser.add_argument('-poly_length', type=int, default=10)
+    argparser.add_argument('-min_read_len', type=int, default=20)
     args = argparser.parse_args()
 
     poly_A = args.poly_length*'A'
@@ -22,7 +23,7 @@ if __name__=='__main__':
 
     poly_length = args.poly_length
 
-    def trim_r2(header, sequence, comment, qualities ):
+    def trim_r2(header, sequence, comment, qualities, min_read_len ):
 
         start = sequence.find(poly_A)
         if start != -1:
@@ -32,9 +33,9 @@ if __name__=='__main__':
         if start != -1:
             sequence, qualities = sequence[:start], qualities[:start]
 
-        return f'{header}{sequence.rstrip()}\n{comment}{qualities.rstrip()}\n', len(sequence)>=5
+        return f'{header}{sequence.rstrip()}\n{comment}{qualities.rstrip()}\n', len(sequence)>=min_read_len
 
-    def trim_r1(header, sequence, comment, qualities ):
+    def trim_r1(header, sequence, comment, qualities, min_read_len ):
 
         start = sequence.rfind(poly_T) # Trim poly T
         if start != -1:
@@ -45,17 +46,12 @@ if __name__=='__main__':
             sequence, qualities = sequence[:start], qualities[:start]
 
 
-        return f'{header}{sequence.rstrip()}\n{comment}{qualities.rstrip()}\n', len(sequence)>=5
+        return f'{header}{sequence.rstrip()}\n{comment}{qualities.rstrip()}\n', len(sequence)>=min_read_len
 
+    with gzip.open(args.R2_fastq,'rt') as r2, \
+         gzip.open(args.R2_singletons_out,'wt',compresslevel=1) as r2_single_out:
 
-    with gzip.open(args.R1_fastq,'rt') as r1, \
-         gzip.open(args.R2_fastq,'rt') as r2, \
-         gzip.open(args.R1_fastq_out,'wt',compresslevel=1) as r1_out, \
-         gzip.open(args.R1_singletons_out,'wt',compresslevel=1) as r1_single_out, \
-         gzip.open(args.R2_fastq_out,'wt',compresslevel=1) as r2_out :
-        for read1, read2 in zip(chunked(r1,4), chunked(r2,4)):
-            (r1_o, valid_r1), (r2_o, valid_r2) = trim_r1(*read1), trim_r2(*read2)
-            if valid_r1 and valid_r2:
-                r1_out.write(r1_o), r2_out.write(r2_o)
-            elif valid_r1:
-                r1_single_out.write(r1_o)
+        for read2 in chunked(r2,4):
+            (r2_o, valid_r2)  = trim_r2(*read2, args.min_read_len)
+            if valid_r2:
+                r2_single_out.write(r2_o)
