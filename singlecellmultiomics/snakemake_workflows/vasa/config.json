@@ -1,7 +1,10 @@
 {
     "trans_reference_file"  :  "/media/buysdb/eightA/references/ensembl/97/homo_sapiens/star_index_120",
+    "reference_fasta"  :  "/media/buysdb/eightA/references/ensembl/97/homo_sapiens/primary_assembly.fa",
     "introns" : "/media/buysdb/eightA/references/ensembl/97/homo_sapiens/introns.gtf.gz",
     "exons" : "/media/buysdb/eightA/references/ensembl/97/homo_sapiens/exons.gtf.gz",
+    "counting_min_mq":10,
     "trans_mapper":"STAR",
-
+    "4su":"disabled",
+    "known_variants":"/media/buysdb/eightA/references/ensembl/97/homo_sapiens/all_snps.vcf.gz",
 }
