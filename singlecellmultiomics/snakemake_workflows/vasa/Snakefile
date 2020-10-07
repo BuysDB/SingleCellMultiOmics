@@ -88,8 +88,8 @@ rule SCMO_tagmultiome_VASA:
         exons = config['exons']
 
     params:
-        known_variants = ('None' if config.get('4sU','disabled')=='enabled' else config['known_variants']), # We only need the variants in the 4sU mode
-        reference_fasta = ('None' if config.get('4sU','disabled')=='enabled' else config['reference_fasta']) # We only need the reference in the 4sU mode
+        known_variants =  config['known_variants'], # We only need the variants in the 4sU mode
+        reference_fasta = config['reference_fasta'] # We only need the reference in the 4sU mode
 
     output:
         bam = "processed_transcriptome/{library}/tagged.bam",
