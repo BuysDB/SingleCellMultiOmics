@@ -2,6 +2,7 @@
 from more_itertools import chunked
 import argparse
 import gzip
+import re
 
 if __name__=='__main__':
     argparser = argparse.ArgumentParser(
@@ -23,6 +24,8 @@ if __name__=='__main__':
 
     poly_length = args.poly_length
 
+    r2_trimmer = re.compile('[GA]*$')
+
     def trim_r2(header, sequence, comment, qualities, min_read_len ):
 
         start = sequence.find(poly_A)
@@ -32,6 +35,11 @@ if __name__=='__main__':
         start = sequence.find(poly_G)
         if start != -1:
             sequence, qualities = sequence[:start], qualities[:start]
+
+        # Trim any trailing A and G bases from the end and # Trim down 3 bases
+        sequence = r2_trimmer.sub('',sequence)[:-3]
+        qualities = qualities[:len(sequence)]
+
 
         return f'{header}{sequence.rstrip()}\n{comment}{qualities.rstrip()}\n', len(sequence)>=min_read_len
 

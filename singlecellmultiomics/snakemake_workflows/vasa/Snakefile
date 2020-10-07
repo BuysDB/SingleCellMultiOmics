@@ -85,9 +85,11 @@ rule SCMO_tagmultiome_VASA:
         bam = "processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam",
         bam_index = "processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam.bai",
         introns = config['introns'],
-        exons = config['exons'],
-        reference_fasta = config['reference_fasta'],
-        known_variants =  config['known_variants']
+        exons = config['exons']
+
+    params:
+        known_variants = ('None' if config.get('4sU','disabled')=='enabled' else config['known_variants']), # We only need the variants in the 4sU mode
+        reference_fasta = ('None' if config.get('4sU','disabled')=='enabled' else config['reference_fasta']) # We only need the reference in the 4sU mode
 
     output:
         bam = "processed_transcriptome/{library}/tagged.bam",
@@ -102,7 +104,7 @@ rule SCMO_tagmultiome_VASA:
 
     run:
         if config.get('4sU','disabled')=='enabled':
-            shell("4SUtagger.py {input.bam} --R2_based  -known {input.known_variants} -reference {input.reference_fasta} -temp_dir processed_transcriptome/{wildcards.library}/scmo_temp -tagthreads {threads} -introns {input.introns} -exons {input.exons} -o {output.bam} > {log.stdout} 2> {log.stderr}")
+            shell("4SUtagger.py {input.bam} --R2_based  -known {params.known_variants} -reference {params.reference_fasta} -temp_dir processed_transcriptome/{wildcards.library}/scmo_temp -tagthreads {threads} -introns {input.introns} -exons {input.exons} -o {output.bam} > {log.stdout} 2> {log.stderr}")
         else:
             shell("bamtagmultiome.py --multiprocess -tagthreads {threads} -introns {input.introns} -exons {input.exons} -method vasa {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}")
 
@@ -127,20 +129,37 @@ rule SCMO_library_stats:
         "libraryStatistics.py processed_transcriptome/{wildcards.library} -tagged_bam /tagged.bam > {log.stdout} 2> {log.stdout}"
 
 
-rule trim_transcriptome:
+rule poly_trim_transcriptome:
     input:
         r2="processed_transcriptome/{library}/demultiplexedR2.fastq.gz"
     log:
         stdout="log/trim_transcriptome/{library}.stdout",
         stderr="log/trim_transcriptome/{library}.stderr"
     output:
-        singleton=temp("processed_transcriptome/{library}/trimmed.R2.fastq.gz"),
+        singleton=temp("processed_transcriptome/{library}/poly_trimmed.R2.fastq.gz"),
     params: runtime="30h"
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 4000
 
     shell:
         'trim_vasa.py {input.r2} {output.singleton} -min_read_len 20 > {log.stdout} 2> {log.stderr}'
+
+
+rule adapter_trim_transcriptome:
+    input:
+        r2="processed_transcriptome/{library}/poly_trimmed.R2.fastq.gz"
+    log:
+        stdout="log/trim_transcriptome_adapt/{library}.stdout",
+        stderr="log/trim_transcriptome_adapt/{library}.stderr"
+    output:
+        singleton=temp("processed_transcriptome/{library}/trimmed.R2.fastq.gz"),
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 4000
+    threads: 8
+    shell:
+        'cutadapt -o {output.singleton} {input.r2} -m 3 -a "IlluminaSmallAdapterConcatBait=GGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTT" -a "IlluminaIndexAdapter=GGAATTCTCGGGTGCCAAGGAACTCCAGTCACN{{6}}ATCTCGTATGCCGTCTTCTGCTTG"  -g "IlluminaPairedEndPCRPrimer2.0=AGATCGGAAGAGCGN{{6}}CAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" -g "universalPrimer=GATCGTCGGACTGTAGAACTCTGAACGTGTAGATCTCGGTGGTCGCCGTATCATT;min_overlap=5" -a "IlluminaGEX=TTTTTAATGATACGGCGACCACCGAGATCTACACGTTCAGAGTTCTACAGTCCGACGATC;min_overlap=5" -a "IlluminaMultiplexingPCRPrimer=GGAACTCCAGTCACN{{6}}TCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" -g "Aseq=TGGCACCCGAGAATTCCA" -a "Aseq=TGGCACCCGAGAATTCCA"  -a "illuminaSmallRNAAdapter=TCGTATGCCGTCTTCTGCTTGT" --cores {threads} > {log.stdout} 2> {log.stderr}'
+
 
 
 rule map_transcriptome:
