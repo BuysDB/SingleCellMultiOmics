@@ -244,7 +244,8 @@ if __name__=='__main__':
 
                     for (chrom,pos), base in consensus.items():
                         context = reference.fetch(chrom, pos-1, pos+2).upper()
-
+                        if len(context)!=3:
+                            continue
 
                         if ( (context[1]=='A' and  not molecule.strand) or (context[1]=='T' and molecule.strand) ) :
                             n_4su_contexts+=1
