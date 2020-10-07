@@ -96,8 +96,11 @@ def might_be_variant(chrom, pos, variants, ref_base=None):
     """Returns True if a variant exists at the given coordinate"""
     if ref_base == 'N':
         return False
-    for record in variants.fetch(chrom, pos, pos + 1):
-        return True
+    try:
+        for record in variants.fetch(chrom, pos, pos + 1):
+            return True
+    except ValueError as e:
+        return False # Happens when the contig does not exists, return False
     return False
 
 

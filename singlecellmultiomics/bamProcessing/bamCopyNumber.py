@@ -602,7 +602,7 @@ if __name__ == '__main__':
     cops.add_argument('-min_segment_size', default=5, type=int)
     cops.add_argument('-min_cells_per_cluster', default=8, type=int)
     cops.add_argument('-vlim', default=0.04, type=float, help= 'variance limit')
-    cops.add_argument('-cn_difference_threshold', default=0.7, type=int)
+    cops.add_argument('-cn_difference_threshold', default=0.7, type=float)
     cops.add_argument('-n_clusters_for_contig', default=None, type=str,
         help="""Use to manually set the amount of clusters present at a contig
             when the algorithm is underclustering.
@@ -838,11 +838,12 @@ if __name__ == '__main__':
         bulk_trace(f'{clustering_plot_folder}/segments_wo_variance_filter.pdf', copy_mat, cell_cluster_names, cell_order,segmented_matrix_floating, segmented_matrix)
 
         cell_annot_df = pd.DataFrame([cell_cluster_names, [cell.split('_')[0] for cell in cell_order]],
-                                     columns=cell_order)
-        cell_annot_df, lut = createRowColorDataFrame(cell_annot_df.T)
+                                     columns=cell_order).T
+        cell_annot_colors, lut = createRowColorDataFrame(cell_annot_df)
+        cell_annot_colors.columns=['cluster','library']
         cell_annot_df.columns=['cluster','library']
         h.cn_heatmap(copy_mat.sort_index(1)[chrom_order].loc[cell_order],
-                     row_colors=cell_annot_df,
+                     row_colors=cell_annot_colors,
                      figsize=(30,30), row_cluster=False)
         plt.savefig(f'{clustering_plot_folder}/segment_based_clustering_wo_variance_filter.png',dpi=150)
         cell_annot_df.to_csv(f'{args.clustering_output_folder}/cell_clusters_wo_variance_filter.csv')
