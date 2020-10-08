@@ -32,6 +32,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
+import pickle
+import gzip
 
 def substitution_plot_stranded(pattern_counts: dict,
                       figsize: tuple = (12, 4),
@@ -352,10 +354,12 @@ if __name__=='__main__':
 
 
     # Count amount of 4sU conversions per cell, per gene
+    def listionary():
+        return defaultdict(list)
 
     expression_per_cell_per_gene = defaultdict(Counter) # gene -> cell -> obs
-    four_su_per_cell_per_gene = defaultdict(lambda: defaultdict(list) ) # cell -> gene -> [] 4_su observation counts per molecule
-    four_su_per_gene_per_cell = defaultdict(lambda: defaultdict(list) ) # gene -> cell -> [] 4_su observation counts per molecule
+    four_su_per_cell_per_gene = defaultdict(listionary ) # cell -> gene -> [] 4_su observation counts per molecule
+    four_su_per_gene_per_cell = defaultdict(listionary ) # gene -> cell -> [] 4_su observation counts per molecule
 
     with pysam.AlignmentFile(tagged_output_path) as reads:
         for R1,R2 in MatePairIterator(reads):
@@ -364,11 +368,17 @@ if __name__=='__main__':
                 if read is not None:
                     break
 
-            if read.is_duplicate or not read.has_tag('gn'):
+            if read.has_tag('gn'):
+                gene = read.get_tag('gn')
+            elif read.has_tag('GN'):
+                gene = read.get_tag('GN')
+            else:
+                continue
+
+            if read.is_duplicate:
                 continue
 
             cell = read.get_tag('SM')
-            gene = read.get_tag('gn')
             foursu = read.get_tag('4S')
             foursu_contexts = read.get_tag('4c')
             library = read.get_tag('LY')
@@ -379,6 +389,15 @@ if __name__=='__main__':
                 four_su_per_cell_per_gene[(library,cell)][gene].append(foursu/foursu_contexts)
             assert not (foursu>0 and foursu_contexts==0)
 
+    # Store these dictionaries to disk
+    with gzip.open( tagged_output_path.replace('.bam','4sU_per_gene_per_cell.dict.pickle.gz'),'wb' ) as o:
+        pickle.dump(four_su_per_gene_per_cell, o)
+    with gzip.open( tagged_output_path.replace('.bam','4sU_per_cell_per_gene.dict.pickle.gz'),'wb' ) as o:
+        pickle.dump(four_su_per_cell_per_gene, o)
+
+    with gzip.open( tagged_output_path.replace('.bam','expression_per_cell_per_gene.pickle.gz'),'wb' ) as o:
+        pickle.dump(expression_per_cell_per_gene, o)
+
     four_su_per_gene_per_cell_mean = defaultdict(dict)
     four_su_per_gene_per_cell_total= defaultdict(dict)
     for gene  in four_su_per_gene_per_cell:
@@ -387,7 +406,6 @@ if __name__=='__main__':
             four_su_per_gene_per_cell_total[gene][cell] = np.sum( np.array(fsu_obs)>0 )
     four_su_per_gene_per_cell_mean = pd.DataFrame(four_su_per_gene_per_cell_mean).T
     four_su_per_gene_per_cell_total = pd.DataFrame(four_su_per_gene_per_cell_total).T
-
 
     four_su_per_gene_per_cell_mean.to_csv(tagged_output_path.replace('.bam','4sU_labeled_ratio.csv.gz'))
 
@@ -432,7 +450,7 @@ if __name__=='__main__':
 
         scatter = plt.scatter( [cell_molecules[cell] for cell in selected_cells],
                               cell_efficiencies.values(),
-                              label=library.replace('NOA-K562-AcAc-',''), s=2 )
+                              label=library, s=2 )
         plt.scatter(
               np.median([cell_molecules[cell] for cell in selected_cells]),
                np.median( list(cell_efficiencies.values())),
