@@ -277,7 +277,8 @@ if __name__=='__main__':
                     # Set read color based on conversion rate:
 
                     try:
-                        cfloat = colormap( (n_4su_mutations/n_4su_contexts) )[:3]
+                        # The max color value will be 10% modification rate
+                        cfloat = colormap( np.clip( 10*(n_4su_mutations/n_4su_contexts),0,1) )[:3]
                     except Exception as e:
                         cfloat = colormap._rgba_bad[:3]
                     molecule.set_meta('YC', '%s,%s,%s' % tuple((int(x * 255) for x in cfloat)))
