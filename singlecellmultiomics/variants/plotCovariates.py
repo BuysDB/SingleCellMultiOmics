@@ -38,12 +38,15 @@ if __name__=='__main__':
 
         # Integrate over cycle
         for mate_select in (True,False):
-            qf = pd.DataFrame([(cycle, neg/(pos+neg), context) for (qual, mate, cycle, context), (pos, neg) in covariates.items() if mate==mate_select and qual>=30])
-            qf.columns=['Cycle','Accuracy','Context']
-            qf = qf.sort_values('Cycle')
-            sns.boxplot(data=qf,x=qf.columns[0],y=qf.columns[1])
-            plt.savefig(f'{args.o}/cycle_r{"R2" if mate_select else "R1"}_{alias}.png')
-            plt.close()
+            try:
+                qf = pd.DataFrame([(cycle, neg/(pos+neg), context) for (qual, mate, cycle, context), (pos, neg) in covariates.items() if mate==mate_select and qual>=30])
+                qf.columns=['Cycle','Accuracy','Context']
+                qf = qf.sort_values('Cycle')
+                sns.boxplot(data=qf,x=qf.columns[0],y=qf.columns[1])
+                plt.savefig(f'{args.o}/cycle_r{"R2" if mate_select else "R1"}_{alias}.png')
+                plt.close()
+            except Exception as e:
+                pass
         # Integrate over contexts:
         context_acc = pd.DataFrame([ (c,v['Accuracy'].mean())  for c,v in qf.groupby('Context') if len(c)==3]).sort_values(1).set_index(0)
         context_acc = context_acc.sort_values(1)
@@ -71,16 +74,19 @@ if __name__=='__main__':
 
         # Zoomins:
         for mate_select in (True, False):
-            qf = pd.DataFrame(
-                [(cycle, neg / (pos + neg), context) for (qual, mate, cycle, context), (pos, neg) in covariates.items()
-                 if mate == mate_select and qual >= 36 and cycle < 65])
-            qf.columns = ['Cycle', 'Accuracy', 'Context']
-            qf = qf.sort_values('Cycle')
-            sns.boxplot(data=qf, x=qf.columns[0], y=qf.columns[1])
-            sns.despine()
-            ax.grid()
+            try:
+                qf = pd.DataFrame(
+                    [(cycle, neg / (pos + neg), context) for (qual, mate, cycle, context), (pos, neg) in covariates.items()
+                     if mate == mate_select and qual >= 36 and cycle < 65])
+                qf.columns = ['Cycle', 'Accuracy', 'Context']
+                qf = qf.sort_values('Cycle')
+                sns.boxplot(data=qf, x=qf.columns[0], y=qf.columns[1])
+                sns.despine()
+                ax.grid()
 
-            plt.savefig(f'{args.o}/contexts_cycle_zoomed_{alias}.png')
-            plt.ylim(0.996, 1.0001)
+                plt.savefig(f'{args.o}/contexts_cycle_zoomed_{alias}.png')
+                plt.ylim(0.996, 1.0001)
 
-            plt.show()
+                plt.show()
+            except Exception as e:
+                pass
