@@ -1014,3 +1014,24 @@ def add_readgroups_to_header(
         replace_bam_header(origin_bam_path, hCopy,
                             target_bam_path=target_bam_path,
                             header_write_mode=header_write_mode)
+
+
+
+def mate_iter(alignments, **kwargs):
+    buffer =  dict()
+    for read in alignments.fetch(**kwargs):
+
+        if not read.is_paired or not read.is_proper_pair:
+            yield [read, None]
+
+        if read.is_qcfail or read.is_supplementary:
+            continue
+            #yield read
+
+        if read.query_name in buffer:
+            if read.is_read1:
+                yield read, buffer.pop(read.query_name)
+            elif read.is_read2:
+                yield buffer.pop(read.query_name), read
+        else:
+            buffer[read.query_name] = read
