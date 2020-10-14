@@ -171,7 +171,7 @@ def assign_clusters(copy_mat, final_segments,min_cells_per_cluster=3, MAXCP=4,  
 
             current_cluster_name+=1
         else:
-            print(f'\tDropping cluster {i}, it has {obs} cells')
+            print(f'\tDropping cluster {ci}, it has {obs} cells')
             total_dropped+=obs
             #fig, ax = plt.subplots()
             #sns.heatmap(d.loc[cells_in_cluster].sort_index(1)[chrom_order] ,ax=ax, vmax=MAXCP,cmap='bwr')
