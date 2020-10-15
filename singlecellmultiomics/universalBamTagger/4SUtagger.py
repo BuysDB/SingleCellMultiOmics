@@ -34,6 +34,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import gzip
+from uuid import uuid4
 
 def substitution_plot_stranded(pattern_counts: dict,
                       figsize: tuple = (12, 4),
@@ -133,7 +134,7 @@ if __name__=='__main__':
 
     argparser.add_argument('--R2_based', help="The input is only R2 sequences, the molcule mapping direction will be inverted", action='store_true')
 
-    argparser.add_argument('-temp_dir', type=str, help="scmo_temp")
+    argparser.add_argument('-temp_dir', type=str, help="scmo_temp", default=str(uuid4()))
 
     argparser.add_argument('-tagthreads', type=int, help="Amount of threads used (int)", required=True)
 
@@ -181,9 +182,9 @@ if __name__=='__main__':
         # Create temp directory to write tagged bam file to:
         temp_dir = args.temp_dir
         temp_bam_path = f'{temp_dir}/{contig}.bam'
-        if not os.path.exists('scmo_temp'):
+        if not os.path.exists(temp_dir:
             try:
-                os.makedirs()
+                os.makedirs(temp_dir)
             except Exception as e:
                 pass
 
