@@ -627,6 +627,10 @@ def sort_and_index(
     Raises:
         SamtoolsError when sorting or indexing fails
     """
+
+    if prefix is None:
+        raise 'prefix cannot be None'
+
     if local_temp_sort:
         base_directory = os.path.abspath( os.path.dirname(sorted_path) )
         prefix = f'{prefix}.{uuid.uuid4()}'
@@ -649,6 +653,7 @@ def sort_and_index(
                     unsorted_path, ('-l 1' if fast_compression else '-l 3')
                 )
             except Exception as e:
+                print(f'Sorting failed at temp: {temp_path}')
                 failed = True
                 if i==len(temp_paths)-1:
                     raise
