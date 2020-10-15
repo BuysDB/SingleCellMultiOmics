@@ -213,11 +213,11 @@ if __name__=='__main__':
         colormap = plt.get_cmap('RdYlBu_r')
         colormap.set_bad((0,0,0))
 
-
+        read_groups = {}
         try:
             with pysam.AlignmentFile(single_cell_bam_path, threads=4) as alignments, \
                  pysam.VariantFile(known_vcf_path) as known, \
-                 sorted_bam_file(temp_bam_path, origin_bam=single_cell_bam_path) as out, \
+                 sorted_bam_file(temp_bam_path, origin_bam=single_cell_bam_path, read_groups=read_groups, fast_compression=True) as out, \
                  pysam.FastaFile(reference_path) as reference_handle:
 
                 # Cache the sequence of the contig: (faster)
@@ -287,6 +287,12 @@ if __name__=='__main__':
 
                     molecule.set_meta('4c',n_4su_contexts)
                     molecule.write_tags()
+
+                    for fragment in molecule:
+                        rgid = fragment.get_read_group()
+                        if not rgid in read_groups:
+                            read_groups[rgid] = fragment.get_read_group(True)[1]
+
                     # Write tagged molecule to output file
                     molecule.write_pysam(out)
 
@@ -485,77 +491,77 @@ if __name__=='__main__':
 
 
 
-fig, axes = plt.subplots(6,4,figsize=(13,17), squeeze=True)
-axes = axes.flatten()
-axes_index = 0
+    fig, axes = plt.subplots(6,4,figsize=(13,17), squeeze=True)
+    axes = axes.flatten()
+    axes_index = 0
 
 
 
-for gene in expression_matrix.mean(1).sort_values()[-100:].index:
+    for gene in expression_matrix.mean(1).sort_values()[-100:].index:
 
-    fraction_hits = defaultdict(list)
-    labeled = defaultdict(list)
-    total = defaultdict(list)
-
-
-    if gene=='MALAT1':
-        continue
-
-    for (library, cell), labeled_4su_fraction in four_su_per_gene_per_cell[gene].items():
-
-        #if not '4sU' in library and not 'LIVE' in library:
-        #    continue
-
-        if '4sU' in library:
-            library = '4sU'
-        else:
-            library= 'unlabeled'
-
-        fraction_hits[library] += labeled_4su_fraction
-        labeled[library].append( sum([ l>0 for l in labeled_4su_fraction]) )
-        total[library].append(len(labeled_4su_fraction))
+        fraction_hits = defaultdict(list)
+        labeled = defaultdict(list)
+        total = defaultdict(list)
 
 
-    try:
-        max_x = max( ( max(total[library]) for library in total))
+        if gene=='MALAT1':
+            continue
+
+        for (library, cell), labeled_4su_fraction in four_su_per_gene_per_cell[gene].items():
+
+            #if not '4sU' in library and not 'LIVE' in library:
+            #    continue
+
+            if '4sU' in library:
+                library = '4sU'
+            else:
+                library= 'unlabeled'
+
+            fraction_hits[library] += labeled_4su_fraction
+            labeled[library].append( sum([ l>0 for l in labeled_4su_fraction]) )
+            total[library].append(len(labeled_4su_fraction))
+
+
+        try:
+            max_x = max( ( max(total[library]) for library in total))
+
+
+            slope, intercept, r_value, p_value, std_err = stats.linregress(total['4sU'],labeled['4sU'])
+            if slope<0.001 or p_value>0.05 or np.isnan(p_value):
+                continue
+
+            slope, intercept, r_value, p_value, std_err = stats.linregress(total['unlabeled'],labeled['unlabeled'])
+            if p_value>0.05 or np.isnan(p_value) :
+                continue
+        except Exception as e:
+            continue
+        ax = axes[axes_index]
+        axes_index+=1
+
+
+        for library in total:
+            slope, intercept, r_value, p_value, std_err = stats.linregress(total[library],labeled[library])
+
+            #max_x = max(total[library])
+            ax.plot([0,max_x],[intercept,max_x*slope + intercept],c='red' if '4sU' in library else 'k' )
+
+
+
+
+        for library in total:
+            ax.scatter(total[library],labeled[library], label=library , s=10, alpha=0.5, c='red' if '4sU' in library else 'k' )
+
 
 
         slope, intercept, r_value, p_value, std_err = stats.linregress(total['4sU'],labeled['4sU'])
-        if slope<0.001 or p_value>0.05 or np.isnan(p_value):
-            continue
+        ax.legend()
+        ax.set_xlabel('total molecules')
+        ax.set_ylabel('4sU labeled molecules')
+        ax.set_title(f'{gene}\nslope:{slope:.2f}')
+        sns.despine()
 
-        slope, intercept, r_value, p_value, std_err = stats.linregress(total['unlabeled'],labeled['unlabeled'])
-        if p_value>0.05 or np.isnan(p_value) :
-            continue
-    except Exception as e:
-        continue
-    ax = axes[axes_index]
-    axes_index+=1
+        if axes_index>=len(axes):
+            break
 
-
-    for library in total:
-        slope, intercept, r_value, p_value, std_err = stats.linregress(total[library],labeled[library])
-
-        #max_x = max(total[library])
-        ax.plot([0,max_x],[intercept,max_x*slope + intercept],c='red' if '4sU' in library else 'k' )
-
-
-
-
-    for library in total:
-        ax.scatter(total[library],labeled[library], label=library , s=10, alpha=0.5, c='red' if '4sU' in library else 'k' )
-
-
-
-    slope, intercept, r_value, p_value, std_err = stats.linregress(total['4sU'],labeled['4sU'])
-    ax.legend()
-    ax.set_xlabel('total molecules')
-    ax.set_ylabel('4sU labeled molecules')
-    ax.set_title(f'{gene}\nslope:{slope:.2f}')
-    sns.despine()
-
-    if axes_index>=len(axes):
-        break
-
-    fig.tight_layout(pad=1.0)
-    plt.savefig( (tagged_output_path.replace('.bam','slopes.png')) , dpi=200)
+        fig.tight_layout(pad=1.0)
+        plt.savefig( (tagged_output_path.replace('.bam','slopes.png')) , dpi=200)
