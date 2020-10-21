@@ -33,7 +33,7 @@ import singlecellmultiomics
 
 conversions_single_nuc = ["CA", "CG", "CT", "TA", "TC", "TG"]
 
-def _get_conversions_per_cell(detected_variants_path, reference, known, prefix=None, **pysam_kwargs ):
+def _get_conversions_per_cell(detected_variants_path, reference, known, prefix=None, allele_obs_threshold=None, **pysam_kwargs ):
     sc_detected = defaultdict(conversion_dict) # Cell -> patterncounts
 
     with pysam.VariantFile(detected_variants_path, **pysam_kwargs) as detected_vcf:
@@ -47,7 +47,9 @@ def _get_conversions_per_cell(detected_variants_path, reference, known, prefix=N
 
                 origin_context = reference.fetch(record.contig, record.pos-2,record.pos+1).upper()
                 for sample in record.samples:
-                    for allele in record.samples[sample].alleles:
+
+                    meta = dict(record.samples[sample].items())
+                    for ai,allele in enumerate( record.samples[sample].alleles ):
                         if allele is None:
                             continue
                         if len(allele)!=1:
@@ -55,6 +57,9 @@ def _get_conversions_per_cell(detected_variants_path, reference, known, prefix=N
                         if allele==record.ref:
                             continue
 
+                        if allele_obs_threshold is not None:
+                            if meta['DP'][ai]<allele_obs_threshold:
+                                continue
 
                         if not (record.ref+allele  in conversions_single_nuc):
                             context = reverse_complement(origin_context)
@@ -75,7 +80,7 @@ def _get_conversions_per_cell(detected_variants_path, reference, known, prefix=N
     return sc_detected
 
 
-def get_conversions_per_cell( detected_variants_path, known_variants_path, reference_path, **kwargs ):
+def get_conversions_per_cell( detected_variants_path, known_variants_path, reference_path, allele_obs_threshold=None, **kwargs ):
 
     reference = pysam.FastaFile(reference_path)
 
@@ -86,11 +91,11 @@ def get_conversions_per_cell( detected_variants_path, known_variants_path, refer
                 known.add( (record.chrom, record.pos ) )
 
     try:
-        sc_detected = _get_conversions_per_cell(detected_variants_path, reference, known, **kwargs )
+        sc_detected = _get_conversions_per_cell(detected_variants_path, reference, known, allele_obs_threshold=allele_obs_threshold, **kwargs )
     except Exception as e:
         if str(e)=='no BGZF EOF marker; file may be truncated':
             print('no BGZF EOF marker; file may be truncated')
-            sc_detected = _get_conversions_per_cell(detected_variants_path, reference, known, ignore_truncation=True, **kwargs )
+            sc_detected = _get_conversions_per_cell(detected_variants_path, reference, known, ignore_truncation=True, allele_obs_threshold=allele_obs_threshold, **kwargs )
         else:
             raise
 
@@ -109,7 +114,8 @@ if __name__ == '__main__':
     argparser.add_argument('-rawmat', type=str, help='Path to write conversions table to (.csv / .pickle.gz)')
     argparser.add_argument('-heatmap', type=str, help='Path to write heatmap to (.png/.svg)')
 
-    argparser.add_argument('-mut_count_threshold', default=0, type=int)
+    argparser.add_argument('-mut_count_threshold', default=0, type=int, help='Minimum amount of variants in a cell to be exported to the (raw) output file')
+    argparser.add_argument('-allele_obs_threshold', default=None, type=int, help='Minimum amount of allele observations (DP) to be counted for a single sample')
 
     argparser.add_argument('-bars', type=str, help='Path to write bargraphs to (.pdf)')
 
@@ -125,7 +131,9 @@ if __name__ == '__main__':
         conversions = get_conversions_per_cell(
                                 detected_variants_path = vcf,
                                 known_variants_path = args.known,
-                                reference_path=args.ref, prefix=(None if len(args.detected_vcf)==1 else vcf.split('/')[-1].replace('vcf','').replace('.gz','')) )
+                                reference_path=args.ref,
+                                allele_obs_threshold=args.allele_obs_threshold,
+                                prefix=(None if len(args.detected_vcf)==1 else vcf.split('/')[-1].replace('vcf','').replace('.gz','')) )
         if convs is None:
             convs = conversions
         else:
@@ -163,8 +171,9 @@ if __name__ == '__main__':
                                 'Title': 'Mutation profiles'}) as pdf:
 
 
-
-            for sample, pattern_counts in convs.items():
+            sample_order = sorted(list(convs.keys()))
+            for sample in sample_order: # pattern_counts in convs.items():
+                pattern_counts = convs[sample]
                 print(sample)
                 fig, ax = plt.subplots(figsize=(10,4))
 
