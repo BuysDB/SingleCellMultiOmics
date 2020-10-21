@@ -2008,7 +2008,9 @@ class Molecule():
             'inserts_per_bp': inserts_per_bp,
             'deletions_per_bp': deletions_per_bp,
             'matches_per_bp': matches_per_bp,
-            'alt_per_read': alt_per_read
+            'alt_per_read': alt_per_read,
+            'total_bases':totalbases,
+            'total_reads':total_reads,
         }
 
     def get_mean_cycle(
