@@ -261,6 +261,7 @@ if __name__=='__main__':
     argparser.add_argument('-regions', type=str, help='Regions to plot, with a bin size behind it, for example: 1:1000-100000:1000 , will be a single region plotted with a 1000bp bin size split regions by commas without a space')
     argparser.add_argument('-features', type=str, help='Gene models to plot (.gtf file or .gtf.gz)', required=False)
     argparser.add_argument('-norm', type=str, help='Normalize to, select from : total-molecules,spike', default='total-molecules')
+    argparser.add_argument('-prefix', type=str, help='Prefix for output file',default='')
 
     args = argparser.parse_args()
 
@@ -308,4 +309,7 @@ if __name__=='__main__':
         print(f'Plotting {region}')
         region_counts = get_binned_counts(bams, region_bin_size, regions=[ region ] )
         counts = (region_counts/normalize_to_counts.sum()).fillna(0).T
-        plot_region(counts, features, contig, start, end, sigma=2, target=None, caxlabel='Molecules per spike-in' if norm =='spike' else 'Molecules / total molecules')
+
+        contig, start, end = region
+        target = args.prefix+f'{contig}:{start}-{end}'
+        plot_region(counts, features, contig, start, end, sigma=2, target=target, caxlabel='Molecules per spike-in' if norm =='spike' else 'Molecules / total molecules')
