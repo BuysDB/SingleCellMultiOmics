@@ -95,10 +95,11 @@ def plot_region(counts, features, contig, start, end, sigma=2, target=None, caxl
         gene_height = 0.0002
         spacer = 0.035
 
-        overlap_dist = 100_000
+        overlap_dist = 200_000
 
 
         gene_y = {}
+        ymax = 0
         for fs,fe,name,strand, feature_meta in features.features[contig]:
 
 
@@ -123,9 +124,12 @@ def plot_region(counts, features, contig, start, end, sigma=2, target=None, caxl
                 while gy in gy_not_avail:
                     gy+=1
 
+
                 gene_y[name] = (fs,fe,gy)
 
                 y_offset = gy * spacer
+
+                ymax = max(y_offset+gene_height,ymax)
 
                 r = Rectangle((fs,-gene_height*0.5 + y_offset), fe-fs, gene_height, angle=0.0, color='k')
 
@@ -134,25 +138,25 @@ def plot_region(counts, features, contig, start, end, sigma=2, target=None, caxl
               verticalalignment='center',fontsize=3)
                 #print(feature_meta)
 
-        ymax = 0
-        for fs,fe,name,strand, feature_meta in features.features[contig]:
 
 
-            if not (((fs>=start or fe>=start) and (fs<=end or fe<=end))):
-                continue
+        if False:
 
+            for xx in range(3):
+                for fs,fe,name,strand, feature_meta in features.features[contig]:
 
+                    if not (((fs>=start or fe>=start) and (fs<=end or fe<=end))):
+                        continue
 
-            feature_meta = dict(feature_meta)
-            if not name in gene_y:
-                continue
+                    feature_meta = dict(feature_meta)
+                    if not name in gene_y:
+                        continue
 
-
-            if feature_meta.get('type') == 'exon':
-                y_offset = gene_y[name][2]*spacer
-                ymax = max(y_offset+exon_height,ymax)
-                r = Rectangle((fs,-exon_height*0.5 + y_offset), fe-fs, exon_height, angle=0.0,color='k')
-                ax.add_patch( r )
+                    if feature_meta.get('type') == 'exon':
+                        y_offset = gene_y[name][2]*spacer
+                        ymax = max(y_offset+exon_height,ymax)
+                        r = Rectangle((fs,-exon_height*0.5 + y_offset), fe-fs, exon_height, angle=0.0,color='k', lw=0)
+                        ax.add_patch( r )
 
 
 
@@ -192,8 +196,9 @@ def plot_region(counts, features, contig, start, end, sigma=2, target=None, caxl
 
 
         qf = counts.loc[:, [(c,p) for c,p in counts if c==contig and p>=start and p<=end] ].sort_index()
-        qf = qf.sort_index(1)
+        qf = qf.sort_index(1).sort_index(0)
         qf = pd.DataFrame(gaussian_filter(qf, sigma=(0.00001,sigma)), index=qf.index, columns=qf.columns)
+        qf = qf.sort_index(1).sort_index(0)
 
         cm = sns.clustermap(qf,
                #z_score=0,
@@ -308,9 +313,21 @@ if __name__=='__main__':
 
     for region, region_bin_size in regions:
         print(f'Plotting {region}')
-        region_counts = get_binned_counts(bams, region_bin_size, regions=[ region ] )
-        counts = (region_counts/normalize_to_counts.sum()).fillna(0).T
-
         contig, start, end = region
+        region_counts = get_binned_counts(bams, region_bin_size, regions=[ region ] )
+        counts = (region_counts/normalize_to_counts.sum()).fillna(0).T.sort_index(1).sort_index(0)
+
+        # Fill non intialized bins with zeros:
+        add = []
+        for i in np.arange(counts.columns[0][1], counts.columns[-1][1], region_bin_size):
+            if not (contig,i) in counts.columns:
+                add.append((contig,i))
+
+        for a in add:
+            counts[a] = 0
+
+        counts = counts.sort_index(1)
+
+
         target = args.prefix+f'{contig}_{start}-{end}_{region_bin_size}.{args.format}'
         plot_region(counts, features, contig, start, end, sigma=2, target=target, caxlabel='Molecules per spike-in' if norm =='spike' else 'Molecules / total molecules')
