@@ -262,6 +262,7 @@ if __name__=='__main__':
     argparser.add_argument('-features', type=str, help='Gene models to plot (.gtf file or .gtf.gz)', required=False)
     argparser.add_argument('-norm', type=str, help='Normalize to, select from : total-molecules,spike', default='total-molecules')
     argparser.add_argument('-prefix', type=str, help='Prefix for output file',default='')
+    argparser.add_argument('-format', type=str, help='png or svg',default='png')
 
     args = argparser.parse_args()
 
@@ -311,5 +312,5 @@ if __name__=='__main__':
         counts = (region_counts/normalize_to_counts.sum()).fillna(0).T
 
         contig, start, end = region
-        target = args.prefix+f'{contig}_{start}-{end}_{region_bin_size}.png'
+        target = args.prefix+f'{contig}_{start}-{end}_{region_bin_size}.{args.format}'
         plot_region(counts, features, contig, start, end, sigma=2, target=target, caxlabel='Molecules per spike-in' if norm =='spike' else 'Molecules / total molecules')
