@@ -396,12 +396,8 @@ def gc_correct(args):
     return np.clip(observations / np.interp(gc_vector, correction[:, 0], correction[:, 1]), 0, MAXCP)
 
 
-def gc_correct_cn_frame(df, reference, MAXCP, threads, norm_method='median'):
-    # Perform GC correction
-    chrom_sizes = dict(zip(reference.references, reference.lengths))
-    # Extract GC percentage from reference for the selected bin size:
+def genomic_bins_to_gc(reference, df):
     bins_to_gc = {}
-
     for k in df.columns:
         if len(k)==4:
             (allele, contig, start, end) = k
@@ -417,7 +413,15 @@ def gc_correct_cn_frame(df, reference, MAXCP, threads, norm_method='median'):
             else:
                 gcrat = (gc) / div
                 bins_to_gc[k] = gcrat
+    return bins_to_gc
 
+
+def gc_correct_cn_frame(df, reference, MAXCP, threads, norm_method='median'):
+    # Perform GC correction
+    chrom_sizes = dict(zip(reference.references, reference.lengths))
+    # Extract GC percentage from reference for the selected bin size:
+
+    bins_to_gc =  genomic_bins_to_gc(reference, df)
     qf = pd.DataFrame({'gc': bins_to_gc})
     qf = qf.fillna(qf['gc'].mean())
     # Join the GC table with the count matrix

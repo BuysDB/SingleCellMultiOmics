@@ -6,6 +6,12 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import pysam
 import seaborn as sns
+from matplotlib.patches import Circle
+from itertools import product
+import collections
+import string
+import math
+
 
 # Define chromsome order:
 def sort_chromosome_names(l):
@@ -192,3 +198,81 @@ class GenomicPlot():
 
     def __getitem__(self, contig):
         return self.axis[contig]
+
+
+def plot_plate(coordinate_values, log=True, vmin=None, vmax=None, cmap_name ='viridis'):
+
+
+    coordinate_values  = {
+        kwgs[:2]:value
+        for kwgs, value in coordinate_values.items()
+    }
+
+    fig, ax = plt.subplots()
+    n_rows = 16
+    n_cols = 24
+
+    cmap = matplotlib.cm.get_cmap(cmap_name)
+    well2index = collections.defaultdict(dict)
+    index2well = collections.defaultdict(dict)
+    rows = string.ascii_uppercase[:16]
+    columns = list(range(1, 25))
+
+    for ci in range(1, 385):
+        i = ci - 1
+        rowIndex = math.floor(i / len(columns))
+        row = rows[rowIndex]
+        column = columns[i % len(columns)]
+        well2index[384][(row, column)] = ci
+        index2well[384][ci] = (row, column)
+    ###########
+
+    if vmax is None:
+        vmax = np.percentile( list(coordinate_values.values()), 98)
+        if log:
+            vmax = np.power(10,np.ceil(np.log10(vmax)))
+
+    if log:
+        norm = matplotlib.colors.LogNorm(vmin=1 if vmin is None else vmin, vmax=vmax)
+    else:
+        norm = matplotlib.colors.Normalize(vmin=0 if vmin is None else vmin, vmax=vmax)
+
+    for row,col in product(range(n_rows), range(n_cols)) :
+
+        #if (y,x) in coordinate_values:
+        #    print(np.clip(coordinate_values.get((y,x))/vmax,0,1))
+        #print(None if (y,x) not in coordinate_values else cmap( np.clip(coordinate_values.get((y,x))/vmax,0,1)))
+        ax.add_patch( Circle( (col,n_rows-row-1),
+                             radius=0.45,
+                             fill= (True if (row,col) not in coordinate_values else True),
+                             fc= (cmap( norm(coordinate_values.get( (row,col),-100))))
+                             ,edgecolor=(0.5,0.5,0.5)) )
+
+        coordinate_values
+
+    ax.set_ylim(-1, n_rows)
+    ax.set_xlim(-1, n_cols)
+    ax.set_xticks(np.arange(n_cols))
+    ax.set_xticklabels(np.arange(1,n_cols+1))
+
+    ax.set_yticks(np.arange(n_rows))
+    ax.set_yticklabels([string.ascii_uppercase[n_rows-i-1] for i in range(n_rows)])
+    ax.xaxis.tick_top()
+
+    ax.grid()
+
+
+    ax.tick_params(axis='y', which='both',length=3, pad=6)
+
+    for label in ax.get_yticklabels():
+        label.set_horizontalalignment('center')
+
+    #norm = mpl.colors.Normalize(vmin=0, vmax=vmax)
+
+    cax = fig.add_axes([0.95, 0.2, 0.03, 0.6])
+    cb = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap,
+                                    norm=norm,
+                                    orientation='vertical')
+
+    cb.outline.set_visible(False)
+    return fig, ax, cax

@@ -145,8 +145,10 @@ def assign_clusters(copy_mat, final_segments,min_cells_per_cluster=3, MAXCP=4,  
     current_cluster_name = 1
 
     median_profiles = []
-
+    print('= Cluster assignment = ')
+    total_dropped = 0
     for ci,(cluster, obs) in enumerate( cnv_clusters.most_common() ):
+        print(f'\t{cluster}, obs: {obs}')
         if obs>=min_cells_per_cluster:
 
             keep_clusters.append(cluster)
@@ -168,6 +170,9 @@ def assign_clusters(copy_mat, final_segments,min_cells_per_cluster=3, MAXCP=4,  
             cell_cluster_names += [current_cluster_name]*len(cells_in_cluster)
 
             current_cluster_name+=1
+        else:
+            print(f'\tDropping cluster {ci}, it has {obs} cells')
+            total_dropped+=obs
             #fig, ax = plt.subplots()
             #sns.heatmap(d.loc[cells_in_cluster].sort_index(1)[chrom_order] ,ax=ax, vmax=MAXCP,cmap='bwr')
             #plt.savefig(f'./cluster_{ci}.png')
@@ -175,7 +180,7 @@ def assign_clusters(copy_mat, final_segments,min_cells_per_cluster=3, MAXCP=4,  
 
 
     print(f'{current_cluster_name} clusters identified')
-    print(f'{segmented_matrix.shape[0]} cells assigned to a cluster')
+    print(f'{segmented_matrix.shape[0]} cells assigned to a cluster, {total_dropped} cells lost')
 
     segmented_matrix.columns.names=['contig','range']
 
@@ -195,7 +200,7 @@ def filter_segment_size(segment_bounds, min_segment_size):
             final_segments.append( (chrom,seg) )
     return final_segments
 
-def generate_intitial_clustering(copy_mat, plot_directory, MAXCP=4, chrom_order=None, cn_difference_threshold=0.7, hand_picked_thresholds={}, seed=42 ):
+def generate_intitial_clustering(copy_mat, plot_directory, MAXCP=4, chrom_order=None, cn_difference_threshold=0.7, hand_picked_thresholds={}, max_cluster_count=30, seed=42, threshold_offset = 0 ):
 
     if plot_directory is not None and not os.path.exists(plot_directory):
         os.makedirs(plot_directory)
@@ -214,7 +219,9 @@ def generate_intitial_clustering(copy_mat, plot_directory, MAXCP=4, chrom_order=
         if chromosome in hand_picked_thresholds:
             target = hand_picked_thresholds[chromosome]
             print(f'Setting threshold for {chromosome} to {target} clusters')
-        thresholds = list(range(1,max(12,target+1)))
+        else:
+            target = 0
+        thresholds = list(range(1,max(max_cluster_count,target+1)))
         cluster_count = []
         max_value = None
         max_threshold = None
@@ -242,10 +249,18 @@ def generate_intitial_clustering(copy_mat, plot_directory, MAXCP=4, chrom_order=
                 max_threshold = t
 
 
+
         print(f'Clustering {chromosome} into {max_threshold} initial clusters')
 
-        if max_threshold+1 in clusterings:
-            max_threshold+=1
+        max_cluster = max( clusterings.keys() )
+
+
+        #if max_threshold+1 in clusterings:
+    #        max_threshold+=1
+
+        max_threshold+=threshold_offset
+        max_threshold=min(max_threshold,max_cluster)
+
         max_value = scores[max_threshold-1]
         max_clustering = clusterings[max_threshold]
 
@@ -827,6 +842,8 @@ if __name__ == '__main__':
                              chrom_order=chrom_order,
                              hand_picked_thresholds=hand_picked_thresholds,
                              cn_difference_threshold=args.cn_difference_threshold,
+
+
                              seed=42 )
 
         # Filter for segment size
@@ -834,7 +851,9 @@ if __name__ == '__main__':
         segments = filter_segment_size(segment_bounds, min_segment_size=min_segment_size )
         segmented_matrix, cell_cluster_names, median_profiles,cell_order, segmented_matrix_floating = assign_clusters(copy_mat,
                                                                                   segments,
-                                                                                   min_cells_per_cluster=min_cells_per_cluster,min_segment_size=min_segment_size)
+                                                                                  MAXCP=MAXCP,
+                                                                                   min_cells_per_cluster=min_cells_per_cluster,
+                                                                                   min_segment_size=min_segment_size)
         bulk_trace(f'{clustering_plot_folder}/segments_wo_variance_filter.pdf', copy_mat, cell_cluster_names, cell_order,segmented_matrix_floating, segmented_matrix)
 
         cell_annot_df = pd.DataFrame([cell_cluster_names, [cell.split('_')[0] for cell in cell_order]],
