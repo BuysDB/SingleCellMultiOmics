@@ -311,5 +311,5 @@ if __name__=='__main__':
         counts = (region_counts/normalize_to_counts.sum()).fillna(0).T
 
         contig, start, end = region
-        target = args.prefix+f'{contig}:{start}-{end}'
+        target = args.prefix+f'{contig}_{start}-{end}_{region_bin_size}.png'
         plot_region(counts, features, contig, start, end, sigma=2, target=target, caxlabel='Molecules per spike-in' if norm =='spike' else 'Molecules / total molecules')
