@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import matplotlib as mpl
 mpl.rcParams['figure.dpi'] = 300
@@ -182,7 +182,7 @@ if __name__=='__main__':
         # Create temp directory to write tagged bam file to:
         temp_dir = args.temp_dir
         temp_bam_path = f'{temp_dir}/{contig}.bam'
-        if not os.path.exists(temp_dir:
+        if not os.path.exists(temp_dir):
             try:
                 os.makedirs(temp_dir)
             except Exception as e:
