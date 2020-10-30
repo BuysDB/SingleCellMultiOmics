@@ -99,6 +99,7 @@ setup(
         'singlecellmultiomics/bamProcessing/split_double_BAM.py',
         'singlecellmultiomics/bamProcessing/bamOverseq.py',
         'singlecellmultiomics/bamProcessing/plotRegion.py',
+        'singlecellmultiomics/bamProcessing/soft_clip_filter.py',
         'singlecellmultiomics/utils/base_call_covariates.py',
 
         # Library processing:
