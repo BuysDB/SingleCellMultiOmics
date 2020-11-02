@@ -106,9 +106,12 @@ def extract_covariates(bam_path: str,
     if variant_blacklist_vcf_files is not None:
 
         for path in variant_blacklist_vcf_files:
-            with pysam.VariantFile(path) as bf:
-                for record in bf.fetch(contig, start_fetch, end_fetch):
-                    blacklist.add(record.pos)
+            try:
+                with pysam.VariantFile(path) as bf:
+                    for record in bf.fetch(contig, start_fetch, end_fetch):
+                        blacklist.add(record.pos)
+            except ValueError:
+                print(f'Contig {contig} is missing in the vcf file')
 
 
     with AlignmentFile(bam_path) as alignments,  FastaFile(reference_path) as fa:
