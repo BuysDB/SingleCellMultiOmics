@@ -1,12 +1,15 @@
-{
+{ 
     "chic_reference_file"  :  "/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/primary_assembly.fasta",
-    "trans_reference_file"  :  "/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/NOMASK_star_index_75",
-    "exons"  :  "/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/exons.gtf.gz",
-    "introns"  :  "/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/introns.gtf.gz",
+    "trans_reference_file"  :  "/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/NOMASK_ribo_star_index_120",
+    "reference_fasta"  :  "/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/primary_assembly_NOMASK_ERCC92_ribo.fa",
+    "introns" : "/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/introns.gtf.gz",
+    "exons" : "/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/exons.including_ribo.gtf.gz",
     "blacklist" : "/hpc/hub_oudenaarden/bdebarbanson/ref/500_plus_coverage_spikes_blacklist_CHiC_mm10.bed",
     "counting_min_mq" : 50,
     "counting_bin_sizes": [50_000],
     "chic_mapper":"bwa",
     "trans_mapper":"STAR",
-    "plot_bin_sizes" : [500_000, 1000_000]
+    "plot_bin_sizes" : [500_000, 1000_000],
+    "4sU":"disabled",
+    "known_variants":"/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/all_snps.vcf.gz"
 }
