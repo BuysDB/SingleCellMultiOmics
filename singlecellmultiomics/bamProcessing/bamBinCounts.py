@@ -36,11 +36,23 @@ def _generate_count_dict(args):
 
         for R1,R2 in mate_iter(alignments, contig=contig, start=start, stop=stop):
 
-            if R1 is None or R1.is_duplicate or not R1.has_tag('DS') or R1.is_qcfail:
+
+
+            if R1 is None or R1.is_duplicate or R1.is_qcfail:
                 continue
 
-            cut_pos = R1.get_tag('DS')
-            sample = R1.get_tag('SM')
+            if not R1.has_tag('DS'):
+                cut_pos = R1.reference_end if  R1.is_reverse else R1.reference_start
+            else:
+                cut_pos = int(R1.get_tag('DS'))
+
+            if cut_pos is None:
+                continue
+
+            if R1.has_tag('SM'):
+                sample = R1.get_tag('SM')
+            else:
+                sample = 'No_Sample'
 
             bin_idx=int(cut_pos/bin_size)*bin_size
             cut_counts[(contig,bin_idx)][sample] += 1
