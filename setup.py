@@ -90,6 +90,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamDuprate.py',
         'singlecellmultiomics/bamProcessing/bamExtractRandomPrimerStats.py',
         'singlecellmultiomics/bamProcessing/bamToRNACounts.py',
+        'singlecellmultiomics/bamProcessing/bamToBigWig.py',
         'singlecellmultiomics/bamProcessing/structureTensor.py',
         'singlecellmultiomics/bamProcessing/bamCompare.py',
         'singlecellmultiomics/bamProcessing/variantStats.py',
