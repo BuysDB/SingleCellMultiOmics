@@ -19,6 +19,79 @@ from pysamiterators import CachedFasta
 from pysam import FastaFile
 from singlecellmultiomics.utils import reverse_complement
 from collections import defaultdict, Counter
+from itertools import product
+from singlecellmultiomics.bamProcessing.bamFunctions import mate_iter
+
+def _generate_count_dict(args):
+
+    bam_path, bin_size, contig, start, stop = args #reference_path  = args
+
+    #reference_handle = pysam.FastaFile(reference_path)
+    #reference = CachedFasta(reference_handle)
+
+
+    cut_counts = defaultdict(Counter )
+    i = 0
+    with pysam.AlignmentFile(bam_path) as alignments:
+
+        for R1,R2 in mate_iter(alignments, contig=contig, start=start, stop=stop):
+
+
+
+            if R1 is None or R1.is_duplicate or R1.is_qcfail:
+                continue
+
+            if not R1.has_tag('DS'):
+                cut_pos = R1.reference_end if  R1.is_reverse else R1.reference_start
+            else:
+                cut_pos = int(R1.get_tag('DS'))
+
+            if cut_pos is None:
+                continue
+
+            if R1.has_tag('SM'):
+                sample = R1.get_tag('SM')
+            else:
+                sample = 'No_Sample'
+
+            bin_idx=int(cut_pos/bin_size)*bin_size
+            cut_counts[(contig,bin_idx)][sample] += 1
+
+    return cut_counts, contig, bam_path
+
+
+def get_binned_counts(bams, bin_size, regions=None):
+
+    fs = 1000
+    if regions is None:
+        regions = [(c,None,None) for c in get_contig_sizes(bams[0]).keys()]
+
+    else:
+        for i,r in enumerate(regions):
+            if type(r)==str:
+                regions[i] = (r,None,None)
+            else:
+                contig, start, end =r
+                if type(start)==int:
+                    start = max(0,start-fs)
+
+                regions[i] = (contig,start,end)
+
+    jobs = [(bam_path, bin_size, *region) for region, bam_path in product(regions, bams)]
+
+
+    cut_counts = defaultdict(Counter)
+    with multiprocessing.Pool() as workers:
+
+        for i, (cc, contig, bam_path) in enumerate(workers.imap(_generate_count_dict,jobs)):
+
+            for k,v in cc.items():
+                cut_counts[k] += v
+
+            print(i,'/', len(jobs), end='\r')
+
+    return pd.DataFrame(cut_counts).T
+
 
 def fill_range(start, end, step):
     """
