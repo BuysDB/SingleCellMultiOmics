@@ -120,9 +120,9 @@ def read_should_be_counted(read, args, blacklist_dic = None):
     if args.filterMP:
         if not read.has_tag('mp'):
             return False
-        if read.get_tag('mp')=='unique':
-            return True
-        return False
+
+        if read.get_tag('mp')!='unique':
+            return False
 
     if read is None or read.is_qcfail:
         return False
