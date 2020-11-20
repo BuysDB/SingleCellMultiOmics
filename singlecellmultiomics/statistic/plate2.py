@@ -123,7 +123,7 @@ class PlateStatistic2(object):
                 n_reads = libd[('total mapped','# reads')].get(coordinate,0)
                 overseq[coordinate] = (n_reads/n_molecules) if n_reads>0 else 0
 
-            fig, ax, cax = plot_plate(overseq, log=False, cmap_name='viridis', vmin=0)
+            fig, ax, cax = plot_plate(overseq, log=False, cmap_name='viridis', vmin=np.percentile(list(overseq.values()),5))
             cax.set_ylabel('reads / molecule')
             ax.set_title(f'Oversequencing')
             plt.savefig(
@@ -139,7 +139,7 @@ class PlateStatistic2(object):
                 n_molecules = libd[('total mapped','# molecules')].get(coordinate,0)
                 ta_ratio[coordinate] = (n_ta_molecules/n_molecules) if n_molecules>0 else 0
 
-            fig, ax, cax = plot_plate(ta_ratio, log=False, cmap_name='viridis', vmin=0)
+            fig, ax, cax = plot_plate(ta_ratio, log=False, cmap_name='viridis', vmin=np.percentile(list(ta_ratio.values()),5))
             cax.set_ylabel('TA molecules / molecule')
             ax.set_title(f'TA fraction')
             plt.savefig(

@@ -33,20 +33,22 @@ class FragmentSizeHistogram(StatisticHistogram):
             if read.is_qcfail:
                 qcfail = True
 
-
             if read.has_tag('ms') and not read.is_duplicate:
                 moleculeSize = read.get_tag('ms')
 
             if read.has_tag('fS'):
                 fragmentSize = read.get_tag('fS')
                 break
-        
+
         if fragmentSize is None:
             for read in [R1,R2]:
-                if read is None or read.is_qcfail:
+                if read is None:
                     continue
+                if read.is_qcfail:
+                    qcfail = True
+
                 if read.isize !=0:
-                    fragmentSize = read.isize
+                    fragmentSize = abs(read.isize)
                     break
 
         if fragmentSize is None or fragmentSize > 1_000:
