@@ -22,26 +22,28 @@ class CellReadCount(StatisticHistogram):
         self.read_counts = collections.Counter()
         self.molecule_counts = collections.Counter()
 
-    def processRead(self, read):
-        if not read.has_tag('SM'):
-            return
+    def processRead(self, R1,R2=None):
 
-        cell = read.get_tag('SM')
+        for read in [R1,R2]:
+            if read is None:
+                continue
 
-        if read.is_read2 and not read.is_proper_pair:
-            return
+            if not read.has_tag('SM'):
+                continue
 
-        self.read_counts[cell] +=1
+            cell = read.get_tag('SM')
 
-        if  not readIsDuplicate(read):
-            return
-        self.molecule_counts[cell] +=1
+            self.read_counts[cell] +=1
+
+            if not read.is_duplicate:
+                self.molecule_counts[cell] +=1
+            break
 
     def to_csv(self, path):
         pd.DataFrame({'reads':self.read_counts, 'umis':self.molecule_counts}).to_csv(path)
 
     def __repr__(self):
-        return f'The average amount of reads is {np.mean(self.read_counts.values())}'
+        return f'The average amount of reads is {np.mean(list(self.read_counts.values()))}'
 
     def plot(self, target_path, title=None):
         fig, ax = plt.subplots()

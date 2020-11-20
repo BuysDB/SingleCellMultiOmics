@@ -63,60 +63,63 @@ class ReadCount(Statistic):
 
         plt.close()
 
-    def processRead(self, read):
+    def processRead(self, R1,R2):
 
-        # Count every read only once
-        if read.is_supplementary or read.is_secondary:
-            return
+        for read in [R1,R2]:
+            if read is None:
+                continue
+            # Count every read only once
+            if read.is_supplementary or read.is_secondary:
+                return
 
-        if not read.is_unmapped:
-
-            if read.is_read1:
-                self.totalMappedReads['R1'] += 1
-            elif read.is_read2:
-                self.totalMappedReads['R2'] += 1
-            else:
-                self.totalMappedReads['R?'] += 1
-        else:
-            if read.is_read1:
-                self.unmappedReads['R1'] += 1
-            elif read.is_read2:
-                self.unmappedReads['R2'] += 1
-            else:
-                self.unmappedReads['R?'] += 1
-
-        # Compatibility with picard --TAG_DUPLICATE_SET_MEMBERS
-        """
-        java -jar `which picard.jar` MarkDuplicates I=sorted.bam O=marked_duplicates.bam M=marked_dup_metrics.txt TAG_DUPLICATE_SET_MEMBERS=1
-        """
-        if not read.has_tag('MX'):  # Bulk sample
             if not read.is_unmapped:
-                if read.is_duplicate:
-                    pass
+
+                if read.is_read1:
+                    self.totalMappedReads['R1'] += 1
+                elif read.is_read2:
+                    self.totalMappedReads['R2'] += 1
                 else:
-                    if read.is_read1:
-                        self.totalDedupReads['R1'] += 1
-                    else:
-                        self.totalDedupReads['R2'] += 1
+                    self.totalMappedReads['R?'] += 1
+            else:
+                if read.is_read1:
+                    self.unmappedReads['R1'] += 1
+                elif read.is_read2:
+                    self.unmappedReads['R2'] += 1
+                else:
+                    self.unmappedReads['R?'] += 1
 
-        else:
-            if not read.is_unmapped:
-                if (read.has_tag('DS') or read.has_tag('GN')) and not read.is_qcfail:
-                    if read.is_read1:
-                        self.totalAssignedSiteReads['R1'] += 1
-                    elif read.is_read2:
-                        self.totalAssignedSiteReads['R2'] += 1
+            # Compatibility with picard --TAG_DUPLICATE_SET_MEMBERS
+            """
+            java -jar `which picard.jar` MarkDuplicates I=sorted.bam O=marked_duplicates.bam M=marked_dup_metrics.txt TAG_DUPLICATE_SET_MEMBERS=1
+            """
+            if not read.has_tag('MX'):  # Bulk sample
+                if not read.is_unmapped:
+                    if read.is_duplicate:
+                        pass
                     else:
-                        self.totalAssignedSiteReads['R?'] += 1
+                        if read.is_read1:
+                            self.totalDedupReads['R1'] += 1
+                        else:
+                            self.totalDedupReads['R2'] += 1
 
-                if not read.is_duplicate:
+            else:
+                if not read.is_unmapped:
+                    if (read.has_tag('DS') or read.has_tag('GN')) and not read.is_qcfail:
+                        if read.is_read1:
+                            self.totalAssignedSiteReads['R1'] += 1
+                        elif read.is_read2:
+                            self.totalAssignedSiteReads['R2'] += 1
+                        else:
+                            self.totalAssignedSiteReads['R?'] += 1
 
-                    if read.is_read1:
-                        self.totalDedupReads['R1'] += 1
-                    elif read.is_read2:
-                        self.totalDedupReads['R2'] += 1
-                    else:
-                        self.totalDedupReads['R?'] += 1
+                    if not read.is_duplicate:
+
+                        if read.is_read1:
+                            self.totalDedupReads['R1'] += 1
+                        elif read.is_read2:
+                            self.totalDedupReads['R2'] += 1
+                        else:
+                            self.totalDedupReads['R?'] += 1
 
     def setRawReadCount(self, readCount, paired=True):
         self.rawReadCount = readCount * (2 if paired else 1)

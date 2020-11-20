@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from .statistic import StatisticHistogram
 import singlecellmultiomics.pyutils as pyutils
 import collections
-
+import seaborn as sns
 import matplotlib
 matplotlib.rcParams['figure.dpi'] = 160
 matplotlib.use('Agg')
@@ -21,41 +21,50 @@ class FragmentSizeHistogram(StatisticHistogram):
 
         self.histogramReject = collections.Counter()
         self.histogramAccept = collections.Counter()
+        self.histogramMolecule = collections.Counter()
 
-    def processRead(self, read):
-        if not read.is_proper_pair or not read.is_paired or not read.is_read1 or readIsDuplicate(
-                read):
-            return
+    def processRead(self, R1,R2=None):
+        fragmentSize = None
+        moleculeSize = None
+        qcfail =False
+        for read in [R1,R2]:
+            if read is None:
+                continue
+            if read.is_qcfail:
+                qcfail = True
 
-        mateStart = read.next_reference_start
-        if mateStart is None:
-            return
-        readLen = read.infer_query_length()
-        if readLen is None:
-            return
-        readA = (read.reference_start, read.reference_end)
-        readB = (mateStart, mateStart + readLen)
+            if read.has_tag('ms') and not read.is_duplicate:
+                moleculeSize = read.get_tag('ms')
 
-        end = max(
-            read.reference_start,
-            read.reference_end,
-            mateStart,
-            mateStart + readLen)
-        start = min(
-            read.reference_start,
-            read.reference_end,
-            mateStart,
-            mateStart + readLen)
-        fragmentSize = end - start
-        if fragmentSize > 1_000:
+            if read.has_tag('fS'):
+                fragmentSize = read.get_tag('fS')
+                break
+
+        if fragmentSize is None:
+            for read in [R1,R2]:
+                if read is None:
+                    continue
+                if read.is_qcfail:
+                    qcfail = True
+
+                if read.isize !=0:
+                    fragmentSize = abs(read.isize)
+                    break
+
+        if fragmentSize is None or fragmentSize > 1_000:
             return
         #print(fragmentSize, read.reference_start,  read.reference_end,mateStart,readLen  )
         self.histogram[fragmentSize] += 1
 
-        if read.has_tag('DS') and not read.has_tag('RR'):
-            self.histogramAccept[fragmentSize] += 1
-        else:
+
+        if qcfail:
             self.histogramReject[fragmentSize] += 1
+
+        else:
+            if moleculeSize is not None:
+                self.histogramMolecule[fragmentSize] += 1
+            self.histogramAccept[fragmentSize] += 1
+
 
     def __repr__(self):
         return f'The average fragment size is {pyutils.meanOfCounter(self.histogram)}, SD:{pyutils.varianceOfCounter(self.histogram)}'
@@ -73,6 +82,7 @@ class FragmentSizeHistogram(StatisticHistogram):
         ax.set_ylabel("# Fragments")
         plt.tight_layout()
         plt.savefig(target_path)
+        sns.despine()
         plt.close()
 
         fig, ax = plt.subplots()
@@ -86,6 +96,7 @@ class FragmentSizeHistogram(StatisticHistogram):
         ax.set_xlabel("Rejected fragment size [bp]")
         ax.set_ylabel("# Fragments")
         plt.tight_layout()
+        sns.despine()
         plt.savefig(target_path.replace('.png', '.rejected.png'))
         plt.close()
 
@@ -97,8 +108,26 @@ class FragmentSizeHistogram(StatisticHistogram):
         if title is not None:
             plt.title(title)
 
+
         ax.set_xlabel("Accepted fragment size [bp]")
         ax.set_ylabel("# Fragments")
         plt.tight_layout()
+        sns.despine()
         plt.savefig(target_path.replace('.png', '.accepted.png'))
+        plt.close()
+
+
+        fig, ax = plt.subplots()
+        ax.bar(
+            list(
+                self.histogramMolecule.keys()), list(
+                self.histogramMolecule.values()), width=1, color='g')
+        if title is not None:
+            plt.title(title)
+
+        sns.despine()
+        ax.set_xlabel("Molecule size [bp]")
+        ax.set_ylabel("# Molecules")
+        plt.tight_layout()
+        plt.savefig(target_path.replace('.png', '.molecules.png'))
         plt.close()

@@ -14,28 +14,35 @@ class MethylationContextHistogram(StatisticHistogram):
     def __init__(self, args):
         StatisticHistogram.__init__(self, args)
         self.context_obs = collections.Counter()  # (bismark_call_tag)=> observations
+        self.hasdata = False
+    def processRead(self, R1,R2):
 
-    def processRead(self, read):
-        if not read.is_paired or not read.has_tag(
-                'XM') or not read.is_read1 or read.is_duplicate or read.has_tag('RR'):
-            return
+        for read in [R2,R2]:
+            if read is None:
+                continue
 
-        tags = dict(read.tags)
-        for tag in 'zhx':
-            self.context_obs[tag] += tags.get(f's{tag}', 0)
-            self.context_obs[tag.upper()] += tags.get(f's{tag.upper()}', 0)
+            if not read.is_paired or not read.has_tag(
+                    'XM') or not read.is_read1 or read.is_duplicate or read.has_tag('RR'):
+                return
+            self.hasdata = True
+            tags = dict(read.tags)
+            for tag in 'zhx':
+                self.context_obs[tag] += tags.get(f's{tag}', 0)
+                self.context_obs[tag.upper()] += tags.get(f's{tag.upper()}', 0)
 
     def __repr__(self):
         return f'Methylation status.'
 
     def get_df(self):
+
         x = self.context_obs
+
         return pd.DataFrame(
             {'ratio':
              {
-                 'CpG': x['Z'] / (x['z'] + x['Z']),
-                 'CHG': x['X'] / (x['x'] + x['X']),
-                 'CHH': x['H'] / (x['h'] + x['H'])},
+                 'CpG': (x['Z'] / (x['z'] + x['Z'])) if x['z'] + x['Z'] > 0 else 0 ,
+                 'CHG': (x['X'] / (x['x'] + x['X'])) if x['x'] + x['X'] >0 else 0,
+                 'CHH': (x['H'] / (x['h'] + x['H'])) if x['h'] + x['H'] > 0 else 0},
              'methylated': {
                  'CpG': x['Z'],
                  'CHG': x['X'],

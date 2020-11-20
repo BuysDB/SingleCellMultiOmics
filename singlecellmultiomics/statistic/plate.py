@@ -118,38 +118,45 @@ class PlateStatistic(object):
                 '.csv',
                 'raw_fragments.csv'))
 
-    def processRead(self, read):
+    def processRead(self, R1,R2):
 
-        if not read.has_tag('MX'):
-            return
+        for read in [R1,R2]:
 
-        self.rawFragmentCount[(read.get_tag('LY'),
-                               read.get_tag('MX'))][read.get_tag('SM')] += 1
+            if read is None:
+                continue
 
-        if read.get_tag('MX').startswith('CS2'):
-            if read.has_tag('XT') or read.has_tag('EX'):
-                if read.is_read1:  # We only count reads2
-                    return
-                self.usableCount[(read.get_tag('LY'),
-                                  read.get_tag('MX'))][read.get_tag('SM')] += 1
+            if not read.has_tag('MX'):
+                return
 
-                if read.has_tag('RC') and read.get_tag('RC') == 1:
-                    self.moleculeCount[(read.get_tag('LY'), read.get_tag(
-                        'MX'))][read.get_tag('SM')] += 1
-        else:
+            self.rawFragmentCount[(read.get_tag('LY'),
+                                   read.get_tag('MX'))][read.get_tag('SM')] += 1
 
-            if read.has_tag('DS'):
-                if not read.is_read1:
-                    self.skipReasons['Not R1'] += 1
-                    return
+            if read.get_tag('MX').startswith('CS2'):
+                if read.has_tag('XT') or read.has_tag('EX'):
+                    if read.is_read1:  # We only count reads2
+                        return
+                    self.usableCount[(read.get_tag('LY'),
+                                      read.get_tag('MX'))][read.get_tag('SM')] += 1
 
-                self.usableCount[(read.get_tag('LY'),
-                                  read.get_tag('MX'))][read.get_tag('SM')] += 1
-                if not read.is_duplicate:
-                    self.moleculeCount[(read.get_tag('LY'), read.get_tag(
-                        'MX'))][read.get_tag('SM')] += 1
+                    if read.has_tag('RC') and read.get_tag('RC') == 1:
+                        self.moleculeCount[(read.get_tag('LY'), read.get_tag(
+                            'MX'))][read.get_tag('SM')] += 1
             else:
-                self.skipReasons['No DS'] += 1
+
+                if read.has_tag('DS'):
+                    if not read.is_read1:
+                        self.skipReasons['Not R1'] += 1
+                        return
+
+                    self.usableCount[(read.get_tag('LY'),
+                                      read.get_tag('MX'))][read.get_tag('SM')] += 1
+                    if not read.is_duplicate:
+                        self.moleculeCount[(read.get_tag('LY'), read.get_tag(
+                            'MX'))][read.get_tag('SM')] += 1
+                else:
+                    self.skipReasons['No DS'] += 1
+            break
+
 
     def __repr__(self):
         return 'Plate statistic'
@@ -158,7 +165,7 @@ class PlateStatistic(object):
         df = pd.DataFrame({name: cell_counts})
 
         offset = 0 # Offset is zero for all protocols since 0.1.12
-    
+
         format = 384 if ('384' in mux or mux.startswith('CS2')) else 96
 
         df['col'] = [index2well[format]

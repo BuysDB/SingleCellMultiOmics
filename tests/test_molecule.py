@@ -233,6 +233,7 @@ class TestMolecule(unittest.TestCase):
             molecule_class=singlecellmultiomics.molecule.Molecule,
             fragment_class=singlecellmultiomics.fragment.Fragment,
             every_fragment_as_molecule=True,
+            yield_invalid=True,
             iterator_class=pysamiterators.MatePairIteratorIncludingNonProper
             )):
                 if m[0].has_R1():

@@ -66,6 +66,6 @@ if __name__=='__main__':
         {Fore.BLUE}snakemake --cluster sge_wrapper.py  --jobs 20 --restart-times 3{Style.RESET_ALL}\n
         On SLURM cluster:\n
         {Fore.BLUE}snakemake --cluster slurm_wrapper.py  --jobs 20 --restart-times 3{Style.RESET_ALL}\n
-        On SGE cluster with controller as a job:\n
-        {Fore.BLUE}submission.py "snakemake --cluster sge_wrapper.py  --jobs 20 --restart-times 3" -y -time 50 -m 2 -N SCMOCONTROL{Style.RESET_ALL}\n
+
+        To keep intermediate files, add {Fore.BLUE}--nt{Style.RESET_ALL}
         """)

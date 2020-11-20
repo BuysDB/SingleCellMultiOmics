@@ -16,9 +16,14 @@ class RejectionReasonHistogram(StatisticHistogram):
         StatisticHistogram.__init__(self, args)
         self.histogram = collections.Counter()
 
-    def processRead(self, read):
-        if read.has_tag('RR'):
-            self.histogram[read.get_tag('RR')] += 1
+    def processRead(self, R1,R2):
+
+        for read in [R1,R2]:
+            if read is None:
+                continue
+            if read.has_tag('RR'):
+                self.histogram[read.get_tag('RR')] += 1
+            break
 
     def __repr__(self):
         rt = 'Rejection reasons:'

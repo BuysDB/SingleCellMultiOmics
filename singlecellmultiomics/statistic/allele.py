@@ -15,10 +15,13 @@ class AlleleHistogram(StatisticHistogram):
         StatisticHistogram.__init__(self, args)
         self.histogram = collections.Counter()
 
-    def processRead(self, read):
-        if read.has_tag('DA'):
+    def processRead(self, R1,R2):
 
-            self.histogram[read.get_tag('DA')] += 1
+        for read in [R1,R2]:
+            if read is None:
+                continue
+            if read.has_tag('DA'):
+                self.histogram[read.get_tag('DA')] += 1
 
     def __repr__(self):
         rt = 'Allele observations:'
