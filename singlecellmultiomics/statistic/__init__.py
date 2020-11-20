@@ -14,3 +14,4 @@ from .scchicligation import *
 from .conversions import *
 from .cellreadcount import CellReadCount
 from .lorenz import Lorenz
+from .plate2 import *
