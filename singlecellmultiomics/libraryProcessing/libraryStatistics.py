@@ -133,7 +133,8 @@ if __name__ == '__main__':
                 AlleleHistogram(args),
                 DataTypeHistogram(args),
                 TagHistogram(args),
-                PlateStatistic(args)
+                PlateStatistic(args),
+                PlateStatistic2(args)
             ])
 
         demuxFastqFilesLookup = [
