@@ -3,6 +3,7 @@ import singlecellmultiomics.pyutils as pyutils
 import collections
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 class MappingQualityHistogram(StatisticHistogram):
@@ -10,8 +11,13 @@ class MappingQualityHistogram(StatisticHistogram):
         StatisticHistogram.__init__(self, args)
         self.histogram = collections.Counter()
 
-    def processRead(self, read):
-        self.histogram[read.mapping_quality] += 1
+    def processRead(self, R1,R2):
+
+        for read in [R1,R2]:
+            if read is None:
+                continue
+
+            self.histogram[read.mapping_quality] += 1
 
     def __repr__(self):
         return f'The average mapping quality is {pyutils.meanOfCounter(self.histogram)}, SD:{pyutils.varianceOfCounter(self.histogram)}'
@@ -36,6 +42,7 @@ class MappingQualityHistogram(StatisticHistogram):
         plt.savefig(target_path)
 
         ax.set_yscale('log')
+        sns.despine()
         plt.tight_layout()
         plt.savefig(target_path.replace('.png', '.log.png'))
 

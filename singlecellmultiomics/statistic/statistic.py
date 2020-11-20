@@ -21,7 +21,7 @@ class Statistic(object):
     def __init__(self, args):
         self.args = args
 
-    def processRead(self, read):
+    def processRead(self, R1,R2=None):
         """
         Update the statistic with information from READ
 

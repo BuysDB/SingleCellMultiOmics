@@ -16,43 +16,48 @@ class TagHistogram(StatisticHistogram):
         StatisticHistogram.__init__(self, args)
         self.histogram = collections.Counter()
 
-    def processRead(self, read):
-        if read.is_duplicate:
-            return
+    def processRead(self, R1,R2=None):
 
-        if read.has_tag('DS'):
-            self.histogram["Assigned to cut site"] += 1
+        for read in [R1,R2]:
+            if read is None:
+                continue
 
-        if read.has_tag('GN'):
-            self.histogram["Assigned to gene"] += 1
+            if read.is_duplicate:
+                return
 
-        if read.has_tag('IN'):
-            self.histogram["Overlapping with intron"] += 1
+            if read.has_tag('DS'):
+                self.histogram["Assigned to cut site"] += 1
 
-        if read.has_tag('JN'):
-            self.histogram["Intron/exon junction"] += 1
+            if read.has_tag('GN'):
+                self.histogram["Assigned to gene"] += 1
 
-        if read.has_tag('EX'):
-            if read.get_tag('EX') == 'Unassigned_NoFeatures':
-                self.histogram["Not assigned to exon"] += 1
-            elif read.get_tag('EX') == 'Assigned':
-                self.histogram["Assigned to exon"] += 1
-            else:
-                self.histogram["Overlapping with exon"] += 1
+            if read.has_tag('IN'):
+                self.histogram["Overlapping with intron"] += 1
 
-        if read.has_tag('XS'):
-            if read.get_tag('XS') == 'Unassigned_NoFeatures':
-                self.histogram["Not assigned to gene/intron"] += 1
-            elif read.get_tag('XS') == 'Assigned':
-                self.histogram["Assigned to gene/intron"] += 1
-            else:
-                self.histogram["Unknown gene/intron assignment"] += 1
+            if read.has_tag('JN'):
+                self.histogram["Intron/exon junction"] += 1
 
-        if read.has_tag('Is'):
-            self.histogram[f"Sequencer_{read.get_tag('Is')}"] += 1
+            if read.has_tag('EX'):
+                if read.get_tag('EX') == 'Unassigned_NoFeatures':
+                    self.histogram["Not assigned to exon"] += 1
+                elif read.get_tag('EX') == 'Assigned':
+                    self.histogram["Assigned to exon"] += 1
+                else:
+                    self.histogram["Overlapping with exon"] += 1
 
-        if read.has_tag('LY'):
-            self.histogram[f"Library_{read.get_tag('LY')}"] += 1
+            if read.has_tag('XS'):
+                if read.get_tag('XS') == 'Unassigned_NoFeatures':
+                    self.histogram["Not assigned to gene/intron"] += 1
+                elif read.get_tag('XS') == 'Assigned':
+                    self.histogram["Assigned to gene/intron"] += 1
+                else:
+                    self.histogram["Unknown gene/intron assignment"] += 1
+
+            if read.has_tag('Is'):
+                self.histogram[f"Sequencer_{read.get_tag('Is')}"] += 1
+
+            if read.has_tag('LY'):
+                self.histogram[f"Library_{read.get_tag('LY')}"] += 1
 
     def __repr__(self):
         rt = 'Tag obs::'

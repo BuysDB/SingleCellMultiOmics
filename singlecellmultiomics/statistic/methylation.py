@@ -15,15 +15,20 @@ class MethylationContextHistogram(StatisticHistogram):
         StatisticHistogram.__init__(self, args)
         self.context_obs = collections.Counter()  # (bismark_call_tag)=> observations
 
-    def processRead(self, read):
-        if not read.is_paired or not read.has_tag(
-                'XM') or not read.is_read1 or read.is_duplicate or read.has_tag('RR'):
-            return
+    def processRead(self, R1,R2):
 
-        tags = dict(read.tags)
-        for tag in 'zhx':
-            self.context_obs[tag] += tags.get(f's{tag}', 0)
-            self.context_obs[tag.upper()] += tags.get(f's{tag.upper()}', 0)
+        for read in [R2,R2]:
+            if read is None:
+                continue
+
+            if not read.is_paired or not read.has_tag(
+                    'XM') or not read.is_read1 or read.is_duplicate or read.has_tag('RR'):
+                return
+
+            tags = dict(read.tags)
+            for tag in 'zhx':
+                self.context_obs[tag] += tags.get(f's{tag}', 0)
+                self.context_obs[tag.upper()] += tags.get(f's{tag.upper()}', 0)
 
     def __repr__(self):
         return f'Methylation status.'

@@ -16,7 +16,7 @@ from colorama import Back
 from colorama import Style
 import singlecellmultiomics.pyutils as pyutils
 from singlecellmultiomics.tagtools import tagtools
-import pysamiterators.iterators as pysamIterators
+from pysamiterators import MatePairIteratorIncludingNonProper
 import gzip
 import pickle
 import subprocess
@@ -64,7 +64,10 @@ if __name__ == '__main__':
         '--plotsOnly',
         action='store_true',
         help="only make plots")
-
+    argparser.add_argument(
+        '--fatal',
+        action='store_true',
+        help="Fatal error on any issue")
     argparser.add_argument(
         '--sl',
         action='store_true',
@@ -232,9 +235,10 @@ if __name__ == '__main__':
         if bamFile is not None and os.path.exists(bamFile):
             print(f'\tTagged > {bamFile}')
             with pysam.AlignmentFile(bamFile) as f:
-                for i, read in enumerate(f):
+
+                for i, (R1,R2) in enumerate(MatePairIteratorIncludingNonProper(f)):
                     for statistic in statistics:
-                        statistic.processRead(read)
+                        statistic.processRead(R1,R2)
                     if args.head is not None and i >= (args.head - 1):
                         break
         else:
@@ -290,6 +294,8 @@ if __name__ == '__main__':
             except Exception as e:
                 if args.v:
                     print(e)
+                if args.fatal:
+                    raise
 
         if bamFile is not None:
             for statistic in full_file_statistics:
@@ -299,6 +305,8 @@ if __name__ == '__main__':
                 except Exception as e:
                     if args.v:
                         print(e)
+                    if args.fatal:
+                        raise
 
 
 
@@ -339,7 +347,9 @@ if __name__ == '__main__':
                     try:
                         statDict.update(pickle.load(f))
                     except Exception as e:
-                        pass
+                        if args.fatal:
+                            raise
+
 
             if not os.path.exists(table_dir):
                 os.makedirs(table_dir)
@@ -352,9 +362,12 @@ if __name__ == '__main__':
                     statistic.to_csv(
                         f'{table_dir}/{statistic.__class__.__name__}_{library_name}.csv')
                 except Exception as e:
+                    if args.fatal:
+                        raise
                     if args.v:
                         import traceback
                         traceback.print_exc()
+
 
         # Make RT reaction plot:
         if bamFile is not None and os.path.exists(bamFile):

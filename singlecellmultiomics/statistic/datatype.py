@@ -16,14 +16,20 @@ class DataTypeHistogram(StatisticHistogram):
         StatisticHistogram.__init__(self, args)
         self.histogram = collections.Counter()
 
-    def processRead(self, read):
-        if read.has_tag('MX'):
-            self.histogram[read.get_tag('MX')] += 1
-        else:
-            self.histogram["Not demultiplexed"] += 1
+    def processRead(self, R1,R2):
 
-        if read.has_tag('dt'):
-            self.histogram[read.get_tag('dt')] += 1
+        for read in [R1,R2]:
+            if read is None:
+                continue
+
+            if read.has_tag('MX'):
+                self.histogram[read.get_tag('MX')] += 1
+            else:
+                self.histogram["Not demultiplexed"] += 1
+
+            if read.has_tag('dt'):
+                self.histogram[read.get_tag('dt')] += 1
+            break
 
     def __repr__(self):
         rt = 'Rejection reasons:'
