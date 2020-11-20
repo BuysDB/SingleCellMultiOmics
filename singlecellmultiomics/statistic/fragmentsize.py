@@ -108,10 +108,11 @@ class FragmentSizeHistogram(StatisticHistogram):
         if title is not None:
             plt.title(title)
 
-        sns.despine()
+
         ax.set_xlabel("Accepted fragment size [bp]")
         ax.set_ylabel("# Fragments")
         plt.tight_layout()
+        sns.despine()
         plt.savefig(target_path.replace('.png', '.accepted.png'))
         plt.close()
 
