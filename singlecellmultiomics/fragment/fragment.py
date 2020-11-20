@@ -346,9 +346,13 @@ class Fragment():
         self.set_meta('RG', self.get_read_group())
         if self.has_valid_span():
             # Write fragment size:
-            self.set_meta('fS', self.get_fragment_size())
-            self.set_meta('fe', self.span[1])
-            self.set_meta('fs', self.span[2])
+            if self.safe_span:
+                self.set_meta('fS', self.get_fragment_size())
+                self.set_meta('fe', self.span[1])
+                self.set_meta('fs', self.span[2])
+            else:
+                self.remove_meta('fS')
+
 
         else:
             self.set_rejection_reason('FS', set_qcfail=True)
@@ -418,6 +422,13 @@ class Fragment():
                 return R2.reference_name, R2.reference_start, self.random_primer_sequence
             return(R2.reference_name, R2.reference_start, R2.query_sequence[:self.R2_primer_length])
         raise ValueError()
+
+    def remove_meta(self,key):
+        for read in self:
+            if read is not None:
+                if read.has_tag(key):
+                    read.set_tag(key,None)
+
 
     def set_meta(self, key, value, as_set=False):
         self.meta[key] = value
@@ -529,17 +540,21 @@ class Fragment():
             contig = self.R1.reference_name
             if not self.has_R2():
                 start, end = self.R1.reference_start, self.R1.reference_end
+                self.safe_span = False
             else:
                 if self.R1.is_reverse:
                     start, end = self.R2.reference_start, self.R1.reference_end
                 else:
                     start, end = self.R1.reference_start, self.R2.reference_end
+                self.safe_span = True
+
         elif self.has_R2()  and self.R2.reference_start is not None and self.R2.reference_end is not None :
             contig = self.R2.reference_name
             start, end = self.R2.reference_start, self.R2.reference_end
+            self.safe_span = False
         else:
             # No valid span.
-            pass
+            self.safe_span = False
 
         self.span = (contig, start, end)
 
