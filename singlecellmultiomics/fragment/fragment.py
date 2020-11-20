@@ -525,7 +525,7 @@ class Fragment():
 
 
 
-        if self.has_R1():
+        if self.has_R1() and self.R1.reference_start is not None and self.R1.reference_end is not None :
             contig = self.R1.reference_name
             if not self.has_R2():
                 start, end = self.R1.reference_start, self.R1.reference_end
@@ -534,11 +534,12 @@ class Fragment():
                     start, end = self.R2.reference_start, self.R1.reference_end
                 else:
                     start, end = self.R1.reference_start, self.R2.reference_end
-        elif self.has_R2:
+        elif self.has_R2()  and self.R2.reference_start is not None and self.R2.reference_end is not None :
             contig = self.R2.reference_name
             start, end = self.R2.reference_start, self.R2.reference_end
         else:
-            raise ValueError('No reads assigned to this fragment')
+            # No valid span.
+            pass
 
         self.span = (contig, start, end)
 
