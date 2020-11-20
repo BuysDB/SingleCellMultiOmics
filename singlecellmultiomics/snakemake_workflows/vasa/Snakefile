@@ -97,10 +97,10 @@ rule SCMO_tagmultiome_VASA:
     log:
         stdout="log/tag_transcriptome/{library}.stdout",
         stderr="log/tag_transcriptome/{library}.stderr"
-    threads: 8
-    params: runtime="20h"
+    threads: 12
+    params: runtime="52h"
     resources:
-        mem_mb=lambda wildcards, attempt: attempt * 6000 # The amount of memory required is dependent on whether alleles or consensus caller are used
+        mem_mb=lambda wildcards, attempt: attempt * 30000 # The amount of memory required is dependent on whether alleles or consensus caller are used
 
     run:
         if config.get('4sU','disabled')=='enabled':
