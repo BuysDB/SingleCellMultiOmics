@@ -521,6 +521,7 @@ class Molecule():
             - TR : Total RT reactions
             - ap : phasing information (if allele_resolver is set)
             - TF : total fragments
+            - ms : size of the molecule (largest fragment)
         """
         self.is_valid(set_rejection_reasons=True)
         if self.umi is not None:
@@ -530,7 +531,11 @@ class Molecule():
 
         # Set total amount of associated fragments
         self.set_meta('TF', len(self.fragments) + self.overflow_fragments)
-
+        try:
+            self.set_meta('ms',self.aligned_length)
+        except Exception as e:
+            # There is no properly defined aligned length
+            pass
         # associatedFragmentCount :
         self.set_meta('af', len(self))
         for rc, frag in enumerate(self):
@@ -1659,6 +1664,13 @@ class Molecule():
         self.saved_base_obs = None
         self.update_umi()
         return True
+
+    @property
+    def aligned_length(self) -> int:
+        if self.has_valid_span():
+            return self.spanEnd - self.spanStart
+        else:
+            return None
 
     def get_safely_aligned_length(self):
         """Get the amount of safely aligned bases (excludes primers)

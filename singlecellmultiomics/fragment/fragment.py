@@ -515,29 +515,36 @@ class Fragment():
         The contig is determined by the reference_name assocated to the first
         mapped read in self.reads
 
+        This calculation assumes the reads are sequenced inwards and
+        dove-tails of the molecule cannot be trusted
         """
 
         contig = None
-
         start = None
         end = None
-        for read in self.reads:
-            if read is not None and not read.is_unmapped:
-                if contig is None:
-                    contig = read.reference_name
-                if contig == read.reference_name:
 
-                    if start is None:
-                        start = read.reference_start
-                    else:
-                        start = min(start, read.reference_start)
 
-                    if end is None:
-                        end = read.reference_end
-                    else:
-                        end = max(end, read.reference_end)
+
+        if self.has_R1():
+            contig = self.R1.reference_name
+            if not self.has_R2():
+                start, end = self.R1.reference_start, self.R1.reference_end
+            else:
+                if self.R1.is_reverse:
+                    start, end = self.R2.reference_start, self.R1.reference_end
+                else:
+                    start, end = self.R1.reference_start, self.R2.reference_end
+        elif self.has_R2:
+            contig = self.R2.reference_name
+            start, end = self.R2.reference_start, self.R2.reference_end
+        else:
+            raise ValueError('No reads assigned to this fragment')
 
         self.span = (contig, start, end)
+
+    @property
+    def aligned_length(self):
+        return self.span[2]-self.span[1]
 
     def get_span(self) -> tuple:
         return self.span
