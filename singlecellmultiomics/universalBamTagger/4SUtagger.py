@@ -346,7 +346,9 @@ if __name__=='__main__':
         if len(conversions_per_library)==1:
             axes = [axes]
         for ax, (library, conversions) in zip(axes,conversions_per_library.items()):
-
+            # Export;:
+            substitution_dataframe = pd.DataFrame(conversions.values(), index=list(conversions.keys())).T
+            substitution_dataframe.to_csv(tagged_output_path.replace('.bam',f'{library}_conversions.csv'))
             substitution_plot_stranded(conversions,fig=fig, ax=ax,ylabel='conversions seen per molecule')
 
             ax.set_axisbelow(True)
