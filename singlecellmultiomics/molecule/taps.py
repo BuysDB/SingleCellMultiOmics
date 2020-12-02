@@ -270,9 +270,9 @@ class TAPSMolecule(Molecule):
 class TAPSNlaIIIMolecule(NlaIIIMolecule, TAPSMolecule):
     """Molecule class for combined TAPS and NLAIII """
 
-    def __init__(self, fragments=None, taps=None, **kwargs):
+    def __init__(self, fragments=None, taps=None,  taps_strand='R', **kwargs):
         NlaIIIMolecule.__init__(self, fragments, **kwargs)
-        TAPSMolecule.__init__(self, fragments=fragments, taps=taps, **kwargs)
+        TAPSMolecule.__init__(self, fragments=fragments, taps_strand=taps_strand, taps=taps, **kwargs)
 
     def write_tags(self):
         NlaIIIMolecule.write_tags(self)
