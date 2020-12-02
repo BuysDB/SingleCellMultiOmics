@@ -143,6 +143,7 @@ class AnnotatedNLAIIIMolecule(FeatureAnnotatedMolecule, NlaIIIMolecule):
         FeatureAnnotatedMolecule.write_tags(self)
 
     def __init__(self, fragment, features, **kwargs):
+        self.site_location = None
         FeatureAnnotatedMolecule.__init__(self, fragment, features, **kwargs)
         NlaIIIMolecule.__init__(self, fragment, **kwargs)
 

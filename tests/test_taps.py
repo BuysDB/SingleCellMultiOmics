@@ -220,7 +220,7 @@ class TestTAPs(unittest.TestCase):
 
             self.assertEqual(reference.fetch('chr1', 26, 26 + 3),'CGG')
             molecule = TAPSNlaIIIMolecule(
-                NlaIIIFragment([read_A, read_B], invert_strand=False),
+                NlaIIIFragment([read_A, read_B]),
                 reference=reference,
                 taps=taps,
                 taps_strand='F'
@@ -228,6 +228,7 @@ class TestTAPs(unittest.TestCase):
             molecule.__finalise__()
 
             calls = molecule.methylation_call_dict
+            print(calls)
             print(calls[('chr1', 54)])
             self.assertEqual( calls['chr1', 54]['context'], 'Z')
             self.assertEqual( calls['chr1', 26]['context'], 'Z')
@@ -238,6 +239,7 @@ class TestTAPs(unittest.TestCase):
                 NlaIIIFragment([read_E, read_F]),
                 reference =reference,
                 taps = taps,
+                taps_strand='F'
             )
             molecule.__finalise__()
 
@@ -247,11 +249,11 @@ class TestTAPs(unittest.TestCase):
 
 
 
-
             molecule = TAPSNlaIIIMolecule(
                 NlaIIIFragment([read_C, read_D]),
                 reference=reference,
                 taps=taps,
+                taps_strand='F'
             )
             molecule.__finalise__()
 
