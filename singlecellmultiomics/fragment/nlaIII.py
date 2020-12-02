@@ -268,8 +268,19 @@ class NlaIIIFragment(Fragment):
         return self.site_location
 
     def __repr__(self):
-        return Fragment.__repr__(
-            self) + f'\n\tRestriction site:{self.get_site_location()}'
+        site_loc = self.get_site_location()
+
+        if site_loc is None or len(site_loc)==0:
+            return Fragment.__repr__(
+            self) + f'\n\tNo restriction site found'
+        else:
+            site_def_str = f'\n\tRestriction site:{site_loc[0]}:{site_loc[1]}'
+            try:
+                return Fragment.__repr__(
+                    self) + site_def_str
+            except Exception as e:
+                print(self.get_site_location())
+                raise
 
     def __eq__(self, other):
         # Make sure fragments map to the same strand, cheap comparisons

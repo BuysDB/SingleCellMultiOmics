@@ -824,15 +824,22 @@ class Fragment():
             return '+'
 
     def __repr__(self):
-        return f"""Fragment:
+        rep =  f"""Fragment:
         sample:{self.get_sample()}
         umi:{self.get_umi()}
-        span:{('%s %s-%s' % self.get_span())}
+        span:{('%s %s-%s' % self.get_span() if self.has_valid_span() else 'no span')}
         strand:{self.get_strand_repr()}
         has R1: {"yes" if self.has_R1() else "no"}
         has R2: {"yes" if self.has_R2() else "no"}
         randomer trimmed: {"yes" if self.unsafe_trimmed else "no"}
-        """ + '\n\t'.join([f'{key}:{str(value)}' for key, value in self.meta.items()])
+        """
+
+        try:
+            rep += '\n\t'.join([f'{key}:{str(value)}' for key, value in self.meta.items()])
+        except Exception as e:
+            print(self.meta)
+            raise
+        return rep
 
     def get_html(
             self,
