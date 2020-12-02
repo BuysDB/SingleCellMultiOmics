@@ -102,6 +102,7 @@ setup(
         'singlecellmultiomics/bamProcessing/plotRegion.py',
         'singlecellmultiomics/bamProcessing/soft_clip_filter.py',
         'singlecellmultiomics/utils/base_call_covariates.py',
+        'singlecellmultiomics/bamProcessing/estimateTapsConversionEfficiency.py',
 
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py',

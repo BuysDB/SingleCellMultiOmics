@@ -829,7 +829,7 @@ def run_multiome_tagging(args):
         else:
             bp_per_job = 5_000_000
         bp_per_segment = 1_000_000
-        fragment_size = 500
+        fragment_size = 1000
     elif args.method == 'nla_taps_transcriptome': # Annotates reads in transcriptome
         molecule_class = singlecellmultiomics.molecule.AnnotatedTAPSNlaIIIMolecule
         fragment_class = singlecellmultiomics.fragment.NlaIIIFragment

@@ -17,8 +17,29 @@ class NlaIIIMolecule(Molecule):
                  # molecule is invalid when NLA site does not map  (requires
                  # reference)
                  **kwargs):
+
+        self.site_location = None
         self.site_has_to_be_mapped = site_has_to_be_mapped
         Molecule.__init__(self, fragment, **kwargs)
+
+
+    def _add_fragment(self,fragment):
+        # Update the cut coordinate tho the (left most extreme value)
+        self.assignment_radius = fragment.assignment_radius
+
+        if fragment.site_location is not None:
+
+            if self.site_location is None:
+                self.site_location = [fragment.site_location[0],fragment.site_location[1]]
+
+            elif fragment.strand: # Reverse:
+                self.site_location[1] = max(fragment.site_location[1], self.site_location[1]) # this is the coordinate
+            else:
+                self.site_location[1] = min(fragment.site_location[1], self.site_location[1]) # this is the coordinate
+
+        # else : writing a fragment which has no cut location associated
+        Molecule._add_fragment(self, fragment)
+
 
     def write_tags(self):
         Molecule.write_tags(self)
@@ -58,6 +79,9 @@ class NlaIIIMolecule(Molecule):
         Returns:
             sequence (str)
         """
+        if self.chromosome is None:
+            return ''
+
         if reference is None:
             if self.reference is None:
                 raise ValueError('Please supply a reference (PySAM.FastaFile)')
@@ -96,7 +120,7 @@ class NlaIIIMolecule(Molecule):
 
     def write_tags_to_psuedoreads(self, reads, call_super=True):
         if call_super:
-            Molecule.write_tags_to_psuedoreads(self)
+            Molecule.write_tags_to_psuedoreads(self, reads)
         if self.reference is not None:  # Only calculate this statistic when a reference is available
             if self.get_cut_site() is not None:
                 us = self.get_undigested_site_count()
@@ -119,6 +143,7 @@ class AnnotatedNLAIIIMolecule(FeatureAnnotatedMolecule, NlaIIIMolecule):
         FeatureAnnotatedMolecule.write_tags(self)
 
     def __init__(self, fragment, features, **kwargs):
+        self.site_location = None
         FeatureAnnotatedMolecule.__init__(self, fragment, features, **kwargs)
         NlaIIIMolecule.__init__(self, fragment, **kwargs)
 
