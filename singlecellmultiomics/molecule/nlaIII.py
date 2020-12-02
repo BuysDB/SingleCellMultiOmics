@@ -58,6 +58,9 @@ class NlaIIIMolecule(Molecule):
         Returns:
             sequence (str)
         """
+        if self.chromosome is None:
+            return ''
+
         if reference is None:
             if self.reference is None:
                 raise ValueError('Please supply a reference (PySAM.FastaFile)')
