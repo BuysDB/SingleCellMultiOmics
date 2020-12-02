@@ -21,14 +21,19 @@ from singlecellmultiomics.utils import reverse_complement
 from collections import defaultdict, Counter
 from itertools import product
 from singlecellmultiomics.bamProcessing.bamFunctions import mate_iter
+from multiprocessing import Pool
 
 def _generate_count_dict(args):
+    """
+    Obtain counts for a bam path, given a bin size and region
 
+    args:
+        args (tuple) : bam_path, bin_size, contig, start, stop
+    """
     bam_path, bin_size, contig, start, stop = args #reference_path  = args
 
     #reference_handle = pysam.FastaFile(reference_path)
     #reference = CachedFasta(reference_handle)
-
 
     cut_counts = defaultdict(Counter )
     i = 0
@@ -58,6 +63,128 @@ def _generate_count_dict(args):
             cut_counts[(contig,bin_idx)][sample] += 1
 
     return cut_counts, contig, bam_path
+
+# cell-> context -> obs
+def _generate_count_dict_prefixed(args):
+
+    bam_path, bin_size, contig, start, stop, alias, prefix = args #reference_path  = args
+
+    cut_counts = defaultdict(Counter )
+    i = 0
+    with pysam.AlignmentFile(bam_path) as alignments:
+
+        for R1,R2 in mate_iter(alignments, contig=contig, start=start, stop=stop):
+
+            if R1 is None or R1.is_duplicate or not R1.has_tag('DS') or R1.is_qcfail:
+                continue
+
+            cut_pos = R1.get_tag('DS')
+            sample = R1.get_tag('SM')
+
+            if prefix is not None:
+                sample = (prefix, sample)
+
+            if alias is not None:
+
+                cut_counts[alias][sample] += 1
+            else:
+                bin_idx=int(cut_pos/bin_size)*bin_size
+
+                cut_counts[(contig,bin_idx)][sample] += 1
+
+    return cut_counts, contig, bam_path
+
+# Get TA fraction per cell
+def _generate_ta_count_dict_prefixed(args):
+
+    bam_path, bin_size, contig, start, stop, alias, prefix = args
+
+    cut_counts = defaultdict(Counter )
+    i = 0
+    with pysam.AlignmentFile(bam_path) as alignments:
+
+        for R1,R2 in mate_iter(alignments, contig=contig, start=start, stop=stop):
+
+            if R1 is None or R1.is_duplicate or not R1.has_tag('DS') or R1.is_qcfail:
+                continue
+            if R1.get_tag('lh')!='TA':
+                continue
+
+            cut_pos = R1.get_tag('DS')
+            sample = R1.get_tag('SM')
+            if prefix is not None:
+                sample = (prefix, sample)
+
+            if alias is not None:
+
+                cut_counts[alias][sample] += 1
+            else:
+                bin_idx=int(cut_pos/bin_size)*bin_size
+
+                cut_counts[(contig,bin_idx)][sample] += 1
+
+    return cut_counts, contig, bam_path
+
+
+def get_binned_counts_prefixed(bam_dict, bin_size, regions=None, ta=False) -> pd.DataFrame:
+    """
+    Same as get_binned_counts but accespts a bam_dict, {'alias':[bam file, bam file], 'alias2':[bam file, ]}
+    The alias is added as the first level of the output dataframe multi-index
+
+    Returns:
+        pd.DataFrame
+    """
+    fs = 1000
+
+    aliased = False
+
+    if regions is None:
+        regions = [(c,None,None) for c in get_contig_sizes(list(bam_dict.values())[0][0]).keys()]
+
+    else:
+        for i,r in enumerate(regions):
+            if type(r)==str:
+                regions[i] = (r,None,None)
+
+            elif len(r)==3:
+
+                contig, start, end =r
+                if type(start)==int:
+                    start = max(0,start-fs)
+
+                regions[i] = (contig,start,end)
+
+
+            else:
+                contig, start, end, alias =r
+                if type(start)==int:
+                    start = max(0,start-fs)
+
+                regions[i] = (contig,start,end, alias)
+                aliased=True
+
+    #if aliased:
+    #    jobs = [(bam_path, bin_size, *region) for region, bam_path in product(regions, bams)]
+
+    jobs = []
+    for bam_group, bam_list in bam_dict.items():
+        for region in regions:
+            for bam_path in bam_list:
+                jobs.append( (bam_path, bin_size, *region, None, bam_group) )
+            #jobs = [(bam_path, bin_size, *region, None, prefix) for region, bam_path in product(regions, bams)]
+
+
+    cut_counts = defaultdict(Counter)
+    with Pool() as workers:
+
+        for i, (cc, contig, bam_path) in enumerate(workers.imap(_generate_count_dict_prefixed if not ta else _generate_ta_count_dict_prefixed,jobs)):
+
+            for k,v in cc.items():
+                cut_counts[k] += v
+
+            print(i,'/', len(jobs), end='\r')
+
+    return pd.DataFrame(cut_counts).T
 
 
 def get_binned_counts(bams, bin_size, regions=None):
