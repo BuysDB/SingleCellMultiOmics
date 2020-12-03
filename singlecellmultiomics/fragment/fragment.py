@@ -161,11 +161,12 @@ class Fragment():
                 read.is_read1 = False
                 read.is_read2 = True
         self.set_sample(library_name=library_name)
+        self.update_umi()
         if self.qcfail:
             return
         self.set_strand(self.identify_strand())
         self.update_span()
-        self.update_umi()
+
 
     def write_tensor(self, chromosome=None, span_start=None, span_end=None, height=30, index_start=0,
                      base_content_table=None,
@@ -680,11 +681,14 @@ class Fragment():
             >>> frag_A.umi_eq(frag_B) # This returns True, the distance is 1, which is the (umi_hamming_distance)
             True
         """
+
         if self.umi == other.umi:
             return True
         if self.umi_hamming_distance == 0:
             return False
         else:
+            if len(self.umi)!=len(other.umi):
+                return False
             return hamming_distance(
                 self.umi, other.umi) <= self.umi_hamming_distance
 
