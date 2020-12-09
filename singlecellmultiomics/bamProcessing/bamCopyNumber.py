@@ -822,7 +822,8 @@ if __name__ == '__main__':
         chrom_order = [c for c in h.contigs]
         min_cells_per_cluster = args.min_cells_per_cluster
         min_segment_size = args.min_segment_size # segment size in bins
-
+        hand_picked_thresholds = {}
+        
         print("Creating first rough clustering")
         if args.n_clusters_for_contig is not None:
 
