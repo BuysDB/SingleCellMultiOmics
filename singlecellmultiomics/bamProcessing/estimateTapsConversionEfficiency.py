@@ -86,6 +86,7 @@ def get_conversion_counts(args):
 
     bam,refpath,method  = args
 
+
     if method=='nla':
         fragment_class=NlaIIIFragment
         molecule_class=TAPSNlaIIIMolecule
@@ -97,6 +98,8 @@ def get_conversion_counts(args):
         reference = CachedFasta(ref)
 
 
+        print(f'Processing {bam}')
+
         with pysam.AlignmentFile(bam, threads=8) as al:
 
             for molecule in MoleculeIterator(
@@ -105,7 +108,8 @@ def get_conversion_counts(args):
                 molecule_class=molecule_class,
                 molecule_class_args={
                      'reference':reference,
-                     'taps':taps
+                     'taps':taps,
+                    'taps_strand':'R'
                 },
                 fragment_class_args={},
                 contig = 'J02459.1'
@@ -196,10 +200,11 @@ def generate_taps_conversion_stats(bams, reference_path, prefix, method):
             samples.append(r)
 
     plot_table = pd.DataFrame(samples)
-
+    print(plot_table)
 
     ph = 22
-    ax = sns.boxplot(data=plot_table.sort_values('lib'),x='context', y='conversion rate',hue='lib',whis=6)
+    fig, ax = plt.subplots(figsize=(12,5))
+    sns.boxplot(data=plot_table.sort_values('lib'),x='context', y='conversion rate',hue='lib',whis=6, ax=ax)
 
     #ax = sns.swarmplot(data=plot_table,x='nm', y='conversion rate',hue='lib',)
 
