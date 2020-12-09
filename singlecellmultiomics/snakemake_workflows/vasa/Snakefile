@@ -80,6 +80,66 @@ rule SCMO_demux_transcriptome:
 
 
 
+rule adapter_trim_transcriptome:
+    input:
+        r2="processed_transcriptome/{library}/poly_trimmed.R2.fastq.gz"
+    log:
+        stdout="log/trim_transcriptome_adapt/{library}.stdout",
+        stderr="log/trim_transcriptome_adapt/{library}.stderr"
+    output:
+        singleton=temp("processed_transcriptome/{library}/trimmed.R2.fastq.gz"),
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 4000
+    threads: 8
+    shell:
+        'cutadapt -o {output.singleton} {input.r2} -m 3 -a "IlluminaSmallAdapterConcatBait=GGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTT" -a "IlluminaIndexAdapter=GGAATTCTCGGGTGCCAAGGAACTCCAGTCACN{{6}}ATCTCGTATGCCGTCTTCTGCTTG"  -g "IlluminaPairedEndPCRPrimer2.0=AGATCGGAAGAGCGN{{6}}CAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" -g "universalPrimer=GATCGTCGGACTGTAGAACTCTGAACGTGTAGATCTCGGTGGTCGCCGTATCATT;min_overlap=5" -a "IlluminaGEX=TTTTTAATGATACGGCGACCACCGAGATCTACACGTTCAGAGTTCTACAGTCCGACGATC;min_overlap=5" -a "IlluminaMultiplexingPCRPrimer=GGAACTCCAGTCACN{{6}}TCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" -g "Aseq=TGGCACCCGAGAATTCCA" -a "Aseq=TGGCACCCGAGAATTCCA"  -a "illuminaSmallRNAAdapter=TCGTATGCCGTCTTCTGCTTGT" --cores {threads} > {log.stdout} 2> {log.stderr}'
+
+
+rule poly_trim_transcriptome:
+    input:
+        r2="processed_transcriptome/{library}/demultiplexedR2.fastq.gz"
+    log:
+        stdout="log/trim_transcriptome/{library}.stdout",
+        stderr="log/trim_transcriptome/{library}.stderr"
+    output:
+        singleton=temp("processed_transcriptome/{library}/poly_trimmed.R2.fastq.gz"),
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 4000
+
+    shell:
+        'trim_vasa.py {input.r2} {output.singleton} -min_read_len 20 > {log.stdout} 2> {log.stderr}'
+
+
+rule map_transcriptome:
+    input:
+        ref=config['trans_reference_file'],
+        #r1="processed_transcriptome/{library}/trimmed.R1.fastq.gz",
+        r2="processed_transcriptome/{library}/trimmed.R2.fastq.gz",
+        #single="processed_transcriptome/{library}/trimmed.singletons.fastq.gz"
+    output:
+        #transcriptome_pe_bam = temp("processed_transcriptome/{library}/STAR_mapped_PEAligned.sortedByCoord.out.bam"),
+        transcriptome_se_bam = temp("processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam"),
+        index = temp("processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam.bai"),
+        #transcriptome_r2_bam = temp("processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam"),
+        #transcriptome_merged = temp("processed_transcriptome/{library}/sorted.bam"),
+        #transcriptome_merged_index = temp("processed_transcriptome/{library}/sorted.bam.bai"),
+    log:
+        stdout="log/map_trans/{library}.stdout",
+        stderr="log/map_trans/{library}.stderr"
+    threads: 8
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: 50000 + attempt * 8000
+
+    shell:
+        "STAR --runThreadN {threads} --readFilesCommand zcat  --outSAMtype BAM SortedByCoordinate --outMultimapperOrder Random --outSAMmultNmax 10 \
+        --outFilterMultimapNmax 10 \
+        --genomeDir {input.ref}  \
+        --outSAMattributes All --readFilesIn {input.r2} --outSAMunmapped Within --outFileNamePrefix processed_transcriptome/{wildcards.library}/STAR_mapped_R2 2>> {log.stderr}; samtools index -@{threads} {output.transcriptome_se_bam};"
+
+
 rule SCMO_tagmultiome_VASA:
     input:
         bam = "processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam",
@@ -109,7 +169,6 @@ rule SCMO_tagmultiome_VASA:
             shell("bamtagmultiome.py --multiprocess -tagthreads {threads} -introns {input.introns} -exons {input.exons} -method vasa {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}")
 
 
-
 rule SCMO_library_stats:
     input:
         bam = "processed_transcriptome/{library}/tagged.bam",
@@ -127,67 +186,6 @@ rule SCMO_library_stats:
 
     shell:
         "libraryStatistics.py processed_transcriptome/{wildcards.library} -tagged_bam /tagged.bam > {log.stdout} 2> {log.stdout}"
-
-
-rule poly_trim_transcriptome:
-    input:
-        r2="processed_transcriptome/{library}/demultiplexedR2.fastq.gz"
-    log:
-        stdout="log/trim_transcriptome/{library}.stdout",
-        stderr="log/trim_transcriptome/{library}.stderr"
-    output:
-        singleton=temp("processed_transcriptome/{library}/poly_trimmed.R2.fastq.gz"),
-    params: runtime="30h"
-    resources:
-        mem_mb=lambda wildcards, attempt: attempt * 4000
-
-    shell:
-        'trim_vasa.py {input.r2} {output.singleton} -min_read_len 20 > {log.stdout} 2> {log.stderr}'
-
-
-rule adapter_trim_transcriptome:
-    input:
-        r2="processed_transcriptome/{library}/poly_trimmed.R2.fastq.gz"
-    log:
-        stdout="log/trim_transcriptome_adapt/{library}.stdout",
-        stderr="log/trim_transcriptome_adapt/{library}.stderr"
-    output:
-        singleton=temp("processed_transcriptome/{library}/trimmed.R2.fastq.gz"),
-    params: runtime="30h"
-    resources:
-        mem_mb=lambda wildcards, attempt: attempt * 4000
-    threads: 8
-    shell:
-        'cutadapt -o {output.singleton} {input.r2} -m 3 -a "IlluminaSmallAdapterConcatBait=GGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTT" -a "IlluminaIndexAdapter=GGAATTCTCGGGTGCCAAGGAACTCCAGTCACN{{6}}ATCTCGTATGCCGTCTTCTGCTTG"  -g "IlluminaPairedEndPCRPrimer2.0=AGATCGGAAGAGCGN{{6}}CAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" -g "universalPrimer=GATCGTCGGACTGTAGAACTCTGAACGTGTAGATCTCGGTGGTCGCCGTATCATT;min_overlap=5" -a "IlluminaGEX=TTTTTAATGATACGGCGACCACCGAGATCTACACGTTCAGAGTTCTACAGTCCGACGATC;min_overlap=5" -a "IlluminaMultiplexingPCRPrimer=GGAACTCCAGTCACN{{6}}TCTCGTATGCCGTCTTCTGCTTG;min_overlap=5" -g "Aseq=TGGCACCCGAGAATTCCA" -a "Aseq=TGGCACCCGAGAATTCCA"  -a "illuminaSmallRNAAdapter=TCGTATGCCGTCTTCTGCTTGT" --cores {threads} > {log.stdout} 2> {log.stderr}'
-
-
-
-rule map_transcriptome:
-    input:
-        ref=config['trans_reference_file'],
-        #r1="processed_transcriptome/{library}/trimmed.R1.fastq.gz",
-        r2="processed_transcriptome/{library}/trimmed.R2.fastq.gz",
-        #single="processed_transcriptome/{library}/trimmed.singletons.fastq.gz"
-    output:
-        #transcriptome_pe_bam = temp("processed_transcriptome/{library}/STAR_mapped_PEAligned.sortedByCoord.out.bam"),
-        transcriptome_se_bam = temp("processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam"),
-        index = temp("processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam.bai"),
-        #transcriptome_r2_bam = temp("processed_transcriptome/{library}/STAR_mapped_R2Aligned.sortedByCoord.out.bam"),
-        #transcriptome_merged = temp("processed_transcriptome/{library}/sorted.bam"),
-        #transcriptome_merged_index = temp("processed_transcriptome/{library}/sorted.bam.bai"),
-    log:
-        stdout="log/map_trans/{library}.stdout",
-        stderr="log/map_trans/{library}.stderr"
-    threads: 8
-    params: runtime="30h"
-    resources:
-        mem_mb=lambda wildcards, attempt: 50000 + attempt * 8000
-
-    shell:
-        "STAR --runThreadN {threads} --readFilesCommand zcat  --outSAMtype BAM SortedByCoordinate --outMultimapperOrder Random --outSAMmultNmax 10 \
-        --outFilterMultimapNmax 10 \
-        --genomeDir {input.ref}  \
-        --outSAMattributes All --readFilesIn {input.r2} --outSAMunmapped Within --outFileNamePrefix processed_transcriptome/{wildcards.library}/STAR_mapped_R2 2>> {log.stderr}; samtools index -@{threads} {output.transcriptome_se_bam};"
 
 
 rule count_genes:
