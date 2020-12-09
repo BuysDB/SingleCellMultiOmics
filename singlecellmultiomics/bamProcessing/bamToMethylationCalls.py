@@ -11,7 +11,7 @@ import multiprocessing
 from singlecellmultiomics.bamProcessing.bamBinCounts import generate_commands, count_methylation_binned
 import argparse
 from colorama import Fore, Style
-from singlecellmultiomics.utils import dataframe_to_wig
+from singlecellmultiomics.utils.export import dataframe_to_wig
 from singlecellmultiomics.methylation import MethylationCountMatrix
 from singlecellmultiomics.bamProcessing.bamFunctions import get_reference_from_pysam_alignmentFile
 from colorama import Fore,Style

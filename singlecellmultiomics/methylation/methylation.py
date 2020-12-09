@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import pysam
 import pandas as pd
 import numpy as np
 from multiprocessing import Pool, Manager
+from collections import defaultdict
+from singlecellmultiomics.bamProcessing import get_reference_path_from_bam
+from singlecellmultiomics.molecule import MoleculeIterator,TAPS
 
 def get_bulk_vector(args):
     obj, samples, location = args
@@ -204,3 +207,140 @@ class MethylationCountMatrix:
             return mat
         else:
             raise ValueError('dtype should be pd or np')
+
+
+def methylation_dict_to_location_values(methylation_per_location_per_cell: dict, select_samples=None)->tuple:
+    """
+    Convert a dictionary
+    { location -> cell -> [0,0] }
+    into
+    { contig : [ locations (list) ] }
+    { contig : [ values (list) ] }
+    """
+    write_locations = defaultdict(list) # contig -> locations
+    write_values = defaultdict(dict) # contig -> location -> value
+
+    for location, cell_info_for_location in methylation_per_location_per_cell.items():
+        # Calculate beta value:
+        unmet = 0
+        met = 0
+
+        for cell, (c_unmet, c_met) in cell_info_for_location.items():
+            if select_samples is not None and not cell in select_samples:
+                continue
+            unmet+=c_unmet
+            met+=c_met
+
+        support = unmet+met
+        if support == 0:
+            continue
+        contig = location[0]
+        position = location[1]
+
+        write_locations[contig].append(position)
+        write_values[contig][position] = met / support
+
+    return write_locations, write_values
+
+
+
+def twolist():
+    return [0,0]
+
+def defdict():
+    return defaultdict(twolist)
+
+
+def met_unmet_dict_to_betas(methylation_per_cell_per_cpg: dict, bin_size=None) -> dict:
+    """
+    Convert dictionary of count form to beta form:
+
+    cell -> location -> [unmet, met]
+
+    to
+
+    cell -> location -> beta
+    """
+    export_table = defaultdict(dict) #location->cell->beta
+    for (contig, start), data_per_cell in methylation_per_cell_per_cpg.items():
+         for cell,(met,unmet) in data_per_cell.items():
+                if type(start)==int and bin_size is not None:
+                    export_table[cell][contig, start, start+bin_size] = met/ (unmet+met)
+                else:
+                    export_table[cell][contig, start] = met/ (unmet+met)
+    return export_table
+
+
+def extract_cpgs(bam,
+                 contig,
+                 fragment_class,
+                 molecule_class,
+                 start = None,
+                 end = None,
+                 fetch_start = None,
+                 fetch_end = None,
+                 context='Z',
+                 stranded=False,
+                 mirror_cpg = False,
+                 allelic=False,
+                 select_samples=None,
+                 pool_alias = None,
+                 methylation_consensus_kwargs= {},
+                 bin_size=None):
+
+    methylation_per_cell_per_cpg = defaultdict(defdict) # location -> cell -> [0,0]
+
+    taps = TAPS()
+    with pysam.AlignmentFile(bam) as al,\
+         pysam.FastaFile(get_reference_path_from_bam(bam)) as reference:
+
+            for molecule in MoleculeIterator(
+                al,
+                fragment_class=fragment_class,
+                molecule_class=molecule_class,
+                molecule_class_args={
+                     'reference':reference,
+                     'taps':taps,
+                     'taps_strand':'R',
+
+                     'methylation_consensus_kwargs':methylation_consensus_kwargs,
+                },
+                fragment_class_args={},
+                contig = contig,
+                start=fetch_start,
+                end=fetch_end
+            ):
+                if allelic:
+                    allele =  molecule.allele
+
+                if select_samples is not None and not molecule.sample in select_samples:
+                    continue
+
+                for (cnt, pos), call in molecule.methylation_call_dict.items():
+
+                    if (start is not None and pos<start) or (end is not None and pos>=end):
+                        continue
+
+                    ctx = call['context']
+                    if ctx.upper()!=context:
+                        continue
+
+                    if mirror_cpg and context=='Z' and not molecule.strand:
+                        pos-=1
+
+                    if pool_alias:
+                        location_key = pool_alias
+                    else:
+                        if bin_size is not None:
+                            location_key = [cnt, int(bin_size*int(pos/bin_size))]
+                        else:
+                            location_key = [cnt,pos]
+                        if allelic:
+                            location_key += [allele]
+
+                        if stranded:
+                            location_key += [molecule.strand]
+
+                    methylation_per_cell_per_cpg[tuple(location_key)][molecule.sample][int(ctx.isupper())]+=1
+
+    return methylation_per_cell_per_cpg

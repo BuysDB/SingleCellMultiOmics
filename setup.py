@@ -133,7 +133,7 @@ setup(
         ],
 
   install_requires=[
-       'pysam>=0.15.3','numpy>=1.16.1','pandas>=0.25.0','colorama',
+       'pysam>=0.15.3','numpy>=1.16.1','pandas>=0.25.0','colorama','pyBigWig',
        'cutadapt>=2.9',
        'pysamiterators>=1.8','more-itertools','matplotlib','tabulate',
        'wheel','setuptools>=40.8.0','scikit-learn>=0.21.3','seaborn>=0.11.0', 'statsmodels', 'cached_property',
