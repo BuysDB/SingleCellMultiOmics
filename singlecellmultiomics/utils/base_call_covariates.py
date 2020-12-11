@@ -17,6 +17,8 @@ import gzip
 import pandas as pd
 import numpy as np
 import os
+from dataclasses import dataclass, field
+from collections import defaultdict,Counter
 
 def get_covariate_key(read, qpos, refpos, reference, refbase, cycle_bin_size=3, k_rad=1):
 
@@ -73,6 +75,289 @@ def covariate_obs_to_phreds(covariates, k_rad):
     covar_phreds[None] = prob_to_phred( f/(t+f) )
 
     return covar_phreds
+
+
+# Molecule base information container:
+# N:reads,
+# N: IVT reactions
+#
+@dataclass
+class BaseInformation:
+    ref_base: str = None
+    majority_base: str = None
+    reads: set = field(default_factory=set)
+    qual: set = field(default_factory=list)
+    cycle_r1: set = field(default_factory=list)
+    cycle_r2: set = field(default_factory=list)
+    ivt_reactions: set = field(default_factory=set)
+
+
+# Nested counter:
+def nested_counter():
+    return defaultdict(Counter)
+
+
+def get_molecule_covariate_dict():
+    return {
+
+    }
+
+
+def get_covariate_dict():
+    return {
+        ('r1', 'qual'): defaultdict(Counter),
+        ('r2', 'qual'): defaultdict(Counter),
+        ('r1', 'cycle'): defaultdict(Counter),
+        ('r2', 'cycle'): defaultdict(Counter),
+        ('m', 'n_ivt'): defaultdict(Counter),
+        ('m', 'n_reads'): defaultdict(Counter),
+        ('m', 'mean_qual'): defaultdict(Counter),
+        ('m', 'mean_cycle_r1'): defaultdict(Counter),
+        ('m', 'mean_cycle_r2'): defaultdict(Counter),
+
+        # Within Ivt duplicate comparison:
+        ('i1', 'qual'): defaultdict(Counter),
+        ('i2', 'qual'): defaultdict(Counter),
+        ('i1', 'cycle'): defaultdict(Counter),
+        ('i2', 'cycle'): defaultdict(Counter),
+        ('i', 'd_start'): defaultdict(Counter),
+
+        # Outer IVT duplicate comparison (comparing the consensus sequences of IVT duplicates)
+        ('O1', 'n_reads'): defaultdict(Counter),
+        ('O', 'conv'): defaultdict(Counter),
+
+        # Inner IVT duplicate comparison (IVT duplicates agree)
+        ('v', 'conv'): defaultdict(Counter),
+
+    }
+
+
+def pool_wrapper(args):
+    func, kwargs = args
+    return func(**kwargs)
+
+
+def get_jobs(alignments, job_size=10_000_000, select_contig=None, **kwargs):
+    for contig, size in zip(alignments.references, alignments.lengths):
+        if select_contig is not None and contig != select_contig:
+            continue
+        for start in range(0, size, job_size):
+            end = min(size, start + job_size)
+            args = {'contig': contig,
+                    'start': start,
+                    'stop': end,
+                    }
+            args.update(kwargs)
+            yield args
+
+"""
+def extract_covariates(bam_path, contig, start, stop):
+    covariates = get_covariate_dict()
+    variant_discoveries = set()
+    no_variants = set()
+    max_show = 1
+    shown = 0
+    with pysam.AlignmentFile(bam_path) as alignments, pysam.AlignmentFile(bulk_bam_path) as bulk, pysam.FastaFile(
+            reference_path) as reference:
+        # reference = CachedFasta(ref)
+
+        read_covariates_enabled = False
+
+        reference_sequence = reference.fetch(contig, start, stop + 1).upper()
+        for i, molecule in enumerate(
+                MoleculeIterator(alignments,
+                                 molecule_class=NlaIIIMolecule,
+                                 fragment_class=NlaIIIFragment,
+                                 fragment_class_args=fragment_class_args,
+                                 contig=contig,
+                                 start=start,
+                                 stop=stop
+
+                                 )
+        ):
+
+            if len(molecule) < 4:
+                continue
+
+            found_allele = False
+            for read in molecule.iter_reads():
+                if read.has_tag('DA'):
+                    found_allele = True
+                    break
+            if not found_allele:
+                continue
+
+            information_container = defaultdict(BaseInformation)
+
+            majority = molecule.get_consensus()
+            for key, base in majority.items():
+                information_container[key].majority_base = base
+
+            ivt_base_obs = []
+            for ivt_id, fragments in molecule.get_rt_reactions().items():
+
+                # Look for inconsistencies between the fragments of the same IVT reaction
+                # Calculate IVT consensus: (Only when more fragments are available)
+                if len(fragments) > 1 and ivt_id[0] is not None:
+                    # IVT consensus:
+                    ivt_molecule = NlaIIIMolecule(fragments)
+                    ivt_base_obs.append(ivt_molecule.get_base_observation_dict())
+                    # ivt_consensus = ivt_molecule.get_consensus()
+
+                # else:
+                #    ivt_consensus = None
+
+                if read_covariates_enabled:
+                    for fragment in fragments:
+
+                        for read in fragment:
+                            if read is None:
+                                continue
+
+                            for qpos, refpos in read.get_aligned_pairs(with_seq=False):
+                                if refpos is None or refpos < start or refpos >= stop:
+                                    continue
+
+                                ref_base = reference_sequence[refpos - start]
+                                # if ref_base is None:
+                                #    continue
+                                # ref_base = ref_base.upper()
+                                if qpos is None or refpos is None or ref_base not in 'ACGT':
+                                    continue
+                                qbase = read.query_sequence[qpos]
+                                if qbase == 'N':
+                                    continue
+
+                                key = (read.reference_name, refpos)
+                                if key in known:
+                                    continue
+
+                                if ref_base != qbase and not key in no_variants:
+                                    if (read.reference_name, refpos, qbase) in variant_discoveries:
+                                        continue
+
+                                    if has_variant_reads(bulk, *key, qbase):
+
+                                        # print(f'Discovered variant at {read.reference_name}:{refpos+1} {ref_base}>{qbase}')
+                                        # known.add((read.reference_name, refpos))
+                                        variant_discoveries.add((read.reference_name, refpos, qbase))
+                                        continue
+                                    else:
+                                        no_variants.add(key)
+
+                                if ref_base is not None:
+                                    information_container[key].ref_base = ref_base
+
+                                information_container[key].reads.add(read)
+                                information_container[key].qual.append(read.query_qualities[qpos])
+
+                                cycle = read.query_length - qpos if read.is_reverse else qpos
+                                if read.is_read1:
+                                    information_container[key].cycle_r1.append(cycle)
+                                else:
+                                    information_container[key].cycle_r2.append(cycle)
+
+                                information_container[key].ivt_reactions.add(ivt_id)
+
+                                # Set read covariates:
+                                call_is_correct = ref_base == qbase
+                                covariates[f'r{"2" if read.is_read2 else "1"}', 'qual'][read.query_qualities[qpos]][
+                                    call_is_correct] += 1
+                                covariates[f'r{"2" if read.is_read2 else "1"}', 'cycle'][cycle][call_is_correct] += 1
+
+                                # Set IVT covariates
+                                if ivt_consensus is None or not key in ivt_consensus:
+                                    continue
+
+                                ivt_majority_base = ivt_consensus[key]
+                                if ivt_majority_base != ref_base or ivt_majority_base == 'N':
+                                    continue
+                                call_matches_ivt_mayority = ivt_majority_base == qbase
+                                covariates[f'i{"2" if read.is_read2 else "1"}', 'qual'][read.query_qualities[qpos]][
+                                    call_matches_ivt_mayority] += 1
+                                covariates[f'i{"2" if read.is_read2 else "1"}', 'cycle'][cycle][
+                                    call_matches_ivt_mayority] += 1
+
+                                # Calculate distance to start of molecule (in bins of 5 bp, to a maximum of 400)
+                                dstart = np.clip(int(abs(refpos - molecule.get_cut_site()[1]) / 5), 0, 400)
+                                covariates[f'i', 'd_start'][dstart][call_matches_ivt_mayority] += 1
+                                # if not call_matches_ivt_mayority and shown<max_show:
+                                #    #print(key, molecule.sample, f'{ivt_majority_base}>{qbase}' )
+                                #    shown+=1
+
+            if len(ivt_base_obs) >= 2:
+                for ivt_matches, gen_pos, base_A, base_B in get_ivt_mismatches(ivt_base_obs):
+                    # Ignore known variation:
+                    if gen_pos in variant_discoveries or gen_pos in known or has_variant_reads(bulk, *gen_pos,
+                                                                                               base_A) or has_variant_reads(
+                            bulk, *gen_pos, base_B):
+                        continue
+
+                    # Obtain reference base:
+
+                    refpos = gen_pos[1]
+                    if refpos is None or refpos < start or refpos >= stop:
+                        continue
+
+                    # ref_base = reference_sequence[refpos-start]
+                    try:
+                        context = reference_sequence[refpos - start - 1: refpos - start + 2]
+                        if 'N' in context:
+                            continue
+
+                        if molecule.strand:  # is reverse..
+                            context = reverse_complement(context)
+                            base_A = complement(base_A)
+                            base_B = complement(base_B)
+
+                        refbase = context[1]
+                    except IndexError:
+                        continue
+                    if ivt_matches:
+                        if refbase != base_A:
+                            covariates['v', 'conv'][f'{context}>{context[0]}{base_A}{context[2]}'][False] += 1
+                        # else:
+                        #    covariates['O','conv'][f'{context}>{context[0]}{base_A}{context[2]}'][True]+=1
+
+                        if refbase != base_B:
+                            covariates['v', 'conv'][f'{context}>{context[0]}{base_B}{context[2]}'][False] += 1
+
+
+                    else:
+                        # IVT not matching:
+                        print('Not matching IVT at', gen_pos)
+
+                        if refbase != base_A:
+                            covariates['O', 'conv'][f'{context}>{context[0]}{base_A}{context[2]}'][False] += 1
+                        # else:
+                        #    covariates['O','conv'][f'{context}>{context[0]}{base_A}{context[2]}'][True]+=1
+
+                        if refbase != base_B:
+                            covariates['O', 'conv'][f'{context}>{context[0]}{base_B}{context[2]}'][False] += 1
+                    # else:
+                    #    covariates['O','conv'][f'{context}>{context[0]}{base_B}{context[2]}'][True]+=1
+
+            if False:
+                # We have accumulated our molecule wisdom.
+                for location, bi in information_container.items():
+                    if location in known:
+                        continue
+
+                    if bi.ref_base is None or bi.majority_base is None or bi.ref_base not in 'ACGT':
+                        continue
+                    call_is_correct = bi.ref_base == bi.majority_base
+
+                    covariates['m', 'n_ivt'][len(bi.ivt_reactions)][call_is_correct] += 1
+                    covariates['m', 'n_reads'][len(bi.reads)][call_is_correct] += 1
+                    covariates['m', 'mean_qual'][int(np.mean(bi.qual))][call_is_correct] += 1
+                    if len(bi.cycle_r2):
+                        covariates['m', 'mean_cycle_r2'][int(np.mean(bi.cycle_r2))][call_is_correct] += 1
+                    if len(bi.cycle_r1):
+                        covariates['m', 'mean_cycle_r1'][int(np.mean(bi.cycle_r1))][call_is_correct] += 1
+
+    return covariates, variant_discoveries
+
+"""
 
 def extract_covariates(bam_path: str,
                        reference_path: str,
@@ -181,7 +466,6 @@ def extract_covariates_from_bam(bam_path, reference_path, known_variants, n_proc
         'cycle_bin_size': 3,
         'k_rad' : 1
     }
-
     jobs_total = sum(1 for _ in (blacklisted_binning_contigs(**job_generation_args)))
 
     with Pool(n_processes) as workers:

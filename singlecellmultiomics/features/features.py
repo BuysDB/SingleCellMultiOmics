@@ -602,6 +602,18 @@ class FeatureContainer(Prefetcher):
             lookupCoordinate,
             strand=None,
             optim='bdbnb'):
+        return self._findFeaturesAt(
+                chromosome,
+                lookupCoordinate,
+                strand=strand,
+                optim=optim)
+
+    def _findFeaturesAt(
+            self,
+            chromosome,
+            lookupCoordinate,
+            strand=None,
+            optim='bdbnb'):
         if not self.sorted:
             self.sort()
         """Obtain the features at a give coordinate and optionally strand."""
