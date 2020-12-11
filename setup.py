@@ -128,7 +128,10 @@ setup(
         #Worfklow
         'singlecellmultiomics/snakemake_workflows/scmo_workflow.py',
         'singlecellmultiomics/snakemake_workflows/_general/sge_wrapper.py',
-        'singlecellmultiomics/snakemake_workflows/_general/slurm_wrapper.py'
+        'singlecellmultiomics/snakemake_workflows/_general/slurm_wrapper.py',
+
+        # Facs:
+        'singlecellmultiomics/FACS/trajectory.py'
 
         ],
 
