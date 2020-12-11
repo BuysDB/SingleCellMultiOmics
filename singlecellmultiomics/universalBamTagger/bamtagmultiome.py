@@ -813,6 +813,7 @@ def run_multiome_tagging(args):
         bp_per_segment = 500_000
         fragment_size = 50_000
 
+        fragment_class_args['features'] = transcriptome_feature_args.get('features')
         molecule_class_args.update(transcriptome_feature_args)
 
 
