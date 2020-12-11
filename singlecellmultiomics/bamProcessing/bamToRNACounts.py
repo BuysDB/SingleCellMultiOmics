@@ -134,7 +134,7 @@ def count_transcripts(cargs):
         stranded = None  # data is not stranded
     elif args.method == 'vasa' or args.method == 'cs':
         molecule_class = singlecellmultiomics.molecule.VASA
-        fragment_class = singlecellmultiomics.fragment.SingleEndTranscript
+        fragment_class = singlecellmultiomics.fragment.SingleEndTranscriptFragment
         pooling_method = 1
         stranded = 1  # data is stranded, mapping to other strand
     else:
@@ -183,8 +183,8 @@ def count_transcripts(cargs):
                 fragment_class=fragment_class,
                 fragment_class_args={
                     'umi_hamming_distance': args.umi_hamming_distance,
-                    'R1_primer_length': 4,
-                    'R2_primer_length': 6},
+                    'features':features
+                    },
                 perform_qflag=True,
                 # when the reads have not been tagged yet, this flag is very
                 # much required
