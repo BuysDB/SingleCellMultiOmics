@@ -439,7 +439,7 @@ class Fragment():
 
                     data = set(read.get_tag(key).split(','))
                     data.add(value)
-                    read.set_tag(key, ','.join(list(data)))
+                    read.set_tag(key, ','.join(sorted(list(data))))
 
                 else:
                     read.set_tag(key, value)
