@@ -82,6 +82,12 @@ class FeatureContainer(Prefetcher):
         self.preload_list.append( {'gtf':kwargs} )
 
 
+    def __iter__(self):
+        for contig, contig_features in self.features.items():
+            for feature in contig_features:
+                yield (contig,)+ feature
+
+
     def instance(self, arg_update):
         if 'self' in self.args:
             del self.args['self']
