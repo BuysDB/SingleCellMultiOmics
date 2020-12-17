@@ -809,7 +809,7 @@ def run_multiome_tagging(args):
 
         molecule_class = singlecellmultiomics.molecule.AnnotatedCHICMolecule
         fragment_class = singlecellmultiomics.fragment.CHICFragment
-        bp_per_job = 5_000_000
+        bp_per_job = 100_000_000 # One contig at a time to prevent reading the annotations too much
         bp_per_segment = 500_000
         fragment_size = 50_000
 
