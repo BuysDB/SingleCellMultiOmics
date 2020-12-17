@@ -31,27 +31,30 @@ class ConversionMatrix(StatisticHistogram):
                 return
 
             self.processed_reads += 1
-            for index, reference_pos, reference_base in read.get_aligned_pairs(
-                    with_seq=True, matches_only=True):
-                query_base = read.seq[index]
-                reference_base = reference_base.upper()
-                if reference_base != 'N' and query_base != 'N':
-                    k = (
-                        query_base, 'R1' if read.is_read1 else (
-                            'R2' if read.is_read2 else 'R?'), ('forward', 'reverse')[
-                            read.is_reverse])
+            try:
+                for index, reference_pos, reference_base in read.get_aligned_pairs(
+                        with_seq=True, matches_only=True):
+                    query_base = read.seq[index]
+                    reference_base = reference_base.upper()
+                    if reference_base != 'N' and query_base != 'N':
+                        k = (
+                            query_base, 'R1' if read.is_read1 else (
+                                'R2' if read.is_read2 else 'R?'), ('forward', 'reverse')[
+                                read.is_reverse])
 
-                    self.base_obs[reference_base][k] += 1
-                    if reference_base != query_base:
-                        self.conversion_obs[reference_base][k] += 1
+                        self.base_obs[reference_base][k] += 1
+                        if reference_base != query_base:
+                            self.conversion_obs[reference_base][k] += 1
 
-                        if read.has_tag('RS'):
-                            k = (
-                                query_base,
-                                'R1' if read.is_read1 else (
-                                    'R2' if read.is_read2 else 'R?'),
-                                read.get_tag('RS'))
-                            self.stranded_base_conversions[reference_base][k] += 1
+                            if read.has_tag('RS'):
+                                k = (
+                                    query_base,
+                                    'R1' if read.is_read1 else (
+                                        'R2' if read.is_read2 else 'R?'),
+                                    read.get_tag('RS'))
+                                self.stranded_base_conversions[reference_base][k] += 1
+            except ValueError: # Fails when the MD tag is not present
+                continue
 
     def __repr__(self):
         return f'Observed base conversions'
