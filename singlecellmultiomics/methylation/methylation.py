@@ -285,6 +285,7 @@ def extract_cpgs(bam,
                  allelic=False,
                  select_samples=None,
                  pool_alias = None,
+                 reference_path = None,
                  methylation_consensus_kwargs= {},
                  bin_size=None):
 
@@ -292,7 +293,7 @@ def extract_cpgs(bam,
 
     taps = TAPS()
     with pysam.AlignmentFile(bam) as al,\
-         pysam.FastaFile(get_reference_path_from_bam(bam)) as reference:
+         pysam.FastaFile((get_reference_path_from_bam(bam) if reference_path is None else reference_path)) as reference:
 
             for molecule in MoleculeIterator(
                 al,
