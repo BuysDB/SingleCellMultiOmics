@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import pysam
-import argparser
+import argparse
 
 def convert_scmo_to_cellranger(scmo_bam, cellranger_bam, n_threads=4):
     """
