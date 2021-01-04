@@ -79,6 +79,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamToCountTable.py',
         'singlecellmultiomics/bamProcessing/bamCopyNumber.py',
         'singlecellmultiomics/bamProcessing/bamExtractSamples.py',
+        'singlecellmultiomics/bamProcessing/scmoConvert.py',
         'singlecellmultiomics/bamProcessing/bamToMethylationAndCopyNumber.py',
         'singlecellmultiomics/bamProcessing/bamToMethylationCalls.py',
         'singlecellmultiomics/bamProcessing/bamMappingRate.py',
