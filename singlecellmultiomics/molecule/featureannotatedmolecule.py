@@ -205,6 +205,12 @@ class FeatureAnnotatedMolecule(Molecule):
     def write_tags(self):
         Molecule.write_tags(self)
 
+        # Write cell ranger tags:
+        if self.umi is not None:
+            self.set_meta('UB', self.umi)
+        bc = list(self.get_barcode_sequences())[0]
+        self.set_meta('CB', bc)
+
         if len(self.exons) > 0:
             self.set_meta('EX', ','.join(sorted([str(x) for x in self.exons])))
         else:

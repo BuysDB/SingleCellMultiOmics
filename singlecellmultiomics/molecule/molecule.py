@@ -2940,3 +2940,18 @@ class Molecule():
                                     read.reference_name, rpos)] = -1
                     i += 1
         return methylated_positions, methylated_state
+
+
+    def _get_allele_from_reads(self) -> str:
+        """
+        Obtain associated allele based on the associated reads of the molecule
+
+        """
+        allele = None
+        for frag in self:
+            for read in frag:
+                if read is None or not read.has_tag('DA'):
+                    continue
+                allele = read.get_tag('DA')
+                return allele
+        return None
