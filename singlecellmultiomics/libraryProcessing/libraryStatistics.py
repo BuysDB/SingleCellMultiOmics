@@ -90,7 +90,6 @@ if __name__ == '__main__':
     args = argparser.parse_args()
 
     for library in args.libraries:
-        library_name = library
         if library.endswith('.bam'):
             # the library is a bam file..
             bamFile = os.path.abspath(library)
@@ -101,6 +100,7 @@ if __name__ == '__main__':
         else:
             print("A library was supplied, automatically detecting files ..")
             bamFile = None
+            library_name = os.path.basename(library)
         rc = ReadCount(args)  # Is also mappability
 
         statistics = [
