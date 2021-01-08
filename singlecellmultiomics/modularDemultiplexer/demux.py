@@ -235,6 +235,9 @@ if __name__ == '__main__':
     args = argparser.parse_args()
     verbosity = 1
 
+    if args.y and args.sched is not None:
+        raise ValueError('Use --y or -sched [scheduler], never both')
+
     #ignoreMethods = args.ignoreMethods.split(',')
     only_detect_methods = args.only_detect_methods.split(',') if args.only_detect_methods is not None else None
     if any(('*' in fq_file for fq_file in args.fastqfiles)):
@@ -324,6 +327,8 @@ if __name__ == '__main__':
             libraries, testReads=args.dsize, maxAutoDetectMethods=args.maxAutoDetectMethods, minAutoDetectPct=args.minAutoDetectPct, verbose=True)
 
     print(f"\n{Style.BRIGHT}Demultiplexing:{Style.RESET_ALL}")
+
+    final_jobs = []
     for library in libraries:
         if args.use is None:
             processedReadPairs = strategyYieldsForAllLibraries[library]['processedReadPairs']
@@ -391,7 +396,7 @@ if __name__ == '__main__':
                     submitted_jobs.append(job_id)
                 group_id += 1
 
-            final_jobs = []
+
             if not submit_in_chunks:
                 job_name = f'DMX_{library}'
 
@@ -424,9 +429,6 @@ if __name__ == '__main__':
 
 
                     final_jobs.append(job_id)
-
-            print('Final job ids:', ','.join(final_jobs))
-            exit()
 
         if args.y:
 
@@ -486,3 +488,6 @@ if __name__ == '__main__':
             if not args.norejects:
                 rejectHandle.close()
             log_handle.write(f'Demultiplexing finished\n')
+
+    if args.sched is not None:
+        print('Final job ids:', ','.join(final_jobs))
