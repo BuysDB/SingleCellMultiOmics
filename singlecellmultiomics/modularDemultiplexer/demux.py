@@ -373,7 +373,7 @@ if __name__ == '__main__':
                 if submit_in_chunks:
                     job_name = f'DMX_{library}_{group_id}'
 
-                    job_id = submit_job(f'demux.py -g {group_id} -use {",".join([x.shortName for x in selectedStrategies])} {arguments} {" ".join(files_to_submit)};',
+                    job_id = submit_job(f'{arguments} -g {group_id} -use {",".join([x.shortName for x in selectedStrategies])} {" ".join(files_to_submit)};',
                                         job_name=job_name,
                                         target_directory=cluster_file_folder,
                                         working_directory=None,
@@ -394,7 +394,7 @@ if __name__ == '__main__':
             if not submit_in_chunks:
                 job_name = f'DMX_{library}'
 
-                job_id = submit_job(f'demux.py -g {group_id} -use {",".join([x.shortName for x in selectedStrategies])} {arguments} {" ".join(filesForLib)};', job_name=job_name, target_directory=cluster_file_folder,  working_directory=None,
+                job_id = submit_job(f'{arguments} -g {group_id} -use {",".join([x.shortName for x in selectedStrategies])} {" ".join(filesForLib)};', job_name=job_name, target_directory=cluster_file_folder,  working_directory=None,
                            threads_n=1, memory_gb=args.mem, time_h=args.time, scheduler=args.sched, copy_env=True,
                            email=None, mail_when_finished=False, hold=None,submit=True)
 
