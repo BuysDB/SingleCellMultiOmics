@@ -362,6 +362,7 @@ if __name__ == '__main__':
             group_id = 0
 
 
+            print("Submitting jobs ...")
             for lane in libraries[library]:
                 files_to_submit = []
                 for R1R2 in libraries[library][lane]:
@@ -385,8 +386,8 @@ if __name__ == '__main__':
                                         email=None,
                                         mail_when_finished=False,
                                         hold=None,
+                                        silent=True,
                                         submit=True)
-
                     submitted_jobs.append(job_id)
                 group_id += 1
 
@@ -396,9 +397,9 @@ if __name__ == '__main__':
 
                 job_id = submit_job(f'{arguments} -g {group_id} -use {",".join([x.shortName for x in selectedStrategies])} {" ".join(filesForLib)};', job_name=job_name, target_directory=cluster_file_folder,  working_directory=None,
                            threads_n=1, memory_gb=args.mem, time_h=args.time, scheduler=args.sched, copy_env=True,
-                           email=None, mail_when_finished=False, hold=None,submit=True)
+                           email=None, mail_when_finished=False, hold=None,submit=True, silent=True)
 
-                final_jobs.append(job_name)
+                final_jobs.append(job_id)
 
             else:
                 # we need a job which glues everything back together
@@ -424,7 +425,7 @@ if __name__ == '__main__':
 
                     final_jobs.append(job_id)
 
-
+            print('Final job ids:', ','.join(final_jobs))
             exit()
 
         if args.y:
