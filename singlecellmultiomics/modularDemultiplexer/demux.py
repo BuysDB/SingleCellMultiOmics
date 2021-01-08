@@ -387,7 +387,7 @@ if __name__ == '__main__':
                                         hold=None,
                                         submit=True)
 
-                    submitted_jobs.append(job_name)
+                    submitted_jobs.append(job_id)
                 group_id += 1
 
             final_jobs = []
@@ -417,12 +417,12 @@ if __name__ == '__main__':
                     job_name = f'glue_{library}_{i}'
 
 
-                    submit_job(cmd, job_name=job_name, target_directory=cluster_file_folder,  working_directory=None,
+                    job_id = submit_job(cmd, job_name=job_name, target_directory=cluster_file_folder,  working_directory=None,
                                threads_n=1, memory_gb=2, time_h=4, scheduler=args.sched, copy_env=True,
                                email=None, mail_when_finished=False, hold=submitted_jobs,submit=True)
 
 
-                    final_jobs.append(submit_job)
+                    final_jobs.append(job_id)
 
 
             exit()
