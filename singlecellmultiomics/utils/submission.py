@@ -113,7 +113,7 @@ def generate_submission_command(jobfile, hold, scheduler='sge'):
 
             js = 'afterany:' + ':'.join( [f'{h.strip()}' for h in hold] )
             qs = f'sbatch --dependency={js} {jobfile}'
-            print(qs)
+            
         else:
             qs = 'sbatch %s' % jobfile
     else:
@@ -125,7 +125,7 @@ def generate_submission_command(jobfile, hold, scheduler='sge'):
 def submit_job(command,  target_directory,  working_directory,
                threads_n=1, memory_gb=8, time_h=8, scheduler='sge', copy_env=True,
                email=None,job_alias=None, mail_when_finished=False,
-               hold=None,submit=True, prefix=None, job_file_name=None, job_name=None):
+               hold=None,submit=True, prefix=None, job_file_name=None, job_name=None, silent=False):
     """
     Submit a job
 
@@ -176,7 +176,7 @@ def submit_job(command,  target_directory,  working_directory,
     if job_file_name is None:
         job_file_name=_job_file_name
     else:
-        if job_file_name!=_job_file_name:
+        if job_file_name!=_job_file_name and not silent:
             print(f'Job file name changed from {job_file_name} to {_job_file_name}')
 
     job_data = generate_job_script(scheduler=scheduler, jobfile=jobfile,
