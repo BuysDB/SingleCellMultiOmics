@@ -74,7 +74,7 @@ class TaggedRecord():
                 self.fromRawFastq(rawRecord, **kwargs)
             except NonMultiplexable:
                 raise
-        if library is not None:
+        if library is not None and not 'LY' in self.tags:
             self.addTagByTag('LY', library, isPhred=False)
         if reason is not None:
             self.tags['RR'] = reason
