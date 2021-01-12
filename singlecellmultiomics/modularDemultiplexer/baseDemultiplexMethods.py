@@ -74,7 +74,7 @@ class TaggedRecord():
                 self.fromRawFastq(rawRecord, **kwargs)
             except NonMultiplexable:
                 raise
-        if library is not None:
+        if library is not None and not 'LY' in self.tags:
             self.addTagByTag('LY', library, isPhred=False)
         if reason is not None:
             self.tags['RR'] = reason
@@ -149,55 +149,32 @@ class TaggedRecord():
     def asIlluminaHeader(self):
         return '{Is}:{RN}:{Fc}:{La}:{Ti}:{CX}:{CY}'.format(**self.tags)
 
-    def fromRawFastq(
-            self,
-            fastqRecord,
-            indexFileParser=None,
-            indexFileAlias=None):
-        global illuminaHeaderSplitRegex
-        try:
-            instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber, indexSequence = illuminaHeaderSplitRegex.split(
-                fastqRecord.header.strip())
-        except BaseException:
-            try:
-                instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber = illuminaHeaderSplitRegex.split(
-                    fastqRecord.header.strip().replace('::', ''))
-                indexSequence = "N"
-            except BaseException:
-                instrument = 'UNK'
-                runNumber = 'UNK'
-                flowCellId = 'UNK'
-                indexSequence = 'N'
-                lane = 'UNK'
-                tile = 'UNK'
-                clusterXpos = '-1'
-                clusterYpos = '-1'
-                readPairNumber = '0'
-                isFiltered = '0'
-                controlNumber = '0'
 
-                # 3-DEC: @Cluster_s_1_1101_2
-                if fastqRecord.header.count('_') == 4:
-                    _cluster_, _s_, lane, tile, readPairNumber = fastqRecord.header.split(
-                        '_')
-                    # check  that this s thingy is at the right place
-                    assert(_s_ == 's')
-                else:
-                    raise
 
-            # NS500413:32:H14TKBGXX:2:11101:16448:1664 1:N:0::
-        """ This is the nice and safe way:
-        self.addTagByTag( 'Is',instrument, isPhred=False)
-        self.addTagByTag('RN',runNumber, isPhred=False)
-        self.addTagByTag('Fc',flowCellId, isPhred=False)
-        self.addTagByTag('La',lane, isPhred=False)
-        self.addTagByTag('Ti',tile, isPhred=False)
-        self.addTagByTag('CX',clusterXpos, isPhred=False)
-        self.addTagByTag('CY',clusterYpos, isPhred=False)
-        self.addTagByTag('RP',readPairNumber, isPhred=False)
-        self.addTagByTag('Fi',isFiltered, isPhred=False)
-        self.addTagByTag('CN',controlNumber, isPhred=False)
-        """
+
+    def parse_3dec_header(self,fastqRecord, indexFileParser,  indexFileAlias):
+
+        instrument = 'UNK'
+        runNumber = 'UNK'
+        flowCellId = 'UNK'
+        indexSequence = 'N'
+        lane = 'UNK'
+        tile = 'UNK'
+        clusterXpos = '-1'
+        clusterYpos = '-1'
+        readPairNumber = '0'
+        isFiltered = '0'
+        controlNumber = '0'
+
+        # 3-DEC: @Cluster_s_1_1101_2
+        if fastqRecord.header.count('_') == 4:
+            _cluster_, _s_, lane, tile, readPairNumber = fastqRecord.header.split(
+                '_')
+            # check  that this s thingy is at the right place
+            assert(_s_ == 's')
+        else:
+            raise
+
         self.tags.update({
             'Is': instrument,
             'RN': runNumber,
@@ -211,8 +188,31 @@ class TaggedRecord():
             'CN': controlNumber
         })
 
+    def parse_illumina_header(self,fastqRecord, indexFileParser,  indexFileAlias):
+        try:
+            instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber, indexSequence = illuminaHeaderSplitRegex.split(
+                fastqRecord.header.strip())
+        except BaseException:
 
+            try:
+                instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber = illuminaHeaderSplitRegex.split(
+                    fastqRecord.header.strip().replace('::', ''))
+                indexSequence = "N"
+            except BaseException:
+                raise
 
+        self.tags.update({
+            'Is': instrument,
+            'RN': runNumber,
+            'Fc': flowCellId,
+            'La': lane,
+            'Ti': tile,
+            'CX': clusterXpos,
+            'CY': clusterYpos,
+            'RP': readPairNumber,
+            'Fi': isFiltered,
+            'CN': controlNumber
+        })
 
         if indexFileParser is not None and indexFileAlias is not None:
             # Check if the index is an integer:
@@ -240,6 +240,38 @@ class TaggedRecord():
         else:
             #self.addTagByTag('aA',indexSequence, isPhred=False)
             self.tags['aa'] = indexSequence
+
+    def parse_scmo_header(self, fastqRecord, indexFileParser,  indexFileAlias):
+        self.tags.update( dict( kv.split(':') for kv in fastqRecord.header.strip()[1:].split(';') ) )
+
+    def fromRawFastq(
+            self,
+            fastqRecord,
+            indexFileParser=None,
+            indexFileAlias=None):
+
+        try:
+            self.parse_illumina_header(fastqRecord, indexFileParser,  indexFileAlias)
+        except BaseException:
+            if fastqRecord.header.startswith('@Is'):
+                self.parse_scmo_header(fastqRecord, indexFileParser,  indexFileAlias)
+            else:
+                self.parse_3dec_header(fastqRecord, indexFileParser,  indexFileAlias)
+
+
+            # NS500413:32:H14TKBGXX:2:11101:16448:1664 1:N:0::
+        """ This is the nice and safe way:
+        self.addTagByTag( 'Is',instrument, isPhred=False)
+        self.addTagByTag('RN',runNumber, isPhred=False)
+        self.addTagByTag('Fc',flowCellId, isPhred=False)
+        self.addTagByTag('La',lane, isPhred=False)
+        self.addTagByTag('Ti',tile, isPhred=False)
+        self.addTagByTag('CX',clusterXpos, isPhred=False)
+        self.addTagByTag('CY',clusterYpos, isPhred=False)
+        self.addTagByTag('RP',readPairNumber, isPhred=False)
+        self.addTagByTag('Fi',isFiltered, isPhred=False)
+        self.addTagByTag('CN',controlNumber, isPhred=False)
+        """
 
     def tagPysamRead(self, read):
 

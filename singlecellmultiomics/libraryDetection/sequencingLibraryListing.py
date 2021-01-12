@@ -105,6 +105,25 @@ class SequencingLibraryLister():
                 self.libraries[library][lane][r1ORr2].append(path)
                 #print(path, library, r1ORr2, self.libraries)
 
+            elif fastqFileName.endswith('R1') or fastqFileName.endswith('R2'):
+                lane = '0'  # Create "fake" lane
+                library = self.libraryReplace(
+                    fastqFileName.rsplit('R', 1)[0], replace)
+                r1ORr2 = 'R' + fastqFileName[-1]
+
+                if library not in self.libraries:
+                    self.libraries[library] = {lane: {}}
+
+                if lane not in self.libraries[library]:
+                    self.libraries[library][lane] = {}
+
+                if r1ORr2 not in self.libraries[library][lane]:
+                    self.libraries[library][lane][r1ORr2] = []
+
+                self.libraries[library][lane][r1ORr2].append(path)
+                #print(path, library, r1ORr2, self.libraries)
+
+
             elif fastqFileName.startswith("SRR"):
 
                 library, r1ORr2 = fastqFileName.split('_')
