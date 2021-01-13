@@ -113,7 +113,7 @@ def generate_submission_command(jobfile, hold, scheduler='sge'):
 
             js = 'afterany:' + ':'.join( [f'{h.strip()}' for h in hold] )
             qs = f'sbatch --dependency={js} {jobfile}'
-            
+
         else:
             qs = 'sbatch %s' % jobfile
     else:
@@ -253,7 +253,7 @@ if __name__ == '__main__':
 
     argparser.add_argument(
         '-sched',
-        default='sge',
+        default='slurm',
         help="scheduler: sge, slurm, local")
 
 
