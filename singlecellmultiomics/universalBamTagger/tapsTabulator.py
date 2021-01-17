@@ -6,6 +6,7 @@ import pysamiterators
 import pysam
 import argparse
 import singlecellmultiomics.bamProcessing.bamFunctions as bf
+from singlecellmultiomics.features import FeatureContainer
 import os
 
 
@@ -40,6 +41,13 @@ if __name__ == '__main__':
         '-head',
         type=int,
         help='Tabulate the first N valid molecules')
+
+
+    argparser.add_argument(
+        '-features',
+        type=str,
+        help='Annotate cut locations with these features, path to gtf file')
+
 
     argparser.add_argument(
         '-min_phred_score',
@@ -138,6 +146,12 @@ if __name__ == '__main__':
     reference = pysamiterators.iterators.CachedFasta(pysam.FastaFile(args.ref))
     taps = singlecellmultiomics.molecule.TAPS()
 
+    if args.features is not None:
+        features = FeatureContainer()
+        features.loadGTF(args.features,thirdOnly='gene',store_all=True)
+    else:
+        features = None
+
     molecule_class_args = {
         'reference': reference,
         'taps': taps,
@@ -201,7 +215,20 @@ if __name__ == '__main__':
             if args.fmt == "table_more":
                 consensus = molecule.get_consensus()
 
-            CUT_SITE = molecule.get_cut_site()[1]
+            cut_contig,CUT_SITE,cut_strand = molecule.get_cut_site()
+
+
+            if features is not None:
+                features.findFeaturesAt(cut_contig, CUT_SITE)
+                genes = []
+                for hit_start,hit_end,gene,strand,meta in features.findFeaturesAt(cut_contig, CUT_SITE):
+                    g = dict(meta).get('gene_name',gene)
+                    genes.append(g)
+                additional=f"\t{','.join(genes)}"
+
+            else:
+                additional = ""
+
 
             for (chromosome, location), call in molecule.methylation_call_dict.items():
                 if call['context'] == '.':  # Only print calls concerning C's
@@ -214,7 +241,7 @@ if __name__ == '__main__':
                 if args.fmt == "table":
 
                     print(
-                        f"{molecule.sample}{s}{i}{s}{CUT_SITE}{s}{molecule.estimated_max_length}{s}{molecule.umi}{s}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}\t{molecule.ligation_motif}")
+                        f"{molecule.sample}{s}{i}{s}{CUT_SITE}{s}{molecule.estimated_max_length}{s}{molecule.umi}{s}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}\t{molecule.ligation_motif}{additional}")
 
                 elif args.fmt == "table_more":
 
