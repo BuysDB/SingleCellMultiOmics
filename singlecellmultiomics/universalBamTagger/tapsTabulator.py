@@ -50,34 +50,34 @@ if __name__ == '__main__':
     argparser.add_argument(
         '-dove_R1_distance',
         type=int,
-        help='Do not call methylation N bases form the end of R1',default=2)
+        help='Do not call methylation N bases form the end of R1',default=8)
 
     argparser.add_argument(
         '-dove_R2_distance',
         type=int,
-        help='Do not call methylation N bases form the end of R2',default=2)
+        help='Do not call methylation N bases form the end of R2',default=8)
 
     argparser.add_argument(
         '-skip_last_n_cycles_R1',
         type=int,
-        help='Do not call methylation N bases form the end of R1',default=2)
+        help='Do not call methylation N bases form the end of R1',default=5)
 
 
 
     argparser.add_argument(
         '-skip_first_n_cycles_R1',
         type=int,
-        help='Do not call methylation N bases form the start of R1',default=2)
+        help='Do not call methylation N bases form the start of R1',default=5)
 
     argparser.add_argument(
         '-skip_last_n_cycles_R2',
         type=int,
-        help='Do not call methylation N bases form the end of R2',default=2)
+        help='Do not call methylation N bases form the end of R2',default=5)
 
     argparser.add_argument(
         '-skip_first_n_cycles_R2',
         type=int,
-        help='Do not call methylation N bases form the start of R2',default=2)
+        help='Do not call methylation N bases form the start of R2',default=5)
 
 
     argparser.add_argument('-minmq', type=int, default=50)
@@ -141,6 +141,7 @@ if __name__ == '__main__':
     molecule_class_args = {
         'reference': reference,
         'taps': taps,
+        'taps_strand':'R',
         'min_max_mapping_quality': args.minmq
     }
     if args.method == 'nla':
@@ -174,7 +175,7 @@ if __name__ == '__main__':
             every_fragment_as_molecule=args.every_fragment_as_molecule,
             fragment_class=fragment_class,
             fragment_class_args={'umi_hamming_distance': 1,
-                                 'no_umi_cigar_processing':True,
+                                 'no_umi_cigar_processing':False,
 
                                  },
 
@@ -213,7 +214,7 @@ if __name__ == '__main__':
                 if args.fmt == "table":
 
                     print(
-                        f"{molecule.sample}{s}{i}{s}{CUT_SITE}{s}{molecule.span_len}{s}{molecule.umi}{s}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
+                        f"{molecule.sample}{s}{i}{s}{CUT_SITE}{s}{molecule.estimated_max_length}{s}{molecule.umi}{s}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}\t{molecule.ligation_motif}")
 
                 elif args.fmt == "table_more":
 
