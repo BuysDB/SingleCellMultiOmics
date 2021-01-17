@@ -176,7 +176,7 @@ def verify_and_fix_bam(bam_path):
                 index_missing = True
 
         if index_missing:
-            print(f"The bam file {bam_path} has an older index, attempting an index re-build ..")
+            print(f"The bam file {bam_path} has no or an older index, attempting an index re-build ..")
             pysam.index(bam_path)
             print(f"Succes!")
 
