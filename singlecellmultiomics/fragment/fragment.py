@@ -535,7 +535,7 @@ class Fragment():
 
             contig = self.R1.reference_name
             if self.R1.is_reverse and not self.R2.is_reverse:
-                start, end = self.R2.reference_start + self.R2_primer_length, self.R1.reference_end
+                start, end = self.R2.reference_start - self.R2_primer_length, self.R1.reference_end
                 if start<end:
                     return end - start
                 else:
