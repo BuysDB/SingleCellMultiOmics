@@ -81,6 +81,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamExtractSamples.py',
         'singlecellmultiomics/bamProcessing/scmoConvert.py',
         'singlecellmultiomics/bamProcessing/bamToMethylationAndCopyNumber.py',
+        'singlecellmultiomics/bamProcessing/bamDinucleotideDistribution.py',
         'singlecellmultiomics/bamProcessing/bamToMethylationCalls.py',
         'singlecellmultiomics/bamProcessing/bamMappingRate.py',
         'singlecellmultiomics/bamProcessing/bamFilter.py',
