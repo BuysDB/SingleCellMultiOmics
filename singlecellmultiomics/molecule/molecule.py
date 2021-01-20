@@ -1672,6 +1672,25 @@ class Molecule():
         else:
             return None
 
+    @property
+    def estimated_max_length(self) -> int:
+        """
+        Obtain the estimated size of the fragment,
+        returns None when estimation is not possible
+        Takes into account removed bases (R2)
+        Assumes inwards sequencing orientation
+        """
+        max_size = None
+        for frag in self:
+            r = frag.estimated_length
+            if r is None :
+                continue
+            if max_size is None:
+                max_size = r
+            elif r>max_size:
+                max_size = r
+        return max_size
+
     def get_safely_aligned_length(self):
         """Get the amount of safely aligned bases (excludes primers)
         Returns:
@@ -1685,6 +1704,9 @@ class Molecule():
         end = None
         contig = None
         for fragment in self:
+            if not fragment.safe_span:
+                continue
+
             if contig is None:
                 contig = fragment.span[0]
             if contig == fragment.span[0]:
@@ -1696,6 +1718,8 @@ class Molecule():
                     start = min(f_start, start)
                     end = min(f_end, end)
 
+        if end is None:
+            raise ValueError('Not safe')
         return abs(end - start)
 
     def add_fragment(self, fragment, use_hash=True):

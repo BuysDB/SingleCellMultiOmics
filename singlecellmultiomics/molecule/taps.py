@@ -236,11 +236,13 @@ class TAPSMolecule(Molecule):
             returns:
                 mcalls(dict) : (chrom,pos) : {'consensus': consensusBase, 'reference': referenceBase, 'call': call}
         """
-        expected_base_to_be_converted = ('G' if self.strand else 'C') if self.taps_strand=='F' else ('C' if self.strand else 'G')
+        expected_base_to_be_converted = ('G' if self.strand else 'C') \
+            if self.taps_strand=='F' else ('C' if self.strand else 'G')
 
         try:
             c_pos_consensus = self.get_consensus(dove_safe = not self.allow_unsafe_base_calls,
-                                                 only_include_refbase=expected_base_to_be_converted, **get_consensus_dictionaries_kwargs)
+                                                 only_include_refbase=expected_base_to_be_converted,
+                                                 **get_consensus_dictionaries_kwargs)
 
         except ValueError as e:
             if 'MD tag not present' in str(e):
@@ -411,8 +413,6 @@ class TAPSPTaggedMolecule(AnnotatedTAPSNlaIIIMolecule):
 
                 # Check if call is the same as the consensus call:
                 if query!=consensus.get((read.reference_name,refpos), 'X'):
-                    #print(query, consensus.get((read.reference_name,refpos),'X'))
-                    #print(read.reference_name, refpos,)
                     continue
 
                 reference_base = reference_base.upper()

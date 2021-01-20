@@ -509,15 +509,47 @@ class Fragment():
         Returns:
             consensus(dict) : {reference_position: (qbase, quality)
         """
-        r1_consensus, r2_consensus = get_consensus_dictionaries(self.R1,
-                                                                self.R2,
-                                                                only_include_refbase=only_include_refbase,
-                                                                dove_safe=dove_safe, **get_consensus_dictionaries_kwargs)
+        r1_consensus, r2_consensus = get_consensus_dictionaries(
+                self.R1,
+                self.R2,
+                only_include_refbase=only_include_refbase,
+                dove_safe=dove_safe,
+                **get_consensus_dictionaries_kwargs)
 
         return {
             ref_pos:pick_best_base_call( r1_consensus.get(ref_pos) , r2_consensus.get(ref_pos) )
             for ref_pos in set(r1_consensus.keys()).union(set(r2_consensus.keys()))
         }
+
+
+    @property
+    def estimated_length(self) -> int:
+        """
+        Obtain the estimated size of the fragment,
+        returns None when estimation is not possible
+        Takes into account removed bases (R2)
+        Assumes inwards sequencing orientation
+        """
+
+        if self.has_R1() and self.has_R2():
+
+            contig = self.R1.reference_name
+            if self.R1.is_reverse and not self.R2.is_reverse:
+                start, end = self.R2.reference_start - self.R2_primer_length, self.R1.reference_end
+                if start<end:
+                    return end - start
+                else:
+                    return None
+            elif not self.R1.is_reverse and self.R2.is_reverse:
+                start, end = self.R1.reference_start, self.R2.reference_end + self.R2_primer_length
+                if start<end:
+                    return end - start
+                else:
+                    return None
+            else:
+                return None
+        return None
+
 
     def update_span(self):
         """
@@ -536,25 +568,30 @@ class Fragment():
         end = None
 
 
+        if self.has_R1() and self.has_R2() and \
+           self.R1.reference_start is not None and self.R1.reference_end is not None and \
+           self.R2.reference_start is not None and self.R2.reference_end is not None :
 
-        if self.has_R1() and self.R1.reference_start is not None and self.R1.reference_end is not None :
             contig = self.R1.reference_name
-            if not self.has_R2():
-                start, end = self.R1.reference_start, self.R1.reference_end
-                self.safe_span = False
-            else:
-                if self.R1.is_reverse:
-                    start, end = self.R2.reference_start, self.R1.reference_end
-                else:
-                    start, end = self.R1.reference_start, self.R2.reference_end
+            if self.R1.is_reverse and not self.R2.is_reverse:
+                start, end = self.R2.reference_start, self.R1.reference_end
                 self.safe_span = True
+            elif not self.R1.is_reverse and self.R2.is_reverse:
+                start, end = self.R1.reference_start, self.R2.reference_end
+                self.safe_span = True
+            else:
+                start = min(self.R1.reference_start, self.R2.reference_start)
+                end = max(self.R1.reference_start, self.R2.reference_start)
+                self.safe_span = False
+
+        elif self.has_R1() and self.R1.reference_start is not None and self.R1.reference_end is not None :
+            contig = self.R1.reference_name
+            start, end = self.R1.reference_start, self.R1.reference_end
+            self.safe_span = False
 
         elif self.has_R2()  and self.R2.reference_start is not None and self.R2.reference_end is not None :
             contig = self.R2.reference_name
             start, end = self.R2.reference_start, self.R2.reference_end
-            self.safe_span = False
-        else:
-            # No valid span.
             self.safe_span = False
 
         self.span = (contig, start, end)
