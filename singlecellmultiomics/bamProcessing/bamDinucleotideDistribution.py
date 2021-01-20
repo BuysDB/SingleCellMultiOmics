@@ -196,3 +196,4 @@ if __name__ == '__main__':
     dinuc_df = dinuc_df.rolling(window=3,center=True).mean()
     dinuc_df = (dinuc_df.T / dinuc_df.sum(1)).T
     dinuc_df.to_pickle(args.o + 'dinucs.pickle.gz' )
+    dinuc_df.to_csv(args.o + 'dinucs.csv' )
