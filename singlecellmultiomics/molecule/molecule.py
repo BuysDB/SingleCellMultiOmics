@@ -1824,17 +1824,24 @@ class Molecule():
             self.get_rt_reaction_fragment_sizes()
         )
 
-    def write_pysam(self, target_file, consensus=False, no_source_reads=False, consensus_name=None):
+    def write_pysam(self, target_file, consensus=False, no_source_reads=False, consensus_name=None, consensus_read_callback=None, consensus_read_callback_kwargs=None):
         """Write all associated reads to the target file
 
         Args:
             target_file (pysam.AlignmentFile) : Target file
             consensus (bool) : write consensus
             no_source_reads (bool) : while in consensus mode, don't write original reads
+            consensus_read_callback (function) : this function is called with every consensus read as an arguments
+            consensus_read_callback_kwargs (dict) : arguments to pass to the callback function
         """
         if consensus:
             reads = self.deduplicate_majority(target_file,
                                               f'molecule_{uuid4()}' if consensus_name is None else consensus_name)
+            if consensus_read_callback is not None:
+                if consensus_read_callback_kwargs is not None:
+                    consensus_read_callback(reads, **consensus_read_callback_kwargs)
+                else:
+                    consensus_read_callback(reads)
 
             for read in reads:
                 target_file.write(read)
