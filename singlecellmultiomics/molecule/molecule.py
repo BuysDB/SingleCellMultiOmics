@@ -1673,6 +1673,22 @@ class Molecule():
             return None
 
     @property
+    def is_completely_matching(self) -> bool:
+        """
+        Checks if all associated reads are completely mapped:
+        checks if all cigar operations are M,
+        Returns True when all cigar operations are M, False otherwise
+        """
+
+        return all(
+                (
+                     all(
+                     [ (operation==0)
+                        for operation, amount in read.cigartuples] )
+                for read in self.iter_reads()))
+
+
+    @property
     def estimated_max_length(self) -> int:
         """
         Obtain the estimated size of the fragment,
