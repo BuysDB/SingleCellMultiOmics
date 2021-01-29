@@ -8,6 +8,7 @@ import pysamiterators.iterators
 import os
 from singlecellmultiomics.fragment import Fragment, CHICFragment
 from singlecellmultiomics.utils import create_MD_tag
+from singlecellmultiomics.utils import complement
 """
 These tests check if the Molecule module is working correctly
 """
