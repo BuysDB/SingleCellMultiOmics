@@ -106,19 +106,31 @@ class TestTAPs(unittest.TestCase):
         ## Act on reads without random primer
         read_A, read_B = get_reads()
         frag = Fragment([read_A, read_B], R2_primer_length=10)
-        self.assertTrue(frag.R2_primer_length==10)
+        self.assertEqual(frag.R2_primer_length, 10)
         self.assertFalse(frag.unsafe_trimmed)
 
         read_A, read_B = get_reads()
         frag = CHICFragment([read_A, read_B], R2_primer_length=0)
-        self.assertTrue(frag.R2_primer_length==0)
+        self.assertEqual(frag.R2_primer_length, 0)
         self.assertFalse(frag.unsafe_trimmed)
 
         read_A, read_B = get_reads()
         read_B.set_tag('rS','AATTAA') # Set random primer sequence
         frag = CHICFragment([read_A, read_B], R2_primer_length=0)
-        self.assertTrue(frag.R2_primer_length==0)
+        self.assertEqual(frag.R2_primer_length, 0)
         self.assertTrue(frag.unsafe_trimmed)
+
+        read_A, read_B = get_reads()
+        read_B.set_tag('MX','scCHIC384C8U3l')
+        frag = CHICFragment([read_A, read_B])
+        self.assertEqual(frag.R2_primer_length, 0)
+        self.assertFalse(frag.unsafe_trimmed)
+
+        read_A, read_B = get_reads()
+        read_B.set_tag('MX','scCHIC384C8U3')
+        frag = CHICFragment([read_A, read_B])
+        self.assertEqual(frag.R2_primer_length,6)
+        self.assertFalse(frag.unsafe_trimmed)
 
     def test_init(self):
         """Test if the fragment can be initialised"""

@@ -6,7 +6,7 @@ class CHICFragment(Fragment):
     def __init__(self,
                  reads,
                  R1_primer_length=4,
-                 R2_primer_length=0, # Is automatically detected now
+                 R2_primer_length=6, # Is automatically detected now
                  assignment_radius=0,
                  umi_hamming_distance=1,
                  invert_strand=False,
