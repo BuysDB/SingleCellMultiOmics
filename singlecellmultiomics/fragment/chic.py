@@ -6,7 +6,7 @@ class CHICFragment(Fragment):
     def __init__(self,
                  reads,
                  R1_primer_length=4,
-                 R2_primer_length=6,
+                 R2_primer_length=0, # Is automatically detected now
                  assignment_radius=0,
                  umi_hamming_distance=1,
                  invert_strand=False,
@@ -14,6 +14,15 @@ class CHICFragment(Fragment):
                  **kwargs
                  ):
         self.invert_strand = invert_strand
+
+        # Perform random primer autodect,
+        # When the demux profile is MX:Z:scCHIC384C8U3l, then there is no random primer
+        for read in reads:
+            if read is not None and read.has_tag('MX'):
+                if read.get_tag('MX')[-1]=='l':
+                    R2_primer_length = 0
+                break
+
         Fragment.__init__(self,
                           reads,
                           assignment_radius=assignment_radius,

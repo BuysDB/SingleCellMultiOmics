@@ -74,7 +74,8 @@ class Fragment():
                     length of R1 primer, these bases are not taken into account when calculating a consensus
 
                 R2_primer_length(int):
-                    length of R2 primer, these bases are not taken into account when calculating a consensus
+                    length of R2 primer, these bases are not taken into account when calculating a consensus, this length is auto-detected/ overwritten when the rS tag is set
+
 
                 tag_definitions(list):
                     sam TagDefinitions
@@ -405,6 +406,10 @@ class Fragment():
 
         if R2 is None or R2.query_sequence is None:
             return None, None, None
+
+        if self.R2_primer_length == 0 and self.random_primer_sequence is None:
+            return None, None, None
+
         # The read was not mapped
         if R2.is_unmapped:
             # Guess the orientation does not matter

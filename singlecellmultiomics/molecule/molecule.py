@@ -547,6 +547,7 @@ class Molecule():
                         read.is_duplicate = True
 
         # Write RT reaction tags (rt: rt reaction index, rd rt duplicate index)
+        # This is only required for fragments which have defined random primers
         rt_reaction_index = None
         for rt_reaction_index, ( (contig, random_primer_start, random_primer_sequence), frags) in enumerate(
                 self.get_rt_reactions().items()):
@@ -1793,7 +1794,7 @@ class Molecule():
                        self.cache_size *
                        0.5)
 
-    def get_rt_reactions(self):
+    def get_rt_reactions(self) -> dict:
         """Obtain RT reaction dictionary
 
         returns:
