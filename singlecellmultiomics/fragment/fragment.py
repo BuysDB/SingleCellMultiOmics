@@ -349,7 +349,7 @@ class Fragment():
         if self.has_valid_span():
             # Write fragment size:
             if self.safe_span:
-                self.set_meta('fS', self.get_fragment_size())
+                self.set_meta('fS', self.estimated_length)
                 self.set_meta('fe', self.span[1])
                 self.set_meta('fs', self.span[2])
             else:
