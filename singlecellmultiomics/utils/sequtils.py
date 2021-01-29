@@ -25,8 +25,32 @@ class Reference(Prefetcher):
 
 
 
+def get_chromosome_number(chrom: str) -> int:
+    """
+    Get chromosome number (index) of the supplied chromosome:
+        '1' -> 1, chr1 -> 1, returns -1 when not available, chrM -> -1
+    """
+    try:
+        return int(chrom.replace('chr',''))
+    except Exception as e:
+        return -1
 
-def is_main_chromosome(chrom):
+def is_autosome(chrom: str) -> bool:
+    """ Returns True when the chromsome is an autosomal chromsome,
+    not an alternative allele, mitochrondrial or sex chromosome
+
+    Args:
+        chrom(str) : chromosome name
+
+    Returns:
+        is_main(bool) : True when the chromsome is an autosome
+
+    """
+    return is_main_chromosome(chrom) and get_chromosome_number(chrom)!=-1
+
+
+
+def is_main_chromosome(chrom: str) -> bool:
     """ Returns True when the chromsome is a main chromsome,
     not an alternative or other
 
@@ -42,7 +66,7 @@ def is_main_chromosome(chrom):
         return False
     return True
 
-def get_contig_list_from_fasta(fasta_path, with_length=False):
+def get_contig_list_from_fasta(fasta_path: str, with_length: bool=False) -> list:
     """Obtain list of contigs froma  fasta file,
         all alternative contigs are pooled into the string MISC_ALT_CONTIGS_SCMO
 
