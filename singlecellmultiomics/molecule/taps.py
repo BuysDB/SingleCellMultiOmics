@@ -8,6 +8,7 @@ from collections import Counter
 from singlecellmultiomics.utils.sequtils import complement
 from itertools import product
 from matplotlib.pyplot import get_cmap
+from copy import copy
 complement_trans = str.maketrans('ATGC', 'TACG')
 
 
@@ -58,7 +59,7 @@ class TAPS:
             self.context_mapping[True][''.join(['C'] + list(x))] = 'H'
             self.context_mapping[False][''.join(['C'] + list(x))] = 'h'
 
-        self.colormap = get_cmap('RdYlBu_r')
+        self.colormap = copy(get_cmap('RdYlBu_r')) # Make a copy 
         self.colormap.set_bad((0,0,0)) # For reads without C's
 
     def position_to_context(
