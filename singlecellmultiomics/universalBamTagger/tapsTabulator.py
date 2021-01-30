@@ -124,6 +124,11 @@ if __name__ == '__main__':
         '-bamout',
         type=str,
         help="optional (tagged) output BAM path")
+    argparser.add_argument(
+        '--allow_single_end',
+        type=str,
+        help='Allow single end reads')
+
     args = argparser.parse_args()
     alignments = pysam.AlignmentFile(args.alignmentfile)
 
@@ -179,6 +184,12 @@ if __name__ == '__main__':
         'skip_last_n_cycles_R2':args.skip_last_n_cycles_R2,
         'min_phred_score':args.min_phred_score
         }
+
+
+    if args.allow_single_end:
+        # Single end base calls are "unsafe", allow them :
+        molecule_class_args['allow_unsafe_base_calls'] = True
+
 
     s = args.moleculeNameSep
     try:
