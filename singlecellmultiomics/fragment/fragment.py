@@ -55,7 +55,8 @@ class Fragment():
                  mapping_dir=(False, True),
                  max_NUC_stretch: int = None,
                  read_group_format: int = 0,  # R1 forward, R2 reverse
-                 library_name: str = None # Overwrites the library name
+                 library_name: str = None, # Overwrites the library name
+                 single_end: bool = False
                  ):
         """
         Initialise Fragment
@@ -74,7 +75,8 @@ class Fragment():
                     length of R1 primer, these bases are not taken into account when calculating a consensus
 
                 R2_primer_length(int):
-                    length of R2 primer, these bases are not taken into account when calculating a consensus
+                    length of R2 primer, these bases are not taken into account when calculating a consensus, this length is auto-detected/ overwritten when the rS tag is set
+
 
                 tag_definitions(list):
                     sam TagDefinitions
@@ -113,6 +115,7 @@ class Fragment():
         self.read_group_format = read_group_format
         self.max_NUC_stretch = max_NUC_stretch
         self.qcfail = False
+        self.single_end = single_end
 
         # Span:\
         self.span = [None, None, None]
@@ -348,7 +351,7 @@ class Fragment():
         if self.has_valid_span():
             # Write fragment size:
             if self.safe_span:
-                self.set_meta('fS', self.get_fragment_size())
+                self.set_meta('fS', self.estimated_length)
                 self.set_meta('fe', self.span[1])
                 self.set_meta('fs', self.span[2])
             else:
@@ -405,6 +408,10 @@ class Fragment():
 
         if R2 is None or R2.query_sequence is None:
             return None, None, None
+
+        if self.R2_primer_length == 0 and self.random_primer_sequence is None:
+            return None, None, None
+
         # The read was not mapped
         if R2.is_unmapped:
             # Guess the orientation does not matter
@@ -528,8 +535,13 @@ class Fragment():
         Obtain the estimated size of the fragment,
         returns None when estimation is not possible
         Takes into account removed bases (R2)
-        Assumes inwards sequencing orientation
+        Assumes inwards sequencing orientation, except when self.single_end is set
         """
+        if self.single_end:
+            if self[0] is None:
+                return None
+            return self[0].reference_end - self[0].reference_start
+
 
         if self.has_R1() and self.has_R2():
 

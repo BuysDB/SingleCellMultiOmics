@@ -547,6 +547,7 @@ class Molecule():
                         read.is_duplicate = True
 
         # Write RT reaction tags (rt: rt reaction index, rd rt duplicate index)
+        # This is only required for fragments which have defined random primers
         rt_reaction_index = None
         for rt_reaction_index, ( (contig, random_primer_start, random_primer_sequence), frags) in enumerate(
                 self.get_rt_reactions().items()):
@@ -1673,6 +1674,22 @@ class Molecule():
             return None
 
     @property
+    def is_completely_matching(self) -> bool:
+        """
+        Checks if all associated reads are completely mapped:
+        checks if all cigar operations are M,
+        Returns True when all cigar operations are M, False otherwise
+        """
+
+        return all(
+                (
+                     all(
+                     [ (operation==0)
+                        for operation, amount in read.cigartuples] )
+                for read in self.iter_reads()))
+
+
+    @property
     def estimated_max_length(self) -> int:
         """
         Obtain the estimated size of the fragment,
@@ -1777,7 +1794,7 @@ class Molecule():
                        self.cache_size *
                        0.5)
 
-    def get_rt_reactions(self):
+    def get_rt_reactions(self) -> dict:
         """Obtain RT reaction dictionary
 
         returns:
@@ -1824,17 +1841,24 @@ class Molecule():
             self.get_rt_reaction_fragment_sizes()
         )
 
-    def write_pysam(self, target_file, consensus=False, no_source_reads=False, consensus_name=None):
+    def write_pysam(self, target_file, consensus=False, no_source_reads=False, consensus_name=None, consensus_read_callback=None, consensus_read_callback_kwargs=None):
         """Write all associated reads to the target file
 
         Args:
             target_file (pysam.AlignmentFile) : Target file
             consensus (bool) : write consensus
             no_source_reads (bool) : while in consensus mode, don't write original reads
+            consensus_read_callback (function) : this function is called with every consensus read as an arguments
+            consensus_read_callback_kwargs (dict) : arguments to pass to the callback function
         """
         if consensus:
             reads = self.deduplicate_majority(target_file,
                                               f'molecule_{uuid4()}' if consensus_name is None else consensus_name)
+            if consensus_read_callback is not None:
+                if consensus_read_callback_kwargs is not None:
+                    consensus_read_callback(reads, **consensus_read_callback_kwargs)
+                else:
+                    consensus_read_callback(reads)
 
             for read in reads:
                 target_file.write(read)

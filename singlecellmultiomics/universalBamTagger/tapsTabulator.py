@@ -124,6 +124,11 @@ if __name__ == '__main__':
         '-bamout',
         type=str,
         help="optional (tagged) output BAM path")
+    argparser.add_argument(
+        '--allow_single_end',
+        action='store_true',
+        help='Allow single end reads')
+
     args = argparser.parse_args()
     alignments = pysam.AlignmentFile(args.alignmentfile)
 
@@ -151,6 +156,11 @@ if __name__ == '__main__':
         features.loadGTF(args.features,thirdOnly='gene',store_all=True)
     else:
         features = None
+
+    fragment_class_args={'umi_hamming_distance': 1,
+                         'no_umi_cigar_processing':False}
+
+
 
     molecule_class_args = {
         'reference': reference,
@@ -180,6 +190,12 @@ if __name__ == '__main__':
         'min_phred_score':args.min_phred_score
         }
 
+
+    if args.allow_single_end:
+        # Single end base calls are "unsafe", allow them :
+        molecule_class_args['allow_unsafe_base_calls'] = True
+        fragment_class_args['single_end'] = True
+
     s = args.moleculeNameSep
     try:
         for i, molecule in enumerate(singlecellmultiomics.molecule.MoleculeIterator(
@@ -188,13 +204,10 @@ if __name__ == '__main__':
             yield_invalid=(output is not None),
             every_fragment_as_molecule=args.every_fragment_as_molecule,
             fragment_class=fragment_class,
-            fragment_class_args={'umi_hamming_distance': 1,
-                                 'no_umi_cigar_processing':False,
+            fragment_class_args=fragment_class_args,
 
-                                 },
-
-                molecule_class_args=molecule_class_args,
-                contig=args.contig)):
+            molecule_class_args=molecule_class_args,
+            contig=args.contig)):
 
             molecule.set_meta('mi',i)
             if args.head and (i - 1) >= args.head:
