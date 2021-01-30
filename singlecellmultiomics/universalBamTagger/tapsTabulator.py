@@ -126,7 +126,7 @@ if __name__ == '__main__':
         help="optional (tagged) output BAM path")
     argparser.add_argument(
         '--allow_single_end',
-        type=str,
+        action='store_true',
         help='Allow single end reads')
 
     args = argparser.parse_args()
