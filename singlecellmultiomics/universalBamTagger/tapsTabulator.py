@@ -157,6 +157,11 @@ if __name__ == '__main__':
     else:
         features = None
 
+    fragment_class_args={'umi_hamming_distance': 1,
+                         'no_umi_cigar_processing':False}
+
+
+
     molecule_class_args = {
         'reference': reference,
         'taps': taps,
@@ -189,7 +194,7 @@ if __name__ == '__main__':
     if args.allow_single_end:
         # Single end base calls are "unsafe", allow them :
         molecule_class_args['allow_unsafe_base_calls'] = True
-
+        fragment_class_args['single_end'] = True
 
     s = args.moleculeNameSep
     try:
@@ -199,13 +204,10 @@ if __name__ == '__main__':
             yield_invalid=(output is not None),
             every_fragment_as_molecule=args.every_fragment_as_molecule,
             fragment_class=fragment_class,
-            fragment_class_args={'umi_hamming_distance': 1,
-                                 'no_umi_cigar_processing':False,
+            fragment_class_args=fragment_class_args,
 
-                                 },
-
-                molecule_class_args=molecule_class_args,
-                contig=args.contig)):
+            molecule_class_args=molecule_class_args,
+            contig=args.contig)):
 
             molecule.set_meta('mi',i)
             if args.head and (i - 1) >= args.head:

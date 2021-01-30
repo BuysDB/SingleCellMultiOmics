@@ -55,7 +55,8 @@ class Fragment():
                  mapping_dir=(False, True),
                  max_NUC_stretch: int = None,
                  read_group_format: int = 0,  # R1 forward, R2 reverse
-                 library_name: str = None # Overwrites the library name
+                 library_name: str = None, # Overwrites the library name
+                 single_end: bool = False
                  ):
         """
         Initialise Fragment
@@ -114,6 +115,7 @@ class Fragment():
         self.read_group_format = read_group_format
         self.max_NUC_stretch = max_NUC_stretch
         self.qcfail = False
+        self.single_end = single_end
 
         # Span:\
         self.span = [None, None, None]
@@ -533,8 +535,13 @@ class Fragment():
         Obtain the estimated size of the fragment,
         returns None when estimation is not possible
         Takes into account removed bases (R2)
-        Assumes inwards sequencing orientation
+        Assumes inwards sequencing orientation, except when self.single_end is set
         """
+        if self.single_end:
+            if self[0] is None:
+                return None
+            return self[0].reference_end - self[0].reference_start
+
 
         if self.has_R1() and self.has_R2():
 
