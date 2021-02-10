@@ -245,4 +245,8 @@ if __name__ == '__main__':
                     p_nuc_bin_size = args.bin_size,
                     alias=args.o)
 
-    asyncio.run(main(args))
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main(args))
+
+    #asyncio.run(main(args)) # python >= 3.7
