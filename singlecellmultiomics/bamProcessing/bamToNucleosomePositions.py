@@ -148,7 +148,7 @@ async def write_to_bw(handle, starts, ends,  values, contig):
         values=  values
     )
 
-async def coordinate_dicts_to_nucleosome_position_files(bams, molecule_coordinate_dicts, p_nuc_bin_size = 5, alias='npos'):
+async def coordinate_dicts_to_nucleosome_position_files(bams, molecule_coordinate_dicts, p_nuc_bin_size = 5, alias='npos', n_threads=None):
 
     contigs = get_contigs(bams[0])
     sizes = get_contig_sizes(bams[0])
@@ -161,7 +161,7 @@ async def coordinate_dicts_to_nucleosome_position_files(bams, molecule_coordinat
     centroids = f'{alias}_nucleosome_centers.bed'
 
 
-    with Pool() as workers, \
+    with Pool(n_threads) as workers, \
         pyBigWig.open(linker_vote_write_path,'w') as linkers_out, \
         pyBigWig.open(nuc_vote_write_path,'w') as nuc_out, \
         pyBigWig.open(merged_vote_write_path,'w') as merged_out, \
@@ -222,8 +222,6 @@ async def coordinate_dicts_to_nucleosome_position_files(bams, molecule_coordinat
 
 if __name__ == '__main__':
 
-
-
     argparser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Estimate nucleosome positions from scCHiC seq bam file(s)')
@@ -232,6 +230,7 @@ if __name__ == '__main__':
     argparser.add_argument('-o', type=str, required=True, help='output prefix')
 
     argparser.add_argument('-bin_size', type=int,  default=3, help='Nucleosome position precision (bp)')
+    argparser.add_argument('-n_threads', type=int, help='Amount of worker threads')
 
     args = argparser.parse_args()
 
@@ -243,6 +242,7 @@ if __name__ == '__main__':
         await coordinate_dicts_to_nucleosome_position_files(args.alignmentfiles,
                     d,
                     p_nuc_bin_size = args.bin_size,
+                    n_threads=args.n_threads,
                     alias=args.o)
 
 
