@@ -8,6 +8,7 @@ import argparse
 import singlecellmultiomics.bamProcessing.bamFunctions as bf
 from singlecellmultiomics.features import FeatureContainer
 import os
+from singlecellmultiomics.alleleTools import AlleleResolver
 
 
 def finish_bam(output, args, temp_out):
@@ -129,6 +130,32 @@ if __name__ == '__main__':
         action='store_true',
         help='Allow single end reads')
 
+    allele_gr = argparser.add_argument_group('alleles')
+    allele_gr.add_argument('-alleles', type=str, help="Phased allele file (VCF)")
+    allele_gr.add_argument(
+        '-allele_samples',
+        type=str,
+        help="Comma separated samples to extract from the VCF file. For example B6,SPRET")
+    allele_gr.add_argument(
+        '-unphased_alleles',
+        type=str,
+        help="Unphased allele file (VCF)")
+    allele_gr.add_argument(
+        '--haplo_molecule_assignment',
+        action='store_true',
+        help='Take allele information into account during molecule assignment ')
+
+    allele_gr.add_argument(
+    '--set_allele_resolver_verbose',
+    action='store_true',
+    help='Makes the allele resolver print more')
+    allele_gr.add_argument(
+        '--use_allele_cache',
+        action='store_true',
+        help='''Write and use a cache file for the allele information. NOTE: THIS IS NOT THREAD SAFE! Meaning you should not use this function on multiple libraries at the same time when the cache files are not yet available.
+            Once they are available there is not thread safety issue anymore''')
+
+
     args = argparser.parse_args()
     alignments = pysam.AlignmentFile(args.alignmentfile)
 
@@ -191,6 +218,17 @@ if __name__ == '__main__':
         }
 
 
+    ignore_conversions = set([('C', 'T'), ('G', 'A')])
+    if args.alleles is not None and args.alleles!='none':
+        molecule_class_args['allele_resolver'] = AlleleResolver(
+            args.alleles,
+            select_samples=args.allele_samples.split(',') if args.allele_samples is not None else None,
+            lazyLoad=True,
+            use_cache=args.use_allele_cache,
+            verbose = args.set_allele_resolver_verbose,
+            ignore_conversions=ignore_conversions)
+    ar = molecule_class_args.get('allele_resolver')
+
     if args.allow_single_end:
         # Single end base calls are "unsafe", allow them :
         molecule_class_args['allow_unsafe_base_calls'] = True
@@ -205,7 +243,7 @@ if __name__ == '__main__':
             every_fragment_as_molecule=args.every_fragment_as_molecule,
             fragment_class=fragment_class,
             fragment_class_args=fragment_class_args,
-
+            perform_allele_clustering = args.haplo_molecule_assignment and molecule_class_args.get('allele_resolver', None) is not None,
             molecule_class_args=molecule_class_args,
             contig=args.contig)):
 
@@ -241,6 +279,13 @@ if __name__ == '__main__':
 
             else:
                 additional = ""
+
+            if ar is not None: # Allele resolver is defined
+                allele = molecule.allele
+                if allele is not None:
+                    additional+=f'\t{allele}'
+                else:
+                    additional+=f'\tnone'
 
 
             for (chromosome, location), call in molecule.methylation_call_dict.items():
