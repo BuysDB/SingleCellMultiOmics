@@ -73,6 +73,7 @@ setup(
 
         # Bam processing:
         'singlecellmultiomics/bamProcessing/bamTabulator.py',
+        'singlecellmultiomics/bamProcessing/bamToNucleosomePositions.py',
         'singlecellmultiomics/bamProcessing/bamAnalyzeCutDistances.py',
         'singlecellmultiomics/bamProcessing/bamSplitByTag.py',
         'singlecellmultiomics/bamProcessing/bamReadGroupFormat.py',
@@ -99,6 +100,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamExtractVariants.py',
         'singlecellmultiomics/bamProcessing/bamMatchGATKBQSRReport.py',
         'singlecellmultiomics/bamProcessing/bamBinCounts.py',
+        'singlecellmultiomics/bamProcessing/bamExtractNearMolecules.py',
         'singlecellmultiomics/bamProcessing/split_double_BAM.py',
         'singlecellmultiomics/bamProcessing/bamOverseq.py',
         'singlecellmultiomics/bamProcessing/plotRegion.py',
