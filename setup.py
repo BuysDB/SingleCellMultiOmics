@@ -100,6 +100,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamExtractVariants.py',
         'singlecellmultiomics/bamProcessing/bamMatchGATKBQSRReport.py',
         'singlecellmultiomics/bamProcessing/bamBinCounts.py',
+        'singlecellmultiomics/bamProcessing/bamExtractNearMolecules.py',
         'singlecellmultiomics/bamProcessing/split_double_BAM.py',
         'singlecellmultiomics/bamProcessing/bamOverseq.py',
         'singlecellmultiomics/bamProcessing/plotRegion.py',
