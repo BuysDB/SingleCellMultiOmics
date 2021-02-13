@@ -281,9 +281,11 @@ if __name__ == '__main__':
                 additional = ""
 
             if ar is not None: # Allele resolver is defined
-                allele = list(molecule.get_allele())
-                if len(allele)==1:
+                allele = molecule.allele
+                if allele is not None:
                     additional+=f'\t{allele}'
+                else:
+                    additional+=f'\tnone'
 
 
             for (chromosome, location), call in molecule.methylation_call_dict.items():
