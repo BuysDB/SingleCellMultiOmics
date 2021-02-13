@@ -145,7 +145,10 @@ if __name__ == '__main__':
         action='store_true',
         help='Take allele information into account during molecule assignment ')
 
-
+    allele_gr.add_argument(
+    '--set_allele_resolver_verbose',
+    action='store_true',
+    help='Makes the allele resolver print more')
     allele_gr.add_argument(
         '--use_allele_cache',
         action='store_true',
