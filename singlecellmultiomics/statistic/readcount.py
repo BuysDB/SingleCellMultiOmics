@@ -133,7 +133,7 @@ class ReadCount(Statistic):
         return None
 
     def __repr__(self):
-        return f"Input:{int(self.rawReadCount)} raw reads, demultiplexed:{self.demuxReadCount}, final mapped: {self.totalMappedReads['R1']} R1 reads, {self.totalMappedReads['R1']} R2 reads, {self.totalMappedReads['R?']} unknown pairing reads, mappability:{self.mappability() if self.mappability() else 'Cannot be determined'}"
+        return f"Input:{int(self.rawReadCount)} raw reads, demultiplexed:{self.demuxReadCount}, final mapped: {self.totalMappedReads['R1']} R1 reads, {self.totalMappedReads['R2']} R2 reads, {self.totalMappedReads['R?']} unknown pairing reads, mappability:{self.mappability() if self.mappability() else 'Cannot be determined'}"
 
     def __iter__(self):
         yield 'Raw reads', self.rawReadCount
