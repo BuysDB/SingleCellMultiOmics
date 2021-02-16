@@ -495,7 +495,7 @@ rule count_genes:
         mem_mb=lambda wildcards, attempt: attempt * 8000
 
     shell:
-      "bamToCountTable.py {input.bam} -sampleTags SM -joinedFeatureTags reference_name,GN,gn -o {output.csv} --dedup --r1only > {log.stdout} 2> {log.stderr}"
+      "bamToCountTable.py {input.bam} -sampleTags SM -joinedFeatureTags reference_name,GN -o {output.csv} --dedup --r1only > {log.stdout} 2> {log.stderr}"
 
 rule count_introns:
     input:
