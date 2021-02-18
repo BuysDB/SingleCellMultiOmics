@@ -605,6 +605,23 @@ class Fragment():
             contig = self.R2.reference_name
             start, end = self.R2.reference_start, self.R2.reference_end
             self.safe_span = False
+        else:
+
+            # Its Sometimes possible that no cigar is set for the alignment, only a start coordinate
+
+            for read in self:
+                if read is None:
+                    continue
+                if len(read.cigar)!=0:
+                    raise NotImplementedError("Non implemented span")
+                if read.reference_start is not None:
+                    start,end = read.reference_start, read.reference_start
+                    contig = read.reference_name
+                else:
+                    raise NotImplementedError("Non implemented span, undefined alignment, and not start coordinate")
+
+
+
 
         self.span = (contig, start, end)
 
@@ -839,6 +856,9 @@ class Fragment():
             return False
 
         if self.strand != other.strand:
+            return False
+
+        if not self.has_valid_span() or not other.has_valid_span():
             return False
 
         if min(abs(self.span[1] -
