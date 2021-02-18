@@ -95,7 +95,7 @@ def job_gen( induced_variants_path, germline_variants_path,
 
 
 def get_molecule_base_calls(molecule, variant):
-    c = molecule.get_consensus(allow_unsafe=True)
+    c = molecule.get_consensus()
 
     if not (variant.chrom, variant.pos-1) in c:
         return None
