@@ -1656,14 +1656,14 @@ class Molecule():
         # It is possible that the span is not defined, then set the respective keys to None
         # This indicates the molecule is qcfail
 
-        if not self.has_valid_span():
-            self.spanStart, self.spanEnd, self.chromosome = None,None, None
-        else:
-            self.spanStart = add_span[1] if self.spanStart is None else min(
-                add_span[1], self.spanStart)
-            self.spanEnd = add_span[2] if self.spanEnd is None else max(
-                add_span[2], self.spanEnd)
-            self.chromosome = add_span[0]
+        #if not self.has_valid_span():
+        #    self.spanStart, self.spanEnd, self.chromosome = None,None, None
+        #else:
+        self.spanStart = add_span[1] if self.spanStart is None else min(
+            add_span[1], self.spanStart)
+        self.spanEnd = add_span[2] if self.spanEnd is None else max(
+            add_span[2], self.spanEnd)
+        self.chromosome = add_span[0]
 
         self.span = (self.chromosome, self.spanStart, self.spanEnd)
         if fragment.strand is not None:
