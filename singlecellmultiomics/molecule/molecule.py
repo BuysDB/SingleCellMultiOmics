@@ -1635,6 +1635,30 @@ class Molecule():
         for fragment in other:
             self._add_fragment(fragment)
 
+
+    def get_span_sequence(self, reference=None):
+        """Obtain the sequence between the start and end of the molecule
+        Args:
+            reference(pysam.FastaFile) : reference  to use.
+                If not specified `self.reference` is used
+        Returns:
+            sequence (str)
+        """
+        if self.chromosome is None:
+            return ''
+
+        if reference is None:
+            if self.reference is None:
+                raise ValueError('Please supply a reference (PySAM.FastaFile)')
+            reference = self.reference
+        return reference.fetch(
+            self.chromosome,
+            self.spanStart,
+            self.spanEnd).upper()
+
+    def get_fragment_span_sequence(self, reference=None):
+        return self.get_span_sequence(reference)
+
     def _add_fragment(self, fragment):
 
         # Do not process the fragment when the max_associated_fragments threshold is exceeded
