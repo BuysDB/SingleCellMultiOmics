@@ -109,7 +109,7 @@ if __name__ == '__main__':
         description="""Export and plot copy number profiles
     """)
     argparser.add_argument('detected_vcf',type=str, nargs='+')
-    argparser.add_argument('-known',type=str)
+    argparser.add_argument('-known',type=str, help='path to vcf with germline mutations')
     argparser.add_argument('-ref', help='path to reference fasta', type=str, required=True)
     argparser.add_argument('-rawmat', type=str, help='Path to write conversions table to (.csv / .pickle.gz)')
     argparser.add_argument('-heatmap', type=str, help='Path to write heatmap to (.png/.svg)')
