@@ -214,7 +214,7 @@ class TestMolecule(unittest.TestCase):
             every_fragment_as_molecule=True
             )):
                 pass
-            self.assertEqual(i,337)
+            self.assertEqual(i,340)
 
     def test_every_fragment_as_molecule_np_iterator(self):
 
