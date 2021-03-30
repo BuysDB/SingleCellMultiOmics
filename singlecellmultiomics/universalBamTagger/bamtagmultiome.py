@@ -922,8 +922,9 @@ def run_multiome_tagging(args):
         fragment_class_args['allow_cycle_shift'] = True
 
 
+    # This disables restriction motif checking
     if args.no_restriction_motif_check:
-        fragment_class_args['allow_cycle_shift'] = False
+        fragment_class_args['check_motif'] = False
 
     # This disables umi_cigar_processing:
     if args.no_umi_cigar_processing:
