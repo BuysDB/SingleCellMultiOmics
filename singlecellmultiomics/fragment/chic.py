@@ -15,6 +15,7 @@ class CHICFragment(Fragment):
                  ):
         self.invert_strand = invert_strand
 
+
         # Perform random primer autodect,
         # When the demux profile is MX:Z:scCHIC384C8U3l, then there is no random primer
         for read in reads:
@@ -40,6 +41,7 @@ class CHICFragment(Fragment):
         self.ligation_motif = None
         self.site_location = None
         self.cut_site_strand = None
+        self.found_valid_site = False
         self.identify_site()
 
 
@@ -66,7 +68,8 @@ class CHICFragment(Fragment):
             site_pos,
             site_strand=None,
             is_trimmed=False):
-        self.set_meta('DS', site_pos)
+        if self.found_valid_site:
+            self.set_meta('DS', site_pos)
         if site_strand is not None:
             self.set_meta('RS', site_strand)
         self.set_strand(site_strand)
@@ -74,7 +77,7 @@ class CHICFragment(Fragment):
         self.cut_site_strand = site_strand
 
     def identify_site(self):
-
+        self.found_valid_site = False
         R1 = self.get_R1()
 
         if R1 is None:
@@ -118,7 +121,6 @@ class CHICFragment(Fragment):
                     return(None)
 
 
-
         # Identify the start coordinate of Read 1 by reading the amount of softclips on the start of the read
         r1_start =(R1.reference_end if R1.is_reverse else R1.reference_start)
         if not self.no_umi_cigar_processing:
@@ -132,7 +134,7 @@ class CHICFragment(Fragment):
         if is_trimmed:
             # The first base of the read has been taken off and the lh tag is
             # already set, this can be copied to RZ
-
+            self.found_valid_site = True
             self.set_site(
                 site_strand=not R1.is_reverse if self.invert_strand else R1.is_reverse,
                 # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
@@ -143,7 +145,7 @@ class CHICFragment(Fragment):
             )
 
         else:
-
+            self.found_valid_site = True
             self.set_site(
                 site_strand=not R1.is_reverse if self.invert_strand else R1.is_reverse,
                 # We sequence the other strand (Starting with a T, this is an A in the molecule), the digestion thus happened on the other strand
@@ -163,10 +165,17 @@ class CHICFragment(Fragment):
                     return False
             except Exception:
                 pass
-        return self.site_location is not None
+
+        return self.found_valid_site
 
     def get_site_location(self):
-        return self.site_location
+        if self.site_location is not None:
+            return self.site_location
+        else:
+            # We need some kind of coordinate...
+            for read in self:
+                if read is not None and read.reference_name is not None and read.reference_start is not None:
+                    return read.reference_name, read.reference_start
 
     def __repr__(self):
         return Fragment.__repr__(
