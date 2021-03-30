@@ -48,6 +48,7 @@ argparser.add_argument(
     '-method',
     type=str,
     default=None,
+    required=True,
     help="""Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, cs_feature_counts,  nla_taps ,chic_taps, nla_no_overhang. nla (Data with digested by Nla III enzyme)
     nla (Data with digested by Nla III enzyme)
     qflag (Only add basic tags like sampple and UMI, no molecule assignment)
