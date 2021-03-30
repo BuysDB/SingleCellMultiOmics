@@ -73,12 +73,12 @@ def _generate_molecule_coordinate_dict(args, max_fragment_size=800):
     return sel_contig, molecule_coordinate_dict
 
 
-def generate_molecule_coordinate_dict(bams):
+def generate_molecule_coordinate_dict(bams, n_threads=None):
 
     molecule_coordinate_dicts = {}
     contigs = get_contigs(bams[0])
 
-    with Pool() as workers:
+    with Pool(n_threads) as workers:
         for contig,d in workers.imap( _generate_molecule_coordinate_dict,
                                      product(bams,filter(is_autosome, contigs))):
             if not contig in molecule_coordinate_dicts:
@@ -229,7 +229,7 @@ if __name__ == '__main__':
     argparser.add_argument('alignmentfiles', type=str, nargs='+')
     argparser.add_argument('-o', type=str, required=True, help='output prefix')
 
-    argparser.add_argument('-bin_size', type=int,  default=3, help='Nucleosome position precision (bp)')
+    argparser.add_argument('-bin_size', type=int,  default=3, help='Nucleosome position precision (bp), increasing this value increases memory consumption linearly')
     argparser.add_argument('-n_threads', type=int, help='Amount of worker threads')
 
     args = argparser.parse_args()
@@ -237,7 +237,7 @@ if __name__ == '__main__':
     async def main(args):
         # Run the analysis:
         print('Creating molecule coordinate database')
-        d = generate_molecule_coordinate_dict(args.alignmentfiles)
+        d = generate_molecule_coordinate_dict(args.alignmentfiles, args.n_threads)
         print('Estimating nucleosome positions')
         await coordinate_dicts_to_nucleosome_position_files(args.alignmentfiles,
                     d,

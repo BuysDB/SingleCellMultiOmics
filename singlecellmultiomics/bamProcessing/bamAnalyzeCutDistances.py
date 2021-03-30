@@ -430,7 +430,7 @@ if __name__ == '__main__':
                     continue
                 contig = parts[0]
                 start = int(parts[1]) - args.region_radius
-                end = int(parts[1]) + args.region_radius
+                end = int(parts[2]) + args.region_radius
 
                 regions_per_contig[contig].append( (start,end) )
                 rc+=1

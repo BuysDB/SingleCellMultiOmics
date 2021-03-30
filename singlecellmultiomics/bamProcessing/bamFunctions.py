@@ -37,6 +37,8 @@ def _get_r1_counts_per_cell(args):
     """
     bam_path, contig, prefix = args
     cell_obs = Counter()
+
+
     with pysam.AlignmentFile(bam_path) as alignments:
         for read in alignments.fetch(contig):
             if read.is_qcfail or read.is_duplicate or not read.is_read1:
@@ -64,20 +66,27 @@ def get_r1_counts_per_cell(bam_path, prefix_with_bam=False):
 
 
     cell_obs = Counter()
-    for bam_path in bam_paths:
-        if prefix_with_bam:
-            prefix = bam_path.split('/')[-1].replace('.bam','')
-        else:
-            prefix=None
-        with Pool() as workers:
-            for cell_obs_for_contig in workers.imap_unordered(_get_r1_counts_per_cell,
-                (
-                    (bam_path, contig, prefix)
-                    for contig in get_contigs_with_reads(bam_path))
-                ):
+
+    def generate_commands(bam_paths, prefix_with_bam):
+
+        for bam_path in bam_paths:
+            if prefix_with_bam:
+                prefix = bam_path.split('/')[-1].replace('.bam','')
+            else:
+                prefix=None
+
+            for contig in get_contigs_with_reads(bam_path):
+                yield (bam_path, contig, prefix)
 
 
-                cell_obs += cell_obs_for_contig
+
+    with Pool() as workers:
+        for cell_obs_for_contig in workers.imap_unordered(
+            _get_r1_counts_per_cell,
+            generate_commands(bam_paths, prefix_with_bam)):
+
+            cell_obs += cell_obs_for_contig
+
     return cell_obs
 
 

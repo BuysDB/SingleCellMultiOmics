@@ -38,7 +38,12 @@ class NlaIIIFragment(Fragment):
         self.strand = None
         self.site_location = None
         self.cut_site_strand = None
-        self.identify_site()
+        if self.identify_site():
+
+            self.found_valid_site = True
+        else:
+            self.found_valid_site = False
+
         if self.is_valid():
 
             if self.use_allele_tag:
@@ -66,8 +71,13 @@ class NlaIIIFragment(Fragment):
         else:
             self.match_hash = None
 
-    def set_site(self, site_chrom, site_pos, site_strand=None):
-        self.set_meta('DS', site_pos)
+    def set_site(self, site_chrom, site_pos, site_strand=None, valid=True):
+
+        if not valid :
+            self.found_valid_site=False
+        if self.found_valid_site:
+            self.set_meta('DS', site_pos)
+
         if site_strand is not None:
             if self.invert_strand:
                 self.set_meta('RS', not site_strand)
@@ -135,7 +145,7 @@ class NlaIIIFragment(Fragment):
 
 
     def identify_site(self):
-
+        self.found_valid_site = False
         R1, R2 = self.reads
         """ Valid configs:
         CATG######## R1 ########## ^ ########## R2 ##########
@@ -226,6 +236,13 @@ class NlaIIIFragment(Fragment):
             else:
                 self.set_rejection_reason('no CATG', set_qcfail=True)
 
+            # Every fragment needs to have a site. Otherwise it will get lost. Use R1 start location as anchor
+            if R1.is_reverse:
+                rpos = (R1.reference_name, r1_start - 4)
+            else:
+                rpos = (R1.reference_name, r1_start)
+
+            self.set_site(site_strand=R1.is_reverse, site_chrom=rpos[0], site_pos=rpos[1], valid=False)
             return None
 
     def get_undigested_site_count(self, reference_handle):
@@ -255,6 +272,8 @@ class NlaIIIFragment(Fragment):
         return total
 
     def is_valid(self):
+        if self.qcfail:
+            return False
 
         try:
             if self.max_fragment_size is not None and self.get_fragment_size()>self.max_fragment_size:
@@ -262,10 +281,17 @@ class NlaIIIFragment(Fragment):
                 return False
         except TypeError:
             pass
-        return self.site_location is not None
+
+        return self.found_valid_site
 
     def get_site_location(self):
-        return self.site_location
+        if self.site_location is not None:
+            return self.site_location
+        else:
+            # We need some kind of coordinate...
+            for read in self:
+                if read is not None and read.reference_name is not None and read.reference_start is not None:
+                    return read.reference_name, read.reference_start
 
     def __repr__(self):
         site_loc = self.get_site_location()

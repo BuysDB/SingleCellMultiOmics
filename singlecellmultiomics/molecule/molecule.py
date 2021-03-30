@@ -1635,6 +1635,30 @@ class Molecule():
         for fragment in other:
             self._add_fragment(fragment)
 
+
+    def get_span_sequence(self, reference=None):
+        """Obtain the sequence between the start and end of the molecule
+        Args:
+            reference(pysam.FastaFile) : reference  to use.
+                If not specified `self.reference` is used
+        Returns:
+            sequence (str)
+        """
+        if self.chromosome is None:
+            return ''
+
+        if reference is None:
+            if self.reference is None:
+                raise ValueError('Please supply a reference (PySAM.FastaFile)')
+            reference = self.reference
+        return reference.fetch(
+            self.chromosome,
+            self.spanStart,
+            self.spanEnd).upper()
+
+    def get_fragment_span_sequence(self, reference=None):
+        return self.get_span_sequence(reference)
+
     def _add_fragment(self, fragment):
 
         # Do not process the fragment when the max_associated_fragments threshold is exceeded
@@ -1652,11 +1676,19 @@ class Molecule():
 
         # Update span:
         add_span = fragment.get_span()
+
+        # It is possible that the span is not defined, then set the respective keys to None
+        # This indicates the molecule is qcfail
+
+        #if not self.has_valid_span():
+        #    self.spanStart, self.spanEnd, self.chromosome = None,None, None
+        #else:
         self.spanStart = add_span[1] if self.spanStart is None else min(
             add_span[1], self.spanStart)
         self.spanEnd = add_span[2] if self.spanEnd is None else max(
             add_span[2], self.spanEnd)
         self.chromosome = add_span[0]
+
         self.span = (self.chromosome, self.spanStart, self.spanEnd)
         if fragment.strand is not None:
             self.strand = fragment.strand
