@@ -230,7 +230,10 @@ class NlaIIIFragment(Fragment):
             return(rpos)
 
         else:
-            assert(not self.check_motif) # This should never happen. It means R1 is not forward nor reverse
+            assert( self.check_motif )# should never happen. It means R1 is not forward nor reverse
+
+
+
             if forward_motif == 'CATG' and R1.is_reverse:
                 self.set_rejection_reason('found CATG R1 REV exp FWD', set_qcfail=True)
 
