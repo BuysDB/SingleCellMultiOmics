@@ -31,7 +31,7 @@ class NlaIIIFragment(Fragment):
             raise ValueError('Supply a reference handle when no_overhang=True')
         if self.no_overhang and not self.check_motif:
             raise ValueError('no_overhang=True is not compatible with check_motif=False, as there is no way to deduplicate. Consider using method "chic"')
-            
+
         Fragment.__init__(self,
                           reads,
                           assignment_radius=assignment_radius,
@@ -171,7 +171,7 @@ class NlaIIIFragment(Fragment):
             self.set_rejection_reason('unmapped R1')
             return None
 
-        if self.no_overhang
+        if self.no_overhang:
 
             # scan 3 bp of sequence for CATG
             scan_extra_bp = 3
