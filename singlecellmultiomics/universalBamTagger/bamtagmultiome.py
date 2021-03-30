@@ -48,6 +48,7 @@ argparser.add_argument(
     '-method',
     type=str,
     default=None,
+    required=True,
     help="""Protocol to tag, select from:nla, qflag, chic, nla_transcriptome, vasa, cs, cs_feature_counts,  nla_taps ,chic_taps, nla_no_overhang. nla (Data with digested by Nla III enzyme)
     nla (Data with digested by Nla III enzyme)
     qflag (Only add basic tags like sampple and UMI, no molecule assignment)
@@ -168,6 +169,11 @@ fragment_settings.add_argument(
     '--no_overflow',
     action='store_true',
     help='Do not write overflow reads to output file. Overflow reads are reads which are discarded because the molecule reached the maximum capacity of associated fragments')
+
+fragment_settings.add_argument(
+    '--no_restriction_motif_check',
+    action='store_true',
+    help='Do not check for restriction motifs (NLAIII)')
 
 
 molecule_settings = argparser.add_argument_group('Molecule settings')
@@ -914,6 +920,11 @@ def run_multiome_tagging(args):
     # Allow or disallow cycle shift:
     if args.allow_cycle_shift and fragment_class is singlecellmultiomics.fragment.NlaIIIFragment:
         fragment_class_args['allow_cycle_shift'] = True
+
+
+    # This disables restriction motif checking
+    if args.no_restriction_motif_check:
+        fragment_class_args['check_motif'] = False
 
     # This disables umi_cigar_processing:
     if args.no_umi_cigar_processing:

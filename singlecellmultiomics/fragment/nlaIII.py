@@ -10,6 +10,7 @@ class NlaIIIFragment(Fragment):
                  assignment_radius=1_000,
                  umi_hamming_distance=1,
                  invert_strand=False,
+                 check_motif=True,
                  no_overhang =False, # CATG is present OUTSIDE the fragment
                  cut_location_offset=-4,
                  reference=None, #Reference is required when no_overhang=True
@@ -24,9 +25,12 @@ class NlaIIIFragment(Fragment):
         self.cut_location_offset = cut_location_offset
         self.no_umi_cigar_processing= no_umi_cigar_processing
         self.use_allele_tag = use_allele_tag
+        self.check_motif=check_motif
 
         if self.no_overhang and reference  is None:
             raise ValueError('Supply a reference handle when no_overhang=True')
+        if self.no_overhang and not self.check_motif:
+            raise ValueError('no_overhang=True is not compatible with check_motif=False, as there is no way to deduplicate. Consider using method "chic"')
 
         Fragment.__init__(self,
                           reads,
@@ -168,6 +172,7 @@ class NlaIIIFragment(Fragment):
             return None
 
         if self.no_overhang:
+
             # scan 3 bp of sequence for CATG
             scan_extra_bp = 3
             site_coordinate = None
@@ -204,15 +209,15 @@ class NlaIIIFragment(Fragment):
                 if R1.cigartuples[0][0]==4: # softclipped at start
                     r1_start-=R1.cigartuples[0][1]
 
-        if forward_motif == 'CATG' and not R1.is_reverse: # Not reverse = forward
+        if (not self.check_motif or forward_motif == 'CATG') and not R1.is_reverse: # Not reverse = forward
             rpos = (R1.reference_name, r1_start)
             self.set_site(site_strand=R1.is_reverse, site_chrom=rpos[0], site_pos=rpos[1])
-            self.set_recognized_sequence('CATG')
+            self.set_recognized_sequence(forward_motif)
             return(rpos)
-        elif rev_motif == 'CATG' and R1.is_reverse:
+        elif (not self.check_motif or rev_motif == 'CATG') and R1.is_reverse:
             rpos = (R1.reference_name, r1_start - 4)
             self.set_site(site_strand=R1.is_reverse, site_chrom=rpos[0], site_pos=rpos[1])
-            self.set_recognized_sequence('CATG')
+            self.set_recognized_sequence(rev_motif)
             return(rpos)
 
         # Sometimes the cycle is off, this is dangerous though because the cell barcode and UMI might be shifted too!
@@ -228,6 +233,7 @@ class NlaIIIFragment(Fragment):
             return(rpos)
 
         else:
+
             if forward_motif == 'CATG' and R1.is_reverse:
                 self.set_rejection_reason('found CATG R1 REV exp FWD', set_qcfail=True)
 
