@@ -24,6 +24,34 @@ class Reference(Prefetcher):
         return FastaFile(**self.args)
 
 
+def invert_strand_f(s):
+    if s=='+':
+        return '-'
+    elif s=='-':
+        return '+'
+    return '.'
+
+
+def create_fasta_dict_file(refpath: str, skip_if_exists=True):
+    """Create index dict file for the reference fasta at refpath
+
+    Args:
+        refpath : path to fasta file
+
+        skip_if_exists : do not generate the index if it exists
+
+    Returns:
+        dpath (str) : path to the dict index file
+    """
+    dpath = refpath.replace('.fa','').replace('.fasta','')+'.dict'
+    if os.path.exists(dpath):
+        return dpath
+
+    with pysam.FastaFile(refpath) as reference, open(dpath,'w') as o:
+        for ref, l in zip(reference.references, reference.lengths ):
+            o.write(f'{ref}\t{l}\n')
+    return dpath
+
 
 def get_chromosome_number(chrom: str) -> int:
     """

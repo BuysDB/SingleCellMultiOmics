@@ -8,7 +8,7 @@ from collections import defaultdict
 from singlecellmultiomics.bamProcessing import get_reference_path_from_bam
 from singlecellmultiomics.molecule import MoleculeIterator,TAPS
 import gzip
-
+from singlecellmultiomics.utils import invert_strand_f
 
 def get_methylation_calls_from_tabfile(path: str):
     """
