@@ -25,9 +25,9 @@ if __name__ == '__main__':
         help='path to reference fasta file, only required for bigbed files')
 
     argparser.add_argument(
-        '-allele',
-        type=str,
-        help='Only generate calls for the specified allele')
+        '--force-sort',
+        action='store_true',
+        help='Perform sort even when .sorted.gz already exists')
 
     argparser.add_argument(
         '-o',
@@ -38,10 +38,13 @@ if __name__ == '__main__':
 
     tabulated_file = args.tabulated_file
     # First we need to sort the callfile
-    if tabulated_file.endswith('.sorted.gz'):
+    if tabulated_file.endswith('.sorted.gz') and not args.force_sort:
         print('Input is sorted')
     else:
-        print("Input seems not to be sorted. Performing sort")
+        if  args.force_sort:
+            print("Performing sort")
+        else:
+            print("Input seems not to be sorted. Performing sort")
         pathout = tabulated_file + '.sorted.gz'
         sort_methylation_tabfile(tabulated_file, pathout)
         tabulated_file = pathout
