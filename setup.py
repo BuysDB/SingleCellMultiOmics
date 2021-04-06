@@ -71,6 +71,9 @@ setup(
         'singlecellmultiomics/universalBamTagger/tapsTabulator.py',
         'singlecellmultiomics/universalBamTagger/4SUtagger.py',
 
+        # Methylation:
+        'singlecellmultiomics/methylation/methylationtab_to_bed.py',
+
         # Bam processing:
         'singlecellmultiomics/bamProcessing/bamTabulator.py',
         'singlecellmultiomics/bamProcessing/bamToNucleosomePositions.py',

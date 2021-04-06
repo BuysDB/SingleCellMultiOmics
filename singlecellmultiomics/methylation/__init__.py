@@ -1,1 +1,1 @@
-from .methylation import MethylationCountMatrix, methylation_dict_to_location_values, extract_cpgs, twolist, defdict, met_unmet_dict_to_betas
+from .methylation import MethylationCountMatrix, methylation_dict_to_location_values, extract_cpgs, twolist, defdict, met_unmet_dict_to_betas, sort_methylation_tabfile, methylation_tabfile_to_bed

@@ -9,6 +9,8 @@ from singlecellmultiomics.bamProcessing import get_reference_path_from_bam
 from singlecellmultiomics.molecule import MoleculeIterator,TAPS
 import gzip
 from singlecellmultiomics.utils import invert_strand_f
+import os
+import matplotlib.pyplot as plt
 
 def get_methylation_calls_from_tabfile(path: str):
     """
@@ -73,7 +75,7 @@ def sort_methylation_tabfile(path, pathout,threads=4):
 def methylation_tabfile_to_bed(tabpath: str, bedpath: str, invert_strand=False):
     """ Convert methylation tabfile at tabpath to a methylation bedfile at bedpath """
     cmap = plt.get_cmap('bwr')
-    with open(args.bedpath, 'w') as o:
+    with open(bedpath, 'w') as o:
         for call in get_single_cpg_calls_from_tabfile(tabpath):
             (contig,pos,strand),met,unmet = call
             beta = (met/(unmet+met))

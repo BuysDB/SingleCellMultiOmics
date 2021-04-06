@@ -9,7 +9,7 @@ import gzip
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from singlecellmultiomics.methylation import sort_methylation_tabfile
+from singlecellmultiomics.methylation import sort_methylation_tabfile, methylation_tabfile_to_bed
 from singlecellmultiomics.utils import create_fasta_dict_file
 
 
@@ -39,11 +39,11 @@ if __name__ == '__main__':
     tabulated_file = args.tabulated_file
     # First we need to sort the callfile
     if tabulated_file.endswith('.sorted.gz'):
-        pass
+        print('Input is sorted')
     else:
         print("Input seems not to be sorted. Performing sort")
-        pathout = path += '.sorted.gz'
-        sort_methylation_tabfile(path, pathout, True)
+        pathout = tabulated_file + '.sorted.gz'
+        sort_methylation_tabfile(tabulated_file, pathout)
         tabulated_file = pathout
 
     if args.o.endswith('.bb'):
@@ -54,7 +54,7 @@ if __name__ == '__main__':
         dict_path = create_fasta_dict_file(args.ref)
         # We need to write the bed file temporarily
         output_path = args.o.replace('.bb','.bed')
-        methylation_tabfile_to_bed(tabulated_file, output_path)
+        methylation_tabfile_to_bed(tabulated_file, output_path, invert_strand=True)
 
         # Perform bigbed conversion:
         os.system(f'bedToBigBed {output_path} {dict_path} {args.o} -type=bed8+3')
@@ -66,4 +66,4 @@ if __name__ == '__main__':
     else:
         print('exporting to bed file')
         output_path = args.o
-        methylation_tabfile_to_bed(tabulated_file, args.o)
+        methylation_tabfile_to_bed(tabulated_file, args.o,  invert_strand=True)
