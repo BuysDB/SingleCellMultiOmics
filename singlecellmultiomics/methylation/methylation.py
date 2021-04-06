@@ -24,11 +24,9 @@ def get_methylation_calls_from_tabfile(path: str):
     """
     with (gzip.open(path,'rt') if path.endswith('.gz') else open(path)) as f:
         for i,line in enumerate(f):
-            try:
-                meta, contig, cpg_location, methylation_stat, ligation_motif = line.strip().split('\t')
-            except Exception:
-                meta, contig, cpg_location, methylation_stat, ligation_motif, annotations = line.strip().split('\t')
-
+            parts = line.strip().split('\t',4)
+            meta, contig, cpg_location, methylation_stat, ligation_motif_and_others = parts
+            
             cpg_location = int(cpg_location)-1
 
             cell, molecule_id, cut_pos, frag_size ,umi,strand =  meta.split(':')
