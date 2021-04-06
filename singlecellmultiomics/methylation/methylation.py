@@ -8,9 +8,10 @@ from collections import defaultdict
 from singlecellmultiomics.bamProcessing import get_reference_path_from_bam
 from singlecellmultiomics.molecule import MoleculeIterator,TAPS
 import gzip
-from singlecellmultiomics.utils import invert_strand_f
+from singlecellmultiomics.utils import invert_strand_f, is_autosome
 import os
 import matplotlib.pyplot as plt
+
 
 def get_methylation_calls_from_tabfile(path: str):
     """
@@ -26,7 +27,7 @@ def get_methylation_calls_from_tabfile(path: str):
         for i,line in enumerate(f):
             parts = line.strip().split('\t',4)
             meta, contig, cpg_location, methylation_stat, ligation_motif_and_others = parts
-            
+
             cpg_location = int(cpg_location)-1
 
             cell, molecule_id, cut_pos, frag_size ,umi,strand =  meta.split(':')
@@ -81,8 +82,37 @@ def methylation_tabfile_to_bed(tabpath: str, bedpath: str, invert_strand=False):
             o.write(f'{contig}\t{pos}\t{pos+1}\t.\t{min(1000,unmet+met)}\t{invert_strand_f(strand) if invert_strand else strand}\t{pos}\t{pos+1}\t{int(rgb[0]*255)},{int(rgb[1]*255)},{int(255*rgb[2])}\t{unmet+met}\t{int(100*beta)}\n')
 
 
+def iter_methylation_calls_from_bigbed(path: str, MINCOV :int=0, autosomes_only: bool=False):
+    with pyBigWig.open(path) as f:
+
+        # Iterate over all contigs, exclude scaffolds and only include autosomes
+        for chrom,l in f.chroms().items():
+            if autosomes_only and not is_autosome(chrom):
+                continue
+
+            for entry in f.entries(chrom,0,l):
+                name, score, strandedness, _, __, ___, coverage, obs_beta = entry[2].split()
+                if int(coverage)>=MINCOV:
+                    yield (chrom, entry[0],entry), (float(obs_beta),score,strandedness,int(coverage))
 
 
+def methylation_calls_from_bigbed_to_dict(path: str, MINCOV :int=0, autosomes_only: bool=False):
+    """Obtain all methylation calls from the specified bigbed file
+
+    Args:
+        path : path to the methylation bigbed file
+
+        MINCOV: minimum amount of reads covering the position to be included
+
+    Returns:
+        reference_betas (dict) : {chrom : {position : value (float)}}
+    """
+    betas = defaultdict(dict)
+
+    for (chrom,pos,entry),(beta,score,strandedness,coverage) in iter_methylation_calls_from_bigbed(path, MINCOV, autosomes_only):
+        betas[chrom][pos] = beta
+
+    return betas
 
 def get_bulk_vector(args):
     obj, samples, location = args
