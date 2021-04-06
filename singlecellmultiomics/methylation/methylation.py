@@ -34,6 +34,56 @@ def get_methylation_calls_from_tabfile(path: str):
             yield contig, cpg_location, strand, methylation_stat
 
 
+def get_single_cpg_calls_from_tabfile(path: str):
+    """
+    Obtain single CpG calls from taps-tabulator file
+
+    Args:
+        path (str), path to the taps tabulator file to read, needs to be sorted in order to work correctly
+
+    Yields:
+        (contig, cpg_location, strand), methylated, unmethylated. The cpg location is zero indexed
+    """
+    prev = None
+    met,unmet = 0,0
+    for contig, cpg_location, strand, methylation_stat in get_methylation_calls_from_tabfile(path):
+
+        current = (contig, cpg_location,strand)
+        if prev is not None and current!=prev:
+            yield prev,met,unmet
+
+            met,unmet = 0,0
+        if methylation_stat.isupper():
+            met+=1
+        else:
+            unmet+=1
+
+        prev= current
+
+    if met>0 or unmet>0:
+        yield prev,met,unmet
+
+def sort_methylation_tabfile(path, pathout,threads=4):
+    """
+    Sort methylation tab file. Sorts first on the chromosome, then the position, then the cell/umi
+    """
+    cmd = f"""/bin/bash -c "zcat {path} | sort -k2,2 -k3,3n -k1,1 --parallel={threads} | gzip -1 > {pathout}" """
+    os.system(cmd)
+
+def methylation_tabfile_to_bed(tabpath: str, bedpath: str, invert_strand=False):
+    """ Convert methylation tabfile at tabpath to a methylation bedfile at bedpath """
+    cmap = plt.get_cmap('bwr')
+    with open(args.bedpath, 'w') as o:
+        for call in get_single_cpg_calls_from_tabfile(tabpath):
+            (contig,pos,strand),met,unmet = call
+            beta = (met/(unmet+met))
+            rgb = cmap(beta)
+            o.write(f'{contig}\t{pos}\t{pos+1}\t.\t{unmet+met}\t{invert_strand_f(strand) if invert_strand else strand}\t{pos}\t{pos+1}\t{int(rgb[0]*255)},{int(rgb[1]*255)},{int(255*rgb[2])}\t{unmet+met}\t{int(100*beta)}\n')
+
+
+
+
+
 def get_bulk_vector(args):
     obj, samples, location = args
     return obj.get_bulk_column(samples, location)
