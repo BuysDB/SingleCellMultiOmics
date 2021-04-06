@@ -126,7 +126,7 @@ def generate_submission_command(jobfile, hold, scheduler='sge'):
 def submit_job(command,  target_directory,  working_directory,
                threads_n=1, memory_gb=8, time_h=8, scheduler='sge', copy_env=True,
                email=None,job_alias=None, mail_when_finished=False,
-               hold=None,submit=True, prefix=None, job_file_name=None, job_name=None, silent=False):
+               hold=None,submit=True, prefix=None, job_file_name=None, job_name=None, silent=False, slurm_scratch_space_size=None):
     """
     Submit a job
 
@@ -184,7 +184,9 @@ def submit_job(command,  target_directory,  working_directory,
     stderr=stderr, stdout=stdout,
     job_name=job_name,
     memory_gb=memory_gb, working_directory=working_directory,
-    time_h=time_h, threads_n=threads_n, email=email, mail_when_finished=mail_when_finished, copy_env= copy_env)
+    time_h=time_h, threads_n=threads_n,
+    email=email, mail_when_finished=mail_when_finished,
+     copy_env= copy_env,slurm_scratch_space_size=slurm_scratch_space_size)
 
     qs = generate_submission_command( jobfile, hold, scheduler)
     write_cmd_to_submission_file(command, job_data, jobfile, scheduler)
