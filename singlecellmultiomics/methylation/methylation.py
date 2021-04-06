@@ -78,7 +78,7 @@ def methylation_tabfile_to_bed(tabpath: str, bedpath: str, invert_strand=False):
             (contig,pos,strand),met,unmet = call
             beta = (met/(unmet+met))
             rgb = cmap(beta)
-            o.write(f'{contig}\t{pos}\t{pos+1}\t.\t{unmet+met}\t{invert_strand_f(strand) if invert_strand else strand}\t{pos}\t{pos+1}\t{int(rgb[0]*255)},{int(rgb[1]*255)},{int(255*rgb[2])}\t{unmet+met}\t{int(100*beta)}\n')
+            o.write(f'{contig}\t{pos}\t{pos+1}\t.\t{min(1000,unmet+met)}\t{invert_strand_f(strand) if invert_strand else strand}\t{pos}\t{pos+1}\t{int(rgb[0]*255)},{int(rgb[1]*255)},{int(255*rgb[2])}\t{unmet+met}\t{int(100*beta)}\n')
 
 
 
