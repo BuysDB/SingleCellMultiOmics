@@ -5,6 +5,7 @@ from collections import Counter
 import numpy as np
 from pysamiterators import CachedFasta
 from array import array
+import os
 
 class Reference(Prefetcher):
     """ This is a picklable wrapper to pass reference handles """
@@ -47,7 +48,7 @@ def create_fasta_dict_file(refpath: str, skip_if_exists=True):
     if os.path.exists(dpath):
         return dpath
 
-    with pysam.FastaFile(refpath) as reference, open(dpath,'w') as o:
+    with FastaFile(refpath) as reference, open(dpath,'w') as o:
         for ref, l in zip(reference.references, reference.lengths ):
             o.write(f'{ref}\t{l}\n')
     return dpath
