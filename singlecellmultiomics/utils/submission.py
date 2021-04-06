@@ -43,7 +43,7 @@ def create_job_file_paths(target_directory,job_alias=None, prefix=None, job_file
     return jobfile,stderr, stdout, job_file_name
 
 
-def generate_job_script(scheduler, jobfile,stderr, stdout, job_name, memory_gb, working_directory, time_h, threads_n, email, mail_when_finished=False, copy_env=True ):
+def generate_job_script(scheduler, jobfile,stderr, stdout, job_name, memory_gb, working_directory, time_h, threads_n, email, mail_when_finished=False, copy_env=True, slurm_scratch_space_size=None ):
     if scheduler=='local':
 
         return [f'cd {working_directory}']
@@ -61,7 +61,8 @@ def generate_job_script(scheduler, jobfile,stderr, stdout, job_name, memory_gb, 
             '#SBATCH -e %s' % stderr
         ]
 
-
+        if slurm_scratch_space_size is not None:
+            jobData.append(f'#SBATCH --gres=tmpspace:{slurm_scratch_space_size}G')
         if email is not None:
             if mail_when_finished:
                 raise NotImplementedError('email when finished is not implemented for slurm')
@@ -284,6 +285,12 @@ if __name__ == '__main__':
         '--py36',
         help="Source python 3.6 (set PY36ENV variable to change the path)",
         action='store_true')
+
+    argparser.add_argument(
+        '-sz',
+        help="SLURM Scratch space request in GB",
+        type=int)
+
     argparser.add_argument('c', metavar='command', type=str, nargs='*')
     argparser.add_argument(
         '--silent',
@@ -305,6 +312,9 @@ if __name__ == '__main__':
                     job_file_name = args.jp,
                    working_directory=working_directory,
                    threads_n=args.t, memory_gb=args.m, time_h=args.time, scheduler=args.sched, copy_env=not args.nenv,
-                   email=args.email, mail_when_finished=args.mf, hold=(args.hold.split(',') if args.hold is not None else None) ,submit=args.y, prefix=None)
+                   email=args.email, mail_when_finished=args.mf, hold=(args.hold.split(',') if args.hold is not None else None),
+                   submit=args.y,
+                   prefix=None,
+                   slurm_scratch_space_size=args.sz)
     if jid is not None:
         print(jid)
