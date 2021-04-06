@@ -7,6 +7,112 @@ from multiprocessing import Pool, Manager
 from collections import defaultdict
 from singlecellmultiomics.bamProcessing import get_reference_path_from_bam
 from singlecellmultiomics.molecule import MoleculeIterator,TAPS
+import gzip
+from singlecellmultiomics.utils import invert_strand_f, is_autosome
+import os
+import matplotlib.pyplot as plt
+import pyBigWig
+
+def get_methylation_calls_from_tabfile(path: str):
+    """
+    Reading routine, for reading the default taps-tabulator output files
+
+    Args:
+        path (str), path to the taps tabulator file to read
+
+    Yields:
+        contig, cpg_location, strand, methylation_stat (tuple). The cpg location is zero indexed
+    """
+    with (gzip.open(path,'rt') if path.endswith('.gz') else open(path)) as f:
+        for i,line in enumerate(f):
+            parts = line.strip().split('\t',4)
+            meta, contig, cpg_location, methylation_stat, ligation_motif_and_others = parts
+
+            cpg_location = int(cpg_location)-1
+
+            cell, molecule_id, cut_pos, frag_size ,umi,strand =  meta.split(':')
+
+            yield contig, cpg_location, strand, methylation_stat
+
+
+def get_single_cpg_calls_from_tabfile(path: str):
+    """
+    Obtain single CpG calls from taps-tabulator file
+
+    Args:
+        path (str), path to the taps tabulator file to read, needs to be sorted in order to work correctly
+
+    Yields:
+        (contig, cpg_location, strand), methylated, unmethylated. The cpg location is zero indexed
+    """
+    prev = None
+    met,unmet = 0,0
+    for contig, cpg_location, strand, methylation_stat in get_methylation_calls_from_tabfile(path):
+
+        current = (contig, cpg_location,strand)
+        if prev is not None and current!=prev:
+            yield prev,met,unmet
+
+            met,unmet = 0,0
+        if methylation_stat.isupper():
+            met+=1
+        else:
+            unmet+=1
+
+        prev= current
+
+    if met>0 or unmet>0:
+        yield prev,met,unmet
+
+def sort_methylation_tabfile(path, pathout,threads=4):
+    """
+    Sort methylation tab file. Sorts first on the chromosome, then the position, then the cell/umi
+    """
+    cmd = f"""/bin/bash -c "zcat {path} | sort -k2,2 -k3,3n -k1,1 --parallel={threads} | gzip -1 > {pathout}" """
+    os.system(cmd)
+
+def methylation_tabfile_to_bed(tabpath: str, bedpath: str, invert_strand=False):
+    """ Convert methylation tabfile at tabpath to a methylation bedfile at bedpath """
+    cmap = plt.get_cmap('bwr')
+    with open(bedpath, 'w') as o:
+        for call in get_single_cpg_calls_from_tabfile(tabpath):
+            (contig,pos,strand),met,unmet = call
+            beta = (met/(unmet+met))
+            rgb = cmap(beta)
+            o.write(f'{contig}\t{pos}\t{pos+1}\t.\t{min(1000,unmet+met)}\t{invert_strand_f(strand) if invert_strand else strand}\t{pos}\t{pos+1}\t{int(rgb[0]*255)},{int(rgb[1]*255)},{int(255*rgb[2])}\t{unmet+met}\t{int(100*beta)}\n')
+
+
+def iter_methylation_calls_from_bigbed(path: str, MINCOV :int=0, autosomes_only: bool=False):
+    with pyBigWig.open(path) as f:
+
+        # Iterate over all contigs, exclude scaffolds and only include autosomes
+        for chrom,l in f.chroms().items():
+            if autosomes_only and not is_autosome(chrom):
+                continue
+
+            for entry in f.entries(chrom,0,l):
+                name, score, strandedness, _, __, ___, coverage, obs_beta = entry[2].split()
+                if int(coverage)>=MINCOV:
+                    yield (chrom, entry[0],entry), (float(obs_beta),score,strandedness,int(coverage))
+
+
+def methylation_calls_from_bigbed_to_dict(path: str, MINCOV :int=0, autosomes_only: bool=False):
+    """Obtain all methylation calls from the specified bigbed file
+
+    Args:
+        path : path to the methylation bigbed file
+
+        MINCOV: minimum amount of reads covering the position to be included
+
+    Returns:
+        reference_betas (dict) : {chrom : {position : value (float)}}
+    """
+    betas = defaultdict(dict)
+
+    for (chrom,pos,entry),(beta,score,strandedness,coverage) in iter_methylation_calls_from_bigbed(path, MINCOV, autosomes_only):
+        betas[chrom][pos] = beta
+
+    return betas
 
 def get_bulk_vector(args):
     obj, samples, location = args
