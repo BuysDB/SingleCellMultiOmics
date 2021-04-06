@@ -4,7 +4,7 @@ import collections
 from singlecellmultiomics.utils import get_contig_list_from_fasta
 
 """
-CelSeq2 pipeline based on the version of Marijn van Loenhout (2018)
+CelSeq2 pipeline using STAR and bamtagmultiome.py
 
 Dependencies:
 # STAR
@@ -17,8 +17,7 @@ This workflow:
     - Demultiplexes per library, automatically detecting the right barcodes
     - Trims using cutadapt
     - Maps using STAR, sorts and indexes the reads per library
-    - uses featureCounting
-    - Tags and demultiplexes
+    - Deduplication using UMI's and feature annotation is performed by bamtagmultiome.py
     - Creates library statistics plots for quality control
     - Creates count tables for deduplicated and non-deduplicated counts:
        -> Count table containing rows with gene information and columns with cell information
