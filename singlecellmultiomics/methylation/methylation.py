@@ -11,7 +11,7 @@ import gzip
 from singlecellmultiomics.utils import invert_strand_f, is_autosome
 import os
 import matplotlib.pyplot as plt
-
+import pyBigWig
 
 def get_methylation_calls_from_tabfile(path: str):
     """
