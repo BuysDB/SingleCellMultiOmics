@@ -7,6 +7,32 @@ from multiprocessing import Pool, Manager
 from collections import defaultdict
 from singlecellmultiomics.bamProcessing import get_reference_path_from_bam
 from singlecellmultiomics.molecule import MoleculeIterator,TAPS
+import gzip
+
+
+def get_methylation_calls_from_tabfile(path: str):
+    """
+    Reading routine, for reading the default taps-tabulator output files
+
+    Args:
+        path (str), path to the taps tabulator file to read
+
+    Yields:
+        contig, cpg_location, strand, methylation_stat (tuple). The cpg location is zero indexed
+    """
+    with (gzip.open(path,'rt') if path.endswith('.gz') else open(path)) as f:
+        for i,line in enumerate(f):
+            try:
+                meta, contig, cpg_location, methylation_stat, ligation_motif = line.strip().split('\t')
+            except Exception:
+                meta, contig, cpg_location, methylation_stat, ligation_motif, annotations = line.strip().split('\t')
+
+            cpg_location = int(cpg_location)-1
+
+            cell, molecule_id, cut_pos, frag_size ,umi,strand =  meta.split(':')
+
+            yield contig, cpg_location, strand, methylation_stat
+
 
 def get_bulk_vector(args):
     obj, samples, location = args
