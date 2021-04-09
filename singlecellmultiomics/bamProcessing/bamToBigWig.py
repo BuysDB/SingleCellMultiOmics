@@ -9,10 +9,10 @@ import argparse
 from singlecellmultiomics.bamProcessing import get_contig_sizes
 import numpy as np
 
-def bam_to_wig(bam_paths, write_path, bin_size, method='sum', verbose=False):
+def bam_to_wig(bam_paths, write_path, bin_size, method='sum', verbose=False, n_threads=None):
     if verbose:
         print('Counting ...')
-    counts = get_binned_counts(bam_paths, bin_size=bin_size)
+    counts = get_binned_counts(bam_paths, bin_size=bin_size, n_threads=n_threads)
 
     if verbose:
         print('Writing ...')
