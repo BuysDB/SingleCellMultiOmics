@@ -4,5 +4,8 @@
     "counting_min_mq" : 50,
     "counting_bin_sizes": [50_000],
     "mapper":"bwa",
-    "plot_bin_sizes" : [500_000, 1000_000]
+    "plot_bin_sizes" : [500_000, 1000_000],
+    "_comment":"The adapter type should be scCHIC384C8U3l when using direct ligation, or scCHIC384C8U3 when using random priming",
+    "adapter_type" : "SEE ABOVE FOR OPTIONS"
+
 }
