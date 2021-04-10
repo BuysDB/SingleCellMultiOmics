@@ -200,7 +200,7 @@ class GenomicPlot():
         return self.axis[contig]
 
 
-def plot_plate(coordinate_values, log=True, vmin=None, vmax=None, cmap_name ='viridis'):
+def plot_plate(coordinate_values, log=True, vmin=None, vmax=None, cmap_name ='viridis', cmap=None):
 
 
     coordinate_values  = {
@@ -211,8 +211,9 @@ def plot_plate(coordinate_values, log=True, vmin=None, vmax=None, cmap_name ='vi
     fig, ax = plt.subplots()
     n_rows = 16
     n_cols = 24
+    if cmap is None:
+        cmap = matplotlib.cm.get_cmap(cmap_name)
 
-    cmap = matplotlib.cm.get_cmap(cmap_name)
     well2index = collections.defaultdict(dict)
     index2well = collections.defaultdict(dict)
     rows = string.ascii_uppercase[:16]
@@ -245,7 +246,7 @@ def plot_plate(coordinate_values, log=True, vmin=None, vmax=None, cmap_name ='vi
         ax.add_patch( Circle( (col,n_rows-row-1),
                              radius=0.45,
                              fill= (True if (row,col) not in coordinate_values else True),
-                             fc= (cmap( norm(coordinate_values.get( (row,col),-100))))
+                             fc= (cmap( norm(coordinate_values.get( (row,col), np.nan))))
                              ,edgecolor=(0.5,0.5,0.5)) )
 
         coordinate_values
