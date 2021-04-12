@@ -40,8 +40,6 @@ def bam_to_wig(bam_paths, write_path, bin_size, method='sum', verbose=False, n_t
 
 if __name__ == '__main__':
 
-
-
     argparser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Bam file to bigwig. Counts based on DS tag by default, otherwise falls back to the start coordinate of R1. Does not qcfail flagged reads and duplicate flagged reads.')
