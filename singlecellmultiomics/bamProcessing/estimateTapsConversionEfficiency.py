@@ -145,7 +145,7 @@ def generate_taps_conversion_stats(bams, reference_path, prefix, method, every_f
 
 
     qf = pd.DataFrame(context_obs)
-
+    qf.to_csv(f'{prefix}_conversions_counts_raw_lambda.csv')
     ###
     indices = []
     for lib, qqf in qf.groupby(level=0,axis=1):
