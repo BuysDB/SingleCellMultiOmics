@@ -120,7 +120,7 @@ def get_conversion_counts(args):
     return conversions_per_library, context_obs
 
 
-def generate_taps_conversion_stats(bams, reference_path, prefix, method, every_fragment_as_molecule):
+def generate_taps_conversion_stats(bams, reference_path, prefix, method, every_fragment_as_molecule, n_threads=None):
     if reference_path is None:
         reference_path = get_reference_from_pysam_alignmentFile(bams[0])
 
@@ -131,7 +131,7 @@ def generate_taps_conversion_stats(bams, reference_path, prefix, method, every_f
     conversions_per_library = defaultdict( conversion_dict_stranded )
     context_obs = defaultdict( Counter )
 
-    with Pool() as workers:
+    with Pool(n_threads) as workers:
 
         for cl, co in workers.imap(get_conversion_counts, [(bam, reference_path, method, every_fragment_as_molecule) for bam in bams] ):
 
@@ -229,6 +229,7 @@ if __name__=='__main__':
     argparser.add_argument('-o', type=str, help="output alias", required=True)
     argparser.add_argument('-method', type=str, default='nla')
     argparser.add_argument('--dedup', action='store_true',help='perform UMI deduplication and consensus calling. Do not use when the UMI\'s are (near) saturated')
+    argparser.add_argument('-t', type=int, default='Amount of threads')
 
 
     argparser.add_argument(
@@ -239,4 +240,9 @@ if __name__=='__main__':
     args = argparser.parse_args()
 
 
-    generate_taps_conversion_stats(args.bams, args.ref, prefix=args.o, method=args.method,every_fragment_as_molecule=not args.dedup)
+    generate_taps_conversion_stats(args.bams,
+                                   args.ref,
+                                   prefix=args.o,
+                                   method=args.method,
+                                   every_fragment_as_molecule=not args.dedup,
+                                   n_threads=args.t)
