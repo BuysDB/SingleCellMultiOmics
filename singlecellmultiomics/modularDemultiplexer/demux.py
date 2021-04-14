@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     argparser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="""%sMulti-library Single cell-demultiplexing%s, written by Buys de Barbanson, Hubrecht institute 2016-2018
+        description="""%sMulti-library Single cell-demultiplexing%s, written by Buys de Barbanson, Hubrecht institute 2016-2021
 										%sExample usage:%s
 
 										List how the demultiplexer will interpret the data: (No demultiplexing is executed)

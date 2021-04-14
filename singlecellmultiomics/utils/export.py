@@ -39,7 +39,7 @@ def write_bigwig(write_locations:dict, write_values:dict,  source_bam:str, write
     Args:
         write_locations(dict) : Locations to write to, grouped by contig, {contig:[location (int), ..]
 
-        write_values(dict) : Value to write, grouped by contig {contig:[value (float), ..],
+        write_values(dict) : Value to write, grouped by contig {contig:{location: value (float), ..}},
 
         source_bam(str): path to source bam file to extract contig ordering from
 
