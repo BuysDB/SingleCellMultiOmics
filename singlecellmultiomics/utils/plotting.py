@@ -200,7 +200,13 @@ class GenomicPlot():
         return self.axis[contig]
 
 
-def plot_plate(coordinate_values, log=True, vmin=None, vmax=None, cmap_name ='viridis'):
+def plot_plate(coordinate_values: dict,
+               log: bool=True,
+               vmin: float=None,
+               vmax: float =None,
+               cmap_name:str ='viridis',
+               usenorm: bool=True, # Use normlizer (disable when using a custom colormap with discrete values
+               cmap=None):
 
 
     coordinate_values  = {
@@ -211,8 +217,9 @@ def plot_plate(coordinate_values, log=True, vmin=None, vmax=None, cmap_name ='vi
     fig, ax = plt.subplots()
     n_rows = 16
     n_cols = 24
+    if cmap is None:
+        cmap = matplotlib.cm.get_cmap(cmap_name)
 
-    cmap = matplotlib.cm.get_cmap(cmap_name)
     well2index = collections.defaultdict(dict)
     index2well = collections.defaultdict(dict)
     rows = string.ascii_uppercase[:16]
@@ -232,10 +239,11 @@ def plot_plate(coordinate_values, log=True, vmin=None, vmax=None, cmap_name ='vi
         if log:
             vmax = np.power(10,np.ceil(np.log10(vmax)))
 
-    if log:
-        norm = matplotlib.colors.LogNorm(vmin=1 if vmin is None else vmin, vmax=vmax)
-    else:
-        norm = matplotlib.colors.Normalize(vmin=0 if vmin is None else vmin, vmax=vmax)
+    if usenorm:
+        if log:
+            norm = matplotlib.colors.LogNorm(vmin=1 if vmin is None else vmin, vmax=vmax)
+        else:
+            norm = matplotlib.colors.Normalize(vmin=0 if vmin is None else vmin, vmax=vmax)
 
     for row,col in product(range(n_rows), range(n_cols)) :
 
@@ -245,7 +253,8 @@ def plot_plate(coordinate_values, log=True, vmin=None, vmax=None, cmap_name ='vi
         ax.add_patch( Circle( (col,n_rows-row-1),
                              radius=0.45,
                              fill= (True if (row,col) not in coordinate_values else True),
-                             fc= (cmap( norm(coordinate_values.get( (row,col),-100))))
+                             fc= (cmap(coordinate_values.get( (row,col), np.nan))) if usenorm is False else
+                                 (cmap(norm(coordinate_values.get( (row,col), np.nan))))
                              ,edgecolor=(0.5,0.5,0.5)) )
 
         coordinate_values
@@ -271,7 +280,7 @@ def plot_plate(coordinate_values, log=True, vmin=None, vmax=None, cmap_name ='vi
 
     cax = fig.add_axes([0.95, 0.2, 0.03, 0.6])
     cb = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap,
-                                    norm=norm,
+                                    norm=norm if usenorm else None,
                                     orientation='vertical')
 
     cb.outline.set_visible(False)
