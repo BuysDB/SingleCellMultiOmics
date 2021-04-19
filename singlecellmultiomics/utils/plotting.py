@@ -257,10 +257,7 @@ def plot_plate(coordinate_values: dict,
                              fill= (True if (row,col) not in coordinate_values else True),
 
                              fc= (cmap(coordinate_values.get( (row,col), np.nan))) if usenorm is False else
-                                 (cmap(norm(coordinate_values.get( (row,col), np.nan))))
-
-
-        coordinate_values
+                                 (cmap(norm(coordinate_values.get( (row,col), np.nan))))))
 
     ax.set_ylim(-1, n_rows)
     ax.set_xlim(-1, n_cols)
