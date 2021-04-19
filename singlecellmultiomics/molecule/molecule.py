@@ -103,6 +103,9 @@ def might_be_variant(chrom, pos, variants, ref_base=None):
         return False # Happens when the contig does not exists, return False
     return False
 
+def consensii_default_vector():
+    """a numpy vector with 5 elements initialsed as zeros"""
+    return np.zeros(5)
 
 # 1: read1 2: read2
 def molecule_to_random_primer_dict(
@@ -2660,32 +2663,46 @@ class Molecule():
 
         return matches, mismatches
 
-    def get_consensus(self, dove_safe: bool = False, only_include_refbase: str = None, allow_N=False, **get_consensus_dictionaries_kwargs):
+    def get_consensus(self,
+                    dove_safe: bool = False,
+                    only_include_refbase: str = None,
+                    allow_N=False,
+                    with_probs_and_obs=False, **get_consensus_dictionaries_kwargs):
+        """
+        Obtain consensus base-calls for the molecule
+        """
 
         if allow_N:
             raise NotImplementedError()
 
-        consensii = defaultdict(lambda: np.zeros(5))  # location -> obs (A,C,G,T,N)
+        consensii = defaultdict(consensii_default_vector)  # location -> obs (A,C,G,T,N)
+        if with_probs_and_obs:
+            phred_scores = defaultdict(lambda:defaultdict(list))
         for fragment in self:
             if dove_safe and not fragment.has_R2() or not fragment.has_R1():
-                #print('Skipping ', fragment)
                 continue
 
             try:
-                for position, (q_base, phred_score) in fragment.get_consensus(dove_safe=dove_safe,
-                                                                              only_include_refbase=only_include_refbase,
-                                                                              **get_consensus_dictionaries_kwargs).items():
+                for position, (q_base, phred_score) in fragment.get_consensus(
+                        dove_safe=dove_safe,only_include_refbase=only_include_refbase,
+                        **get_consensus_dictionaries_kwargs).items():
 
                     if q_base == 'N':
                         continue
                     #    consensii[position][4] += phred_score
                     # else:
+                    if with_probs_and_obs:
+                        phred_scores[position][q_base].append(phred_score)
+
                     consensii[position]['ACGTN'.index(q_base)] += 1
             except ValueError as e:
                 # For example: ValueError('This method only works for inwards facing reads')
                 pass
         if len(consensii)==0:
-            return dict()
+            if with_probs_and_obs:
+                return dict(),None,None
+            else:
+                return dict()
 
         locations = np.empty(len(consensii), dtype=object)
         locations[:] = sorted(list(consensii.keys()))
@@ -2693,10 +2710,18 @@ class Molecule():
         v = np.vstack([ consensii[location] for location in locations])
         majority_base_indices = np.argmax(v, axis=1)
 
-        # Check if there is ties, this result in multiple hits for argmax (majority_base_indices)
+        # Check if there is ties, this result in multiple hits for argmax (majority_base_indices),
+        # such a situtation is of course terrible and should be dropped
         proper = (v == v[np.arange(v.shape[0]), majority_base_indices][:, np.newaxis]).sum(1) == 1
 
-        return  dict(zip(locations[proper], ['ACGTN'[idx] for idx in majority_base_indices[proper]]))
+        if with_probs_and_obs:
+            return (
+                dict(zip(locations[proper], ['ACGTN'[idx] for idx in majority_base_indices[proper]])),
+                phred_scores,
+                consensii
+            )
+        else:
+            return  dict(zip(locations[proper], ['ACGTN'[idx] for idx in majority_base_indices[proper]]))
 
 
     def get_consensus_old(
