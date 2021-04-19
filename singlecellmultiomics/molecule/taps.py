@@ -9,6 +9,7 @@ from singlecellmultiomics.utils.sequtils import complement
 from itertools import product
 from matplotlib.pyplot import get_cmap
 from copy import copy
+import numpy as np
 complement_trans = str.maketrans('ATGC', 'TACG')
 
 
@@ -59,7 +60,7 @@ class TAPS:
             self.context_mapping[True][''.join(['C'] + list(x))] = 'H'
             self.context_mapping[False][''.join(['C'] + list(x))] = 'h'
 
-        self.colormap = copy(get_cmap('RdYlBu_r')) # Make a copy 
+        self.colormap = copy(get_cmap('RdYlBu_r')) # Make a copy
         self.colormap.set_bad((0,0,0)) # For reads without C's
 
     def position_to_context(
@@ -241,8 +242,15 @@ class TAPSMolecule(Molecule):
             if self.taps_strand=='F' else ('C' if self.strand else 'G')
 
         try:
-            c_pos_consensus = self.get_consensus(dove_safe = not self.allow_unsafe_base_calls,
+            if True:
+                c_pos_consensus, phreds, coverage = self.get_consensus(dove_safe = not self.allow_unsafe_base_calls,
+                                                     only_include_refbase=expected_base_to_be_converted,
+                                                     with_probs_and_obs=True, # Include phred scores and coverage
+                                                     **get_consensus_dictionaries_kwargs)
+            else:
+                c_pos_consensus = self.get_consensus(dove_safe = not self.allow_unsafe_base_calls,
                                                  only_include_refbase=expected_base_to_be_converted,
+                                                 with_probs_and_obs=False, # Include phred scores and coverage
                                                  **get_consensus_dictionaries_kwargs)
 
         except ValueError as e:
@@ -256,6 +264,8 @@ class TAPSMolecule(Molecule):
             (contig, position):
             {'consensus': base_call,
              'reference_base': expected_base_to_be_converted,
+             'cov': len(phreds[(contig, position)][base_call]),
+             'qual': np.mean( phreds[(contig, position)][base_call] ),
              'context': self.taps.position_to_context(
                 chromosome=contig,
                 position=position,
