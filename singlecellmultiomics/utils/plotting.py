@@ -200,6 +200,7 @@ class GenomicPlot():
         return self.axis[contig]
 
 
+
 def plot_plate(coordinate_values: dict,
                log: bool=True,
                vmin: float=None,
@@ -207,6 +208,7 @@ def plot_plate(coordinate_values: dict,
                cmap_name:str ='viridis',
                usenorm: bool=True, # Use normlizer (disable when using a custom colormap with discrete values
                cmap=None):
+
 
 
     coordinate_values  = {
@@ -253,9 +255,10 @@ def plot_plate(coordinate_values: dict,
         ax.add_patch( Circle( (col,n_rows-row-1),
                              radius=0.45,
                              fill= (True if (row,col) not in coordinate_values else True),
+
                              fc= (cmap(coordinate_values.get( (row,col), np.nan))) if usenorm is False else
                                  (cmap(norm(coordinate_values.get( (row,col), np.nan))))
-                             ,edgecolor=(0.5,0.5,0.5)) )
+
 
         coordinate_values
 

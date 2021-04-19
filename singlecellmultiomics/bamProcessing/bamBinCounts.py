@@ -30,7 +30,7 @@ def _generate_count_dict(args):
     args:
         args (tuple) : bam_path, bin_size, contig, start, stop
     """
-    bam_path, bin_size, contig, start, stop = args #reference_path  = args
+    bam_path, bin_size, contig, start, stop, filter_function = args #reference_path  = args
 
     #reference_handle = pysam.FastaFile(reference_path)
     #reference = CachedFasta(reference_handle)
@@ -41,10 +41,12 @@ def _generate_count_dict(args):
 
         for R1,R2 in mate_iter(alignments, contig=contig, start=start, stop=stop):
 
-
-
-            if R1 is None or R1.is_duplicate or R1.is_qcfail:
-                continue
+            if filter_function is None:
+                if R1 is None or R1.is_duplicate or R1.is_qcfail:
+                    continue
+            else:
+                if not filter_function(R1,R2):
+                    continue
 
             if not R1.has_tag('DS'):
                 cut_pos = R1.reference_end if  R1.is_reverse else R1.reference_start
@@ -67,7 +69,7 @@ def _generate_count_dict(args):
 # cell-> context -> obs
 def _generate_count_dict_prefixed(args):
 
-    bam_path, bin_size, contig, start, stop, alias, prefix = args #reference_path  = args
+    bam_path, bin_size, contig, start, stop, filter_function,  alias, prefix = args #reference_path  = args
 
     cut_counts = defaultdict(Counter )
     i = 0
@@ -75,8 +77,12 @@ def _generate_count_dict_prefixed(args):
 
         for R1,R2 in mate_iter(alignments, contig=contig, start=start, stop=stop):
 
-            if R1 is None or R1.is_duplicate or not R1.has_tag('DS') or R1.is_qcfail:
-                continue
+            if filter_function is None:
+                if R1 is None or R1.is_duplicate or not R1.has_tag('DS') or R1.is_qcfail:
+                    continue
+            else:
+                if not filter_function(R1,R2):
+                    continue
 
             cut_pos = R1.get_tag('DS')
             sample = R1.get_tag('SM')
@@ -97,7 +103,7 @@ def _generate_count_dict_prefixed(args):
 # Get TA fraction per cell
 def _generate_ta_count_dict_prefixed(args):
 
-    bam_path, bin_size, contig, start, stop, alias, prefix = args
+    bam_path, bin_size, contig, start, stop, filter_function, alias, prefix = args
 
     cut_counts = defaultdict(Counter )
     i = 0
@@ -108,6 +114,9 @@ def _generate_ta_count_dict_prefixed(args):
             if R1 is None or R1.is_duplicate or not R1.has_tag('DS') or R1.is_qcfail:
                 continue
             if R1.get_tag('lh')!='TA':
+                continue
+
+            if filter_function is not None and not filter_function(R1,R2):
                 continue
 
             cut_pos = R1.get_tag('DS')
@@ -126,7 +135,7 @@ def _generate_ta_count_dict_prefixed(args):
     return cut_counts, contig, bam_path
 
 
-def get_binned_counts_prefixed(bam_dict, bin_size, regions=None, ta=False) -> pd.DataFrame:
+def get_binned_counts_prefixed(bam_dict, bin_size, regions=None, ta=False, filter_function=None, n_threads=None) -> pd.DataFrame:
     """
     Same as get_binned_counts but accespts a bam_dict, {'alias':[bam file, bam file], 'alias2':[bam file, ]}
     The alias is added as the first level of the output dataframe multi-index
@@ -170,12 +179,12 @@ def get_binned_counts_prefixed(bam_dict, bin_size, regions=None, ta=False) -> pd
     for bam_group, bam_list in bam_dict.items():
         for region in regions:
             for bam_path in bam_list:
-                jobs.append( (bam_path, bin_size, *region, None, bam_group) )
+                jobs.append( (bam_path, bin_size, *region, filter_function, None, bam_group) )
             #jobs = [(bam_path, bin_size, *region, None, prefix) for region, bam_path in product(regions, bams)]
 
 
     cut_counts = defaultdict(Counter)
-    with Pool() as workers:
+    with Pool(n_threads) as workers:
 
         for i, (cc, contig, bam_path) in enumerate(workers.imap(_generate_count_dict_prefixed if not ta else _generate_ta_count_dict_prefixed,jobs)):
 
@@ -187,7 +196,7 @@ def get_binned_counts_prefixed(bam_dict, bin_size, regions=None, ta=False) -> pd
     return pd.DataFrame(cut_counts).T
 
 
-def get_binned_counts(bams, bin_size, regions=None):
+def get_binned_counts(bams, bin_size, regions=None, filter_function=None, n_threads=None):
 
     fs = 1000
     if regions is None:
@@ -204,11 +213,11 @@ def get_binned_counts(bams, bin_size, regions=None):
 
                 regions[i] = (contig,start,end)
 
-    jobs = [(bam_path, bin_size, *region) for region, bam_path in product(regions, bams)]
+    jobs = [(bam_path, bin_size, *region, filter_function) for region, bam_path in product(regions, bams)]
 
 
     cut_counts = defaultdict(Counter)
-    with multiprocessing.Pool() as workers:
+    with multiprocessing.Pool(n_threads) as workers:
 
         for i, (cc, contig, bam_path) in enumerate(workers.imap(_generate_count_dict,jobs)):
 

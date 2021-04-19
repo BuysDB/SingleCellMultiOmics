@@ -84,7 +84,7 @@ def get_conversion_counts(args):
     conversions_per_library = defaultdict( conversion_dict_stranded )
     context_obs = defaultdict( Counter )
 
-    bam,refpath,method  = args
+    bam,refpath,method,every_fragment_as_molecule  = args
 
 
     if method=='nla':
@@ -111,6 +111,7 @@ def get_conversion_counts(args):
                      'taps':taps,
                     'taps_strand':'R'
                 },
+                every_fragment_as_molecule=every_fragment_as_molecule,
                 fragment_class_args={},
                 contig = 'J02459.1'
             ):
@@ -119,7 +120,7 @@ def get_conversion_counts(args):
     return conversions_per_library, context_obs
 
 
-def generate_taps_conversion_stats(bams, reference_path, prefix, method):
+def generate_taps_conversion_stats(bams, reference_path, prefix, method, every_fragment_as_molecule, n_threads=None):
     if reference_path is None:
         reference_path = get_reference_from_pysam_alignmentFile(bams[0])
 
@@ -130,9 +131,9 @@ def generate_taps_conversion_stats(bams, reference_path, prefix, method):
     conversions_per_library = defaultdict( conversion_dict_stranded )
     context_obs = defaultdict( Counter )
 
-    with Pool() as workers:
+    with Pool(n_threads) as workers:
 
-        for cl, co in workers.imap(get_conversion_counts, [(bam, reference_path, method) for bam in bams] ):
+        for cl, co in workers.imap(get_conversion_counts, [(bam, reference_path, method, every_fragment_as_molecule) for bam in bams] ):
 
             for lib, obs in cl.items():
                 for k,v in obs.items():
@@ -144,7 +145,7 @@ def generate_taps_conversion_stats(bams, reference_path, prefix, method):
 
 
     qf = pd.DataFrame(context_obs)
-
+    qf.to_csv(f'{prefix}_conversions_counts_raw_lambda.csv')
     ###
     indices = []
     for lib, qqf in qf.groupby(level=0,axis=1):
@@ -227,6 +228,10 @@ if __name__=='__main__':
     argparser.add_argument('bams', type=str, nargs='+',help='Input bam files')
     argparser.add_argument('-o', type=str, help="output alias", required=True)
     argparser.add_argument('-method', type=str, default='nla')
+    argparser.add_argument('--dedup', action='store_true',help='perform UMI deduplication and consensus calling. Do not use when the UMI\'s are (near) saturated')
+    argparser.add_argument('-t', type=int, default='Amount of threads')
+
+
     argparser.add_argument(
         '-ref',
         type=str,
@@ -235,4 +240,9 @@ if __name__=='__main__':
     args = argparser.parse_args()
 
 
-    generate_taps_conversion_stats(args.bams, args.ref, prefix=args.o, method=args.method)
+    generate_taps_conversion_stats(args.bams,
+                                   args.ref,
+                                   prefix=args.o,
+                                   method=args.method,
+                                   every_fragment_as_molecule=not args.dedup,
+                                   n_threads=args.t)

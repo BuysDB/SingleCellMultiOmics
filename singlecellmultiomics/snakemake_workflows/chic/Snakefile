@@ -13,6 +13,7 @@ This workflow:
     - Deduplicates and identifies molecules in parallel per contig
     - Creates QC plots per plate
     - Creates count tables
+    - Creates bulk coverage bigwig files
     - Merges all tagged bam files into one
     - Creates QC plots for the merged libraries
     - Creates one count table combining all plates, and one table for Jake's filtering script
@@ -23,6 +24,10 @@ configfile: "config.json"
 # config
 counting_bin_sizes = config['counting_bin_sizes']
 plot_bin_sizes = config['plot_bin_sizes']
+
+if config['adapter_type'] == "SEE ABOVE FOR OPTIONS":
+    raise ValueError('The adapter type is not set in the config file!')
+
 
 # This code detects which libraries are present in the current folder:
 l = SequencingLibraryLister()
@@ -71,6 +76,7 @@ rule all:
         expand("processed/GC_plots/rawmat_{plot_bin_size}.png", plot_bin_size=plot_bin_sizes),
         expand("processed/GC_plots/histplot_{plot_bin_size}.png", plot_bin_size=plot_bin_sizes),
         expand("processed/plots/ReadCount.png", library=libraries),
+        expand("processed/{library}/coverage.bw", library=libraries),
         expand("processed/tables/ScCHICLigation_merged_tagged.bamTA_obs_per_cell.csv", library=libraries)
 
 
@@ -85,12 +91,14 @@ rule SCMO_demux:
     log:
         stdout="log/demux/{library}.stdout",
         stderr="log/demux/{library}.stderr"
-    params: runtime="30h"
+    params:
+        runtime="30h",
+        adapter_type=config['adapter_type']
     resources:
         mem_mb=lambda wildcards, attempt: attempt * 4000
 
     shell:
-        "demux.py -merge _ {input.fastqfiles} -hd 1 -o processed --y > {log.stdout} 2> {log.stderr}"
+        "demux.py -merge _ {input.fastqfiles} -hd 1 -o processed -use {params.adapter_type} --y > {log.stdout} 2> {log.stderr}"
 
 
 rule Trim:
@@ -177,6 +185,23 @@ rule SCMO_tagmultiome_ChiC:
 
     shell:
         "bamtagmultiome.py --multiprocess -blacklist {input.blacklist} -method chic {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
+
+
+rule SCMO_coverage:
+    input:
+        bam = "processed/{library}/tagged.bam",
+    output:
+        bw = "processed/{library}/coverage.bw"
+    log:
+        stdout="log/cov/{library}.stdout",
+        stderr="log/cov/{library}.stderr"
+    threads: 8
+    params: runtime="20h"
+    resources:
+        mem_mb=lambda wildcards, attempt: attempt * 6000
+
+    shell:
+        "bamToBigWig.py -bin_size 50_000 {input.bam} -o {output.bw} > {log.stdout} 2> {log.stderr}"
 
 
 rule SCMO_library_stats:

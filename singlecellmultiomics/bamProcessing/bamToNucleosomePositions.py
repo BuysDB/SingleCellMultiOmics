@@ -140,15 +140,19 @@ def contig_coordinate_dict_to_votes(d, n, min_total_cuts_per_cell=3, p_nuc_bin_s
     return vote_nucleosome, vote_linker
 
 
-async def write_to_bw(handle, starts, ends,  values, contig):
+async def write_to_bw(handle, starts, ends,  values, contig,size=None):
+
+    if size is not None:
+        print( ends[ends>=size] )
+
     handle.addEntries(
         [contig]*len(starts), #Contig
-         starts , #Start
-        ends= ends ,  #end
-        values=  values
+        starts.astype(np.int64) , #Start
+        ends= ends.astype(np.int64) ,  #end
+        values=  values.astype(np.float64)
     )
 
-async def coordinate_dicts_to_nucleosome_position_files(bams, molecule_coordinate_dicts, p_nuc_bin_size = 5, alias='npos', n_threads=None):
+async def coordinate_dicts_to_nucleosome_position_files(bams, molecule_coordinate_dicts, p_nuc_bin_size = 5, alias='npos', n_threads=None ):
 
     contigs = get_contigs(bams[0])
     sizes = get_contig_sizes(bams[0])
@@ -197,12 +201,22 @@ async def coordinate_dicts_to_nucleosome_position_files(bams, molecule_coordinat
             smooth_nuc = gaussian_filter1d(vote_nucleosome,2)
 
             # Write nucleosome vote track:
-            starts = np.array( np.linspace(0, contig_len-p_nuc_bin_size, len(vote_nucleosome)) ).astype(int)
+            starts = np.array( np.linspace(0, contig_len-p_nuc_bin_size-1, len(vote_nucleosome)) )
+
+            size = sizes[ret_contig]
+            # Check if all numbers are preceding...
+            d = np.diff(starts)
+            d = d[d<1]
+            if len(d):
+                print(d)
+            else:
+                print(f'{len(starts)} Coordinates are in correct order')
+
 
             await asyncio.gather(
-                write_to_bw(nuc_out, starts, starts+p_nuc_bin_size,  smooth_nuc, ret_contig),
-                write_to_bw(linkers_out, starts, starts+p_nuc_bin_size,  smooth_linkers, ret_contig),
-                write_to_bw(merged_out, starts, starts+p_nuc_bin_size,  smooth_nuc - smooth_linkers, ret_contig)
+                write_to_bw(nuc_out, starts, starts+p_nuc_bin_size,  np.nan_to_num(smooth_nuc), ret_contig, size),
+                write_to_bw(linkers_out, starts, starts+p_nuc_bin_size,  np.nan_to_num(smooth_linkers), ret_contig, size),
+                write_to_bw(merged_out, starts, starts+p_nuc_bin_size,  np.nan_to_num(smooth_nuc - smooth_linkers), ret_contig, size=size)
             )
 
 
