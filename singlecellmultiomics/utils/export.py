@@ -32,9 +32,52 @@ def dataframe_to_wig(df: pd.DataFrame, wig_path: str, span: int = 1, stepper: st
                 out.write(f"{pos+offset}\t{row.iloc[0] if 'value' not in row else row['value']}\n")
 
 
+
+def series_to_bigwig(series,  source_bam:str, write_path:str,bin_size: int=None):
+    """
+    Write pd.Series to a bigwig file
+
+    Args:
+        series (pd.Series) : Series to write to the bigwig, keys are multi-dimensional (contig, start)
+
+        source_bam(str): path to source bam file to extract contig ordering from
+
+        write_path(str): write bigwig file here
+
+        bin_size(int) : bin_size, set to None to use a bin size of 1
+
+    """
+    series.sort_index(inplace=True)
+    with pysam.AlignmentFile(source_bam) as alignments, pyBigWig.open(write_path,'w') as out:
+
+        cs = get_contig_sizes(alignments)
+        # Write header
+        out.addHeader(list(zip(alignments.references, alignments.lengths)))
+
+        for contig in series.index.get_level_values(0).unique():
+
+            start = series.loc[contig].index.astype(int)
+            contig_list = [contig]*len(start)
+
+
+            if bin_size is None:
+                end = np.array(start)+1
+            else:
+                end = np.clip( np.array(start)+bin_size, 0, cs[contig] )
+
+            values_to_write = np.array(series.loc[contig].values ,
+                                       dtype=np.float64)
+
+            out.addEntries(
+                contig_list, #Contig
+                list(start), #Start
+                ends= list(end), #end
+                values= values_to_write)
+
+
 def write_bigwig(write_locations:dict, write_values:dict,  source_bam:str, write_path:str,bin_size: int=None):
     """
-    Write location / values to a bigwig file
+    Write (location / values dictionaries) to a bigwig file
 
     Args:
         write_locations(dict) : Locations to write to, grouped by contig, {contig:[location (int), ..]
@@ -69,6 +112,6 @@ def write_bigwig(write_locations:dict, write_values:dict,  source_bam:str, write
 
             out.addEntries(
                 contig_list, #Contig
-                start, #Start
-                ends= end, #end
+                list(start), #Start
+                ends= list(end), #end
                 values= values_to_write)
