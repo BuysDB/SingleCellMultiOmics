@@ -103,25 +103,27 @@ class TAPS:
         context = None
         methylated = None
 
+        try:
+            if ref_base == 'C':
+                context = reference.fetch(chromosome, position, position + 3).upper()
+                if qbase == 'T':
+                    methylated = True
+                elif qbase=='C':
+                    methylated = False
 
-        if ref_base == 'C':
-            context = reference.fetch(chromosome, position, position + 3).upper()
-            if qbase == 'T':
-                methylated = True
-            elif qbase=='C':
-                methylated = False
+            elif ref_base == 'G':
+                origin = reference.fetch( chromosome, position - 2, position + 1).upper()
+                context = origin.translate(complement_trans)[::-1]
+                if qbase == 'A':
+                    methylated = True
+                elif qbase == 'G':
+                    methylated = False
 
-        elif ref_base == 'G':
-            origin = reference.fetch( chromosome, position - 2, position + 1).upper()
-            context = origin.translate(complement_trans)[::-1]
-            if qbase == 'A':
-                methylated = True
-            elif qbase == 'G':
-                methylated = False
-
-        else:
-            raise ValueError('Only supply reference C or G')
-
+            else:
+                raise ValueError('Only supply reference C or G')
+        except ValueError: # Happens when the coordinates are outstide the reference:
+            context = None
+            methylated = None
         #print(ref_base, qbase,  strand, position, chromosome,context, '?' if methylated is None  else ('methylated' if methylated else  'not methylated'))
 
         if methylated is None:
