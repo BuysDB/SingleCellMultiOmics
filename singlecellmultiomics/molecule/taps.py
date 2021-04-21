@@ -124,6 +124,8 @@ class TAPS:
         except ValueError: # Happens when the coordinates are outstide the reference:
             context = None
             methylated = None
+        except FileNotFoundError:
+            raise ValueError('Got a file not found error. This is probably caused by the reference handle being shared between processes. Stop doing that (quick solution: disable multithreading/multiprocess).')
         #print(ref_base, qbase,  strand, position, chromosome,context, '?' if methylated is None  else ('methylated' if methylated else  'not methylated'))
 
         if methylated is None:
