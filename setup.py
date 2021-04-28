@@ -62,6 +62,7 @@ setup(
         # Fasta
         'singlecellmultiomics/fastaProcessing/fastaMaskVariants.py',
         'singlecellmultiomics/fastaProcessing/createMappabilityIndex.py',
+        'singlecellmultiomics/fastaProcessing/fastaCreateDict.py',
 
         # Tagging
         'singlecellmultiomics/universalBamTagger/universalBamTagger.py',
