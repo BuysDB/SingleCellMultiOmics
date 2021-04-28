@@ -292,7 +292,8 @@ def trim_rangelist(rangelist, start, end):
 
 
 def get_bins_from_bed_iter(path, contig=None):
-    with open(path) as f:
+
+    with gzip.open(path) if path.endswith('.gz') else open(path)  as f:
         for line in f:
             c, start, end = line.strip().split(None, 3)[:3]
             start, end = int(start), int(end)
