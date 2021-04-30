@@ -58,11 +58,14 @@ def get_target_demux_list():
 def get_target_tagged_bam_list():
     return [f"processed/{library}/tagged.bam" for library in libraries]
 
+def get_target_unmapped_bam_list():
+    return [f"processed/{library}/unmapped.bam" for library in libraries]
 
 rule all:
     input:
         # get_target_demux_list() use this for demux only
         get_target_tagged_bam_list(),
+        get_target_unmapped_bam_list(),
         expand("processed/{library}/count_table_{counting_bin_size}.csv",
             library=libraries,
             counting_bin_size=counting_bin_sizes),
@@ -166,6 +169,21 @@ rule map:
                 "bowtie2 -p {threads} -q --no-unal --local --sensitive-local -N 1 -x {input.ref} -1 {input.r1} -2 {input.r2} | samtools view -b - > processed/{wildcards.library}/unsorted.bam"
                 )
 
+
+rule store_unmapped:
+    input:
+        bam = "processed/{library}/sorted.bam",
+        bam_index = "processed/{library}/sorted.bam.bai"
+    output:
+        bam = "processed/{library}/unmapped.bam",
+
+    log:
+        stdout="log/unmap/{library}.stdout",
+        stderr="log/unmap/{library}.stderr"
+    threads: 8
+    params: runtime="20h"
+    resources:
+        "samtools view -h {input.bam} '*' -b > {output.bam} > {log.stdout} 2> {log.stderr}"
 
 rule SCMO_tagmultiome_ChiC:
     input:
