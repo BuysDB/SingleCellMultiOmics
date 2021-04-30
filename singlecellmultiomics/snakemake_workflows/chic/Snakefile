@@ -202,7 +202,7 @@ rule SCMO_tagmultiome_ChiC:
         mem_mb=lambda wildcards, attempt: attempt * 6000 # The amount of memory required is dependent on whether alleles or consensus caller are used
 
     shell:
-        "bamtagmultiome.py --multiprocess -blacklist {input.blacklist} -method chic {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
+        "bamtagmultiome.py --multiprocess -tagthreads {threads} -blacklist {input.blacklist} -method chic {input.bam} -o {output.bam} > {log.stdout} 2> {log.stderr}"
 
 
 rule SCMO_coverage:
