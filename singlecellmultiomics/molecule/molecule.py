@@ -1609,6 +1609,13 @@ class Molecule():
         """
         return max([fragment.mapping_quality for fragment in self])
 
+    def get_min_mapping_qual(self) -> float:
+        """Get min mapping quality of the molecule
+        Returns:
+            min_mapping_qual (float)
+        """
+        return min([fragment.mapping_quality for fragment in self])
+
     def contains_valid_fragment(self):
         """Check if an associated fragment exists which returns True for is_valid()
 
