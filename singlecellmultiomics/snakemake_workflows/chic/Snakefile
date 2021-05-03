@@ -182,8 +182,12 @@ rule store_unmapped:
         stderr="log/unmap/{library}.stderr"
     threads: 8
     params: runtime="20h"
+
     resources:
-        "samtools view -h {input.bam} '*' -b > {output.bam} > {log.stdout} 2> {log.stderr}"
+        mem_mb=lambda wildcards, attempt: 4000 + attempt * 8000
+
+    shell:
+        "samtools view -h -b {input.bam} '*' > {output.bam} > {log.stdout} 2> {log.stderr}"
 
 rule SCMO_tagmultiome_ChiC:
     input:
