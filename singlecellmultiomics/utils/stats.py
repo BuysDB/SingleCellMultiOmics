@@ -3,6 +3,7 @@ import numpy as np
 from scipy import stats
 from copy import copy
 import pandas as pd
+import statsmodels.formula.api as smf
 
 def calculate_nested_f_statistic(small_model, big_model):
     # From https://stackoverflow.com/a/60769343/2858160
@@ -49,6 +50,6 @@ def GLM_cluster_de_test(cuts_frame, clusters):
     """
     return pd.DataFrame(
         [
-        _GLM_cluster_de_test_single_gene(gene, df, clusters)
-        for gene in df.columns
+        _GLM_cluster_de_test_single_gene(gene, cuts_frame, clusters)
+        for gene in cuts_frame.columns
         ],columns=['gene','fstat','pval'])
