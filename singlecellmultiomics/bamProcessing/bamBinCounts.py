@@ -8,7 +8,7 @@ import pickle
 import gzip
 import pandas as pd
 import multiprocessing
-from singlecellmultiomics.bamProcessing import get_contig_sizes, get_contig_size
+from singlecellmultiomics.bamProcessing import get_contig_sizes, get_contig_size, get_contigs
 from statsmodels.nonparametric.smoothers_lowess import lowess
 from datetime import datetime
 from itertools import chain
@@ -17,11 +17,13 @@ from typing import Generator
 from singlecellmultiomics.methylation import MethylationCountMatrix
 from pysamiterators import CachedFasta
 from pysam import FastaFile
-from singlecellmultiomics.utils import reverse_complement
+from singlecellmultiomics.utils import reverse_complement, is_main_chromosome, pool_wrapper
 from collections import defaultdict, Counter
 from itertools import product
 from singlecellmultiomics.bamProcessing.bamFunctions import mate_iter
 from multiprocessing import Pool
+from singlecellmultiomics.pyutils import sorted_slice
+
 
 def _generate_count_dict(args):
     """
@@ -133,6 +135,63 @@ def _generate_ta_count_dict_prefixed(args):
                 cut_counts[(contig,bin_idx)][sample] += 1
 
     return cut_counts, contig, bam_path
+
+
+
+def _get_contig_cuts(bam: str, contig: str, mqthreshold=50):
+    """
+    Obtain np.array of all cuts for the supplied contig and bam file for each sample indiviually,
+    the cut arrays are sorted by genomic coordinate
+
+    Returns:
+        contig, {cell: np.array([cut1(int),cut2(int)])}
+    """
+    single_cell_cuts = defaultdict(list)
+    with pysam.AlignmentFile(bam) as a:
+        for read in a.fetch(contig):
+            if read.is_read1 and not read.is_qcfail and not read.is_duplicate and read.mapping_quality>mqthreshold:
+                single_cell_cuts[read.get_tag('SM')].append(read.get_tag('DS'))
+
+    return contig, {
+
+        cell:np.array(sorted(cuts))
+        for cell, cuts in single_cell_cuts.items()
+    }
+
+
+def bam_to_single_sample_cuts(bams: list, n_processes=None, contigs=None, mqthreshold=50):
+    """
+    Obtain np.array of all cuts for the supplied contig and bam file for each sample indiviually,
+    the cut arrays are sorted by genomic coordinate
+    When contigs is not supplied cuts are determined for all contigs except random scaffolds and alternative alleles
+
+    Returns:
+        cell_cuts: {cell: {contig: np.array([cut1(int),cut2(int)])}},
+        total_cuts_per_cell : {cell:total_cuts (int)}
+    """
+
+    cell_cuts = {} # cell -> contig -> cuts
+    total_cuts_per_cell = Counter()
+    with Pool(n_processes) as workers:
+        if contigs is None:
+            contigs = [c for c in get_contigs(bams[0]) if is_main_chromosome(c)]
+
+
+        for contig, cuts in workers.imap(pool_wrapper, ((
+            _get_contig_cuts, {'contig':contig,
+                               'bam':bam,
+                               'mqthreshold':mqthreshold
+                               })
+
+            for contig, bam in  product(contigs,bams))):
+
+            for cell, cc in cuts.items():
+                if not cell in cell_cuts:
+                    cell_cuts[cell] = {}
+                cell_cuts[cell][contig] = cc
+                total_cuts_per_cell[cell] += len(cc)
+
+    return cell_cuts, total_cuts_per_cell
 
 
 def get_binned_counts_prefixed(bam_dict, bin_size, regions=None, ta=False, filter_function=None, n_threads=None) -> pd.DataFrame:
