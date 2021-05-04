@@ -4,6 +4,8 @@ from scipy import stats
 from copy import copy
 import pandas as pd
 import statsmodels.formula.api as smf
+from singlecellmultiomics.utils import pool_wrapper
+from multiprocessing import Pool
 
 def calculate_nested_f_statistic(small_model, big_model):
     # From https://stackoverflow.com/a/60769343/2858160
@@ -23,33 +25,91 @@ def _GLM_cluster_de_test_single_gene(gene, cuts_frame, clusters):
     Calculate if a gene varies due to batch effects or is significantly changing between clusters
     """
 
-    data = copy(cuts_frame[[gene]])
+    data = copy(cuts_frame[[gene]])+1
     data.columns = ['ncuts']
     data['plate'] = [x.split('_')[0] for x in data.index]
     data['cluster'] = clusters
     data['n_total_cuts'] = cuts_frame.sum(1)
 
+
     fam = sm.families.Poisson()
+    try:
+        model = smf.glm("ncuts ~ 1 + plate + cluster", data= data,
+                 # cov_struct=ind,
+                offset=np.log(data['n_total_cuts']),
+                      family=fam).fit()
 
-    model = smf.glm("ncuts ~ 1 + plate + cluster", data= data,
-             # cov_struct=ind,
-            offset=np.log(data['n_total_cuts']),
-                  family=fam).fit()
+        null_model = smf.glm(f"ncuts ~ 1 + plate", data= data,
+                 # cov_struct=ind,
+                offset=np.log(data['n_total_cuts']),
+                      family=fam).fit()
+    except Exception as e:
+        if 'estimation infeasible.'  in str(e):
+            return None
+        else:
+            raise
 
-    null_model = smf.glm(f"ncuts ~ 1 + plate", data= data,
-             # cov_struct=ind,
-            offset=np.log(data['n_total_cuts']),
-                  family=fam).fit()
+    coeff = pd.DataFrame( {'model_std_err':model.bse,
+               'model_coefficients':model.params,
+               'null_std_err':null_model.bse,
+               'null_coefficients':null_model.params,
 
-    return [gene, *calculate_nested_f_statistic(null_model,model)]
+              })
+
+    return [gene, *calculate_nested_f_statistic(null_model,model), coeff, model, null_model]
+
 
 def GLM_cluster_de_test(cuts_frame, clusters):
 
     """
     Calculate if a gene varies due to batch effects or is significantly changing between clusters
     """
-    return pd.DataFrame(
-        [
-        _GLM_cluster_de_test_single_gene(gene, cuts_frame, clusters)
-        for gene in cuts_frame.columns
-        ],columns=['gene','fstat','pval'])
+
+    table = []
+    for gene in cuts_frame.columns:
+
+        r = _GLM_cluster_de_test_single_gene(gene, 1+cuts_frame, clusters)
+
+        if r is None:
+            continue
+
+        (gene, f_score, p_value, coeff, model, null_model) = r
+        table.append([gene,f_score,p_value, coeff['model_std_err']['cluster'], coeff['model_coefficients']['cluster']])
+
+    return pd.DataFrame(table, columns=['gene','f_score','p_value','cluster_stderr','cluster_coeff'])
+
+
+def GLM_cluster_de_test_multi(df, y, n_processes=None):
+
+    """
+    Calculate if a gene varies due to batch effects or is significantly changing between clusters, multiprocessed
+
+    Args:
+        df(pd.DataFrame) : dataframe of cuts,  rows are cells, columns are loci, values are cut-counts (not normalised)
+
+        y(np.array) : target vector / clusters
+
+        n_processes(int) : Amount of processes to use
+    """
+    table = []
+    with Pool(n_processes) as workers:
+
+        for r in workers.imap_unordered(pool_wrapper,((
+
+            _GLM_cluster_de_test_single_gene
+        ,{
+            'gene':gene,
+            'cuts_frame':df,
+            'clusters':y
+        }
+        )
+        for gene in df
+        ), chunksize=1000):
+            if r is None:
+                continue
+
+            (gene, f_score, p_value, coeff, model, null_model) = r
+            table.append([gene,f_score,p_value, coeff['model_std_err']['cluster'], coeff['model_coefficients']['cluster']])
+
+
+    return pd.DataFrame(table, columns=['gene','f_score','p_value','cluster_stderr','cluster_coeff'])
