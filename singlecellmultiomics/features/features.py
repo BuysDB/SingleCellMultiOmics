@@ -77,9 +77,30 @@ class FeatureContainer(Prefetcher):
     def __len__(self):
         return sum(len(f) for f in self.features.values())
 
-
     def preload_GTF(self, **kwargs):
         self.preload_list.append( {'gtf':kwargs} )
+
+    def get_gene_to_location_dict(self, meta_key='gene_name'):
+        """
+        generate dictionary, {gene_name: contig,start,end}
+
+        Args:
+            meta_key(str): key of the meta information used to use as primary key for the returned gene_locations
+
+        Returns:
+            gene_locations(dict)
+        """
+        location_map = {}
+
+        for contig, start, end, name, strand, meta in self:
+            meta =dict(meta)
+            try:
+                location_map[ meta[meta_key]] = (contig, start,end)
+            except Exception as e:
+                pass
+
+        return location_map
+
 
 
     def __iter__(self):

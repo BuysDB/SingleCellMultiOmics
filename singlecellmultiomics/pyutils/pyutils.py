@@ -2,7 +2,13 @@
 # -*- coding: utf-8 -*-
 import math
 import subprocess
+import numpy as np
 
+
+def sorted_slice(a,l,r):
+    start = np.searchsorted(a, l, 'left')
+    end = np.searchsorted(a, r, 'right')
+    return np.arange(start,end)
 
 def meanOfCounter(counter):
     sum_of_numbers = sum(

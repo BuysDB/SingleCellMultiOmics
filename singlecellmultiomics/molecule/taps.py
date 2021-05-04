@@ -9,6 +9,7 @@ from singlecellmultiomics.utils.sequtils import complement
 from itertools import product
 from matplotlib.pyplot import get_cmap
 from copy import copy
+import numpy as np
 complement_trans = str.maketrans('ATGC', 'TACG')
 
 
@@ -59,7 +60,7 @@ class TAPS:
             self.context_mapping[True][''.join(['C'] + list(x))] = 'H'
             self.context_mapping[False][''.join(['C'] + list(x))] = 'h'
 
-        self.colormap = copy(get_cmap('RdYlBu_r')) # Make a copy 
+        self.colormap = copy(get_cmap('RdYlBu_r')) # Make a copy
         self.colormap.set_bad((0,0,0)) # For reads without C's
 
     def position_to_context(
@@ -102,25 +103,29 @@ class TAPS:
         context = None
         methylated = None
 
+        try:
+            if ref_base == 'C':
+                context = reference.fetch(chromosome, position, position + 3).upper()
+                if qbase == 'T':
+                    methylated = True
+                elif qbase=='C':
+                    methylated = False
 
-        if ref_base == 'C':
-            context = reference.fetch(chromosome, position, position + 3).upper()
-            if qbase == 'T':
-                methylated = True
-            elif qbase=='C':
-                methylated = False
+            elif ref_base == 'G':
+                origin = reference.fetch( chromosome, position - 2, position + 1).upper()
+                context = origin.translate(complement_trans)[::-1]
+                if qbase == 'A':
+                    methylated = True
+                elif qbase == 'G':
+                    methylated = False
 
-        elif ref_base == 'G':
-            origin = reference.fetch( chromosome, position - 2, position + 1).upper()
-            context = origin.translate(complement_trans)[::-1]
-            if qbase == 'A':
-                methylated = True
-            elif qbase == 'G':
-                methylated = False
-
-        else:
-            raise ValueError('Only supply reference C or G')
-
+            else:
+                raise ValueError('Only supply reference C or G')
+        except ValueError: # Happens when the coordinates are outstide the reference:
+            context = None
+            methylated = None
+        except FileNotFoundError:
+            raise ValueError('Got a file not found error. This is probably caused by the reference handle being shared between processes. Stop doing that (quick solution: disable multithreading/multiprocess).')
         #print(ref_base, qbase,  strand, position, chromosome,context, '?' if methylated is None  else ('methylated' if methylated else  'not methylated'))
 
         if methylated is None:
@@ -241,8 +246,15 @@ class TAPSMolecule(Molecule):
             if self.taps_strand=='F' else ('C' if self.strand else 'G')
 
         try:
-            c_pos_consensus = self.get_consensus(dove_safe = not self.allow_unsafe_base_calls,
+            if True:
+                c_pos_consensus, phreds, coverage = self.get_consensus(dove_safe = not self.allow_unsafe_base_calls,
+                                                     only_include_refbase=expected_base_to_be_converted,
+                                                     with_probs_and_obs=True, # Include phred scores and coverage
+                                                     **get_consensus_dictionaries_kwargs)
+            else:
+                c_pos_consensus = self.get_consensus(dove_safe = not self.allow_unsafe_base_calls,
                                                  only_include_refbase=expected_base_to_be_converted,
+                                                 with_probs_and_obs=False, # Include phred scores and coverage
                                                  **get_consensus_dictionaries_kwargs)
 
         except ValueError as e:
@@ -256,6 +268,8 @@ class TAPSMolecule(Molecule):
             (contig, position):
             {'consensus': base_call,
              'reference_base': expected_base_to_be_converted,
+             'cov': len(phreds[(contig, position)][base_call]),
+             'qual': np.mean( phreds[(contig, position)][base_call] ),
              'context': self.taps.position_to_context(
                 chromosome=contig,
                 position=position,

@@ -39,6 +39,15 @@ def createRowColorDataFrame( discreteStatesDataFrame, nanColor =(0,0,0), predete
 
 
 
+def interpolate(series, target):
+    """
+    Interpolate the given pd.series at the coordinates given by target (np.array)
+    """
+    return  pd.Series(
+        np.interp(target, series.index,  series.values), name=series.name
+    )
+    
+
 
 def tordist(x1: float, x2: float, wrap_dist: float ) -> float:
     """Calculate the toroidial distance between two scalars
