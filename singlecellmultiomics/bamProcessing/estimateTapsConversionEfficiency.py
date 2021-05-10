@@ -11,7 +11,7 @@ from collections import defaultdict
 from singlecellmultiomics.utils import reverse_complement, complement
 from glob import glob
 from multiprocessing import Pool
-from singlecellmultiomics.bamProcessing.bamFunctions import get_reference_from_pysam_alignmentFile
+from singlecellmultiomics.bamProcessing.bamFunctions import get_reference_path_from_bam
 from collections import Counter
 import pandas as pd
 import matplotlib as mpl
@@ -122,7 +122,7 @@ def get_conversion_counts(args):
 
 def generate_taps_conversion_stats(bams, reference_path, prefix, method, every_fragment_as_molecule, n_threads=None):
     if reference_path is None:
-        reference_path = get_reference_from_pysam_alignmentFile(bams[0])
+        reference_path = get_reference_path_from_bam(bams[0])
 
     print(f'Reference at {reference_path}')
     if reference_path is None:
