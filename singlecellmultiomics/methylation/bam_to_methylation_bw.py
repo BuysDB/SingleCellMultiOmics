@@ -99,22 +99,32 @@ if __name__ == '__main__':
         type=int,
         help='Minimum amount of molcules for a bin to be taken into account',default=5)
 
-    argparser.add_argument(
-        '-BI_to_group_csv',
+    pseudobulk_gr = argparser.add_argument_group('Pseudobulk settings')
+    pseudobulk_gr.add_argument(
+        '-pseudobulk_BI_csv',
         type=str,
         help="""Path to a CSV file which contains for every barcode index (BI tag) to what group it belongs.
          The CSV file has no header and two columns, the first column contains the barcode index,
         the second the sample name. Multiple barcode indices can share the same sample name, this will create a pseudobulk signal"""
         )
 
+    pseudobulk_gr.add_argument(
+        '--single_sample',
+        action='store_true',
+        help="""Each sample/cell in the supplied bam files will get an output bigwig file"""
+        )
 
-    argparser.add_argument(
+
+    bw_gr = argparser.add_argument_group('Bigwig output settings')
+
+
+    bw_gr.add_argument(
         '-smooth_window',
         type=int,
         help='Smoothing window for smoothed bw',default=10)
 
 
-    argparser.add_argument(
+    bw_gr.add_argument(
         '-bin_size',
         type=int,
         help='Methylation bin size',default=400)
@@ -286,7 +296,11 @@ if __name__ == '__main__':
         contig_whitelist=[args.contig]
 
 
-    if args.BI_to_group_csv is not None:
+    if args.single_sample:
+        def sample_mapping_function(s):
+            return s
+
+    elif args.BI_to_group_csv is not None:
 
         bi_sample_map = {str(bi):str(sample)
             for bi, sample in pd.read_csv(args.BI_to_group_csv,header=None,index_col=0).iloc[:,0].to_dict().items() }
