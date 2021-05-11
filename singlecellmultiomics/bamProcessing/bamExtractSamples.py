@@ -43,12 +43,12 @@ def extract_samples( input_bam_path, output_path, capture_samples, head=None ):
 
         try:
             sample2handle[r.get_tag('SM')].write(r)
-        except Exception:
+        except KeyError:
             continue
 
-            written += 1
-            if head is not None and written >= head:
-                break
+        written += 1
+        if head is not None and written >= head:
+            break
 
     print(f'Filtering finished, {written} reads')
     for group,handle in output_handles.items():
