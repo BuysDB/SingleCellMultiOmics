@@ -187,7 +187,7 @@ rule store_unmapped:
         mem_mb=lambda wildcards, attempt: 4000 + attempt * 8000
 
     shell:
-        "samtools view -h -b {input.bam} '*' > {output.bam} > {log.stdout} 2> {log.stderr}"
+        "samtools view -hb {input.bam} '*' > {output.bam} 2> {log.stderr}"
 
 rule SCMO_tagmultiome_ChiC:
     input:
@@ -223,7 +223,7 @@ rule SCMO_coverage:
         mem_mb=lambda wildcards, attempt: attempt * 6000
 
     shell:
-        "bamToBigWig.py -bin_size 50_000 {input.bam} -o {output.bw} > {log.stdout} 2> {log.stderr}"
+        "bamToBigWig.py -bin_size 5_000 {input.bam} -o {output.bw} > {log.stdout} 2> {log.stderr}"
 
 
 rule SCMO_library_stats:

@@ -44,7 +44,7 @@ def _GLM_cluster_de_test_single_gene(gene, cuts_frame, clusters):
                 offset=np.log(data['n_total_cuts']),
                       family=fam).fit()
     except Exception as e:
-        if 'estimation infeasible.'  in str(e):
+        if 'estimation infeasible.'  in str(e) or 'PerfectSeparationError' in str(e) :
             return None
         else:
             raise
