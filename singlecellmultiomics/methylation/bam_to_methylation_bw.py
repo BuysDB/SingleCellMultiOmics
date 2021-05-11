@@ -300,10 +300,10 @@ if __name__ == '__main__':
         def sample_mapping_function(s):
             return s
 
-    elif args.BI_to_group_csv is not None:
+    elif args.pseudobulk_BI_csv is not None:
 
         bi_sample_map = {str(bi):str(sample)
-            for bi, sample in pd.read_csv(args.BI_to_group_csv,header=None,index_col=0).iloc[:,0].to_dict().items() }
+            for bi, sample in pd.read_csv(args.pseudobulk_BI_csv,header=None,index_col=0).iloc[:,0].to_dict().items() }
         def sample_mapping_function(s):
             bi = s.split('_')[-1]
             return bi_sample_map.get(bi)
