@@ -51,6 +51,8 @@ def get_methylation_calls(bam, contig, fetch_start, fetch_end, start, stop, mq, 
                 continue
 
             sample = sample_mapping_function(molecule.sample)
+            if sample is None:
+                continue
 
             if not sample in support:
                 support[sample] = np.zeros( nbins )
@@ -96,6 +98,14 @@ if __name__ == '__main__':
         '-min_support',
         type=int,
         help='Minimum amount of molcules for a bin to be taken into account',default=5)
+
+    argparser.add_argument(
+        '-BI_to_group_csv',
+        type=str,
+        help="""Path to a CSV file which contains for every barcode index (BI tag) to what group it belongs.
+         The CSV file has no header and two columns, the first column contains the barcode index,
+        the second the sample name. Multiple barcode indices can share the same sample name, this will create a pseudobulk signal"""
+        )
 
 
     argparser.add_argument(
@@ -272,15 +282,27 @@ if __name__ == '__main__':
     alias = args.o
     bams = args.alignmentfiles
     contig_whitelist = None
+    if args.contig is not None:
+        contig_whitelist=[args.contig]
 
-    def sample_mapping_function(s):
-        return 'bulk'
+
+    if args.BI_to_group_csv is not None:
+
+        bi_sample_map = {str(bi):str(sample)
+            for bi, sample in pd.read_csv(args.BI_to_group_csv,header=None,index_col=0).iloc[:,0].to_dict().items() }
+        def sample_mapping_function(s):
+            bi = s.split('_')[-1]
+            return bi_sample_map.get(bi)
+
+    else:
+        def sample_mapping_function(s):
+            return 'bulk'
 
 
     with pysam.AlignmentFile(bams[0]) as aln:
         sizes = dict(zip(aln.references,aln.lengths))
 
-    with Pool(16) as workers:
+    with Pool(args.t) as workers:
         for _contig, _start, _stop,  mr, sr in workers.imap_unordered(
             pool_wrapper,
 
