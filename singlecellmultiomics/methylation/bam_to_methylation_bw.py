@@ -375,9 +375,13 @@ if __name__ == '__main__':
     smooth_window = args.smooth_window
 
     for sample in samples:
-        with pyBigWig.open(f'{alias}_{sample}.bw','w') as out, pyBigWig.open(f'{alias}_smooth_{sample}.bw','w') as outs:
+        with pyBigWig.open(f'{alias}_{sample}.bw','w') as out, \
+             pyBigWig.open(f'{alias}_support_{sample}.bw','w') as supp_out, \
+             pyBigWig.open(f'{alias}_smooth_{sample}.bw','w') as outs:
+
             out.addHeader(list(zip(sizes.keys(), sizes.values())))
             outs.addHeader(list(zip(sizes.keys(), sizes.values())))
+            supp_out.addHeader(list(zip(sizes.keys(), sizes.values())))
 
             for contig in sizes:
                 if not contig in sup:
@@ -385,8 +389,8 @@ if __name__ == '__main__':
                 if not sample in sup[contig]:
                     continue
 
-
-                y = met[contig][sample] / sup[contig][sample]
+                with np.errstate(invalid='ignore'):
+                    y = met[contig][sample] / sup[contig][sample]
                 coordinates = np.arange(len(y)*bin_size,step=bin_size)
 
 
@@ -403,6 +407,12 @@ if __name__ == '__main__':
                             ends= list(coordinates_defined+bin_size), #end
                             values= list(y))
 
+                # Write support:
+                supp_out.addEntries(
+                            [contig]*len(y), #Contig
+                            list(coordinates_defined), #Start
+                            ends= list(coordinates_defined+bin_size), #end
+                            values= list(sup[contig][sample][sel]))
 
 
                 ser = pd.Series( np.interp(coordinates, xp=coordinates_defined, fp=y) ,
