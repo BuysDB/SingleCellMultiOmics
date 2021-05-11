@@ -74,6 +74,7 @@ setup(
 
         # Methylation:
         'singlecellmultiomics/methylation/methylationtab_to_bed.py',
+        'singlecellmultiomics/methylation/bam_to_methylation_bw.py',
 
         # Bam processing:
         'singlecellmultiomics/bamProcessing/bamTabulator.py',
