@@ -130,6 +130,7 @@ setup(
         # Trimming:
         'singlecellmultiomics/fastqProcessing/trim_vasa.py',
 
+        'singlecellmultiomics/utils/bigWigDiff.py',
         # Utility: (SGE wrapper)
         'singlecellmultiomics/utils/submission.py',
         'singlecellmultiomics/utils/ftp_upload.py',
