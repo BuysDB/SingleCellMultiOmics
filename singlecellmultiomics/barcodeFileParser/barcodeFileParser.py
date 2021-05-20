@@ -73,7 +73,7 @@ class BarcodeParser():
                         parts = line.strip().split(' ')
                     if len(parts) == 1:
                         self.addBarcode(
-                            barcodeFileAlias, barcode=parts[0], index=i)
+                            barcodeFileAlias, barcode=parts[0], index=i+1)
                         #self.barcodes[barcodeFileAlias][parts[0]] = i
                         logging.info(
                             f"\t{parts[0]}:{i} (No index specified in file)")
