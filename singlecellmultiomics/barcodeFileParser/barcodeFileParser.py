@@ -67,7 +67,6 @@ class BarcodeParser():
                         # print(parts[1],indexFirst)
 
             nospec=False
-            print(barcodeFileAlias)
             with gzip.open(barcodeFile,'rt') if barcodeFile.endswith('.gz') else open(barcodeFile) as f :
                 for i, line in enumerate(f):
                     parts = line.strip().split()
