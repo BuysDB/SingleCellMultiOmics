@@ -2,6 +2,44 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import warnings
+from scipy.stats import zscore
+
+
+def z_score(df, axis):
+    """Calculate z-score of pandas dataframe"""
+    return pd.DataFrame(zscore(df,axis), index=df.index, columns=df.columns)
+
+def linear_scale(df,vmin,vmax,fmin=None,fmax=None):
+    """
+    Scale the values in the dataframe using One-dimensional linear interpolation.
+    """
+    if fmin is None:
+        fmin = df.min().min()
+
+    if fmax is None:
+        fmax = df.max().max()
+
+    return pd.DataFrame(
+        np.interp(df,
+            (fmin,fmax),
+            (vmin, vmax)),
+        index=df.index,
+        columns=df.columns
+        )
+
+def rolling_smooth(df: pd.DataFrame, window:int, center=True, axis=0):
+    """Rolling window mean smoothing of pandas dataframe, clips of the missing values"""
+    if center:
+        offset = int(np.ceil(window/2))
+        if axis==0:
+            return df.rolling(window,center=center,axis=axis).mean().iloc[offset:-offset]
+        else:
+            return df.rolling(window,center=center,axis=axis).mean().iloc[:,offset:-offset]
+    else:
+        if axis==0:
+            return df.rolling(window,center=center,axis=axis).mean().iloc[window:]
+        else:
+            return df.rolling(window,center=center,axis=axis).mean().iloc[:,window:]
 
 def createRowColorDataFrame( discreteStatesDataFrame, nanColor =(0,0,0), predeterminedColorMapping={} ):
 
@@ -36,8 +74,6 @@ def createRowColorDataFrame( discreteStatesDataFrame, nanColor =(0,0,0), predete
         luts[column] = lut
     discreteColorMatrix = pd.DataFrame(colorMatrix, index=discreteStatesDataFrame.columns, columns=discreteStatesDataFrame.index ).transpose()
     return discreteColorMatrix, luts
-
-
 
 def interpolate(series, target):
     """
