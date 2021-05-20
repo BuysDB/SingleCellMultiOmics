@@ -8,3 +8,4 @@ from .pandas import *
 from .prefetch import Prefetcher
 from .export import *
 from .stats import *
+from .lda import *
