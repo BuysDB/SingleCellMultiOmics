@@ -8,6 +8,7 @@ from colorama import Style
 import os
 import collections
 import itertools
+import gzip
 
 
 # http://codereview.stackexchange.com/questions/88912/create-a-list-of-all-strings-within-hamming-distance-of-a-reference-string-with
@@ -47,12 +48,12 @@ class BarcodeParser():
 
         for barcodeFile in barcode_files:
             barcodeFileAlias = os.path.splitext(
-                os.path.basename(barcodeFile))[0]
+                os.path.basename(barcodeFile))[0].replace('.gz','')
             logging.info(f"Parsing {barcodeFile}, alias {barcodeFileAlias}")
 
             # Decide the file type (index first or name first)
             indexNotFirst = False
-            with open(barcodeFile) as f:
+            with gzip.open(barcodeFile,'rt') if barcodeFile.endswith('.gz') else open(barcodeFile) as f :
                 for i, line in enumerate(f):
                     parts = line.strip().split()
                     if len(parts) == 1 and ' ' in line:
@@ -65,7 +66,7 @@ class BarcodeParser():
                             indexNotFirst = True
                         # print(parts[1],indexFirst)
 
-            with open(barcodeFile) as f:
+            with gzip.open(barcodeFile,'rt') if barcodeFile.endswith('.gz') else open(barcodeFile) as f :
                 for i, line in enumerate(f):
                     parts = line.strip().split()
                     if len(parts) == 1 and ' ' in line:
