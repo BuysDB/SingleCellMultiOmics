@@ -19,4 +19,4 @@ class chrom10x_c16_u12(UmiBarcodeDemuxMethod):
         self.shortName = 'CHROMC16U12'
         self.longName = 'Chromium 10x, CB: 16bp, UMI: 12bp'
         self.autoDetectable = False
-        self.description = 'R1 starts with a 16bp cell barcode followed by a 12bp UMI. Use this demultiplexing method for VASA'
+        self.description = 'R1 starts with a 16bp cell barcode followed by a 12bp UMI.'
