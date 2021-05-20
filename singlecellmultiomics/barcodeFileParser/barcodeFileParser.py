@@ -48,7 +48,7 @@ class BarcodeParser():
 
         for barcodeFile in barcode_files:
             barcodeFileAlias = os.path.splitext(
-                os.path.basename(barcodeFile))[0]
+                os.path.basename(barcodeFile))[0].replace('.gz','')
             logging.info(f"Parsing {barcodeFile}, alias {barcodeFileAlias}")
 
             # Decide the file type (index first or name first)
