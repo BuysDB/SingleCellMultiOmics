@@ -8,6 +8,7 @@ from colorama import Style
 import os
 import collections
 import itertools
+import gzip
 
 
 # http://codereview.stackexchange.com/questions/88912/create-a-list-of-all-strings-within-hamming-distance-of-a-reference-string-with
@@ -47,12 +48,12 @@ class BarcodeParser():
 
         for barcodeFile in barcode_files:
             barcodeFileAlias = os.path.splitext(
-                os.path.basename(barcodeFile))[0]
+                os.path.basename(barcodeFile))[0].replace('.gz','').replace('.bc','')
             logging.info(f"Parsing {barcodeFile}, alias {barcodeFileAlias}")
 
             # Decide the file type (index first or name first)
             indexNotFirst = False
-            with open(barcodeFile) as f:
+            with gzip.open(barcodeFile,'rt') if barcodeFile.endswith('.gz') else open(barcodeFile) as f :
                 for i, line in enumerate(f):
                     parts = line.strip().split()
                     if len(parts) == 1 and ' ' in line:
@@ -65,17 +66,20 @@ class BarcodeParser():
                             indexNotFirst = True
                         # print(parts[1],indexFirst)
 
-            with open(barcodeFile) as f:
+            nospec=False
+            with gzip.open(barcodeFile,'rt') if barcodeFile.endswith('.gz') else open(barcodeFile) as f :
                 for i, line in enumerate(f):
                     parts = line.strip().split()
                     if len(parts) == 1 and ' ' in line:
                         parts = line.strip().split(' ')
                     if len(parts) == 1:
                         self.addBarcode(
-                            barcodeFileAlias, barcode=parts[0], index=i)
+                            barcodeFileAlias, barcode=parts[0], index=i+1)
                         #self.barcodes[barcodeFileAlias][parts[0]] = i
-                        logging.info(
-                            f"\t{parts[0]}:{i} (No index specified in file)")
+                        if not nospec: # only show this once:
+                            logging.info(
+                                f"\t{parts[0]}:{i} (No index specified in file)")
+                            nospec=True
                     elif len(parts) == 2:
                         if indexNotFirst:
                             barcode, index = parts
@@ -93,8 +97,10 @@ class BarcodeParser():
                             pass
                         self.addBarcode(
                             barcodeFileAlias, barcode=barcode, index=index)
-                        logging.info(
-                            f"\t{barcode}:{index} (index was specified in file, {'index' if indexFirst else 'barcode'} on first column)")
+                        if not nospec: # only show this once:
+                            logging.info(
+                                f"\t{barcode}:{index} (index was specified in file, {'index' if indexFirst else 'barcode'} on first column)")
+                            nospec=True
                     else:
                         e = f'The barcode file {barcodeFile} contains more than two columns. Failed to parse!'
                         logging.error(e)

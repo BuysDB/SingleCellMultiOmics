@@ -66,7 +66,9 @@ class DemultiplexingStrategyLoader:
             dm.MSPJI_c8_u3,
             dm.ScartraceR2,
             dm.ScartraceR1,
-            dm.ScartraceR2RP4
+            dm.ScartraceR2RP4,
+            
+            dm.chrom10x_c16_u12
 
 
         ]

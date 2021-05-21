@@ -7,3 +7,4 @@ from .NLAIII import *
 from .restrictionbisulfite import *
 from .scartrace import *
 from .scCHIC import *
+from .chromium_10x import *
