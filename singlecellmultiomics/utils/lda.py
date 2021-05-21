@@ -57,7 +57,7 @@ class SCMO_LDA(LatentDirichletAllocation):
         # Convert lda components to probabilities
         comps = pd.DataFrame(
             lda.components_ / lda.components_.sum(axis=1)[:, np.newaxis],
-            columns=d.columns )
+            columns=X.columns )
 
         # Convert the probabilities to counts and reconstruct the count matrix
         return pd.DataFrame([
