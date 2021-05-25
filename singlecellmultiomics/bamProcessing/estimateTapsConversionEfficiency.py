@@ -227,7 +227,7 @@ if __name__=='__main__':
       description='Estimate the conversion efficiency of a TAPS converted file. ')
     argparser.add_argument('bams', type=str, nargs='+',help='Input bam files')
     argparser.add_argument('-o', type=str, help="output alias (Will be the prefix of the output files)", required=True)
-    argparser.add_argument('-method', type=str, default='nla', 'Molecule class (nla or chic). Use chic when you are not sure or when another other protocol is used.')
+    argparser.add_argument('-method', type=str, default='nla', help='Molecule class (nla or chic). Use chic when you are not sure or when another other protocol is used.')
     argparser.add_argument('--dedup', action='store_true',help='perform UMI deduplication and consensus calling. Do not use when the UMI\'s are (near) saturated')
     argparser.add_argument('-t', type=int, help='Amount of threads')
 
