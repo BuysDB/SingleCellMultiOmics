@@ -6,6 +6,7 @@ import pandas as pd
 import statsmodels.formula.api as smf
 from singlecellmultiomics.utils import pool_wrapper
 from multiprocessing import Pool
+from scipy.ndimage import gaussian_filter
 
 def calculate_nested_f_statistic(small_model, big_model):
     # From https://stackoverflow.com/a/60769343/2858160
@@ -17,6 +18,17 @@ def calculate_nested_f_statistic(small_model, big_model):
     df_denom = (big_model.fittedvalues.shape[0] - big_model.df_model)
     p_value = stats.f.sf(f_stat, df_numerator, df_denom)
     return (f_stat, p_value)
+
+
+def gaussian_2d(df:pd.DataFrame, sigmas:tuple, **kwargs):
+    """
+    Smooth a pd.DataFrame using a gaussian filter (scipy.ndimage)
+    """
+    df = pd.DataFrame(
+        gaussian_filter(df, sigmas),
+        index=df.index,
+        columns=df.columns)
+    return df
 
 
 def _GLM_cluster_de_test_single_gene(gene, cuts_frame, clusters):
