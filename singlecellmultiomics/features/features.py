@@ -80,7 +80,7 @@ class FeatureContainer(Prefetcher):
     def preload_GTF(self, **kwargs):
         self.preload_list.append( {'gtf':kwargs} )
 
-    def get_gene_to_location_dict(self, meta_key='gene_name'):
+    def get_gene_to_location_dict(self, meta_key='gene_name', with_strand=False):
         """
         generate dictionary, {gene_name: contig,start,end}
 
@@ -95,7 +95,10 @@ class FeatureContainer(Prefetcher):
         for contig, start, end, name, strand, meta in self:
             meta =dict(meta)
             try:
-                location_map[ meta[meta_key]] = (contig, start,end)
+                if with_strand:
+                    location_map[ meta[meta_key]] = (contig, start,end,strand)
+                else:
+                    location_map[ meta[meta_key]] = (contig, start,end)
             except Exception as e:
                 pass
 

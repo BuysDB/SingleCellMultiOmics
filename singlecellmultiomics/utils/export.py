@@ -4,6 +4,8 @@ from collections import defaultdict
 import pysam
 import pyBigWig
 import numpy as np
+import gzip
+import pickle
 
 def dataframe_to_wig(df: pd.DataFrame, wig_path: str, span: int = 1, stepper: str = "variableStep",
                      graphType: str = "points", offset: int = 1, extra_header=''):
@@ -73,6 +75,15 @@ def series_to_bigwig(series,  source_bam:str, write_path:str,bin_size: int=None)
                 list(start), #Start
                 ends= list(end), #end
                 values= values_to_write)
+
+
+def write_pickle(obj, output_path: str ):
+    with gzip.open(output_path,'wb') as out:
+        pickle.dump(obj, out)
+
+def read_pickle(path: str):
+    with gzip.open(path,'rb') as out:
+        return pickle.load(out)
 
 
 def write_bigwig(write_locations:dict, write_values:dict,  source_bam:str, write_path:str,bin_size: int=None):
