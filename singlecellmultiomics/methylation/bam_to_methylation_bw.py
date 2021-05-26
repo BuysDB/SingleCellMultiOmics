@@ -109,6 +109,14 @@ if __name__ == '__main__':
         )
 
     pseudobulk_gr.add_argument(
+        '-pseudobulk_SM_csv',
+        type=str,
+        help="""Path to a CSV file which contains for every barcode index (SM tag) to what group it belongs.
+         The CSV file has no header and two columns, the first column contains the sample anme,
+        the second the target sample name. Multiple barcode indices can share the same sample name, this will create a pseudobulk signal"""
+        )
+
+    pseudobulk_gr.add_argument(
         '--single_sample',
         action='store_true',
         help="""Each sample/cell in the supplied bam files will get an output bigwig file"""
@@ -307,6 +315,12 @@ if __name__ == '__main__':
         def sample_mapping_function(s):
             bi = s.split('_')[-1]
             return bi_sample_map.get(bi)
+    elif args.pseudobulk_SM_csv is not None:
+
+        sm_sample_map = {str(sm):str(sample)
+            for sm, sample in pd.read_csv(args.pseudobulk_SM_csv,header=None,index_col=0).iloc[:,0].to_dict().items() }
+        def sample_mapping_function(s):
+            return sm_sample_map.get(s)
 
     else:
         def sample_mapping_function(s):
