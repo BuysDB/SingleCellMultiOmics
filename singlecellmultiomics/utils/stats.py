@@ -116,7 +116,7 @@ def GLM_cluster_de_test_multi(df, y, n_processes=None):
         }
         )
         for gene in df
-        ), chunksize=1000):
+        ), chunksize=200):
             if r is None:
                 continue
 
