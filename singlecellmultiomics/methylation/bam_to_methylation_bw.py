@@ -138,6 +138,13 @@ if __name__ == '__main__':
         help='Methylation bin size',default=400)
 
 
+
+    argparser.add_argument(
+        '-worker_bin_size',
+        type=int,
+        default=4_000_000,
+        help='Size of genomic regions processed per worker')
+
     argparser.add_argument(
         '-t',
         type=int,
@@ -292,7 +299,7 @@ if __name__ == '__main__':
     #### start processing:
 
     bin_size = args.bin_size
-    extraction_bin_size=10_000_000
+    extraction_bin_size= args.worker_bin_size
     met = {}
     sup = {}
     samples = set()
