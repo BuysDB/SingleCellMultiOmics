@@ -22,10 +22,11 @@ def calculate_nested_f_statistic(small_model, big_model):
 
 def gaussian_2d(df:pd.DataFrame, sigmas:tuple, **kwargs):
     """
-    Smooth a pd.DataFrame using a gaussian filter (scipy.ndimage)
+    Smooth a pd.DataFrame using a gaussian filter (scipy.ndimage),
+    kwargs are passed to the gaussian_filter function
     """
     df = pd.DataFrame(
-        gaussian_filter(df, sigmas),
+        gaussian_filter(df, sigmas, **kwargs),
         index=df.index,
         columns=df.columns)
     return df
