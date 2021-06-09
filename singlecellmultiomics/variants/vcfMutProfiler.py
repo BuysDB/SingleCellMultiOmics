@@ -67,10 +67,13 @@ def _get_conversions_per_cell(detected_variants_path, reference, known, prefix=N
                         else:
                             context = origin_context
 
-                        if prefix is not None:
-                            sc_detected[(prefix,sample)][context, allele] += 1
-                        else:
-                            sc_detected[sample][context, allele] += 1
+                        try:
+                            if prefix is not None:
+                                sc_detected[(prefix,sample)][context, allele] += 1
+                            else:
+                                sc_detected[sample][context, allele] += 1
+                        except KeyError: # Happends when the context or allele contains N's or other alt bases (no CATG)
+                            continue
         except Exception as e:
             if not 'unable to parse' in str(e) and not 'has no len()' in str(e):
                 raise
