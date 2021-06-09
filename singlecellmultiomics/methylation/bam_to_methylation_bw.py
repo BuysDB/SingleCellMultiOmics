@@ -112,7 +112,7 @@ if __name__ == '__main__':
         '-pseudobulk_SM_csv',
         type=str,
         help="""Path to a CSV file which contains for every barcode index (SM tag) to what group it belongs.
-         The CSV file has no header and two columns, the first column contains the sample anme,
+         The CSV file has no header and two columns, the first column contains the sample name,
         the second the target sample name. Multiple barcode indices can share the same sample name, this will create a pseudobulk signal"""
         )
 
