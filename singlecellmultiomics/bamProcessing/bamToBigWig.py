@@ -9,33 +9,66 @@ import argparse
 from singlecellmultiomics.bamProcessing import get_contig_sizes
 import numpy as np
 
-def bam_to_wig(bam_paths, write_path, bin_size, method='sum', verbose=False, n_threads=None):
+def bam_to_wig(bam_paths, write_path, bin_size, method='sum', verbose=False, n_threads=None, sample_mapping_function=None):
     if verbose:
         print('Counting ...')
     counts = get_binned_counts(bam_paths, bin_size=bin_size, n_threads=n_threads)
 
     if verbose:
         print('Writing ...')
-    with pysam.AlignmentFile(bam_paths[0]) as alignments, pyBigWig.open(write_path,'w') as out:
 
-        cs = get_contig_sizes(alignments)
-        # Write header
-        out.addHeader(list(zip(alignments.references, alignments.lengths)))
-        values = counts.sum(1).sort_index()
-        print(values)
-        # Write values
-        for contig in alignments.references:
+    if sample_mapping_function is not None:
 
-            if contig not in values.index.get_level_values(0):
-                continue
-            print(f'Writing data for {contig}')
-            v = values.loc[[contig]]
-            out.addEntries(
-                list(v.index.get_level_values(0).values), #Contig
-                list(v.index.get_level_values(1).values), #Start
+        handles = {}
+        with pysam.AlignmentFile(bam_paths[0]) as alignments:
+            cs = get_contig_sizes(alignments)
 
-                ends= list( np.clip(  (v.index.get_level_values(1)+bin_size) .values, 0, cs[contig]-1) ) ,  #end
-                values= np.array(v.values, dtype=np.float32))
+            targets =  dict( zip(counts.columns, map(sample_mapping_function, counts.columns) ))
+            for target in set(targets.values()):
+                if target is None:
+                    continue
+                # Select only cells which have the current target label:
+                subset = counts[ [cell for cell,t in targets.items() if t==target] ]
+                # And write:
+                values = subset.sum(1).sort_index()
+
+                # Write values
+                with pyBigWig.open(write_path.replace('.bw',f'_{str(target)}.bw'),'w') as out:
+                    out.addHeader(list(zip(alignments.references, alignments.lengths)))
+
+                    for contig in alignments.references:
+
+                        if contig not in values.index.get_level_values(0):
+                            continue
+
+                        print(f'Writing data for {contig}, for {target}')
+                        v = values.loc[[contig]]
+                        out.addEntries(
+                            list(v.index.get_level_values(0).values), #Contig
+                            list(v.index.get_level_values(1).values), #Start
+                            ends= list( np.clip(  (v.index.get_level_values(1)+bin_size) .values, 0, cs[contig]-1) ) ,  #end
+                            values= np.array(v.values, dtype=np.float32))
+
+    else:
+        with pysam.AlignmentFile(bam_paths[0]) as alignments, pyBigWig.open(write_path,'w') as out:
+
+            cs = get_contig_sizes(alignments)
+            # Write header
+            out.addHeader(list(zip(alignments.references, alignments.lengths)))
+            values = counts.sum(1).sort_index()
+            print(values)
+            # Write values
+            for contig in alignments.references:
+
+                if contig not in values.index.get_level_values(0):
+                    continue
+                print(f'Writing data for {contig}')
+                v = values.loc[[contig]]
+                out.addEntries(
+                    list(v.index.get_level_values(0).values), #Contig
+                    list(v.index.get_level_values(1).values), #Start
+                    ends= list( np.clip(  (v.index.get_level_values(1)+bin_size) .values, 0, cs[contig]-1) ) ,  #end
+                    values= np.array(v.values, dtype=np.float32))
 
 
 if __name__ == '__main__':
@@ -49,6 +82,24 @@ if __name__ == '__main__':
 
     argparser.add_argument('-bin_size', type=int, required=True)
 
-    args = argparser.parse_args()
+    pseudobulk_gr = argparser.add_argument_group('Pseudobulk settings')
+    pseudobulk_gr.add_argument(
+        '-pseudobulk_SM_csv',
+        type=str,
+        help="""Path to a CSV file which contains for every barcode index (SM tag) to what group it belongs.
+         The CSV file has no header and two columns, the first column contains the sample name,
+        the second the target sample name. Multiple barcode indices can share the same sample name, this will create a pseudobulk signal"""
+        )
 
-    bam_to_wig(args.alignmentfiles, args.o, args.bin_size, verbose=True)
+    args = argparser.parse_args()
+    assert args.o.endswith('.bw')
+
+    sample_mapping_function = None
+    if args.pseudobulk_SM_csv is not None:
+        sm_sample_map = {str(sm):str(sample)
+            for sm, sample in pd.read_csv(args.pseudobulk_SM_csv,header=None,index_col=0).iloc[:,0].to_dict().items() }
+        def sample_mapping_function(s):
+            return sm_sample_map.get(s)
+
+
+    bam_to_wig(args.alignmentfiles, args.o, args.bin_size, verbose=True, sample_mapping_function=sample_mapping_function)
