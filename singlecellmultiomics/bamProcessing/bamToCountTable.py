@@ -576,9 +576,9 @@ def create_count_table(args, return_df=False):
         print(index_names)
 
     if args.bulk is True:
-    sum_row = df.sum(axis=1)
-    df = pd.DataFrame(sum_row)
-    df.columns = ["Bulkseq"]
+        sum_row = df.sum(axis=1)
+        df = pd.DataFrame(sum_row)
+        df.columns = ["Bulkseq"]
 
     if return_df:
         return df
