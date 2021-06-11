@@ -54,21 +54,27 @@ def get_methylation_calls(bam, contig, fetch_start, fetch_end, start, stop, mq, 
             if sample is None:
                 continue
 
-            if not sample in support:
-                support[sample] = np.zeros( nbins )
-                methylated[sample] = np.zeros( nbins )
+            if type(sample) is not list and type(sample) is not tuple:
+                sample_list = (sample, )
+            else:
+                sample_list = sample
 
-            for (contig,pos),meta in molecule.methylation_call_dict.items():
-                if meta['context'] not in 'Zz':
-                    continue
+            for sample in sample_list:
+                if not sample in support:
+                    support[sample] = np.zeros( nbins )
+                    methylated[sample] = np.zeros( nbins )
 
-                if pos<start or pos>=stop:
-                    continue
+                for (contig,pos),meta in molecule.methylation_call_dict.items():
+                    if meta['context'] not in 'Zz':
+                        continue
 
-                bx = int( (pos-start)/bin_size)
-                support[sample][bx] += 1
-                if meta['context']=='Z':
-                    methylated[sample][bx] += 1
+                    if pos<start or pos>=stop:
+                        continue
+
+                    bx = int( (pos-start)/bin_size)
+                    support[sample][bx] += 1
+                    if meta['context']=='Z':
+                        methylated[sample][bx] += 1
 
 
     molecule_class_args['reference'].close()
@@ -166,34 +172,34 @@ if __name__ == '__main__':
     argparser.add_argument(
         '-dove_R1_distance',
         type=int,
-        help='Do not call methylation N bases form the end of R1',default=8)
+        help='Do not call methylation N bases from the end of R1',default=8)
 
     argparser.add_argument(
         '-dove_R2_distance',
         type=int,
-        help='Do not call methylation N bases form the end of R2',default=8)
+        help='Do not call methylation N bases from the end of R2',default=8)
 
     argparser.add_argument(
         '-skip_last_n_cycles_R1',
         type=int,
-        help='Do not call methylation N bases form the end of R1',default=5)
+        help='Do not call methylation N bases from the end of R1',default=5)
 
 
 
     argparser.add_argument(
         '-skip_first_n_cycles_R1',
         type=int,
-        help='Do not call methylation N bases form the start of R1',default=5)
+        help='Do not call methylation N bases from the start of R1',default=5)
 
     argparser.add_argument(
         '-skip_last_n_cycles_R2',
         type=int,
-        help='Do not call methylation N bases form the end of R2',default=5)
+        help='Do not call methylation N bases from the end of R2',default=5)
 
     argparser.add_argument(
         '-skip_first_n_cycles_R2',
         type=int,
-        help='Do not call methylation N bases form the start of R2',default=5)
+        help='Do not call methylation N bases from the start of R2',default=5)
 
 
     argparser.add_argument('-minmq', type=int, default=50)
@@ -324,10 +330,24 @@ if __name__ == '__main__':
             return bi_sample_map.get(bi)
     elif args.pseudobulk_SM_csv is not None:
 
+
+        sm_sample_map = dict()
+        with open(args.pseudobulk_SM_csv) as ip:
+            for line in ip:
+                parts = line.strip().split()
+                sample = parts[0]
+                labels = parts[1:]
+                sm_sample_map[sample] = labels
+
+        def sample_mapping_function(s):
+            return sm_sample_map.get(s)
+
+        """
         sm_sample_map = {str(sm):str(sample)
             for sm, sample in pd.read_csv(args.pseudobulk_SM_csv,header=None,index_col=0).iloc[:,0].to_dict().items() }
         def sample_mapping_function(s):
             return sm_sample_map.get(s)
+        """
 
     else:
         def sample_mapping_function(s):
