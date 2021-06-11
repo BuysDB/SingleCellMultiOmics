@@ -575,14 +575,13 @@ def create_count_table(args, return_df=False):
             pass
         print(index_names)
 
+    if return_df:
+        return df
+
     if args.bulk:
         sum_row = df.sum(axis=1)
         df = pd.DataFrame(sum_row)
         df.columns = ["Bulkseq"]
-
-    if return_df:
-        return df
-
 
     if args.o.endswith('.pickle') or args.o.endswith('.pickle.gz'):
         df.to_pickle(args.o)
