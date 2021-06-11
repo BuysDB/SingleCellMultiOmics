@@ -575,13 +575,14 @@ def create_count_table(args, return_df=False):
             pass
         print(index_names)
 
+    if args.bulk is True:
+    sum_row = df.sum(axis=1)
+    df = pd.DataFrame(sum_row)
+    df.columns = ["Bulkseq"]
+
     if return_df:
         return df
 
-    if args.bulk is True:
-        sum_row = df.sum(axis=1)
-        df = pd.DataFrame(sum_row)
-        df.columns = ["Bulkseq"]
 
     if args.o.endswith('.pickle') or args.o.endswith('.pickle.gz'):
         df.to_pickle(args.o)
@@ -621,10 +622,10 @@ if __name__ == '__main__':
         type=int,
         help='Run the algorithm only on the first N reads to check if the result looks like what you expect.')
     argparser.add_argument(
-        '-bulk',
+        '--bulk',
         type=bool,
         default=False,
-        help='Set True if making a count table for bulkseq data.')
+        help='Set True when making a count table for bulkseq data. This operation will sum the counts of all sampleTags into a single column.')
 
 
     argparser.add_argument(
