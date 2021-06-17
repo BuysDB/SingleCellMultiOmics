@@ -120,6 +120,15 @@ argparser.add_argument(
     '--multiprocess',
     action='store_true',
     help="Use multiple the CPUs of you system to achieve (much) faster tagging")
+
+
+argparser.add_argument(
+    '--one_contig_per_process',
+    action='store_true',
+    help="Do not split contigs/chromosomes into chunks for parallel processing. Use this when you want to correctly deduplicate mates which are mapping very far apart. (>50kb)")
+
+
+
 argparser.add_argument(
     '-tagthreads',
     type=int,
@@ -959,7 +968,9 @@ def run_multiome_tagging(args):
         region_start = None
         region_end = None
 
-
+    # Overwrite this flag when it is set:
+    if args.one_contig_per_process:
+        one_contig_per_process=True
 
     last_update = datetime.now()
     init_time = datetime.now()
