@@ -20,10 +20,12 @@ def calculate_nested_f_statistic(small_model, big_model):
     return (f_stat, p_value)
 
 
-def gaussian_2d(df:pd.DataFrame, sigmas:tuple, **kwargs):
+def gaussian_2d(df:pd.DataFrame, sigmas:tuple, **kwargs) -> pd.DataFrame:
     """
     Smooth a pd.DataFrame using a gaussian filter (scipy.ndimage),
     kwargs are passed to the gaussian_filter function
+
+
     """
     df = pd.DataFrame(
         gaussian_filter(df, sigmas, **kwargs),
