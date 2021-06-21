@@ -10,7 +10,6 @@ import collections
 import itertools
 import gzip
 
-
 # http://codereview.stackexchange.com/questions/88912/create-a-list-of-all-strings-within-hamming-distance-of-a-reference-string-with
 def hamming_circle(s, n, alphabet):
     for positions in itertools.combinations(range(len(s)), n):
@@ -27,11 +26,87 @@ def hamming_circle(s, n, alphabet):
 
 class BarcodeParser():
 
+    def path_to_barcode_alias(self, path):
+        barcodeFileAlias = os.path.splitext(
+            os.path.basename(path))[0].replace('.gz','').replace('.bc','')
+        return barcodeFileAlias
+
+    def parse_pending_barcode_file_of_alias(self, alias):
+        if not alias in self.pending_files:
+            raise ValueError(f"trying to load {alias}, but barcode file not found")
+
+        logging.info(f"Loading promised barcode file {alias}")
+        self.parse_barcode_file( self.pending_files[alias] )
+        self.expand(self.hammingDistanceExpansion, alias=alias)
+        del self.pending_files[alias]
+
+    def parse_barcode_file(self, barcodeFile):
+
+        barcodeFileAlias = self.path_to_barcode_alias(barcodeFile)
+        # Decide the file type (index first or name first)
+        indexNotFirst = False
+        with gzip.open(barcodeFile,'rt') if barcodeFile.endswith('.gz') else open(barcodeFile) as f :
+            for i, line in enumerate(f):
+                parts = line.strip().split()
+                if len(parts) == 1 and ' ' in line:
+                    parts = line.strip().split(' ')
+                if len(parts) == 1:
+                    pass
+                elif len(parts) == 2:
+                    indexFirst = not all((c in 'ATCGNX') for c in parts[0])
+                    if not indexFirst:
+                        indexNotFirst = True
+                    # print(parts[1],indexFirst)
+
+        nospec=False
+        with gzip.open(barcodeFile,'rt') if barcodeFile.endswith('.gz') else open(barcodeFile) as f :
+            for i, line in enumerate(f):
+                parts = line.strip().split()
+                if len(parts) == 1 and ' ' in line:
+                    parts = line.strip().split(' ')
+                if len(parts) == 1:
+                    self.addBarcode(
+                        barcodeFileAlias, barcode=parts[0], index=i+1)
+                    #self.barcodes[barcodeFileAlias][parts[0]] = i
+                    if not nospec: # only show this once:
+                        logging.info(
+                            f"\t{parts[0]}:{i} (No index specified in file)")
+                        nospec=True
+                elif len(parts) == 2:
+                    if indexNotFirst:
+                        barcode, index = parts
+                    else:
+                        index, barcode = parts
+                    #self.barcodes[barcodeFileAlias][barcode] = index
+
+                    # When the index is only digits, convert to integer
+                    try:
+                        if int(index)==int(str(int(index))):
+                            index = int(index)
+                        else:
+                            pass
+                    except Exception as e:
+                        pass
+                    self.addBarcode(
+                        barcodeFileAlias, barcode=barcode, index=index)
+                    if not nospec: # only show this once:
+                        logging.info(
+                            f"\t{barcode}:{index} (index was specified in file, {'index' if indexFirst else 'barcode'} on first column)")
+                        nospec=True
+                else:
+                    e = f'The barcode file {barcodeFile} contains more than two columns. Failed to parse!'
+                    logging.error(e)
+                    raise ValueError(e)
+
+
     def __init__(
             self,
             barcodeDirectory='barcodes',
             hammingDistanceExpansion=0,
+            lazyLoad=None, # these aliases wiill not be loaded until requested, '*' matches all files
             spaceFill=False):
+
+        self.hammingDistanceExpansion = hammingDistanceExpansion
 
         barcodeDirectory = os.path.join(
             os.path.dirname(
@@ -45,66 +120,14 @@ class BarcodeParser():
             dict)  # alias -> barcode -> index
         # alias -> barcode -> (index, hammingDistance)
         self.extendedBarcodes = collections.defaultdict(dict)
-
+        self.pending_files = dict()
         for barcodeFile in barcode_files:
-            barcodeFileAlias = os.path.splitext(
-                os.path.basename(barcodeFile))[0].replace('.gz','').replace('.bc','')
+            barcodeFileAlias = self.path_to_barcode_alias(barcodeFile)
+            if lazyLoad is not None and (barcodeFileAlias in lazyLoad or lazyLoad =='*'):
+                logging.info(f"Lazy loading {barcodeFile}, alias {barcodeFileAlias}")
+                self.pending_files[barcodeFileAlias] = barcodeFile
+                continue
             logging.info(f"Parsing {barcodeFile}, alias {barcodeFileAlias}")
-
-            # Decide the file type (index first or name first)
-            indexNotFirst = False
-            with gzip.open(barcodeFile,'rt') if barcodeFile.endswith('.gz') else open(barcodeFile) as f :
-                for i, line in enumerate(f):
-                    parts = line.strip().split()
-                    if len(parts) == 1 and ' ' in line:
-                        parts = line.strip().split(' ')
-                    if len(parts) == 1:
-                        pass
-                    elif len(parts) == 2:
-                        indexFirst = not all((c in 'ATCGNX') for c in parts[0])
-                        if not indexFirst:
-                            indexNotFirst = True
-                        # print(parts[1],indexFirst)
-
-            nospec=False
-            with gzip.open(barcodeFile,'rt') if barcodeFile.endswith('.gz') else open(barcodeFile) as f :
-                for i, line in enumerate(f):
-                    parts = line.strip().split()
-                    if len(parts) == 1 and ' ' in line:
-                        parts = line.strip().split(' ')
-                    if len(parts) == 1:
-                        self.addBarcode(
-                            barcodeFileAlias, barcode=parts[0], index=i+1)
-                        #self.barcodes[barcodeFileAlias][parts[0]] = i
-                        if not nospec: # only show this once:
-                            logging.info(
-                                f"\t{parts[0]}:{i} (No index specified in file)")
-                            nospec=True
-                    elif len(parts) == 2:
-                        if indexNotFirst:
-                            barcode, index = parts
-                        else:
-                            index, barcode = parts
-                        #self.barcodes[barcodeFileAlias][barcode] = index
-
-                        # When the index is only digits, convert to integer
-                        try:
-                            if int(index)==int(str(int(index))):
-                                index = int(index)
-                            else:
-                                pass
-                        except Exception as e:
-                            pass
-                        self.addBarcode(
-                            barcodeFileAlias, barcode=barcode, index=index)
-                        if not nospec: # only show this once:
-                            logging.info(
-                                f"\t{barcode}:{index} (index was specified in file, {'index' if indexFirst else 'barcode'} on first column)")
-                            nospec=True
-                    else:
-                        e = f'The barcode file {barcodeFile} contains more than two columns. Failed to parse!'
-                        logging.error(e)
-                        raise ValueError(e)
 
         if hammingDistanceExpansion > 0:
             for alias in list(self.barcodes.keys()):
@@ -151,124 +174,6 @@ class BarcodeParser():
                 hammingDistance=hammingDistance,
                 originBarcode=origin)
 
-    # Space fill fills all hamming instances, even if they are not resolvable
-    def expand_old(
-            self,
-            hammingDistanceExpansion,
-            alias,
-            reportCollisions=True,
-            spaceFill=None):
-
-        if spaceFill is None:
-            spaceFill = self.spaceFill
-        #print("Expanding Hamming distance %s" % alias)
-        hammingMatrix = {}
-        collisions = collections.Counter()
-        collisionsPerBarcode = {}
-        barcodes = self.barcodes[alias]
-
-        # Iterate all barcodes
-        for barcode in barcodes:
-            k = barcodes[barcode]
-            # Perform iteration per hamming distance
-            for hammingDistance in range(0, hammingDistanceExpansion + 1):
-                for hammingInstance in hamming_circle(
-                        barcode, hammingDistance, 'ACTGN'):
-                    if spaceFill:
-                        self.addBarcode(
-                            alias,
-                            barcode=hammingInstance,
-                            index=k,
-                            hammingDistance=hammingDistance,
-                            originBarcode=barcode)
-                        continue
-                    # The hamming instance is a hammingDistance mutation of the
-                    # current barcode
-                    if hammingInstance not in hammingMatrix:
-                        # The hamming Matrix contains [ mutatedBarcode ] = [
-                        # targetIndex, distance, [(originBarcode, targetIndex),
-                        # ... ], originBarcode]
-                        hammingMatrix[hammingInstance] = [
-                            k, hammingDistance, [(k, barcode)], barcode]
-                    else:
-                        # The means another barcode was already assigned to
-                        # this mutated version
-                        if k != hammingMatrix[hammingInstance][0]:
-                            collisions[hammingInstance] += 1
-                            hammingMatrix[hammingInstance][2].append(
-                                (k, barcode))
-                        else:  # There is no collision
-                            raise ValueError('This should never happen')
-                            continue
-                        # Getting here means there is a collision
-                        if hammingMatrix[hammingInstance][1] == hammingDistance:  # Collision
-                            # set collision
-                            hammingMatrix[hammingInstance][0] = None
-                        # Maybe there is a collision, but one barcode is
-                        # further away than the other:
-                        elif hammingMatrix[hammingInstance][1] > hammingDistance:
-
-                            hammingMatrix[hammingInstance][0] = k
-                            hammingMatrix[hammingInstance][1] = hammingDistance
-                            hammingMatrix[hammingInstance][3] = barcode
-
-        if sum(collisions.values()) > 0 and reportCollisions:
-            print("%s%s collisions for %s in Hamming space: %s" %
-                  (Fore.RED, sum(collisions.values()), alias, Style.RESET_ALL))
-            # for hammingDistance in range(0, args.hd+1):
-            #    print("%s %s collisions" % (hammingDistance,collisions[hammingDistance]))
-            showCollisions = 20
-            shown = 0
-            totalCollisions = 0
-            for idx, hammingInstance in enumerate(hammingMatrix):
-                assignedSample, hammingDistance, collidingSamples, origin = hammingMatrix[
-                    hammingInstance]
-                if len(collidingSamples) > 1:
-                    if shown < showCollisions:
-                        print(
-                            "%s\t%sat%s %s %sdistance%s %s" %
-                            (",".join(
-                                [
-                                    "%s%s[%s]%s" %
-                                    (Fore.GREEN if x[0] is assignedSample else Fore.RED,
-                                     x[0],
-                                        x[1],
-                                        Style.RESET_ALL) for x in collidingSamples]),
-                                Style.DIM,
-                                Style.RESET_ALL,
-                                hammingInstance,
-                                Style.DIM,
-                                Style.RESET_ALL,
-                                hammingDistance))
-                        shown += 1
-                    totalCollisions += 1
-            if totalCollisions > showCollisions:
-                print(('%s more ...\n' % (totalCollisions - shown)))
-
-        if not spaceFill:
-            mapping = {}  # @todo: we don't need this variable anymore
-            for sequence in hammingMatrix:
-                if hammingMatrix[sequence][0] is not None:
-                    mapping[sequence] = hammingMatrix[sequence][0]
-                    self.addBarcode(
-                        alias,
-                        barcode=sequence,
-                        index=hammingMatrix[sequence][0],
-                        hammingDistance=hammingMatrix[sequence][1],
-                        originBarcode=hammingMatrix[sequence][3])
-
-        # Show a couple of barcodes
-        if False:
-            print(('\n%s hamming extended barcodes will be used for demultiplexing strategy %s' % (
-                len(mapping), alias)))
-            if len(mapping):
-                showBarcodes = 7
-                for bcId in list(mapping.keys())[:showBarcodes]:
-                    print(('%s%s%s → %s%s' % (Fore.GREEN, bcId,
-                                              Fore.WHITE, mapping[bcId], Style.RESET_ALL)))
-                if len(mapping) > showBarcodes:
-                    print(('%s more ...\n' % (len(mapping) - showBarcodes)))
-
     def addBarcode(
             self,
             barcodeFileAlias,
@@ -285,11 +190,22 @@ class BarcodeParser():
                 index, originBarcode, hammingDistance)
 
     # get index and hamming distance to barcode  returns none if not Available
-    def getIndexCorrectedBarcodeAndHammingDistance(self, barcode, alias):
+    def getIndexCorrectedBarcodeAndHammingDistance(self, barcode, alias, try_lazy_load_pending=True):
+
+        # Check if the alias still needs to be loaded:
+
+
         if barcode in self.barcodes[alias]:
             return (self.barcodes[alias][barcode], barcode, 0)
         if barcode in self.extendedBarcodes[alias]:
             return self.extendedBarcodes[alias][barcode]
+
+        if alias in self.pending_files:
+            if not try_lazy_load_pending:
+                raise RecursionError()
+            self.parse_pending_barcode_file_of_alias(alias)
+            return self.getIndexCorrectedBarcodeAndHammingDistance(barcode, alias, try_lazy_load_pending=False)
+
         return (None, None, None)
 
     def list(self, showBarcodes=5):  # showBarcodes=None show all
