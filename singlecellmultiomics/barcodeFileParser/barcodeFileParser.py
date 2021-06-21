@@ -10,6 +10,7 @@ import collections
 import itertools
 import gzip
 
+#logging.basicConfig(level=logging.DEBUG)
 # http://codereview.stackexchange.com/questions/88912/create-a-list-of-all-strings-within-hamming-distance-of-a-reference-string-with
 def hamming_circle(s, n, alphabet):
     for positions in itertools.combinations(range(len(s)), n):
@@ -59,7 +60,9 @@ class BarcodeParser():
                     # print(parts[1],indexFirst)
 
         nospec=False
+        i=0
         with gzip.open(barcodeFile,'rt') if barcodeFile.endswith('.gz') else open(barcodeFile) as f :
+
             for i, line in enumerate(f):
                 parts = line.strip().split()
                 if len(parts) == 1 and ' ' in line:
@@ -97,14 +100,16 @@ class BarcodeParser():
                     e = f'The barcode file {barcodeFile} contains more than two columns. Failed to parse!'
                     logging.error(e)
                     raise ValueError(e)
+        logging.info(f'done loading {i} barcodes')
 
 
     def __init__(
             self,
             barcodeDirectory='barcodes',
             hammingDistanceExpansion=0,
-            lazyLoad=None, # these aliases wiill not be loaded until requested, '*' matches all files
-            spaceFill=False):
+            spaceFill=False,
+            lazyLoad=None # these aliases wiill not be loaded until requested, '*' matches all files
+            ):
 
         self.hammingDistanceExpansion = hammingDistanceExpansion
 
@@ -128,6 +133,7 @@ class BarcodeParser():
                 self.pending_files[barcodeFileAlias] = barcodeFile
                 continue
             logging.info(f"Parsing {barcodeFile}, alias {barcodeFileAlias}")
+            self.parse_barcode_file(barcodeFile)
 
         if hammingDistanceExpansion > 0:
             for alias in list(self.barcodes.keys()):

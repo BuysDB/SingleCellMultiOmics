@@ -121,8 +121,10 @@ class TestBarcodeParser(unittest.TestCase):
 
 
     def test_lazy_load(self):
+        print('lazyLoad all:')
         self.lazy_load_case(lazyloadsetting='*')
-        self.lazy_load_case(lazyloadsetting=('celseq1',))
+        #print('lazyLoad single:')
+        #self.lazy_load_case(lazyloadsetting=('celseq1',))
 
 
 if __name__ == '__main__':

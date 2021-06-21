@@ -36,7 +36,7 @@ class TestMultiomeTaggingCHIC(unittest.TestCase):
 
     def test_write_to_read_grouped_multi(self):
         write_path = './data/write_test_chic_rg.bam'
-        tm.run_multiome_tagging_cmd(f'./data/chic_test_region.bam -method chic --multiprocess -o {write_path}'.split(' '))
+        tm.run_multiome_tagging_cmd(f'./data/chic_test_region.bam -contig 8 -method chic --multiprocess -o {write_path}'.split(' '))
 
         with pysam.AlignmentFile(write_path) as f:
             # Test program header:
