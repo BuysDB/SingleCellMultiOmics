@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 import unittest
 import itertools
-
 import singlecellmultiomics.barcodeFileParser.barcodeFileParser as barcodeFileParser
-
+import pkg_resources
 
 """
 These tests check if the barcode file parser is working correctly
@@ -101,6 +100,29 @@ class TestBarcodeParser(unittest.TestCase):
         self.assertEqual(index,'TEST1')
         self.assertEqual(barcode,'AAA')
         self.assertEqual(hd,1)
+
+
+    def lazy_load_case(self, lazyloadsetting):
+        b = barcodeFileParser.BarcodeParser(pkg_resources.resource_filename(
+            'singlecellmultiomics',
+            'modularDemultiplexer/barcodes/'), lazyLoad = lazyloadsetting,hammingDistanceExpansion=1)
+
+
+        index, barcode, hd = b.getIndexCorrectedBarcodeAndHammingDistance('GAATCTCG','celseq1')
+        self.assertEqual(index,49)
+        self.assertEqual(barcode,'GAATCTCG')
+        self.assertEqual(hd,0)
+
+        # Test lazy loading of hamming expansion:
+        index, barcode, hd = b.getIndexCorrectedBarcodeAndHammingDistance('GTGCTATC','celseq1')
+        self.assertEqual(index,95)
+        self.assertEqual(barcode,'GTGCAATC')
+        self.assertEqual(hd,1)
+
+
+    def test_lazy_load(self):
+        self.lazy_load_case(lazyloadsetting='*')
+        self.lazy_load_case(lazyloadsetting=('celseq1',))
 
 
 if __name__ == '__main__':
