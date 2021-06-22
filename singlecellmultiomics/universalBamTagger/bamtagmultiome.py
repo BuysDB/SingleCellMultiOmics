@@ -31,7 +31,8 @@ import pkg_resources
 import pickle
 from datetime import datetime
 from time import sleep
-
+# Supress [E::idx_find_and_load] Could not retrieve index file for, see https://github.com/pysam-developers/pysam/issues/939
+pysam.set_verbosity(0)
 
 argparser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,

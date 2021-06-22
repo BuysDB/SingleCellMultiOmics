@@ -14,8 +14,8 @@ class TestUmiBarcodeDemux(unittest.TestCase):
 
         barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
         index_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/')
-        barcode_parser = BarcodeParser(barcode_folder)
-        index_parser = BarcodeParser(index_folder)
+        barcode_parser = BarcodeParser(barcode_folder, lazyLoad='*')
+        index_parser = BarcodeParser(index_folder, lazyLoad='*')
 
         r1 = FastqRecord(
           '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 1:N:0:GTGAAA',
@@ -52,8 +52,8 @@ class TestUmiBarcodeDemux(unittest.TestCase):
 
         barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
         index_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/')
-        barcode_parser = BarcodeParser(barcode_folder)
-        index_parser = BarcodeParser(index_folder)
+        barcode_parser = BarcodeParser(barcode_folder, lazyLoad='*')
+        index_parser = BarcodeParser(index_folder, lazyLoad='*')
 
         seq = 'TATGAGCAATCACACACTATAGTCATTCAGGAGCAGGTTCTTCAGGTTCCCTGTAGTTGTGT'
         r1 = FastqRecord(
@@ -83,8 +83,8 @@ class TestUmiBarcodeDemux(unittest.TestCase):
 
         barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
         index_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/')
-        barcode_parser = BarcodeParser(barcode_folder)
-        index_parser = BarcodeParser(index_folder)
+        barcode_parser = BarcodeParser(barcode_folder, lazyLoad='*')
+        index_parser = BarcodeParser(index_folder, lazyLoad='*')
 
         seq = 'TATGAGCAATCACACACTATAGTCATTCAGGAGCAGGTTCTTCAGGTTCCCTGTAGTTGTGT'
         r1 = FastqRecord(
@@ -144,7 +144,7 @@ class TestUmiBarcodeDemux(unittest.TestCase):
     def test_3DEC_UmiBarcodeDemuxMethod_matching_barcode(self):
 
         barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
-        barcode_parser = BarcodeParser(barcode_folder)
+        barcode_parser = BarcodeParser(barcode_folder,lazyLoad='*')
 
         r1 = FastqRecord(
           '@Cluster_s_1_1101_1000',

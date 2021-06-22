@@ -265,7 +265,9 @@ if __name__ == '__main__':
     # Load barcodes
     barcodeParser = barcodeFileParser.BarcodeParser(
         hammingDistanceExpansion=args.hd,
-        barcodeDirectory=args.barcodeDir)
+        barcodeDirectory=args.barcodeDir,
+        lazyLoad=("10x_3M-february-2018.bc.gz",)
+        )
 
     # Setup the index parser
     indexFileAlias = args.ifa  # let the multiplex methods decide which index file to use
