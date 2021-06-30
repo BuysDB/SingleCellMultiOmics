@@ -84,7 +84,7 @@ def get_conversion_counts(args):
     conversions_per_library = defaultdict( conversion_dict_stranded )
     context_obs = defaultdict( Counter )
 
-    bam,refpath,method,every_fragment_as_molecule  = args
+    bam,refpath,method,every_fragment_as_molecule, spikein_name  = args
 
 
     if method=='nla':
@@ -113,14 +113,14 @@ def get_conversion_counts(args):
                 },
                 every_fragment_as_molecule=every_fragment_as_molecule,
                 fragment_class_args={},
-                contig = 'J02459.1'
+                contig = spikein_name
             ):
                 update_mutation_dict(molecule, reference ,conversions_per_library, context_obs)
 
     return conversions_per_library, context_obs
 
 
-def generate_taps_conversion_stats(bams, reference_path, prefix, method, every_fragment_as_molecule, n_threads=None):
+def generate_taps_conversion_stats(bams, reference_path, prefix, method, every_fragment_as_molecule, spikein_name, n_threads=None):
     if reference_path is None:
         reference_path = get_reference_path_from_bam(bams[0])
 
@@ -133,7 +133,7 @@ def generate_taps_conversion_stats(bams, reference_path, prefix, method, every_f
 
     with Pool(n_threads) as workers:
 
-        for cl, co in workers.imap(get_conversion_counts, [(bam, reference_path, method, every_fragment_as_molecule) for bam in bams] ):
+        for cl, co in workers.imap(get_conversion_counts, [(bam, reference_path, method, every_fragment_as_molecule, spikein_name) for bam in bams] ):
 
             for lib, obs in cl.items():
                 for k,v in obs.items():
@@ -230,6 +230,7 @@ if __name__=='__main__':
     argparser.add_argument('-method', type=str, default='nla', help='Molecule class (nla or chic). Use chic when you are not sure or when another other protocol is used.')
     argparser.add_argument('--dedup', action='store_true',help='perform UMI deduplication and consensus calling. Do not use when the UMI\'s are (near) saturated')
     argparser.add_argument('-t', type=int, help='Amount of threads')
+    argparser.add_argument('-spikein_name', type=str, help='Name of spikein contig',default='J02459.1')
 
 
     argparser.add_argument(
@@ -245,4 +246,5 @@ if __name__=='__main__':
                                    prefix=args.o,
                                    method=args.method,
                                    every_fragment_as_molecule=not args.dedup,
+                                   spikein_name=args.spikein_name,
                                    n_threads=args.t)

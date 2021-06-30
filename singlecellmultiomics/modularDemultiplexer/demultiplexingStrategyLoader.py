@@ -62,12 +62,13 @@ class DemultiplexingStrategyLoader:
             dm.SCCHIC_384w_c8_u3_cs2,
             dm.SCCHIC_384w_c8_u3_pdt,
             dm.SCCHIC_384w_c8_u3_direct_ligation,
-            
+            dm.SCCHIC_384w_c8_u3_direct_ligation_SINGLE_END,
+
             dm.MSPJI_c8_u3,
             dm.ScartraceR2,
             dm.ScartraceR1,
             dm.ScartraceR2RP4,
-            
+
             dm.chrom10x_c16_u12
 
 
