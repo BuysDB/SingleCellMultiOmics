@@ -8,6 +8,7 @@ import pandas as pd
 import argparse
 from singlecellmultiomics.bamProcessing import get_contig_sizes
 import numpy as np
+from singlecellmultiomics.utils.path import get_valid_filename
 
 def bam_to_wig(bam_paths, write_path, bin_size, method='sum', verbose=False, n_threads=None, sample_mapping_function=None):
     if verbose:
@@ -88,7 +89,8 @@ if __name__ == '__main__':
         type=str,
         help="""Path to a CSV file which contains for every barcode index (SM tag) to what group it belongs.
          The CSV file has no header and two columns, the first column contains the sample name,
-        the second the target sample name. Multiple barcode indices can share the same sample name, this will create a pseudobulk signal"""
+        the second the target sample name. Multiple barcode indices can share the same sample name, this will create a pseudobulk signal.
+        Expects a comma as delimiter."""
         )
 
     args = argparser.parse_args()
@@ -96,7 +98,7 @@ if __name__ == '__main__':
 
     sample_mapping_function = None
     if args.pseudobulk_SM_csv is not None:
-        sm_sample_map = {str(sm):str(sample)
+        sm_sample_map = {str(sm):get_valid_filename(str(sample))
             for sm, sample in pd.read_csv(args.pseudobulk_SM_csv,header=None,index_col=0).iloc[:,0].to_dict().items() }
         def sample_mapping_function(s):
             return sm_sample_map.get(s)
