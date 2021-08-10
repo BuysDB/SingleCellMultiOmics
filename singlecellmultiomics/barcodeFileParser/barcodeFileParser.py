@@ -38,6 +38,7 @@ class BarcodeParser():
 
         logging.info(f"Loading promised barcode file {alias}")
         self.parse_barcode_file( self.pending_files[alias] )
+        logging.info(f"Performing hamming extension for {alias}")
         self.expand(self.hammingDistanceExpansion, alias=alias)
         del self.pending_files[alias]
 
@@ -135,10 +136,8 @@ class BarcodeParser():
             logging.info(f"Parsing {barcodeFile}, alias {barcodeFileAlias}")
             self.parse_barcode_file(barcodeFile)
 
-        if hammingDistanceExpansion > 0:
-            for alias in list(self.barcodes.keys()):
-                # print(alias)
-                self.expand(hammingDistanceExpansion, alias=alias)
+            if hammingDistanceExpansion > 0:
+                self.expand(hammingDistanceExpansion, alias=barcodeFileAlias)
 
     def getTargetCount(self, barcodeFileAlias):
         return(len(self.barcodes[barcodeFileAlias]), len(self.extendedBarcodes[barcodeFileAlias]))
