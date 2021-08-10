@@ -33,6 +33,37 @@ def invert_strand_f(s):
     return '.'
 
 
+def get_contig_lengths_from_resource(resource ) -> dict:
+    """
+    Extract contig lengts from the supplied resouce (Fasta file or Bam/Cram/Sam )
+    Returns:
+        lengths(dict)
+    """
+    if type(resource) is AlignmentFile:
+        return get_contig_sizes(resource)
+
+    elif type(resource) is str:
+        est_type = get_file_type(resource)
+
+        if est_type in (AlignmentFile,FastaFile):
+            with est_type(resource) as f:
+                lens = dict(zip(f.references, f.lengths))
+
+            return lens
+
+
+    raise NotImplementedError('Unable to extract contig lengths from this resource')
+
+
+def get_file_type(s: str):
+    """Guess the file type of the input string, returns None when the file type can not be determined"""
+    if s.endswith('.bam') or s.endswith('.cram') or s.endswith('.sam'):
+        return AlignmentFile
+    if s.endswith('.fa') or s.endswith('.fasta') or s.endswith('.fa.gz') or s.endswith('.fasta.gz'):
+        return FastaFile
+
+    return None
+
 def create_fasta_dict_file(refpath: str, skip_if_exists=True):
     """Create index dict file for the reference fasta at refpath
 
