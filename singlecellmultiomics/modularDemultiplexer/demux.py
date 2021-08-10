@@ -266,7 +266,7 @@ if __name__ == '__main__':
     barcodeParser = barcodeFileParser.BarcodeParser(
         hammingDistanceExpansion=args.hd,
         barcodeDirectory=args.barcodeDir,
-        lazyLoad=("10x_3M-february-2018.bc.gz",)
+        lazyLoad=("10x_3M-february-2018",)
         )
 
     # Setup the index parser

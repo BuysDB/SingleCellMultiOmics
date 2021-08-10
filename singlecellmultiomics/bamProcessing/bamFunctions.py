@@ -3,7 +3,7 @@ import pysam
 import time
 import contextlib
 from shutil import which, move
-from singlecellmultiomics.utils import BlockZip, Prefetcher
+from singlecellmultiomics.utils import BlockZip, Prefetcher, get_file_type
 import uuid
 import os
 from collections import defaultdict, Counter
@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from typing import Generator
 from multiprocessing import Pool
+
 
 def get_index_path(bam_path: str):
     """
