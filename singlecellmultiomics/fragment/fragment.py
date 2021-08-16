@@ -351,12 +351,11 @@ class Fragment():
         if self.has_valid_span():
             # Write fragment size:
             if self.safe_span:
-                self.set_meta('fS', self.estimated_length)
+                self.set_meta('fS', self.get_fragment_size())
                 self.set_meta('fe', self.span[1])
                 self.set_meta('fs', self.span[2])
             else:
                 self.remove_meta('fS')
-
 
         else:
             self.set_rejection_reason('FS', set_qcfail=True)
@@ -534,7 +533,7 @@ class Fragment():
         """
         Obtain the estimated size of the fragment,
         returns None when estimation is not possible
-        Takes into account removed bases (R2)
+        Takes into account removed bases (R2_primer_length attribute)
         Assumes inwards sequencing orientation, except when self.single_end is set
         """
         if self.single_end:
@@ -547,12 +546,18 @@ class Fragment():
 
             contig = self.R1.reference_name
             if self.R1.is_reverse and not self.R2.is_reverse:
+                ##     rp |----- R2 ---->  <--- R1 ----|
+                ##    |>----------DISTANCE------------<|
                 start, end = self.R2.reference_start - self.R2_primer_length, self.R1.reference_end
                 if start<end:
                     return end - start
                 else:
                     return None
             elif not self.R1.is_reverse and self.R2.is_reverse:
+
+                ##    |----- R1 ---->  <--- R2 ----|  rp
+                ##    |>----------DISTANCE------------<|
+
                 start, end = self.R1.reference_start, self.R2.reference_end + self.R2_primer_length
                 if start<end:
                     return end - start

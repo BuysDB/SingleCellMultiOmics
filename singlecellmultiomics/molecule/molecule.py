@@ -535,7 +535,7 @@ class Molecule():
         # Set total amount of associated fragments
         self.set_meta('TF', len(self.fragments) + self.overflow_fragments)
         try:
-            self.set_meta('ms',self.aligned_length)
+            self.set_meta('ms',self.estimated_max_length)
         except Exception as e:
             # There is no properly defined aligned length
             pass

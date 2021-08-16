@@ -771,7 +771,7 @@ def run_multiome_tagging(args):
         bp_per_segment = 50_000
         fragment_size = 1000
         if max_time_per_segment is None:
-            max_time_per_segment = 120 # 120 seconds should be plenty for 50kb
+            max_time_per_segment = 20*60 #
 
 
 
