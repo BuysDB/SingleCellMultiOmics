@@ -818,6 +818,7 @@ def run_multiome_tagging(args):
         molecule_class = singlecellmultiomics.molecule.AnnotatedNLAIIIMolecule
         fragment_class = singlecellmultiomics.fragment.NlaIIIFragment
 
+        molecule_class_args.update(transcriptome_feature_args)
         molecule_class_args.update({
             'stranded': None  # data is not stranded
         })

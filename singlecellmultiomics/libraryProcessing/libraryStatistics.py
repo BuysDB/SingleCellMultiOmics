@@ -317,7 +317,7 @@ if __name__ == '__main__':
             table_dir = f'{library}/tables'
             statFile = f'{library}/statistics.pickle.gz'
         else:
-            plot_dir = args.o
+            plot_dir = f'{args.o}/plots'
             table_dir = f'{args.o}/tables'
             statFile = f'{args.o}/statistics.pickle.gz'
 
