@@ -240,7 +240,7 @@ def create_MD_tag(reference_seq, query_seq):
     """
     no_change = 0
     md = []
-    for ref_base, query_base in zip(reference_seq, query_seq):
+    for ref_base, query_base in zip(reference_seq.upper(), query_seq):
         if ref_base.upper() == query_base:
             no_change += 1
         else:
