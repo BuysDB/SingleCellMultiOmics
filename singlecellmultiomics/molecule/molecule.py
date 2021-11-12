@@ -1589,7 +1589,10 @@ class Molecule():
         """
 
         for fragment in self.fragments:
-            site = fragment.get_site_location()
+            try:
+                site = fragment.get_site_location()
+            except AttributeError:
+                return None
             if site is not None:
                 return tuple((*site, fragment.get_strand()))
         return None
