@@ -2,7 +2,7 @@ from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
 import singlecellmultiomics.bamProcessing
 from singlecellmultiomics.fragment import Fragment
-
+from array import array
 import itertools
 import numpy as np
 from singlecellmultiomics.utils import style_str, prob_to_phred, phredscores_to_base_call, base_probabilities_to_likelihood, likelihood_to_prob
@@ -846,7 +846,7 @@ class Molecule():
                 read_name=read_name,
                 target_file=target_bam,
                 consensus=''.join(partial_sequence),
-                phred_scores=np.concatenate(partial_phred),
+                phred_scores= array('B', np.concatenate(partial_phred)), # Needs to be casted to array
                 cigarstring=''.join(partial_CIGAR),
                 mdstring=create_MD_tag(
                     self.reference.fetch(self.chromosome, reference_start, reference_end),
@@ -908,7 +908,7 @@ class Molecule():
                         read_name=read_name,
                         target_file=target_bam,
                         consensus=''.join(partial_sequence),
-                        phred_scores=np.concatenate(partial_phred),
+                        phred_scores=array('B',np.concatenate(partial_phred)),
                         cigarstring=''.join(partial_CIGAR),
                         mdstring=create_MD_tag(
                             self.reference.fetch(self.chromosome, reference_start, reference_end),
@@ -951,7 +951,7 @@ class Molecule():
             read_name=read_name,
             target_file=target_bam,
             consensus=''.join(partial_sequence),
-            phred_scores=np.concatenate(partial_phred),
+            phred_scores= array('B',np.concatenate(partial_phred)),
             cigarstring=''.join(partial_CIGAR),
             mdstring=create_MD_tag(
                 self.reference.fetch(self.chromosome, reference_start, reference_end),
