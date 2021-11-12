@@ -7,6 +7,8 @@ from singlecellmultiomics.bamProcessing import sorted_bam_file
 from uuid import uuid4
 from copy import copy
 from typing import Generator
+import os
+import gzip
 
 def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
     """ Prefetch selected region
@@ -28,6 +30,13 @@ def prefetch(contig, start, end, fetch_start,fetch_end,molecule_iterator_args):
         else:
             new_kwarg_dict[iterator_arg] = iterator_value
     return new_kwarg_dict
+
+
+def write_job_gen_to_bed(job_gen: list, bed_path: str):
+    with (gzip.open(bed_path,'wt') if bed_path.endswith('.gz') else open(bed_path,'w')) as o:
+        for job_id, tasks in enumerate(job_gen):
+            for i,(contig, start, end, fetch_start,fetch_end) in enumerate(tasks):
+                o.write(f'{contig}\t{fetch_start}\t{fetch_end}\t{job_id}:{i}\t1\t+\t{start}\t{end}\n')
 
 def run_tagging_task(alignments, output,
                     contig=None, start=None, end=None, fetch_start=None, fetch_end=None,
@@ -66,7 +75,6 @@ def run_tagging_task(alignments, output,
         if start is None and end is None:
             assert fetch_start is None and fetch_end is None, 'start and end need to be supplied'
             assert contig is not None
-
 
         elif start is not None and end is not None and fetch_start is None and fetch_end is None:
             fetch_start = start
@@ -161,6 +169,10 @@ def run_tagging_tasks(args: tuple):
     (alignments_path, temp_dir, timeout_time), arglist = args
 
     target_file = f"{temp_dir}/{uuid4()}.bam"
+    while os.path.exists(target_file):
+        print(f'Collision at {target_file}')
+        target_file = f"{temp_dir}/{uuid4()}.bam"
+
 
     timeout_tasks = []
     total_molecules = 0
@@ -170,6 +182,7 @@ def run_tagging_tasks(args: tuple):
         with sorted_bam_file(target_file, origin_bam=alignments, mode='wb', fast_compression=False,
                              read_groups=read_groups) as output:
             for task in arglist:
+                print(task)
                 try:
                     statistics = run_tagging_task(alignments, output, read_groups=read_groups, timeout_time=timeout_time, **task)
                     total_molecules += statistics.get('total_molecules_written', 0)
