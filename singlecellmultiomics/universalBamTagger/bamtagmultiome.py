@@ -116,6 +116,7 @@ allele_gr.add_argument(
 argparser.add_argument('-molecule_iterator_verbosity_interval',type=int,default=None,help='Molecule iterator information interval in seconds')
 argparser.add_argument('--molecule_iterator_verbose', action='store_true', help='Show progress indication on command line')
 argparser.add_argument('-stats_file_path',type=str,default=None,help='Path to logging file, ends with ".tsv"')
+argparser.add_argument('-jobbed',type=str,default=None,help='Path to location to write multiprocessing region log file')
 
 argparser.add_argument(
     '--multiprocess',
@@ -1182,7 +1183,7 @@ def run_multiome_tagging(args):
                                       fragment_size=fragment_size, blacklist_path=args.blacklist,bp_per_job=bp_per_job,
                                       bp_per_segment=bp_per_segment, temp_folder_root=args.temp_folder, max_time_per_segment=max_time_per_segment,
                                       additional_args=consensus_model_args, n_threads=args.tagthreads, one_contig_per_process=one_contig_per_process,
-                                      job_bed_file='./test.bed.gz'
+                                      job_bed_file=args.jobbed
                                       )
     else:
 
