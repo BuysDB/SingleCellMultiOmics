@@ -17,3 +17,4 @@ snakemake>=5.8.1
 lxml
 cached_property
 pyBigWig
+docutils<0.18
