@@ -304,11 +304,11 @@ if __name__ == '__main__':
                 elif args.fmt == "table_more":
 
                     base = consensus[chromosome, location]
-                    bq = molecule.get_mean_base_quality(chromosome, location, base=base)
-                    R1_cycle, R2_cycle = molecule.get_mean_cycle(chromosome, location, base=base)
-
+                    qual = call['qual']
+                    cov = call['cov']
                     print(
-                        f"{molecule.sample}{s}{i}{s}{molecule.get_cut_site()[1]}{s}{molecule.span_len}{s}{R1_cycle:.0f}{s}{R2_cycle:.0f}{s}{bq:.0f}{s}{molecule.umi}{s}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}")
+                        f"{molecule.sample}{s}{i}{s}{CUT_SITE}{s}{molecule.estimated_max_length}{s}{molecule.umi}{s}{molecule.get_strand_repr()}\t{chromosome}\t{location+1}\t{call['context']}\t{qual}\t{cov}\t{molecule.ligation_motif}{additional}")
+
                 elif args.fmt == "bed":
                     sample = molecule.sample.split("_")[-1]
                     print(
