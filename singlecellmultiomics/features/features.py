@@ -330,21 +330,26 @@ class FeatureContainer(Prefetcher):
             for line in f:
                 if line.split()[0] == "track":
                     continue
-                blockAvail = True
-                try:
-                    chrom, chromStart, chromEnd, name, score, strand, thickStart, thickEnd, itemRGB, blockCount, blockSizes, blockStarts = line.strip().split()
-                except BaseException:
-                    try:
-                        chrom, chromStart, chromEnd, name, score, strand, itemRGB, blockCount, blockSizes, blockStarts = line.strip().split()
-                    except BaseException:
-                        try:
-                            chrom, chromStart, chromEnd, name, score, strand = line.strip().split()
-                            blockAvail = False
+                blockAvail = False
 
-                        except BaseException:
-                            raise ValueError(
-                                'Could not parse %s' %
-                                line.strip())
+                parts = line.strip().split()
+                strand = None
+                name = None
+                score = None
+                if len(parts)==12:
+                    chrom, chromStart, chromEnd, name, score, strand, thickStart, thickEnd, itemRGB, blockCount, blockSizes, blockStarts = parts
+                    blockAvail = True
+                elif len(parts)==10:
+                    chrom, chromStart, chromEnd, name, score, strand, itemRGB, blockCount, blockSizes, blockStarts = parts
+                    blockAvail = True
+                elif len(parts)==6:
+                    chrom, chromStart, chromEnd, name, score, strand = parts
+                elif len(parts)>=4:
+                    chrom, chromStart, chromEnd, value = parts[:4]
+                    name = value
+                else:
+                    raise ValueError('Could not read the supplied bed file, it has too little columns, expecting at least 4 columns: contig,start,end,value')
+
                 chrom = self.remapKeys.get(chrom, chrom)
                 chrom = chrom if ignChr == False else chrom.replace('chr', '')
 
