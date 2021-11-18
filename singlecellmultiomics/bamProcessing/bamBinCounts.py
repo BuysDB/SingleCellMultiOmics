@@ -533,7 +533,7 @@ def obtain_approximate_reference_cut_position(site: int, contig: str, alt_spans:
     return contig, site + alt_start
 
 
-def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_interval=3, threads=4, count_function=None):
+def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_interval=3, threads=4, count_function=None, show_progress=False):
     if count_function is None:
         count_function = count_fragments_binned
 
@@ -562,10 +562,17 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
 
     update_method = 'partial_df'
 
+    if show_progress:
+        commands = list(commands) # generator -> list
+        print(f"Counting started ({len(commands)})", end = '\r')
+
     with multiprocessing.Pool(threads) as workers:
 
         for i, result in enumerate(workers.imap_unordered(count_function,
                                                           commands)):
+
+            if show_progress:
+                print(f"Counting progress { ((i/len(commands))*100):.2f} % ({i} / {len(commands)}) ", end = '\r')
             # Result is of the format: counts[bin_id][sample] = obs (int)
             #counts.update(result)
             for bin_id, sample_dict in result.items():
@@ -604,6 +611,9 @@ def obtain_counts(commands, reference, live_update=True, show_n_cells=4, update_
                             gplot[contig].scatter(x, row.values, s=0.1, c='k')
                             fig.canvas.draw()
                     plt.pause(0.001)
+
+    if show_progress:
+        print("Counting finished     ")
 
     # Show final result
     if live_update:

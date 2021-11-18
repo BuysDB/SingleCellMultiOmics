@@ -14,7 +14,7 @@ import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger
 import singlecellmultiomics.features
 from pysamiterators import MatePairIteratorIncludingNonProper, MatePairIterator
-from singlecellmultiomics.universalBamTagger.tagging import generate_tasks, prefetch, run_tagging_tasks
+from singlecellmultiomics.universalBamTagger.tagging import generate_tasks, prefetch, run_tagging_tasks, write_job_gen_to_bed
 from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs,get_bins_from_bed_iter
 from singlecellmultiomics.utils.binning import bp_chunked
 from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads, sam_to_bam
@@ -116,6 +116,7 @@ allele_gr.add_argument(
 argparser.add_argument('-molecule_iterator_verbosity_interval',type=int,default=None,help='Molecule iterator information interval in seconds')
 argparser.add_argument('--molecule_iterator_verbose', action='store_true', help='Show progress indication on command line')
 argparser.add_argument('-stats_file_path',type=str,default=None,help='Path to logging file, ends with ".tsv"')
+argparser.add_argument('-jobbed',type=str,default=None,help='Path to location to write multiprocessing region log file')
 
 argparser.add_argument(
     '--multiprocess',
@@ -286,7 +287,8 @@ def tag_multiome_multi_processing(
         use_pool: bool = True,
         one_contig_per_process: bool =False,
         additional_args: dict = None,
-        n_threads=None
+        n_threads=None,
+        job_bed_file: str = None # Writes job blocks to a bed file for inspection
     ):
 
     assert bp_per_job is not None
@@ -325,7 +327,8 @@ def tag_multiome_multi_processing(
         #job_gen = [ [(contig,0,contig_len,0,contig_len),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True)  ]
         if blacklist_path is not None:
             raise NotImplementedError('A blacklist is currently incompatible with --multiprocessing in single contig mode')
-        job_gen = [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True)  ]
+        job_gen = [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True) if contig!='*' ]
+
 
     else:
         regions = blacklisted_binning_contigs(
@@ -338,6 +341,14 @@ def tag_multiome_multi_processing(
 
         # Chunk into jobs of roughly equal size: (A single job will process multiple segments)
         job_gen = bp_chunked(regions, bp_per_job)
+
+
+    if job_bed_file is not None:
+
+        assert not one_contig_per_process, 'Cannot write bed file with jobs. Each contig is a separate job, there are no bins.'
+        job_gen = list(job_gen) # Convert the job generator to a list to allow it to be traversed multiple times
+        write_job_gen_to_bed( job_gen, job_bed_file)
+        print(f'Wrote job bed file to {job_bed_file}')
 
     tasks = generate_tasks(input_bam_path=input_bam_path,
                            job_gen=job_gen,
@@ -771,7 +782,7 @@ def run_multiome_tagging(args):
         bp_per_segment = 50_000
         fragment_size = 1000
         if max_time_per_segment is None:
-            max_time_per_segment = 120 # 120 seconds should be plenty for 50kb
+            max_time_per_segment = 20*60 #
 
 
 
@@ -1172,7 +1183,8 @@ def run_multiome_tagging(args):
                                       head=args.head, no_source_reads=args.no_source_reads,
                                       fragment_size=fragment_size, blacklist_path=args.blacklist,bp_per_job=bp_per_job,
                                       bp_per_segment=bp_per_segment, temp_folder_root=args.temp_folder, max_time_per_segment=max_time_per_segment,
-                                      additional_args=consensus_model_args, n_threads=args.tagthreads, one_contig_per_process=one_contig_per_process
+                                      additional_args=consensus_model_args, n_threads=args.tagthreads, one_contig_per_process=one_contig_per_process,
+                                      job_bed_file=args.jobbed
                                       )
     else:
 

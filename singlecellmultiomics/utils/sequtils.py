@@ -32,7 +32,7 @@ def invert_strand_f(s):
     elif s=='-':
         return '+'
     return '.'
-            
+
 def get_contig_lengths_from_resource(resource ) -> dict:
     """
     Extract contig lengts from the supplied resouce (Fasta file or Bam/Cram/Sam )
@@ -122,7 +122,7 @@ def is_main_chromosome(chrom: str) -> bool:
 
     """
     if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('JH') or chrom.startswith('GL') or chrom.startswith(
-            'KI') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom or chrom.endswith('_alt') or "HLA-" in chrom:
+            'KI') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom or chrom.endswith('_alt') or "HLA-" in chrom or chrom.startswith('Un_') or 'decoy' in chrom:
         return False
     return True
 
@@ -240,7 +240,7 @@ def create_MD_tag(reference_seq, query_seq):
     """
     no_change = 0
     md = []
-    for ref_base, query_base in zip(reference_seq, query_seq):
+    for ref_base, query_base in zip(reference_seq.upper(), query_seq):
         if ref_base.upper() == query_base:
             no_change += 1
         else:

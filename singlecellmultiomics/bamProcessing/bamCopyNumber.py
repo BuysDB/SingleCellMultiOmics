@@ -648,7 +648,7 @@ if __name__ == '__main__':
     contigs = GenomicPlot(reference).contigs
 
     kwargs = {'ignore_mp':args.ignore_mp,'ignore_qcfail':args.ignore_qcfail}
-    print("Creating count matrix ... ", end="")
+    print("Creating count matrix ... ")
 
     # Check if the bam files are in good shape:
     for path in alignments_paths:
@@ -662,16 +662,16 @@ if __name__ == '__main__':
     commands = generate_commands(
                 alignments_paths,
                 bin_size=bin_size,key_tags=key_tags,
-                bins_per_job=5,head=None,min_mq=min_mapping_qual,kwargs=kwargs )
+                bins_per_job=bins_per_job,head=None,min_mq=min_mapping_qual,kwargs=kwargs )
 
     counts = obtain_counts(commands,
                             reference=reference,
                             threads=threads,
                             live_update=False,
                             show_n_cells=None,
-                            update_interval=None )
+                            update_interval=None,show_progress=True )
 
-    print(f"\rCreating count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
+    print(f"Creating count matrix [ {Fore.GREEN}OK{Style.RESET_ALL} ] ")
 
 
 
@@ -823,7 +823,7 @@ if __name__ == '__main__':
         min_cells_per_cluster = args.min_cells_per_cluster
         min_segment_size = args.min_segment_size # segment size in bins
         hand_picked_thresholds = {}
-        
+
         print("Creating first rough clustering")
         if args.n_clusters_for_contig is not None:
 

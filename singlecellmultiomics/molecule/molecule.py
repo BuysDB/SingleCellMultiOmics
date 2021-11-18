@@ -2,7 +2,7 @@ from singlecellmultiomics.utils.sequtils import hamming_distance
 import pysamiterators.iterators
 import singlecellmultiomics.bamProcessing
 from singlecellmultiomics.fragment import Fragment
-
+from array import array
 import itertools
 import numpy as np
 from singlecellmultiomics.utils import style_str, prob_to_phred, phredscores_to_base_call, base_probabilities_to_likelihood, likelihood_to_prob
@@ -535,7 +535,7 @@ class Molecule():
         # Set total amount of associated fragments
         self.set_meta('TF', len(self.fragments) + self.overflow_fragments)
         try:
-            self.set_meta('ms',self.aligned_length)
+            self.set_meta('ms',self.estimated_max_length)
         except Exception as e:
             # There is no properly defined aligned length
             pass
@@ -846,7 +846,7 @@ class Molecule():
                 read_name=read_name,
                 target_file=target_bam,
                 consensus=''.join(partial_sequence),
-                phred_scores=np.concatenate(partial_phred),
+                phred_scores= array('B', np.concatenate(partial_phred)), # Needs to be casted to array
                 cigarstring=''.join(partial_CIGAR),
                 mdstring=create_MD_tag(
                     self.reference.fetch(self.chromosome, reference_start, reference_end),
@@ -908,7 +908,7 @@ class Molecule():
                         read_name=read_name,
                         target_file=target_bam,
                         consensus=''.join(partial_sequence),
-                        phred_scores=np.concatenate(partial_phred),
+                        phred_scores=array('B',np.concatenate(partial_phred)),
                         cigarstring=''.join(partial_CIGAR),
                         mdstring=create_MD_tag(
                             self.reference.fetch(self.chromosome, reference_start, reference_end),
@@ -951,7 +951,7 @@ class Molecule():
             read_name=read_name,
             target_file=target_bam,
             consensus=''.join(partial_sequence),
-            phred_scores=np.concatenate(partial_phred),
+            phred_scores= array('B',np.concatenate(partial_phred)),
             cigarstring=''.join(partial_CIGAR),
             mdstring=create_MD_tag(
                 self.reference.fetch(self.chromosome, reference_start, reference_end),
@@ -1589,7 +1589,10 @@ class Molecule():
         """
 
         for fragment in self.fragments:
-            site = fragment.get_site_location()
+            try:
+                site = fragment.get_site_location()
+            except AttributeError:
+                return None
             if site is not None:
                 return tuple((*site, fragment.get_strand()))
         return None

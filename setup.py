@@ -82,6 +82,7 @@ setup(
         'singlecellmultiomics/bamProcessing/bamAnalyzeCutDistances.py',
         'singlecellmultiomics/bamProcessing/bamSplitByTag.py',
         'singlecellmultiomics/bamProcessing/bamReadGroupFormat.py',
+        'singlecellmultiomics/bamProcessing/bamSetReadGroup.py',
         'singlecellmultiomics/bamProcessing/bamToCountTable.py',
         'singlecellmultiomics/bamProcessing/bamCopyNumber.py',
         'singlecellmultiomics/bamProcessing/bamExtractSamples.py',
