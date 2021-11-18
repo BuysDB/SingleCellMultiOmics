@@ -303,7 +303,6 @@ if __name__ == '__main__':
 
                 elif args.fmt == "table_more":
 
-                    base = consensus[chromosome, location]
                     qual = call['qual']
                     cov = call['cov']
                     print(
