@@ -182,7 +182,6 @@ def run_tagging_tasks(args: tuple):
         with sorted_bam_file(target_file, origin_bam=alignments, mode='wb', fast_compression=False,
                              read_groups=read_groups) as output:
             for task in arglist:
-                print(task)
                 try:
                     statistics = run_tagging_task(alignments, output, read_groups=read_groups, timeout_time=timeout_time, **task)
                     total_molecules += statistics.get('total_molecules_written', 0)
