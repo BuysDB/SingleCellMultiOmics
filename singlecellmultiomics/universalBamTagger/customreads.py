@@ -18,6 +18,21 @@ class VaninsbergheQueryNameFlagger(DigestFlagger):
             read.set_tag('bi', int(cell_index))
             read.set_tag('SM', cell_barcode)
 
+class BulkFlagger(DigestFlagger):
+    def __init__(self, **kwargs):
+        DigestFlagger.__init__(self, **kwargs)
+
+    def digest(self, reads):
+        for read in reads:
+            if read is None:
+                continue
+
+            read.set_tag('MI', "A")
+            read.set_tag('RX', "A")
+            read.set_tag('bi', 0)
+            read.set_tag('SM', "BULK")
+
+
 
 class CustomAssingmentQueryNameFlagger(DigestFlagger):
     """This query name flagger converts values between colons ":"  to tags"""

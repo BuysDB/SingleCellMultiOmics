@@ -11,7 +11,7 @@ from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get
 from singlecellmultiomics.utils import is_main_chromosome
 from singlecellmultiomics.utils.submission import submit_job
 import singlecellmultiomics.alleleTools
-from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger
+from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger, BulkFlagger
 import singlecellmultiomics.features
 from pysamiterators import MatePairIteratorIncludingNonProper, MatePairIterator
 from singlecellmultiomics.universalBamTagger.tagging import generate_tasks, prefetch, run_tagging_tasks, write_job_gen_to_bed
@@ -70,7 +70,7 @@ argparser.add_argument(
     '-qflagger',
     type=str,
     default=None,
-    help="Query flagging algorithm")
+    help="Query flagging algorithm, use -bulk to set the same sample and umi to all reads")
 argparser.add_argument(
     '--ignore_bam_issues',
     action='store_true',
@@ -670,8 +670,12 @@ def run_multiome_tagging(args):
         if args.qflagger == 'custom_flags':
             query_name_flagger = CustomAssingmentQueryNameFlagger(
                 args.custom_flags.split(','))
+        elif args.qflagger == 'bulk':
+            query_name_flagger = BulkFlagger()
+
         else:
             raise ValueError("Select from 'custom_flags, ..' ")
+
 
     molecule_class_args = {
         'umi_hamming_distance': args.umi_hamming_distance,
