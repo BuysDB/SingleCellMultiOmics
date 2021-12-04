@@ -80,6 +80,7 @@ if __name__ == '__main__':
 
     argparser.add_argument('alignmentfiles', type=str, nargs='+')
     argparser.add_argument('-o', type=str, required=True, help='Output path (.bw)')
+    argparser.add_argument('-t', type=int,  help='Amount of threads. Uses all available if not supplied')
 
     argparser.add_argument('-bin_size', type=int, required=True)
 
@@ -104,4 +105,4 @@ if __name__ == '__main__':
             return sm_sample_map.get(s)
 
 
-    bam_to_wig(args.alignmentfiles, args.o, args.bin_size, verbose=True, sample_mapping_function=sample_mapping_function)
+    bam_to_wig(args.alignmentfiles, args.o, args.bin_size, verbose=True, sample_mapping_function=sample_mapping_function,n_threads=args.t)
