@@ -76,10 +76,10 @@ class NlaIIIFragment(Fragment):
             self.match_hash = None
 
     def set_site(self, site_chrom, site_pos, site_strand=None, valid=True):
-
         if not valid :
-            self.found_valid_site=False
-        if self.found_valid_site:
+            self.found_valid_site = False
+        else:
+            self.found_valid_site = True
             self.set_meta('DS', site_pos)
 
         if site_strand is not None:

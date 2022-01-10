@@ -168,8 +168,8 @@ class GenomicPlot():
         ax = self[contig]
         ax.clear()
         ax.set_yticklabels([])
-        ax.set_yticks([],[])
-        ax.set_xticks([],[])
+        ax.set_yticks([])
+        ax.set_xticks([])
         ax.set_xlabel(contig.replace('chr',''))
         ax.set_xlim(0,self.lengths[contig])
 
@@ -198,7 +198,7 @@ class GenomicPlot():
 
     def __getitem__(self, contig):
         return self.axis[contig]
-
+    
 
 
 def plot_plate(coordinate_values: dict,
