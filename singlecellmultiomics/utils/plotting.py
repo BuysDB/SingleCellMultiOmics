@@ -67,7 +67,7 @@ class GenomicPlot():
         self.contigs = [contig for contig in self.contigs if contig in self.lengths]
 
     def cn_heatmap(self, df,cell_font_size=3, max_cn=4, method='ward', cmap='bwr', yticklabels=True,
-            figsize=(15,20), xlabel = 'Contigs', ylabel='Cells', vmin=0,  **kwargs ):
+            figsize=(15,20), xlabel = 'Contigs', ylabel='Cells', vmin=0, xtickfontsize=8, **kwargs ):
         """
         Create a heatmap from a copy number matrix
 
@@ -155,7 +155,7 @@ class GenomicPlot():
         xtick_label.append(contig)
 
         ax_heatmap.set_xticks(xtick_pos)
-        ax_heatmap.set_xticklabels(xtick_label,rotation=0, fontsize=8)
+        ax_heatmap.set_xticklabels(xtick_label,rotation=0, fontsize=xtickfontsize)
         ax_heatmap.set_xlabel(xlabel,labelpad=20)
         ax_heatmap.set_ylabel(ylabel,labelpad=20)
 
@@ -198,7 +198,7 @@ class GenomicPlot():
 
     def __getitem__(self, contig):
         return self.axis[contig]
-    
+
 
 
 def plot_plate(coordinate_values: dict,
