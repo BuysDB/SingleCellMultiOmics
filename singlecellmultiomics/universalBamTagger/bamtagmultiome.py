@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import pysam
+from itertools import chain
 from singlecellmultiomics.molecule import MoleculeIterator, ReadIterator
 import singlecellmultiomics
 import singlecellmultiomics.molecule
@@ -327,7 +328,7 @@ def tag_multiome_multi_processing(
         #job_gen = [ [(contig,0,contig_len,0,contig_len),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True)  ]
         if blacklist_path is not None:
             raise NotImplementedError('A blacklist is currently incompatible with --multiprocessing in single contig mode')
-        job_gen = [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True) if contig!='*' ]
+        job_gen =  [[('*',None,None,None,None),],] + [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True) if contig!='*' ]
 
 
     else:
@@ -340,7 +341,7 @@ def tag_multiome_multi_processing(
             )
 
         # Chunk into jobs of roughly equal size: (A single job will process multiple segments)
-        job_gen = bp_chunked(regions, bp_per_job)
+        job_gen =  [[('*',None,None,None,None),],] + list(bp_chunked(regions, bp_per_job))
 
 
     if job_bed_file is not None:
@@ -470,8 +471,14 @@ def tag_multiome_single_thread(
                                     molecule_iterator_args)
 
 
-    molecule_iterator_exec = molecule_iterator(input_bam, **{k:v for k, v in molecule_iterator_args.items()
-                                                            if k != 'alignments'})
+    molecule_iterator_args_wo_alignment = {k:v for k, v in molecule_iterator_args.items() if k != 'alignments'}
+    molecule_iterator_args_wo_alignment_unmapped = molecule_iterator_args_wo_alignment.copy()
+    molecule_iterator_args_wo_alignment_unmapped['contig'] = '*'
+
+    molecule_iterator_exec = chain(
+                molecule_iterator(input_bam, **molecule_iterator_args_wo_alignment_unmapped), molecule_iterator(input_bam, **molecule_iterator_args_wo_alignment),
+                )
+
 
     print('Params:',molecule_iterator_args)
     read_groups = dict()  # Store unique read groups in this dict
