@@ -240,7 +240,10 @@ def plot_plate(coordinate_values: dict,
                vmax: float =None,
                cmap_name:str ='viridis',
                usenorm: bool=True, # Use normlizer (disable when using a custom colormap with discrete values
-               cmap=None):
+               cmap=None,
+               colorbarargs={},
+               returncb=False
+               ):
 
 
 
@@ -312,9 +315,13 @@ def plot_plate(coordinate_values: dict,
     #norm = mpl.colors.Normalize(vmin=0, vmax=vmax)
 
     cax = fig.add_axes([0.95, 0.2, 0.03, 0.6])
+
     cb = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap,
                                     norm=norm if usenorm else None,
-                                    orientation='vertical')
+                                    orientation='vertical',**colorbarargs)
 
     cb.outline.set_visible(False)
-    return fig, ax, cax
+    if returncb:
+        return fig, ax, cax, cb
+    else:
+        return fig, ax, cax
