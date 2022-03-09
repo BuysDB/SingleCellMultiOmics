@@ -200,6 +200,39 @@ class GenomicPlot():
         return self.axis[contig]
 
 
+def plot_plate_layout(plate_layout:dict , welllabel2coord:dict , suptitle="Plate layout", cmap=None) -> dict:
+    """
+    Plate layout is a dictionary of:
+    'D10': 'condition A'
+    'D11': 'condition B',
+    etc.
+    use "empty" for empty wells
+
+    welllabel2coord:
+    {'A0': (0, 0),
+     'A1': (0, 1),
+     'A2': (0, 2),
+     'A3': (0, 3), .. }
+    """
+    if cmap is None:
+        cmap = plt.get_cmap('tab10').copy()
+        cmap.set_bad( (0.2,0.2,0.2) )
+        cmap.set_under(color='k')
+
+    states = list(set(plate_layout.values()).difference(set(['empty'])))
+    state_to_index = {state: i for i,state in enumerate(states)}
+    state_to_index['empty'] = np.nan
+    plate_indices = {welllabel2coord[well]:state_to_index[value] for well,value in plate_layout.items()}
+    fig,ax,cbar = plot_plate(plate_indices,vmax=cmap.N,cmap=cmap,log=False,vmin=0,usenorm=True,colorbarargs={'extend':'min'})
+
+    cbar.set_yticks([0] + [i + 0.5 for i, state in enumerate(states)],['empty']+states)
+    cbar.set_ylim(0,len(states))
+    cbar.set_position([0.95, 0.2, 0.02,0.25])
+    cbar.set_title('Class')
+    plt.suptitle(suptitle,y=1)
+    return {'fig':fig,'ax':ax,'cbar':cbar,'state_to_index':state_to_index, 'plate_indices':plate_indices}
+
+
 
 def plot_plate(coordinate_values: dict,
                log: bool=True,
