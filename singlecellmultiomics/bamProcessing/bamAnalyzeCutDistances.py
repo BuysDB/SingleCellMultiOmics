@@ -62,7 +62,7 @@ def generate_prefix(prefix, prefix_with_region, contig, start, end ):
         return prefix
 
 
-def get_sc_cut_dictionary(bam_path: str, filter_function=None, strand_specific=False, prefix_with_bam=False, regions=None, prefix_with_region=False):
+def get_sc_cut_dictionary(bam_path: str, filter_function=None, strand_specific=False, prefix_with_bam=False, regions=None, prefix_with_region=False, n_threads=None):
     """
     Generates cut distribution dictionary  (contig)->sample->position->obs
 
@@ -79,7 +79,7 @@ def get_sc_cut_dictionary(bam_path: str, filter_function=None, strand_specific=F
 
 
 
-    with Pool() as workers:
+    with Pool(n_threads) as workers:
         for bam_path in bam_paths:
             if prefix_with_bam:
                 prefix = bam_path.split('/')[-1].replace('.bam','')
@@ -99,7 +99,7 @@ def get_sc_cut_dictionary(bam_path: str, filter_function=None, strand_specific=F
                         strand_specific,
                         filter_function,
                         generate_prefix(prefix,prefix_with_region,contig,start,end)
-                        , start, end)
+                        , start, end, n_threads)
                         for contig, start, end in regions )):
                     # Perform merge:
                     if not contig in cut_sites:
@@ -204,7 +204,7 @@ def strict_read_counts_function(read):
 
 def _get_sc_cut_dictionary(args):
 
-    bam, contig, strand_specific, filter_function, prefix, start, end = args
+    bam, contig, strand_specific, filter_function, prefix, start, end, n_threads = args
     cut_positions = defaultdict(Counter)
     with pysam.AlignmentFile(bam) as alignments:
         for read in alignments.fetch(contig, start, end):
@@ -416,6 +416,7 @@ if __name__ == '__main__':
     argparser.add_argument('-min_region_len', type=int, default=1000)
     argparser.add_argument('--legacy', action='store_true', help='Create legacy unstranded anaylsis plots and files')
     argparser.add_argument('-max_distance', type=int,default=2000, help='Maximum distance in both plots and output tables')
+    argparser.add_argument('-t', type=int,default=None, help='Max processes')
     args = argparser.parse_args()
 
     if args.regions is not None:
@@ -460,7 +461,7 @@ if __name__ == '__main__':
         analyse(args.alignmentfiles[0], args.o, create_plot=True, verbose=True,strand_specific=False,max_distance=args.max_distance)
 
     # Stranded analysis:
-    sc_cut_dict_stranded = get_sc_cut_dictionary( args.alignmentfiles,strand_specific=True,filter_function=strict_read_counts_function, regions=regions)
+    sc_cut_dict_stranded = get_sc_cut_dictionary( args.alignmentfiles,strand_specific=True,filter_function=strict_read_counts_function, regions=regions,  n_threads=args.t)
     distance_counter_fwd_above, distance_counter_fwd_below, distance_counter_rev_above, distance_counter_rev_below = get_stranded_pairwise_counts(sc_cut_dict_stranded)
 
     # Write tables:
@@ -477,7 +478,7 @@ if __name__ == '__main__':
     #################
     # Unstranded density analysis:
     prefix_with_bam=False if len(args.alignmentfiles)==1 else True
-    sc_cut_dict = get_sc_cut_dictionary( args.alignmentfiles,strand_specific=False,filter_function=strict_read_counts_function, prefix_with_bam=prefix_with_bam, regions=regions)
+    sc_cut_dict = get_sc_cut_dictionary( args.alignmentfiles,strand_specific=False,filter_function=strict_read_counts_function, prefix_with_bam=prefix_with_bam, regions=regions,  n_threads=args.t)
     cpr = get_r1_counts_per_cell(args.alignmentfiles, prefix_with_bam=prefix_with_bam)
     counts = pd.Series(cpr).sort_values()
     print(counts)
@@ -505,7 +506,7 @@ if __name__ == '__main__':
     # This is a histogram of the amount of observed fragments at distances x:
     obs = defaultdict(lambda: np.zeros(n_bins, dtype=np.int64))
     total_tests = Counter()  # cell -> tests
-    with Pool() as workers:
+    with Pool(args.t) as workers:
         for cell, cell_obs, n_tests in workers.imap_unordered(
                 _cuts_to_observation_vector,
 
