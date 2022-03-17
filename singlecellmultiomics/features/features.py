@@ -327,7 +327,7 @@ class FeatureContainer(Prefetcher):
             # chr1   14662   187832  calJac3:ENSCJAT00000061222.1-1.1    943 -
             # 187832  187832  0   9   5,129,69,110,42,23,133,202,78,
             # 0,38,307,1133,1243,1944,1970,172713,173092,
-            for line in f:
+            for line_idx,line in enumerate(f):
                 if line.split()[0] == "track":
                     continue
                 blockAvail = False
@@ -347,8 +347,11 @@ class FeatureContainer(Prefetcher):
                 elif len(parts)>=4:
                     chrom, chromStart, chromEnd, value = parts[:4]
                     name = value
+                elif len(parts)==3:
+                    chrom, chromStart, chromEnd = parts[:3]
+                    name = str(line_idx)
                 else:
-                    raise ValueError('Could not read the supplied bed file, it has too little columns, expecting at least 4 columns: contig,start,end,value')
+                    raise ValueError('Could not read the supplied bed file, it has too little columns, expecting at least 3 columns: contig,start,end[,value]')
 
                 chrom = self.remapKeys.get(chrom, chrom)
                 chrom = chrom if ignChr == False else chrom.replace('chr', '')
