@@ -53,7 +53,7 @@ class SampleSheet:
     def index_to_condition(self, layout_name):
         well_to_condition = self['layouts'][layout_name]
         return {self['well2index'][self['layout_format'][layout_name]][k]:v for k,v in well_to_condition.items()}
-        
+
 
     def index2well(self, layout_name: str) -> dict:
         """
@@ -73,3 +73,28 @@ class SampleSheet:
         for k in ['libtype','marks']:
             libraries.update( set(self.get(k,dict()).keys()))
         return libraries
+
+
+    def drop_library(self, library):
+        if type(library) is list:
+            for l in library:
+                self.drop_library(l)
+            return
+        for main_key in ['marks','condition','libtype','library_layout']:
+            if main_key not in self.data:
+                continue
+            if library in self[main_key]:
+                del self[main_key][library]
+
+    def drop_mark(self, mark):
+        """ Remove all libraries with the given mark """
+        if type(mark) is list:
+            for m in mark:
+                self.drop_mark(m)
+            return
+        to_prune = []
+        for sample, _mark in self['marks'].items():
+            if mark==_mark:
+                to_prune.append(sample)
+
+        self.drop_library(to_prune)
