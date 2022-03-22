@@ -171,8 +171,9 @@ if __name__ == '__main__':
         atax.set_ylim(at.mean()-extra, at.mean()+extra)
         gcax.set_ylim(gc.mean()-extra, gc.mean()+extra)
 
-        for x in range(s,e,10):
-            atax.axvline(x+5,c='grey',lw=0.5, alpha=0.5)
+        if e-s < 2000:
+            for x in range(s,e,10):
+                atax.axvline(x+5,c='grey',lw=0.5, alpha=0.5)
 
         gcax.set_ylabel('Fraction CC+GG+GC')
         atax.set_ylabel('Fraction AA+AT+TA')
