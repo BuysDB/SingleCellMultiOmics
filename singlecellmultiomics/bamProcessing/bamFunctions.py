@@ -24,6 +24,9 @@ def get_index_path(bam_path: str):
     for p in [bam_path+'.bai', bam_path.replace('.bam','.bai')]:
         if os.path.exists(p):
             return p
+    for p in [bam_path+'.csi', bam_path.replace('.bam','.csi')]:
+        if os.path.exists(p):
+            return p
     return None
 
 

@@ -110,9 +110,9 @@ def is_autosome(chrom: str) -> bool:
 
 
 
-def is_main_chromosome(chrom: str) -> bool:
+def is_main_chromosome(chrom: str, exclude_mt=False) -> bool:
     """ Returns True when the chromsome is a main chromsome,
-    not an alternative or other
+    not an alternative locus, scaffold, decoy or spike-in
 
     Args:
         chrom(str) : chromosome name
@@ -121,10 +121,15 @@ def is_main_chromosome(chrom: str) -> bool:
         is_main(bool) : True when the chromsome is a main chromsome
 
     """
+    if exclude_mt and chrom in ('chrM', 'MT'):
+        return False
+
     if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('JH') or chrom.startswith('GL') or chrom.startswith(
             'KI') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom or chrom.endswith('_alt') or "HLA-" in chrom or chrom.startswith('Un_') or 'decoy' in chrom:
         return False
     return True
+
+
 
 def get_contig_list_from_fasta(fasta_path: str, with_length: bool=False) -> list:
     """Obtain list of contigs froma  fasta file,

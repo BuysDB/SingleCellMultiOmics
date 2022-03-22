@@ -6,7 +6,8 @@
 | AQ    | Read2Clipped3primeBasesKmerQuality           | Yes        | No                   |
 | AS    | alignmentScore                               | No         | No                   |
 | BC    | barcode                                      | No         | No                   |
-| BI    | barcodeIndex                                 | No         | No                   |
+| BD    | gatk_insert_deletion_base_qualities          | No         | No                   |
+| BI    | gatk_insert_deletion_base_qualities          | No         | No                   |
 | BK    | isBulk                                       | No         | No                   |
 | BX    | umiCorrected                                 | No         | No                   |
 | BZ    | umiCorrectedQuality                          | Yes        | No                   |
@@ -65,7 +66,9 @@
 | SM    | sampleName                                   | No         | No                   |
 | SP    | IsSpliced                                    | No         | No                   |
 | SQ    | meanBaseQuality                              | No         | No                   |
-| SS    | sampleSequence                               | No         | No                   |
+| TF    | totalAssociatedFragmentsIncludingOverlflow   | No         | No                   |
+| TR    | totalRTreactions                             | No         | No                   |
+| TR    | totalRTreactions                             | No         | No                   |
 | Ti    | tile                                         | No         | No                   |
 | Us    | undigestedSiteCount                          | No         | No                   |
 | XA    | alternativeAlignmentHits                     | No         | No                   |
@@ -78,8 +81,12 @@
 | aQ    | Read1Clipped3primeBasesKmerQuality           | Yes        | No                   |
 | aa    | rawIlluminaIndexSequence                     | No         | No                   |
 | af    | associatedFragmentCount                      | No         | No                   |
+| af    | totalAssociatedFragmentsInBam                | No         | No                   |
 | ah    | hammingDistanceToIndex                       | No         | No                   |
+| ap    | phasedAllelicSNVs                            | No         | No                   |
+| au    | phasednUnknownAllelicOriginSNVs              | No         | No                   |
 | bc    | rawBarcode                                   | No         | No                   |
+| bi    | barcodeIndex                                 | No         | No                   |
 | dt    | assingedDataType                             | No         | No                   |
 | e1    | Read1Clipped5primeBasesKmer                  | No         | No                   |
 | eB    | Read1Clipped5primeCycle                      | No         | No                   |
@@ -95,8 +102,8 @@
 | lh    | ligationOverhangSequence                     | No         | No                   |
 | lq    | ligationOverhangQuality                      | Yes        | No                   |
 | nM    | editDistanceToReference                      | No         | No                   |
-| rP    | randomPrimerSequence                         | No         | No                   |
-| rS    | randomPrimerStart                            | No         | No                   |
+| rP    | randomPrimerStart                            | No         | No                   |
+| rS    | randomPrimerSequence                         | No         | No                   |
 | rd    | rtDuplicateIndex                             | No         | No                   |
 | rt    | rtReactionIndex                              | No         | No                   |
 | sH    | Total CHH methylated                         | No         | No                   |
@@ -105,5 +112,6 @@
 | sh    | Total CHH unmethylated                       | No         | No                   |
 | sx    | Total CHG unmethylated                       | No         | No                   |
 | sz    | Total CPG unmethylated                       | No         | No                   |
+| tu    | second_umi                                   | No         | No                   |
 | uC    | totalUnmethylated                            | No         | No                   |
 | uL    | umiLength                                    | No         | No                   |
