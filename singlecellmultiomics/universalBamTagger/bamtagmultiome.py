@@ -973,6 +973,11 @@ def run_multiome_tagging(args):
             one_contig_per_process=True
             #raise NotImplementedError('-assignment_radius is currently incompatible with --multiprocess')
 
+    if args.multiprocess:
+        # Force one contig per process for now.
+        print("Forcing one contig per process")
+        one_contig_per_process=True
+
     if args.libname is not None:
         fragment_class_args['library_name'] = args.libname
 
