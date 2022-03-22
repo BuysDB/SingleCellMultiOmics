@@ -120,7 +120,7 @@ setup(
         'singlecellmultiomics/libraryDetection/archivestats.py',
         'singlecellmultiomics/alleleTools/heterozygousSNPedit.py',
         'singlecellmultiomics/libraryProcessing/scsortchicfeaturedensitytable.py',
-
+        'singlecellmultiomics/libraryProcessing/scsortchicqc.py',
 
         # Feature conversion:
         'singlecellmultiomics/features/exonGTFtoIntronGTF.py',
