@@ -29,3 +29,6 @@ jobs:
         pip install pytest
         pip install .
         pytest
+    - name: Test with mini_nla_test.bam
+      run: |
+        ${GITHUB_WORKSPACE}/singlecellmultiomics/universalBamTagger/bamtagmultiome.py ${GITHUB_WORKSPACE}/data/mini_nla_test.bam -method nla -o tagged.bam
