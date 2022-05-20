@@ -75,7 +75,7 @@ class TaggedRecord():
             except NonMultiplexable:
                 raise
         if library is not None and not 'LY' in self.tags:
-            self.addTagByTag('LY', library, isPhred=False)
+            self.tags['LY'] = library
         if reason is not None:
             self.tags['RR'] = reason
 
@@ -95,7 +95,7 @@ class TaggedRecord():
 
         if isPhred is None:
             isPhred = self.tagDefinitions[tagName].isPhred
-        if not isinstance(value, cast_type):
+        if cast_type and not isinstance(value, cast_type):
             value = cast_type(value)
         if isPhred:
             if decodePhred:
@@ -190,13 +190,12 @@ class TaggedRecord():
 
     def parse_illumina_header(self,fastqRecord, indexFileParser,  indexFileAlias):
         try:
-            instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber, indexSequence = illuminaHeaderSplitRegex.split(
-                fastqRecord.header.strip())
+            instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber, indexSequence  = fastqRecord.header.replace(' ',':').split(':')
         except BaseException:
 
             try:
                 instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber = illuminaHeaderSplitRegex.split(
-                    fastqRecord.header.strip().replace('::', ''))
+                    fastqRecord.header.replace('::', ''))
                 indexSequence = "N"
             except BaseException:
                 raise
@@ -219,11 +218,11 @@ class TaggedRecord():
             try:
                 indexInteger = int(indexSequence)
                 indexIdentifier, correctedIndex, hammingDistance = indexSequence, indexSequence, 0
-            except Exception:
+            except ValueError:
                 indexIdentifier, correctedIndex, hammingDistance = indexFileParser.getIndexCorrectedBarcodeAndHammingDistance(
                     alias=indexFileAlias, barcode=indexSequence)
 
-            self.addTagByTag('aa', indexSequence, isPhred=False)
+            self.tags['aa']  = indexSequence
             if correctedIndex is not None:
                 #
                 #self.addTagByTag('aA',correctedIndex, isPhred=False)
@@ -605,8 +604,8 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
                 #tr.addTagByTag('QM', barcodeQual, isPhred=True)
                 pass
             else:
-                tr.addTagByTag('RX', umi, isPhred=False, make_safe=False)
-                tr.addTagByTag('RQ', umiQual, isPhred=True)
+                tr.tags['RX'] =  umi
+                tr.addTagByTag('RQ', umiQual, isPhred=True,cast_type=None)
                 #tr.addTagByTag('MI', barcode+umi, isPhred=False)
                 #tr.addTagByTag('QM', barcodeQual+umiQual, isPhred=True)
 
