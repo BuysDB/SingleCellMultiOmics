@@ -1,5 +1,7 @@
-from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod, NonMultiplexable, IlluminaBaseDemultiplexer
+from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod, NonMultiplexable, IlluminaBaseDemultiplexer, phredToFastqHeaderSafeQualities
 from singlecellmultiomics.modularDemultiplexer.demultiplexModules import CELSeq2_c8_u6
+import re
+from singlecellmultiomics.utils import reverse_complement
 # SCCHIC using NLAIII adapter, 384 well format with 3bp UMI followed by
 # "A" base
 
@@ -252,21 +254,25 @@ class SCCHIC_384w_c8_u3_pdt(IlluminaBaseDemultiplexer):
             return taggedRecords
         raise NonMultiplexable('No match to transcriptome or CHiC')
 
-class SCCHIC_384w_c8_u3_cs2(IlluminaBaseDemultiplexer):
+class SCCHIC_384w_c8_u3_cs2(UmiBarcodeDemuxMethod):
 
-    def __init__(
+    def __init__(self, barcodeFileParser, random_primer_read=None,random_primer_length=None, **kwargs):
+        self.barcodeFileAlias = 'maya_384NLA'
+        UmiBarcodeDemuxMethod.__init__(
             self,
-            barcodeFileParser=None,
-            indexFileParser=None,
-            indexFileAlias='illumina_merged_ThruPlex48S_RP',
-            **kwargs):
+            umiRead=0,
+            umiStart=0,
+            umiLength=3,
+            barcodeRead=0,
+            barcodeStart=3,
+            barcodeLength=8,
+            random_primer_read=random_primer_read,
+            random_primer_length=random_primer_length,
+            barcodeFileAlias=self.barcodeFileAlias,
+            barcodeFileParser=barcodeFileParser,
+            **kwargs)
 
-        IlluminaBaseDemultiplexer.__init__(
-            self,
-            indexFileParser=indexFileParser,
-            indexFileAlias=indexFileAlias)
-
-        self.description = '384 well format, mixed transcriptome and CHiC. scCHiC: 3bp umi followed by 8bp barcode and a single A. R2 ends with a 6bp random primer. Transcriptome: cs2 + template switching oligo'
+        self.description = '384 well format, mixed transcriptome and CHiC. scCHiC: 3bp umi followed by 8bp barcode and a single A. R2 has no random primer. Transcriptome is VASA'
         self.shortName = 'CHICT'
 
         self.autoDetectable = False
@@ -274,11 +280,44 @@ class SCCHIC_384w_c8_u3_cs2(IlluminaBaseDemultiplexer):
         # The demultiplexer used for the transcriptome reads:
         self.transcriptome_demux =  CELSeq2_c8_u6(barcodeFileParser=barcodeFileParser,**kwargs)
 
+        # Contains expected bleedthrough sequence
+        self.id_to_cs2_barcode = { v:k + 'TTTTT' for k,v in barcodeFileParser.barcodes['celseq2'].items() }
+
         # The demultiplexer used for the chic reads:
-        self.chic_demux =  SCCHIC_384w_c8_u3(barcodeFileParser=barcodeFileParser,**kwargs)
+        self.chic_demux =  SCCHIC_384w_c8_u3_direct_ligation(barcodeFileParser=barcodeFileParser,**kwargs)
 
         self.barcodeSummary = f'{self.chic_demux.barcodeSummary} and {self.transcriptome_demux.barcodeSummary}'
         self.longName = f'{self.chic_demux.longName} and {self.transcriptome_demux.longName}'
+
+        self.poly_length=10
+        self.poly_A = self.poly_length*'A'
+        self.poly_T = self.poly_length*'T'
+        self.poly_G = self.poly_length*'G'
+
+        self.r2_trimmer = re.compile('[GA]*$')
+
+        self.sequenceCapture[0] = slice(
+            self.barcodeLength + self.umiLength + 1,
+            None)  # dont capture the first base
+
+
+    def trim_r2(self, sequence, qualities ):
+
+        start = sequence.find(self.poly_A)
+        if start != -1:
+            sequence, qualities = sequence[:start], qualities[:start]
+
+        start = sequence.find(self.poly_G)
+        if start != -1:
+            sequence, qualities = sequence[:start], qualities[:start]
+
+        # Trim any trailing A and G bases from the end and # Trim down 3 bases
+        sequence = self.r2_trimmer.sub('',sequence)[:-3]
+        qualities = qualities[:len(sequence)]
+
+
+        return sequence, qualities
+
 
     def __repr__(self):
         return f'{self.longName} {self.description}'
@@ -289,21 +328,41 @@ class SCCHIC_384w_c8_u3_cs2(IlluminaBaseDemultiplexer):
         if len(records) != 2:
             raise NonMultiplexable('Not mate pair')
 
-        # Check if the reads are transcriptome:
+
+        # add first 2 bases as ligation tag:
+        ligation_start = self.barcodeLength + self.umiLength
+        ligation_end = ligation_start + 2
+        ligation_sequence = records[0].sequence[ligation_start:ligation_end]
+        ligation_qualities = records[0].qual[ligation_start:ligation_end]
+        # Obtain the chic barcode and umi:
         try:
-            result = self.transcriptome_demux.demultiplex(records, **kwargs)
-            return result
+            taggedRecords = UmiBarcodeDemuxMethod.demultiplex(self,records, **kwargs)
         except NonMultiplexable:
-            pass
+            raise
 
-        # Check if the TSO oligo is present..
+        # Check for contamination in R1:
 
-        # or cs2 barcode in R1 (Also makes it transcriptome)
+        expected_barcode = self.id_to_cs2_barcode.get( taggedRecords[0].tags['bi'] )
+        if expected_barcode in taggedRecords[0].sequence or expected_barcode in reverse_complement(taggedRecords[1].sequence):
+            # Contaminant:
+            # Trim read2 down
+            taggedRecords[1].sequence, taggedRecords[1].qualities = self.trim_r2(taggedRecords[1].sequence, taggedRecords[1].qualities)
+            for r in taggedRecords:
+                r.tags['dt'] = 'VASA'
+                #r.tags['MX'] = 'CS2'
+            return taggedRecords
+        elif 'TTTTTTTTTTTTTTTTTTTTTTT' in taggedRecords[0].sequence or  'TTTTTTTTTTTTTTTTTTTTTTT' in taggedRecords[1].sequence:
+            raise NonMultiplexable('PolyT')
 
-        # If not try to demultiplex as CHiC:
+        # Trim ligation motif:
+        # add first 2 bases as ligation tag:
+        ud = {
+            'lh':ligation_sequence,
+            'lq':phredToFastqHeaderSafeQualities(ligation_qualities),
+            'dt':'CHIC'
+        }
 
-        try:
-            result = self.chic_demux.demultiplex(records, **kwargs)
-            return result
-        except NonMultiplexable:
-            raise NonMultiplexable('No match to transcriptome or CHiC')
+        taggedRecords[0].tags.update(ud)
+        taggedRecords[1].tags.update(ud)
+
+        return taggedRecords
