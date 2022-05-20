@@ -392,7 +392,7 @@ def get_reference_from_pysam_alignmentFile(
     """
     try:
         for x in pysam_AlignmentFile.header.as_dict()['PG']:
-            if x.get('ID') != 'bwa':
+            if x.get('ID') not in ('bwa','minimap2'):
                 continue
             for argument in x.get('CL').split():
                 if (argument.endswith('.fa') or argument.endswith('.fasta') or argument.endswith(
