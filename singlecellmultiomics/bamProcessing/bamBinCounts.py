@@ -58,6 +58,9 @@ def _generate_count_dict(args):
             if cut_pos is None:
                 continue
 
+            if (start is not None and cut_pos<start) or (stop is not None and cut_pos>stop):
+                continue
+
             if R1.has_tag('SM'):
                 sample = R1.get_tag('SM')
             else:
@@ -88,6 +91,9 @@ def _generate_count_dict_prefixed(args):
 
             cut_pos = R1.get_tag('DS')
             sample = R1.get_tag('SM')
+
+            if (start is not None and cut_pos<start) or (stop is not None and cut_pos>stop):
+                continue
 
             if prefix is not None:
                 sample = (prefix, sample)
