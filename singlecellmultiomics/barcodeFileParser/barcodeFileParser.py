@@ -232,3 +232,8 @@ class BarcodeParser():
 
     def getBarcodeMapping(self):
         return self.barcodes
+
+    def __getitem__(self, alias):
+        if alias in self.pending_files:
+            self.parse_pending_barcode_file_of_alias(alias)
+        return self.barcodes.get(alias)
