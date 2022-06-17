@@ -20,6 +20,10 @@ def formatColor(string):
     )
 
 
+def sprint(val, silent=False):
+    if not silent:
+        print(val)
+
 class SequencingLibraryLister():
     def __init__(self, verbose=True):
         self.verbose = verbose
@@ -36,7 +40,8 @@ class SequencingLibraryLister():
             library = library.replace(origin, replace)
         return library
 
-    def detect(self, filesToList, replace=None, slib=None, merge=None, se=False, ignore=False,  args=None):
+    
+    def detect(self, filesToList, replace=None, slib=None, merge=None, se=False, ignore=False,  args=None, silent=False):
         if args is not None:
             replace = args.replace
             slib = args.slib
@@ -49,16 +54,16 @@ class SequencingLibraryLister():
         if replace:
             try:
                 if self.verbose:
-                    print("Library name replacement:")
+                    sprint("Library name replacement:", silent)
                     for k in replace:
                         origin, replace = k.split(',')
-                        print(
+                        sprint(
                             formatColor(
                                 "  -> [DIM]looking for[RESET] '%s' [DIM]replace with:[RESET]'%s'" %
-                                (origin, replace)))
+                                (origin, replace)), silent)
             except Exception as e:
                 if self.verbose:
-                    print(e)
+                    sprint(e, silent)
         self.libraries = {}
         mergeReport = False
 
@@ -163,9 +168,9 @@ class SequencingLibraryLister():
                     if not mergeReport:
                         #print("Library merger: %sSplitting on '%s%s%s%s', until part %s%s%s, %s %s->%s %s" % (Style.DIM, Style.RESET_ALL, delim, Style.DIM, Style.RESET_ALL,  nThSplit, Style.DIM, Style.RESET_ALL, library, Style.DIM, Style.RESET_ALL, newLibraryName))
                         if self.verbose:
-                            print(
+                            sprint(
                                 formatColor("Library merger: [DIM]Splitting on '[RESET]%s[DIM]', until part [RESET]%s[DIM], [RESET]%s[DIM] -> [RESET]%s") %
-                                (delim, nThSplit, library, newLibraryName))
+                                (delim, nThSplit, library, newLibraryName), silent)
 
                         mergeReport = True
                     library = newLibraryName
@@ -191,13 +196,13 @@ class SequencingLibraryLister():
         ignoreFiles = []
         for idx, lib in enumerate(sorted(self.libraries)):
             if self.verbose:
-                print(('%s%s%s %s' %
-                       ('\n' if idx > 0 else '', lib, Style.DIM, Style.RESET_ALL)))
+                sprint(('%s%s%s %s' %
+                       ('\n' if idx > 0 else '', lib, Style.DIM, Style.RESET_ALL)), silent)
 
             inconsistentLane = False
             for lane in sorted(self.libraries[lib]):
                 if self.verbose:
-                    print(("   %s%s%s" % (Style.DIM, lane, Style.RESET_ALL)))
+                    sprint(("   %s%s%s" % (Style.DIM, lane, Style.RESET_ALL)),silent)
                 if len(self.libraries[lib][lane]) != 2:
                     if not se:
                         inconsistent = True
@@ -205,12 +210,12 @@ class SequencingLibraryLister():
                         if ignore:
                             ignoreFiles.append((lib, lane))
                             if self.verbose:
-                                print(('%s    %s IGNORED FILE.. BOTH MATES NOT AVAILABLE or no mates? %s' % (
-                                    Fore.RED, lib, Style.RESET_ALL)))
+                                sprint(('%s    %s IGNORED FILE.. BOTH MATES NOT AVAILABLE or no mates? %s' % (
+                                    Fore.RED, lib, Style.RESET_ALL)),silent)
                         else:
                             if self.verbose:
-                                print(('%s    %s BOTH MATES NOT AVAILABLE%s' %
-                                       (Fore.RED, lib, Style.RESET_ALL)))
+                                sprint(('%s    %s BOTH MATES NOT AVAILABLE%s' %
+                                       (Fore.RED, lib, Style.RESET_ALL)), silent)
 
                 prevSize = None
                 for R1R2 in sorted(self.libraries[lib][lane]):
@@ -219,22 +224,22 @@ class SequencingLibraryLister():
                         # Missing a mate file
                         inconsistent = True
                         if self.verbose:
-                            print(("%s    %s %s%s" % (Fore.RED, R1R2, ', '.join(
-                                self.libraries[lib][lane][R1R2]), Style.RESET_ALL)))
+                            sprint(("%s    %s %s%s" % (Fore.RED, R1R2, ', '.join(
+                                self.libraries[lib][lane][R1R2]), Style.RESET_ALL)), silent)
                         if ignore:
                             ignoreFiles.append((lib, lane))
                     else:
                         prevSize = len(self.libraries[lib][lane][R1R2])
                         # Correct library
                         if self.verbose:
-                            print(("%s    %s %s%s" % (Fore.RED if inconsistentLane else Fore.GREEN, R1R2, ', '.join(
-                                self.libraries[lib][lane][R1R2]), Style.RESET_ALL)))
+                            sprint(("%s    %s %s%s" % (Fore.RED if inconsistentLane else Fore.GREEN, R1R2, ', '.join(
+                                self.libraries[lib][lane][R1R2]), Style.RESET_ALL)), silent)
 
         if inconsistent:
             if ignore:
                 if self.verbose:
-                    print(
-                        "Mate information missing for some files. --ignore was supplied, ignoring these files:")
+                    sprint(
+                        "Mate information missing for some files. --ignore was supplied, ignoring these files:", silent)
                 for ignore in ignoreFiles:
                     print("%s %s" % (ignore[0], ignore[1]))
                     del self.libraries[ignore[0]][ignore[1]]
@@ -250,9 +255,9 @@ class SequencingLibraryLister():
                         pass
             else:
                 if self.verbose:
-                    print(
+                    sprint(
                         (
                             '%sExitting, mate-information missing%s. Supply --se to allow single end reads or --ignore to ignore these files.' %
-                            (Fore.RED, Style.RESET_ALL)))
+                            (Fore.RED, Style.RESET_ALL)), silent)
                 exit()
         return self.libraries
