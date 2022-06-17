@@ -417,7 +417,7 @@ def tag_multiome_multi_processing(
         pysam.index(temp_header_bam_path)
     # merge the results and clean up:
     print('Merging final bam files')
-    merge_bams(list(tagged_bam_generator), out_bam_path)
+    merge_bams(list(tagged_bam_generator), out_bam_path, threads=n_threads)
     if use_pool:
         workers.close()
 
