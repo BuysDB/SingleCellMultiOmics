@@ -158,6 +158,8 @@ def merge_bams( bams: list, output_path: str, threads: int=4 ):
         output_path (str)
 
     """
+    if threads is None:
+        threads = 1
     assert threads>=1
     if len(bams) == 1:
         assert os.path.exists(bams[0]+'.bai'), 'Only indexed files can be merged'
