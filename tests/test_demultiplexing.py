@@ -148,24 +148,6 @@ class TestUmiBarcodeDemux(unittest.TestCase):
 
 
 
-        r1 = FastqRecord(
-          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 1:N:0:GTGAAA',
-          'ATCACAGATCACAGCGGCAATCTGTGATTCTGATCGTCGGACTGTAGAACTCCCTATAGTGAGTCGTATTACCGGCAATCTGTGATTCTGATCGTCGGACT',
-          '+',
-          'A'*len('ATCACAGATCACAGCGGCAATCTGTGATTCTGATCGTCGGACTGTAGAACTCCCTATAGTGAGTCGTATTACCGGCAATCTGTGATTCTGATCGTCGGACT')
-        )
-        r2 = FastqRecord(
-          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 2:N:0:GTGAAA',
-          'ATCACAGATCACAGCGGCAATCTGTGATTCTGATCGTCGGACTGTAGAACTCCCTATAGTGAGTCGTATTACCGGCAATCTGTGATTCTGATCGTCGGACT',
-          '+',
-          'A'*len('ATCACAGATCACAGCGGCAATCTGTGATTCTGATCGTCGGACTGTAGAACTCCCTATAGTGAGTCGTATTACCGGCAATCTGTGATTCTGATCGTCGGACT')
-        )
-        demultiplexed_record = demux.demultiplex([r1,r2])
-        self.assertEqual( demultiplexed_record[0].tags['BC'], 'GACGTCCT')
-        self.assertEqual( demultiplexed_record[0].tags['bi'], 214)
-        self.assertEqual( demultiplexed_record[0].tags['dt'], 'VASA')
-        self.assertEqual( demultiplexed_record[0].tags['RX'], 'GGC')
-        self.assertEqual( demultiplexed_record[0].tags['rx'], 'CTTAAA')
 
 
 
