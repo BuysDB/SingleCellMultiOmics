@@ -273,7 +273,7 @@ class SCCHIC_384w_c8_u3_cs2(UmiBarcodeDemuxMethod):
             **kwargs)
 
         self.description = '384 well format, mixed transcriptome and CHiC. scCHiC: 3bp umi followed by 8bp barcode and a single A. R2 has no random primer. Transcriptome is VASA'
-        self.shortName = 'CHICT'
+        self.shortName = 'TCHIC'
 
         self.autoDetectable = False
 
@@ -281,7 +281,9 @@ class SCCHIC_384w_c8_u3_cs2(UmiBarcodeDemuxMethod):
         self.transcriptome_demux =  CELSeq2_c8_u6(barcodeFileParser=barcodeFileParser,**kwargs)
 
         # Contains expected bleedthrough sequence
-        self.id_to_cs2_barcode = { v:k + 'TTTTT' for k,v in barcodeFileParser.barcodes['celseq2'].items() }
+        self.id_to_cs2_barcode = { v:k + 'TTTTT' for k,v in barcodeFileParser['celseq2'].items() }
+        assert len(self.id_to_cs2_barcode)>0
+        self.tx_umi_len = 6
 
         # The demultiplexer used for the chic reads:
         self.chic_demux =  SCCHIC_384w_c8_u3_direct_ligation(barcodeFileParser=barcodeFileParser,**kwargs)
@@ -322,6 +324,15 @@ class SCCHIC_384w_c8_u3_cs2(UmiBarcodeDemuxMethod):
     def __repr__(self):
         return f'{self.longName} {self.description}'
 
+    def extract_vasa_umi(self, sequence, vasa_barcode):
+        # Extract vasa umi from sequence given the vasa barcode
+        # Returns None when the it cannot be extracted
+        vasa_umi_end = sequence.find(vasa_barcode)
+        vasa_umi_start = max(0,vasa_umi_end - self.tx_umi_len)
+        if vasa_umi_end - vasa_umi_start > 0:
+            return sequence[vasa_umi_start:vasa_umi_end]
+        return None
+
     def demultiplex(self, records, **kwargs):
 
         # Check if the supplied reads are mate-pair:
@@ -340,20 +351,6 @@ class SCCHIC_384w_c8_u3_cs2(UmiBarcodeDemuxMethod):
         except NonMultiplexable:
             raise
 
-        # Check for contamination in R1:
-
-        expected_barcode = self.id_to_cs2_barcode.get( taggedRecords[0].tags['bi'] )
-        if expected_barcode in taggedRecords[0].sequence or expected_barcode in reverse_complement(taggedRecords[1].sequence):
-            # Contaminant:
-            # Trim read2 down
-            taggedRecords[1].sequence, taggedRecords[1].qualities = self.trim_r2(taggedRecords[1].sequence, taggedRecords[1].qualities)
-            for r in taggedRecords:
-                r.tags['dt'] = 'VASA'
-                #r.tags['MX'] = 'CS2'
-            return taggedRecords
-        elif 'TTTTTTTTTTTTTTTTTTTTTTT' in taggedRecords[0].sequence or  'TTTTTTTTTTTTTTTTTTTTTTT' in taggedRecords[1].sequence:
-            raise NonMultiplexable('PolyT')
-
         # Trim ligation motif:
         # add first 2 bases as ligation tag:
         ud = {
@@ -364,5 +361,45 @@ class SCCHIC_384w_c8_u3_cs2(UmiBarcodeDemuxMethod):
 
         taggedRecords[0].tags.update(ud)
         taggedRecords[1].tags.update(ud)
+
+        # Check for tx contamination:
+        expected_barcode = self.id_to_cs2_barcode.get( taggedRecords[0].tags['bi'] )
+        if expected_barcode is None:
+            raise ValueError(taggedRecords[0].tags['bi'])
+        if expected_barcode in taggedRecords[0].sequence or expected_barcode in reverse_complement(taggedRecords[1].sequence):
+            # tx contaminant:
+            # Obtain vasa UMI:
+            if expected_barcode in taggedRecords[0].sequence:
+                # NNNNNNNNN [UMI] BC POLY T
+                tx_umi = self.extract_vasa_umi(taggedRecords[0].sequence, expected_barcode)
+            else:
+                rc2 = reverse_complement(taggedRecords[1].sequence)
+                tx_umi = self.extract_vasa_umi(rc2, expected_barcode)
+
+            # Trim read2 down
+            taggedRecords[1].sequence, taggedRecords[1].qualities = self.trim_r2(taggedRecords[1].sequence, taggedRecords[1].qualities)
+            for r in taggedRecords:
+                r.tags['dt'] = 'VASA'
+                if tx_umi is not None:
+                    r.tags['rx'] = tx_umi
+
+                #r.tags['MX'] = 'CS2'
+            return taggedRecords
+        elif 'TTTTTTTTTTTTTTTTTTTTTTT' in taggedRecords[0].sequence or  'TTTTTTTTTTTTTTTTTTTTTTT' in taggedRecords[1].sequence:
+            raise NonMultiplexable('PolyT')
+        elif 'AGTCCGACGAT' in taggedRecords[0].sequence[:30] or 'GTTCTACAGT' in taggedRecords[0].sequence[:30] or 'TAATACGACTCACTATAGGG' in taggedRecords[0].sequence:
+
+            # desc = 'none?'
+            # if 'AGTCCGACGAT' in taggedRecords[0].sequence[:30]:
+            #     desc = 'AGTCCGACGAT'
+            # elif 'GTTCTACAGT' in taggedRecords[0].sequence[:30]:
+            #     desc = 'GTTCTACAGT'
+            # elif 'TAATACGACTCACTATAGGG' in taggedRecords[0].sequence:
+            #     desc = 'TAATACGACTCACTATAGGG'
+
+            for r in taggedRecords:
+                r.tags['dt'] = 'VASA'
+                r.tags['RR'] = 'T7_found'
+                #r.tags['TR'] = desc
 
         return taggedRecords
