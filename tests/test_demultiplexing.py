@@ -7,6 +7,7 @@ from singlecellmultiomics.modularDemultiplexer.demultiplexModules.CELSeq2 import
 from singlecellmultiomics.modularDemultiplexer.demultiplexModules.scCHIC import SCCHIC_384w_c8_u3_cs2
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod
 import pkg_resources
+from singlecellmultiomics.utils import reverse_complement
 
 class TestUmiBarcodeDemux(unittest.TestCase):
 
@@ -80,98 +81,73 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         self.assertEqual( demultiplexed_record[0].tags['RX'], 'ATAATA')
         self.assertEqual( demultiplexed_record[0].sequence, seq)
 
-    def test_CHICT(self):
+    def construct_tchic_read(self,crx,ccb,trx,tcb,mr,linker):
+        seq = f'{crx}{ccb}{linker}{trx}{tcb}TTTTTTTTTTTTTTTTTTTTT{mr}'
+        r1 = FastqRecord(
+          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 1:N:0:GTGAAA',
+          f'{seq}',
+          '+',
+          'A'*len(seq)
+        )
+        r2 = FastqRecord(
+          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 2:N:0:GTGAAA',
+          reverse_complement(seq),
+          '+',
+          'A'*len(seq)
+        )
+        return r1, r2
+
+    def test_TCHIC(self):
 
         barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
         index_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/')
         barcode_parser = BarcodeParser(barcode_folder, lazyLoad='*',)
         index_parser = BarcodeParser(index_folder, lazyLoad='*')
 
-        seq = 'TATGAGCAATCACACACTATAGTCATTCAGGAGCAGGTTCTTCAGGTTCCCTGTAGTTGTGT'
-        r1 = FastqRecord(
-          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 1:N:0:GTGAAA',
-          f'ATAATATCTGGGCA{seq}',
-          '+',
-          'AAAAA#EEEEEEEEEEEAEEEEEEEAEEEEEEEEEEEEEEEEEE/EEEEEEEEEEEE/EEEEEEEEEEEEEEEEEE'
-        )
-        r2 = FastqRecord(
-          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 2:N:0:GTGAAA',
-          'ACCCCAGATCAACGTTGGACNTCNNCNTTNTNCTCNGCACCNNNNCNNNCTTATNCNNNANNNNNNNNNNTNNGN',
-          '+',
-          '6AAAAEEAEE/AEEEEEEEE#EE##<#6E#A#EEE#EAEEA####A###EE6EE#E###E##########E##A#'
-        )
+        crx = 'TAT'
+        ccb = 'TAAGTGCT'
+        trx = 'CTGTTG'
+        tcb = 'ACAGAAGC'
+        mr = 'TGAGAGAGAGAGAGAGAGAGAGAGC'
+        linker = 'TATC'
+        r1,r2 = self.construct_tchic_read(crx,ccb,trx,tcb,mr,linker)
+
         demux = SCCHIC_384w_c8_u3_cs2(
             barcodeFileParser=barcode_parser,
             indexFileParser=index_parser)
 
         demultiplexed_record = demux.demultiplex([r1,r2])
         # The barcode sequence is ACACACTA (first barcode)
-        self.assertEqual( demultiplexed_record[0].tags['BC'], 'TCTGGGCA')
-        self.assertEqual( demultiplexed_record[0].tags['bi'], 55)
-        self.assertEqual( demultiplexed_record[0].tags['MX'], 'CS2C8U6')
-        self.assertEqual( demultiplexed_record[0].tags['RX'], 'ATAATA')
-        self.assertEqual( demultiplexed_record[0].sequence, seq)
+        self.assertEqual( demultiplexed_record[0].tags['BC'], ccb)
+        self.assertEqual( demultiplexed_record[0].tags['bi'], 225)
+        self.assertEqual( demultiplexed_record[0].tags['dt'], 'VASA')
+        self.assertEqual( demultiplexed_record[0].tags['RX'], crx)
+        self.assertEqual( demultiplexed_record[0].tags['rx'], trx)
+        self.assertEqual( demultiplexed_record[1].sequence, reverse_complement(mr)[:len(mr)-4])
 
 
-
-        seq = 'TATGAGCAATCACACACTATAGTCATTCAGGAGCAGGTTCTTCAGGTTCCCTGTAGTTGTGT'
-
-        R1_seq = f'AAAAGAGCGCGT{seq}'
         r1 = FastqRecord(
           '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 1:N:0:GTGAAA',
-          R1_seq,
+          'GGCGACGTCCTTCACTATAGGGAGTTCTACAGTTCGACGATCCTTAAATGGTGAGTTTTTTTTTTTTTTTTTTTTTTTGACCGACGGTCCCCCCGGGACCC',
           '+',
-          'E'*len(R1_seq)
+          'A'*len('GGCGACGTCCTTCACTATAGGGAGTTCTACAGTTCGACGATCCTTAAATGGTGAGTTTTTTTTTTTTTTTTTTTTTTTGACCGACGGTCCCCCCGGGACCC')
         )
         r2 = FastqRecord(
           '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 2:N:0:GTGAAA',
-          'ACCCCAGATCAACGTTGGACNTCNNCNTTNTNCTCNGCACCNNNNCNNNCTTATNCNNNANNNNNNNNNNTNNGN',
+          'CGATCCTTAAATGGTGAGTTTTTTTTTTTTTTTTTTTTTTTGACCGACGGTCCCCCCGGGACCCGACGGCGCGACGACGCCCGGGGCGCACTGGGGACAGT',
           '+',
-          '6AAAAEEAEE/AEEEEEEEE#EE##<#6E#A#EEE#EAEEA####A###EE6EE#E###E##########E##A#'
+          'A'*len('CGATCCTTAAATGGTGAGTTTTTTTTTTTTTTTTTTTTTTTGACCGACGGTCCCCCCGGGACCCGACGGCGCGACGACGCCCGGGGCGCACTGGGGACAGT')
         )
-        demux = SCCHIC_384w_c8_u3_cs2(
-            barcodeFileParser=barcode_parser,
-            indexFileParser=index_parser)
-
         demultiplexed_record = demux.demultiplex([r1,r2])
-        # The barcode sequence is AGAGCGCG (26th barcode)
-        self.assertEqual( demultiplexed_record[0].tags['BC'], 'AGAGCGCG')
-        self.assertEqual( demultiplexed_record[0].tags['bi'], 26)
-        self.assertEqual( demultiplexed_record[0].tags['MX'], 'scCHIC384C8U3')
-        self.assertEqual( demultiplexed_record[0].tags['RX'], 'AAA')
-        self.assertEqual( demultiplexed_record[0].sequence, seq)
+        self.assertEqual( demultiplexed_record[0].tags['BC'], 'GACGTCCT')
+        self.assertEqual( demultiplexed_record[0].tags['bi'], 214)
+        self.assertEqual( demultiplexed_record[0].tags['dt'], 'VASA')
+        self.assertEqual( demultiplexed_record[0].tags['RX'], 'GGC')
+        self.assertEqual( demultiplexed_record[0].tags['rx'], 'CTTAAA')
 
 
 
-        ## test the hamming distance expansion
-        R1_seq = f'AAAAGAGCGGGT{seq}'
-        r1 = FastqRecord(
-          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 1:N:0:GTGAAA',
-          R1_seq,
-          '+',
-          'E'*len(R1_seq)
-        )
-        r2 = FastqRecord(
-          '@NS500414:628:H7YVNBGXC:1:11101:15963:1046 2:N:0:GTGAAA',
-          'ACCCCAGATCAACGTTGGACNTCNNCNTTNTNCTCNGCACCNNNNCNNNCTTATNCNNNANNNNNNNNNNTNNGN',
-          '+',
-          '6AAAAEEAEE/AEEEEEEEE#EE##<#6E#A#EEE#EAEEA####A###EE6EE#E###E##########E##A#'
-        )
 
-        barcode_parser = BarcodeParser(barcode_folder, lazyLoad='*',hammingDistanceExpansion=1)
-
-        demux = SCCHIC_384w_c8_u3_cs2(
-            barcodeFileParser=barcode_parser,
-            indexFileParser=index_parser
-            )
-
-        demultiplexed_record = demux.demultiplex([r1,r2])
-        # The barcode sequence is AGAGCGCG (26th barcode)
-        self.assertEqual( demultiplexed_record[0].tags['BC'], 'AGAGCGCG')
-        self.assertEqual( demultiplexed_record[0].tags['bi'], 26)
-        self.assertEqual( demultiplexed_record[0].tags['MX'], 'scCHIC384C8U3')
-        self.assertEqual( demultiplexed_record[0].tags['RX'], 'AAA')
-        self.assertEqual( demultiplexed_record[0].sequence, seq)
 
 
 

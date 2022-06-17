@@ -217,7 +217,8 @@ class DemultiplexingStrategyLoader:
                 except Exception as e:
                     if probe:
                         continue
-                    print(traceback.format_exc())
+                    traceback_str = str(traceback.format_exc())
+                    print(traceback_str)
                     print(
                         f'{Fore.RED}Fatal error. While demultiplexing strategy {strategy.longName} yielded an error, the error message was: {e}')
                     print('The read(s) causing the error looked like this:')
@@ -226,7 +227,7 @@ class DemultiplexingStrategyLoader:
                     print(Style.RESET_ALL)
                     if log_handle is not None:
                         log_handle.write(
-                            f"Error occured using {strategy.longName}\n")
+                            f"Error occured using {strategy.longName}\n{traceback_str}\n")
                 # print(recodedRecord)
                 strategyYields[strategy.shortName] += 1
             if (maxReadPairs is not None and (

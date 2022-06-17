@@ -51,6 +51,7 @@ tags = [
 
     SamTag('QT', 'sampleBarcodeQuality', isPhred=True),
     SamTag('RX', 'umi'),
+    SamTag('rx', 'alternative_umi'),
     SamTag('tu', 'second_umi'),
     SamTag('uL', 'umiLength'),
     SamTag('RQ', 'umiQual', isPhred=True),
