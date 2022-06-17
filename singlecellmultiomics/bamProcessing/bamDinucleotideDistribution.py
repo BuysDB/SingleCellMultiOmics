@@ -43,11 +43,20 @@ if __name__ == '__main__':
             default=0.05)
 
 
+    argparser.add_argument(
+            '--tafilter',
+            action='store_true',
+            help="Enable TA filter (checks for TA at cut location)")
+
+    
+
     argparser.add_argument('alignmentfiles', type=str, nargs='+')
 
     args = argparser.parse_args()
     bams = args.alignmentfiles
 
+
+    perform_ta_filter = args.tafilter
 
     reference_path = get_reference_path_from_bam(args.alignmentfiles[0])
 
@@ -79,7 +88,7 @@ if __name__ == '__main__':
                 cut_obs += Counter( list(cellobs.keys()) )
 
             for k, total_seen  in cut_obs.most_common():
-                if total_seen<3: # Only use more common cuts, these are more likely relaxed
+                if total_seen<=3: # Only use more common cuts, these are more likely relaxed
                     continue
                 # Extract the genomic region:
                 strand = k[0]
@@ -97,7 +106,7 @@ if __name__ == '__main__':
                 if strand:
                     seq = reverse_complement(seq)
 
-                if not 'TA' in seq[extraction_radius-1:extraction_radius+1]: #or not 'TA' in seq[extraction_radius+145:extraction_radius+148]:
+                if perform_ta_filter and not 'TA' in seq[extraction_radius-1:extraction_radius+1]: #or not 'TA' in seq[extraction_radius+145:extraction_radius+148]:
                     continue
 
 

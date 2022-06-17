@@ -397,8 +397,8 @@ class FeatureContainer(Prefetcher):
     def addFeature(self, chromosome, start, end, name, strand=None, data=None):
         if strand is not None and strand not in ['+', '-']:
             raise ValueError('Invalid strand specified: %s' % strand)
-        if not isinstance(start, int) or not isinstance(end, int):
-            raise ValueError('Start and end coordinates should be integers')
+        # if not isinstance(start, int) or not isinstance(end, int):
+        #     raise ValueError('Start and end coordinates should be integers')
 
         if self.debug:
             self.debugMsg(
@@ -806,9 +806,19 @@ class FeatureContainer(Prefetcher):
             self.debugMsg("  %s" % endHits)
         return(list(set(startHits).intersection(set(endHits))))
 
-    def loadSNPSFromVcf(self, vcfFilePath, locations=None):
+    def loadSNPSFromVcf(self, vcfFilePath:str, locations: set=None):
+        # Should be deprecated
+        self.loadVariantsFromVcf(vcfFilePath,locations,snp_only=True)
+
+    def loadVariantsFromVcf(self, vcfFilePath:str, locations: set=None, locations_only: bool=False, snp_only=False):
+
         for rec in pysam.VariantFile(vcfFilePath):
+
             if locations is None or (rec.chrom, rec.pos) in locations:
+                if locations_only:
+                    self.addFeature(rec.chrom, rec.pos, rec.pos+max(1,len(rec.ref)), name='variant')
+                    continue
+
                 for sample in rec.samples:
                     # get genotypes:
                     for allele in rec.samples[sample].alleles:
@@ -821,7 +831,10 @@ class FeatureContainer(Prefetcher):
                                 variantType='SNP',
                                 end=None)
                         except BaseException:
+                            if not snp_only:
+                                self.addFeature(rec.chrom, rec.pos, rec.pos+max(1,len(rec.ref)), name='variant')
                             pass
+        self.sort()
 
     def addVariant(
             self,

@@ -158,6 +158,8 @@ def merge_bams( bams: list, output_path: str, threads: int=4 ):
         output_path (str)
 
     """
+    if threads is None:
+        threads = 1
     assert threads>=1
     if len(bams) == 1:
         assert os.path.exists(bams[0]+'.bai'), 'Only indexed files can be merged'
@@ -392,7 +394,7 @@ def get_reference_from_pysam_alignmentFile(
     """
     try:
         for x in pysam_AlignmentFile.header.as_dict()['PG']:
-            if x.get('ID') != 'bwa':
+            if x.get('ID') not in ('bwa','minimap2'):
                 continue
             for argument in x.get('CL').split():
                 if (argument.endswith('.fa') or argument.endswith('.fasta') or argument.endswith(

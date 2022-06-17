@@ -78,6 +78,7 @@ setup(
 
         # Bam processing:
         'singlecellmultiomics/bamProcessing/bamTabulator.py',
+        'singlecellmultiomics/bamProcessing/bamCountRegions.py',
         'singlecellmultiomics/bamProcessing/bamToNucleosomePositions.py',
         'singlecellmultiomics/bamProcessing/bamAnalyzeCutDistances.py',
         'singlecellmultiomics/bamProcessing/bamSplitByTag.py',
