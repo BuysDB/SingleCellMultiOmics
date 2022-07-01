@@ -792,8 +792,8 @@ def run_multiome_tagging(args):
         bp_per_job = 5_000_000
         bp_per_segment = 50_000
         fragment_size = 1000
-        if max_time_per_segment is None:
-            max_time_per_segment = 20*60 #
+        #if max_time_per_segment is None:
+    #        max_time_per_segment = 20*60 #
 
 
 
