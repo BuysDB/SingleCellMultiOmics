@@ -17,7 +17,7 @@ def _count_regions_cell_index(bamfile, regions, max_idx=384):
     with pysam.AlignmentFile(bamfile) as alns:
         for i,(contig,start,end,label) in enumerate(regions):
             for read in alns.fetch(contig,start,end):
-                if not read.is_read1:
+                if not read.is_read1 or read.is_qcfail or read.is_duplicate:
                     continue
                 ds = read.get_tag('DS')
                 if not (ds>=start and ds<=end):
