@@ -122,7 +122,7 @@ class CHICFragment(Fragment):
 
 
         # Identify the start coordinate of Read 1 by reading the amount of softclips on the start of the read
-        r1_start =(R1.reference_end if R1.is_reverse else R1.reference_start)
+        r1_start =(R1.reference_end+1 if R1.is_reverse else R1.reference_start-2)
         if not self.no_umi_cigar_processing:
             if R1.is_reverse:
                 if R1.cigartuples[-1][0]==4: # softclipped at end
