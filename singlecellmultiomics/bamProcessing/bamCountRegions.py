@@ -84,7 +84,7 @@ if __name__ == '__main__':
 
     argparser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description='Count regions, uses DS tag')
+        description='Count regions, uses DS tag. Only R1 reads are counted, qc_fail and duplicate reads are skipped.')
 
     argparser.add_argument('alignmentfiles', type=str, nargs='+')
     argparser.add_argument('-regions', type=str, required=True, help='bed file with regions to count')
