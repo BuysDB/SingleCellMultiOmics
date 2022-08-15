@@ -8,9 +8,10 @@ import seaborn as sns
 from multiprocessing import Pool
 from glob import glob
 from singlecellmultiomics.utils import pool_wrapper
+from singlecellmultiomics.bamProcessing.bamFunctions import get_samples_from_bam
 import gzip
 
-def _count_regions(bamfile, regions, max_idx=384):
+def _count_regions_cell_index(bamfile, regions, max_idx=384):
     counts = np.zeros((max_idx,len(regions)))
     library = None
     with pysam.AlignmentFile(bamfile) as alns:
@@ -33,7 +34,29 @@ def _count_regions(bamfile, regions, max_idx=384):
                         index=indices,
                         columns=[ label for (contig,start,end,label) in regions ])
 
-def count_regions(bed_path: str, bam_paths: list, max_idx=384, n_threads=None) -> pd.DataFrame:
+
+def _count_regions(bamfile, regions):
+    sample_list = get_samples_from_bam(bamfile)
+    smap = {s:i for i,s in enumerate(sample_list)}
+    counts = np.zeros((len(smap),len(regions)))
+
+    with pysam.AlignmentFile(bamfile) as alns:
+        for i,(contig,start,end,label) in enumerate(regions):
+            for read in alns.fetch(contig,start,end):
+                if not read.is_read1:
+                    continue
+                ds = read.get_tag('DS')
+                if not (ds>=start and ds<=end):
+                    continue
+
+                idx = smap[read.get_tag('SM')]
+                counts[idx, i] += 1
+
+    return pd.DataFrame(counts,
+                        index=sample_list,
+                        columns=[ label for (contig,start,end,label) in regions ])
+
+def count_regions(bed_path: str, bam_paths: list,  n_threads=None) -> pd.DataFrame:
 
     cmds = []
     with (gzip.open(bed_path,'rt') if bed_path.endswith('gz') else open(bed_path)) as o:
@@ -48,7 +71,7 @@ def count_regions(bed_path: str, bam_paths: list, max_idx=384, n_threads=None) -
             (_count_regions,
                  { 'bamfile': lib,
                    'regions': cmds,
-                   'max_idx':max_idx
+                  # 'max_idx':max_idx
                    } )
             for lib in bam_paths
         )):
@@ -68,10 +91,10 @@ if __name__ == '__main__':
     argparser.add_argument('-o', type=str, required=True, help='Output path (.csv, .csv.gz, .pickle.gz)')
     argparser.add_argument('-s', type=str, required=True, help='Grouped sum output path (.csv, .csv.gz, .pickle.gz)')
     argparser.add_argument('-t', type=int,  help='Amount of threads. Uses all available if not supplied')
-    argparser.add_argument('-max_idx', type=int, default=384, help='Maximum barcode index (the amount of wells in the plate)')
+    #argparser.add_argument('-max_idx', type=int, default=384, help='Maximum barcode index (the amount of wells in the plate)')
 
     args = argparser.parse_args()
-    df = count_regions(args.regions, args.alignmentfiles, n_threads=args.t, max_idx=args.max_idx)
+    df = count_regions(args.regions, args.alignmentfiles, n_threads=args.t)
 
     if args.o.endswith('pickle.gz') or args.o.endswith('.pickle'):
         df.to_pickle(args.o)
