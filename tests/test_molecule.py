@@ -123,7 +123,7 @@ class TestMolecule(unittest.TestCase):
 
             molecule_A = CHICMolecule([frag_A])
             print(molecule_A.site_location[1])
-            self.assertEqual(molecule_A.site_location[1],100)
+            self.assertEqual(molecule_A.site_location[1],98)
             self.assertTrue(molecule_A==frag_B)
             self.assertFalse(molecule_A==frag_C)
 
@@ -141,15 +141,15 @@ class TestMolecule(unittest.TestCase):
 
             # Test moving of site location by read which is aligned more to left:
             molecule = CHICMolecule([frag_B])
-            self.assertEqual(molecule.site_location[1],102)
-            self.assertTrue( molecule.add_fragment(frag_A) )
             self.assertEqual(molecule.site_location[1],100)
+            self.assertTrue( molecule.add_fragment(frag_A) )
+            self.assertEqual(molecule.site_location[1],98)
 
-            # Test moving of site location by read which is aligned more to right: (Revserse strand)
+            # Test moving of site location by read which is aligned more to right: (Reverse strand)
             molecule = CHICMolecule([frag_B])
-            self.assertEqual(molecule.site_location[1],102)
-            self.assertTrue( molecule.add_fragment(frag_A) )
             self.assertEqual(molecule.site_location[1],100)
+            self.assertTrue( molecule.add_fragment(frag_A) )
+            self.assertEqual(molecule.site_location[1],98)
 
             # Test umi distance:
             molecule = CHICMolecule([frag_E])

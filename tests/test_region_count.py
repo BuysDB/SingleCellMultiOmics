@@ -26,10 +26,9 @@ class TestRegionCount(unittest.TestCase):
             ('readD' , 1, 'LIBA', 1, 'chr1', 200, '+'): None,
             ('readE' , 1, 'LIBA', 1, 'chr1', 210, '+'): None,
             ('readE' , 1, 'LIBA', 1, 'chr1', 399, '+'): None,
-
             ('readF' , 1, 'LIBA', 1, 'chr1', 400, '+'): 'regB',
-
-            ('readG' , 1, 'LIBA', 1, 'chr1', 450, '+'): ['regB','regC']
+            ('readG' , 1, 'LIBA', 1, 'chr1', 450, '+'): ['regB','regC'],
+            ('readH' , 1, 'LIBB', 1, 'chr1', 450, '+'): ['regB','regC']
 
         }
 
@@ -85,9 +84,12 @@ class TestRegionCount(unittest.TestCase):
             if type(goals)!=list:
                 goals = [goals]
             for goal in goals:
-                targets[f'{cell_index}_{library}'][goal] += 1
+                targets[f'{library}_{cell_index}'][goal] += 1
+        dfob = pd.DataFrame(targets).fillna(0)
 
-        self.assertTrue( (pd.DataFrame(targets).T.astype('float')==df.loc['LIBA_1']).values.all() )
+        for feature, row in dfob.iterrows():
+            for sample,value in row.iteritems():
+                self.assertTrue( df.loc[sample][feature] == value )
 
         os.remove(temp_bam_path)
         os.remove(temp_bam_path+'.bai')
