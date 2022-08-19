@@ -21,6 +21,7 @@ from singlecellmultiomics.utils.binning import bp_chunked
 from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_reads, sam_to_bam
 from singlecellmultiomics.fastaProcessing import CachedFastaNoHandle
 from singlecellmultiomics.utils.prefetch import UnitialisedClass
+from singlecellmultiomics.utils import create_fasta_dict_file
 from multiprocessing import Pool
 from typing import Generator
 import argparse
@@ -146,7 +147,7 @@ argparser.add_argument(
 
 argparser.add_argument(
     '-temp_folder',
-    default='./',
+    default='.',
     help="Temp folder location")
 
 
@@ -322,12 +323,13 @@ def tag_multiome_multi_processing(
         'molecule_iterator_class': MoleculeIterator
     }
 
+    if blacklist_path is not None:
+        # Subset the blacklisted regions and continue
+        raise NotImplementedError()
+
     # Define the regions to be processed and group into segments to perform tagging on
     if one_contig_per_process:
 
-        #job_gen = [ [(contig,0,contig_len,0,contig_len),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True)  ]
-        if blacklist_path is not None:
-            raise NotImplementedError('A blacklist is currently incompatible with --multiprocessing in single contig mode')
         job_gen =  [[('*',None,None,None,None),],] + [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True) if contig!='*' ]
 
 
@@ -1189,10 +1191,41 @@ def run_multiome_tagging(args):
             print(e)
     """
 
+    # If blacklisting is enabled, first generate a file with those reads removed
+    tempfiles = []
+    if args.blacklist is not None:
+        # generate a dict index for the reference
+        temp_dict_index_path = f'{args.temp_folder}/temp_reference_index_path_{uuid.uuid4()}.dict'
+        create_fasta_dict_file(args.ref, target_path=temp_dict_index_path)
+        assert os.path.exists(temp_dict_index_path), 'Genome dictionary failed'
+
+        # Generate a whitelist file:
+        # First sort the blacklist:
+        temp_sorted_bl = f'{args.temp_folder}/temp_sorted_bl_{uuid.uuid4()}.bed'
+        tempfiles.append(temp_sorted_bl)
+        print(f"Preparing to blacklist regions from {args.blacklist}")
+        print('\tSorting')
+        os.system(f'bedtools sort -i {args.blacklist} -g {temp_dict_index_path} > {temp_sorted_bl}')
+        assert os.path.exists(temp_sorted_bl), 'bedtools sort failed on input blacklist file'
+
+        temp_whitelist_path = f'{args.temp_folder}/temp_wl_path_{uuid.uuid4()}.bed'
+        tempfiles.append(temp_whitelist_path)
+        print('\tTaking complement')
+        os.system(f'bedtools complement -i "{temp_sorted_bl}" -g "{temp_dict_index_path}" > {temp_whitelist_path}')
+        assert os.path.exists(temp_sorted_bl), 'bedtools complement failed on sorted blacklist file'
+
+        # Subset the input bam file:
+        subset_bam_path = f'{args.temp_folder}/temp_subset_{uuid.uuid4()}.bam'
+        tempfiles.append(subset_bam_path)
+        print(f"\tNow subsetting to {subset_bam_path}")
+        os.system(f'samtools view {args.bamin} -L {temp_whitelist_path} --write-index -o {subset_bam_path} -@ {args.tagthreads}')
+        print(f"Proceeding with tagging process")
+        args.bamin = subset_bam_path
+        args.blacklist = None
+
 
 
     if args.multiprocess:
-
         print("Tagging using multi-processing")
         tag_multiome_multi_processing(input_bam_path=args.bamin, out_bam_path=args.o, molecule_iterator=molecule_iterator,
                                       molecule_iterator_args=molecule_iterator_args,ignore_bam_issues=args.ignore_bam_issues,
@@ -1221,6 +1254,16 @@ def run_multiome_tagging(args):
             head=args.head,
             no_source_reads=args.no_source_reads
             )
+    if len(tempfiles):
+        print("Cleaning up tempfiles")
+        for file in tempfiles:
+            if os.path.exists(file):
+                try:
+                    os.remove(file)
+                    print(file,'ok')
+                except Exception as e:
+                    print(file,'fail')
+
 
 
 if __name__ == '__main__':
