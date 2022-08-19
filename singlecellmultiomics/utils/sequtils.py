@@ -64,7 +64,7 @@ def get_file_type(s: str):
 
     return None
 
-def create_fasta_dict_file(refpath: str, skip_if_exists=True):
+def create_fasta_dict_file(refpath: str,  skip_if_exists=True, target_path=None):
     """Create index dict file for the reference fasta at refpath
 
     Args:
@@ -75,7 +75,10 @@ def create_fasta_dict_file(refpath: str, skip_if_exists=True):
     Returns:
         dpath (str) : path to the dict index file
     """
-    dpath = refpath.replace('.fa','').replace('.fasta','')+'.dict'
+    
+    dpath = target_path if target_path is not None else refpath.replace('.fa','').replace('.fasta','')+'.dict'
+
+
     if os.path.exists(dpath):
         return dpath
 
