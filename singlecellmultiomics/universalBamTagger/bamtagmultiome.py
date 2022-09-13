@@ -332,8 +332,23 @@ def tag_multiome_multi_processing(
 
     # Define the regions to be processed and group into segments to perform tagging on
     if one_contig_per_process:
+        # Still put very small contigs together (<100000 bp)
+        small_contig_threshold = 100000
 
-        job_gen =  [[('*',None,None,None,None),],] + [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True) if contig!='*' ]
+        job_gen =  [[('*',None,None,None,None),],]
+        current = []
+        for contig,contig_len in get_contigs_with_reads(input_bam_path, True):
+            if contig_len<small_contig_threshold:
+                current.append( (contig,None,None,None,None) )
+            else:
+                if len(current)>1:
+                    job_gen.append(current)
+                    current=[]
+                else:
+                    job_gen.append([ (contig,None,None,None,None), ])
+        if len(current)>1:
+            job_gen.append(current)
+        #job_gen =  [[('*',None,None,None,None),],] + [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True) if contig!='*' ]
 
 
     else:
