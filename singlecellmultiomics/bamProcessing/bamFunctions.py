@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 from typing import Generator
 from multiprocessing import Pool
+import sys
 
 
 def get_index_path(bam_path: str):
@@ -162,16 +163,19 @@ def merge_bams( bams: list, output_path: str, threads: int=4 ):
         threads = 1
     assert threads>=1
     if len(bams) == 1:
-        assert os.path.exists(bams[0]+'.bai'), 'Only indexed files can be merged'
+        assert os.path.exists(bams[0]+'.bai') or os.path.exists(bams[0]+'.csi'), 'Only indexed files can be merged'
         move(bams[0], output_path)
         move(bams[0]+'.bai', output_path+'.bai')
     else:
-        assert all((os.path.exists(bams[0]+'.bai') for bam in bams)), 'Only indexed files can be merged'
+        assert all((os.path.exists(bams[0]+'.bai' or os.path.exists(bams[0]+'.csi')) for bam in bams)), 'Only indexed files can be merged'
         if which('samtools') is None:
-            pysam.merge(output_path, *bams, f'-@ {threads} -f -p -c') #-c to only keep the same id once
+            pysam.merge(output_path, *bams, '-f', '-p', '-c') #-c to only keep the same id once
         else:
             # This above command can have issues...
-            os.system(f'samtools merge {output_path} {" ".join(bams)} -@ {threads} -f -p -c')
+            cmd = f'samtools merge -o {output_path} {" ".join(bams)} -@ {threads} -f -p -c'
+            if os.system(cmd)!=0:
+                sys.stderr.write(f'Samtools merge failed on {output_path}, trying pysam... ')
+                pysam.merge(output_path, *bams, '-f', '-p', '-c')
 
         pysam.index(output_path, f'-@ {threads}')
         for o in bams:
@@ -968,6 +972,8 @@ def replace_bam_header(origin_bam_path, header, target_bam_path=None, header_wri
     # Write the re-headered bam file to this path
     complete_temp_path = origin_bam_path.replace('.bam', '') + '.rehead.bam'
 
+    assert os.path.exists(origin_bam_path)
+
     # When header_write_mode is auto, when samtools is available, samtools
     # will be used, otherwise pysam
     if header_write_mode == 'auto':
@@ -996,10 +1002,10 @@ def replace_bam_header(origin_bam_path, header, target_bam_path=None, header_wri
             pass
 
         # Concatenate and remove origin
-        rehead_cmd = f"""{{ cat {headerSamFilePath}; samtools view {origin_bam_path}; }} | samtools view -b > {complete_temp_path} ;
-                mv {complete_temp_path } {target_bam_path};rm {headerSamFilePath};
+        rehead_cmd = f"""{{ cat '{headerSamFilePath}'; samtools view '{origin_bam_path}'; }} | samtools view -b > '{complete_temp_path}' &&
+                mv '{complete_temp_path}' '{target_bam_path}' && rm '{headerSamFilePath}';
                 """
-        os.system(rehead_cmd)
+        assert (os.system(rehead_cmd)==0) and os.path.exists(target_bam_path), f'Reheading failed. Command: {rehead_cmd} '
     else:
         raise ValueError(
             'header_write_mode should be either, auto, pysam or samtools')
