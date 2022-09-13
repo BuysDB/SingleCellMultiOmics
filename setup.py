@@ -151,10 +151,10 @@ setup(
         ],
 
   install_requires=[
-       'pysam>=0.15.3','numpy>=1.16.5','pandas>=0.25.0','colorama','pyBigWig',
+       'pysam>=0.19.1','numpy>=1.16.5','pandas>=1.3.0','colorama','pyBigWig',
        'cutadapt>=2.9',
        'pysamiterators>=1.9','more-itertools','matplotlib','tabulate',
-       'wheel','setuptools>=40.8.0','scikit-learn>=0.21.3','seaborn>=0.11.0', 'statsmodels', 'cached_property',
+       'wheel','setuptools>=40.8.0','scikit-learn>=0.21.3','seaborn>=0.11.2', 'statsmodels', 'cached_property',
        'biopython>=1.71','pytest>=5.0.0','pytest-runner','snakemake>=5.8.1','lxml',
        'statsmodels' #,'tensorflow>=1.14.0'
    ],
