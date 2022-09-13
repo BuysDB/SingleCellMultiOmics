@@ -33,7 +33,10 @@ import pkg_resources
 import pickle
 from datetime import datetime
 from time import sleep
+import shutil
 # Supress [E::idx_find_and_load] Could not retrieve index file for, see https://github.com/pysam-developers/pysam/issues/939
+
+__version__ = '1.1'
 pysam.set_verbosity(0)
 
 argparser = argparse.ArgumentParser(
@@ -150,6 +153,7 @@ argparser.add_argument(
     default='.',
     help="Temp folder location")
 
+argparser.add_argument('--version', action='version', version=__version__)
 
 fragment_settings = argparser.add_argument_group('Fragment settings')
 fragment_settings.add_argument('-read_group_format', type=int, default=0, help="0: Every cell/sequencing unit gets a read group, 1: Every library/sequencing unit gets a read group")
@@ -329,8 +333,23 @@ def tag_multiome_multi_processing(
 
     # Define the regions to be processed and group into segments to perform tagging on
     if one_contig_per_process:
+        # Still put very small contigs together (<100000 bp)
+        small_contig_threshold = 100000
 
-        job_gen =  [[('*',None,None,None,None),],] + [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True) if contig!='*' ]
+        job_gen =  [[('*',None,None,None,None),],]
+        current = []
+        for contig,contig_len in get_contigs_with_reads(input_bam_path, True):
+            if contig_len<small_contig_threshold:
+                current.append( (contig,None,None,None,None) )
+            else:
+                if len(current)>1:
+                    job_gen.append(current)
+                    current=[]
+                else:
+                    job_gen.append([ (contig,None,None,None,None), ])
+        if len(current)>1:
+            job_gen.append(current)
+        #job_gen =  [[('*',None,None,None,None),],] + [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True) if contig!='*' ]
 
 
     else:
@@ -369,9 +388,9 @@ def tag_multiome_multi_processing(
         write_program_tag(
             input_header,
             program_name='bamtagmultiome',
-            command_line=" ".join(
+            command_line= " ".join(
                 sys.argv),
-            version=singlecellmultiomics.__version__,
+            version= __version__ + '_scmo_' + singlecellmultiomics.__version__,
             description=f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
 
 
@@ -418,17 +437,19 @@ def tag_multiome_multi_processing(
 
         pysam.index(temp_header_bam_path)
     # merge the results and clean up:
-    print('Merging final bam files')
-    merge_bams(list(tagged_bam_generator), out_bam_path, threads=n_threads)
     if use_pool:
         workers.close()
+    print('Merging final bam files')
+    merge_bams(list(tagged_bam_generator), out_bam_path, threads=n_threads)
+
 
     # Remove the temp dir:
     sleep(5)
     try:
-        os.rmdir(temp_folder)
-    except Exception:
+        shutil.rmtree(temp_folder, ignore_errors=False, onerror=None)
+    except Exception as e:
         sys.stderr.write(f'Failed to remove {temp_folder}\n')
+        sys.stderr.write(f'{e}\n')
 
     write_status(out_bam_path, 'Reached end. All ok!')
 
@@ -461,10 +482,7 @@ def tag_multiome_single_thread(
     print(f'Started writing to {out_bam_path}')
 
     # de-prefetch all:
-
-
     # contig, start, end, start, end , args
-
     molecule_iterator_args = prefetch(molecule_iterator_args['contig'],
                                     molecule_iterator_args['start'],
                                     molecule_iterator_args['end'],
@@ -1195,30 +1213,31 @@ def run_multiome_tagging(args):
     tempfiles = []
     if args.blacklist is not None:
         # generate a dict index for the reference
-        temp_dict_index_path = f'{args.temp_folder}/temp_reference_index_path_{uuid.uuid4()}.dict'
+        temp_dict_index_path = f'{args.temp_folder}/scmo_temp_reference_index_path_{uuid.uuid4()}.dict'
+        assert args.ref is not None, 'The reference file could not be located, supply the path to the reference fasta file using -ref'
         create_fasta_dict_file(args.ref, target_path=temp_dict_index_path)
         assert os.path.exists(temp_dict_index_path), 'Genome dictionary failed'
+        tempfiles.append(temp_dict_index_path)
 
         # Generate a whitelist file:
         # First sort the blacklist:
-        temp_sorted_bl = f'{args.temp_folder}/temp_sorted_bl_{uuid.uuid4()}.bed'
+        temp_sorted_bl = f'{args.temp_folder}/scmo_temp_sorted_bl_{uuid.uuid4()}.bed'
         tempfiles.append(temp_sorted_bl)
         print(f"Preparing to blacklist regions from {args.blacklist}")
         print('\tSorting')
-        os.system(f'bedtools sort -i {args.blacklist} -g {temp_dict_index_path} > {temp_sorted_bl}')
-        assert os.path.exists(temp_sorted_bl), 'bedtools sort failed on input blacklist file'
+        assert os.system(f'bedtools sort -i {args.blacklist} -g {temp_dict_index_path} > {temp_sorted_bl}')==0 and os.path.exists(temp_sorted_bl), 'bedtools sort failed on input blacklist file'
 
-        temp_whitelist_path = f'{args.temp_folder}/temp_wl_path_{uuid.uuid4()}.bed'
+        temp_whitelist_path = f'{args.temp_folder}/scmo_temp_wl_path_{uuid.uuid4()}.bed'
         tempfiles.append(temp_whitelist_path)
         print('\tTaking complement')
-        os.system(f'bedtools complement -i "{temp_sorted_bl}" -g "{temp_dict_index_path}" > {temp_whitelist_path}')
-        assert os.path.exists(temp_sorted_bl), 'bedtools complement failed on sorted blacklist file'
+        assert os.system(f'bedtools complement -i "{temp_sorted_bl}" -g "{temp_dict_index_path}" > {temp_whitelist_path}')==0  and os.path.exists(temp_sorted_bl), 'bedtools complement failed on sorted blacklist file'
 
         # Subset the input bam file:
-        subset_bam_path = f'{args.temp_folder}/temp_subset_{uuid.uuid4()}.bam'
+        subset_bam_path = f'{args.temp_folder}/scmo_temp_subset_{uuid.uuid4()}.bam'
         tempfiles.append(subset_bam_path)
         print(f"\tNow subsetting to {subset_bam_path}")
-        os.system(f'samtools view {args.bamin} -L {temp_whitelist_path} --write-index -o {subset_bam_path} -@ {args.tagthreads}')
+        assert os.system(f'samtools view {args.bamin} -L {temp_whitelist_path} --write-index -o {subset_bam_path} -@ {args.tagthreads}')==0, 'Samtools sort failed'
+        tempfiles.append(subset_bam_path+'.csi')
         print(f"Proceeding with tagging process")
         args.bamin = subset_bam_path
         args.blacklist = None
@@ -1241,8 +1260,8 @@ def run_multiome_tagging(args):
             raise NotImplementedError('Please use --multiprocess')
 
         # Alignments are passed as pysam handle:
-        if args.blacklist is not None:
-            raise NotImplementedError("Blacklist can only be used with --multiprocess")
+        assert args.blacklist is None, 'The blacklist was not processed'
+
         tag_multiome_single_thread(
             args.bamin,
             args.o,

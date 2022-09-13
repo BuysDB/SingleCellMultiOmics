@@ -97,21 +97,21 @@ class GenomicPlot():
             alleles = [allele for allele in df.columns.get_level_values(0).unique() if not pd.isna(allele)]
             contigs_to_plot = [contig for contig in self.contigs if contig in set(df.columns.get_level_values(1))]
             # Resample the dataframe, drop columns with no allele assigned:
-            df = df.loc[:,df.columns.isin(contigs_to_plot, level=1)][alleles].sort_index(1)
+            df = df.loc[:,df.columns.isin(contigs_to_plot, level=1)][alleles].sort_index(axis=1)
 
             def m(k):
                 allele,contig,start,end=k
                 return  self.contigs.index(contig), alleles.index(allele),start
 
 
-            desired_order = sorted( list(df.loc[:,df.columns.isin(self.contigs, level=1)][alleles].sort_index(1).columns), key=m)
+            desired_order = sorted( list(df.loc[:,df.columns.isin(self.contigs, level=1)][alleles].sort_index(axis=1).columns), key=m)
             df = df[desired_order]
 
         else:
 
             # Figure out what contigs are present in the dataframe:
             contigs_to_plot = [contig for contig in self.contigs if contig in set(df.columns.get_level_values(0))]
-            df = df.sort_index(1)[contigs_to_plot]
+            df = df.sort_index(axis=1)[contigs_to_plot]
         try:
 
             clmap = sns.clustermap(df,
@@ -201,7 +201,7 @@ class GenomicPlot():
         return self.axis[contig]
 
 
-def plot_plate_layout(plate_layout:dict , welllabel2coord:dict , suptitle="Plate layout", cmap=None,class_colors=None) -> dict:
+def plot_plate_layout(plate_layout:dict , welllabel2coord:dict , suptitle="Plate layout", cmap=None,class_colors=None, plot_plate_kwargs=None) -> dict:
     """
     Plate layout is a dictionary of:
     'D10': 'condition A'
@@ -219,10 +219,10 @@ def plot_plate_layout(plate_layout:dict , welllabel2coord:dict , suptitle="Plate
     state_to_index = {state: i for i,state in enumerate(states)}
     state_to_index['empty'] = np.nan
     plate_indices = {welllabel2coord[well]:state_to_index[value] for well,value in plate_layout.items()}
-
+    plot_plate_kwargs = ({} if plot_plate_kwargs is None else plot_plate_kwargs)
     if class_colors is not None:
         plate_values = {welllabel2coord[well]:value for well,value in plate_layout.items()}
-        fig,ax,cbar = plot_plate(plate_values,class_colors=class_colors)
+        fig,ax,cbar = plot_plate(plate_values,class_colors=class_colors, **plot_plate_kwargs)
         return {'fig':fig,'ax':ax,'cbar':cbar,'state_to_index':state_to_index, 'plate_indices':plate_indices}
 
     if cmap is None:
@@ -231,7 +231,7 @@ def plot_plate_layout(plate_layout:dict , welllabel2coord:dict , suptitle="Plate
         cmap.set_under(color='k')
 
 
-    fig,ax,cbar = plot_plate(plate_indices,vmax=cmap.N,cmap=cmap,log=False,vmin=0,usenorm=True,colorbarargs={'extend':'min'})
+    fig,ax,cbar = plot_plate(plate_indices,vmax=cmap.N,cmap=cmap,log=False,vmin=0,usenorm=True,colorbarargs={'extend':'min'}, **plot_plate_kwargs)
 
     cbar.set_yticks([0] + [i + 0.5 for i, state in enumerate(states)],['empty']+states)
     cbar.set_ylim(0,len(states))
@@ -251,10 +251,13 @@ def plot_plate(coordinate_values: dict,
                cmap=None,
                colorbarargs={},
                returncb=False,
-               class_colors: dict = None # When supplied no colormap is used, instead this mapping is used and a legend created
+               class_colors: dict = None, # When supplied no colormap is used, instead this mapping is used and a legend created
+               yticklabelargs: dict =  None, # Extra arguments passed to the yticklabels, for example { 'fontdict':{'fontsize':8} }
+               xticklabelargs: dict =  None # Extra arguments passed to the xticklabels, for example { 'fontdict':{'fontsize':8} }
                ):
 
-
+    yticklabelargs = ( {} if yticklabelargs is None else yticklabelargs )
+    xticklabelargs = ( {} if xticklabelargs is None else xticklabelargs )
 
     coordinate_values  = {
         kwgs[:2]:value
@@ -315,10 +318,10 @@ def plot_plate(coordinate_values: dict,
     ax.set_ylim(-1, n_rows)
     ax.set_xlim(-1, n_cols)
     ax.set_xticks(np.arange(n_cols))
-    ax.set_xticklabels(np.arange(1,n_cols+1))
+    ax.set_xticklabels(np.arange(1,n_cols+1), **xticklabelargs)
 
     ax.set_yticks(np.arange(n_rows))
-    ax.set_yticklabels([string.ascii_uppercase[n_rows-i-1] for i in range(n_rows)])
+    ax.set_yticklabels([string.ascii_uppercase[n_rows-i-1] for i in range(n_rows)], **yticklabelargs)
     ax.xaxis.tick_top()
 
     ax.grid()
