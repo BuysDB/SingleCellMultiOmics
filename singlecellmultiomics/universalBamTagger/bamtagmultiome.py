@@ -33,6 +33,7 @@ import pkg_resources
 import pickle
 from datetime import datetime
 from time import sleep
+import shutil
 # Supress [E::idx_find_and_load] Could not retrieve index file for, see https://github.com/pysam-developers/pysam/issues/939
 
 __version__ = '1.1'
@@ -436,17 +437,19 @@ def tag_multiome_multi_processing(
 
         pysam.index(temp_header_bam_path)
     # merge the results and clean up:
-    print('Merging final bam files')
-    merge_bams(list(tagged_bam_generator), out_bam_path, threads=n_threads)
     if use_pool:
         workers.close()
+    print('Merging final bam files')
+    merge_bams(list(tagged_bam_generator), out_bam_path, threads=n_threads)
+
 
     # Remove the temp dir:
     sleep(5)
     try:
-        os.rmdir(temp_folder)
-    except Exception:
+        shutil.rmtree(temp_folder, ignore_errors=False, onerror=None)
+    except Exception as e:
         sys.stderr.write(f'Failed to remove {temp_folder}\n')
+        sys.stderr.write(f'{e}\n')
 
     write_status(out_bam_path, 'Reached end. All ok!')
 
@@ -479,10 +482,7 @@ def tag_multiome_single_thread(
     print(f'Started writing to {out_bam_path}')
 
     # de-prefetch all:
-
-
     # contig, start, end, start, end , args
-
     molecule_iterator_args = prefetch(molecule_iterator_args['contig'],
                                     molecule_iterator_args['start'],
                                     molecule_iterator_args['end'],
@@ -1213,7 +1213,7 @@ def run_multiome_tagging(args):
     tempfiles = []
     if args.blacklist is not None:
         # generate a dict index for the reference
-        temp_dict_index_path = f'{args.temp_folder}/temp_reference_index_path_{uuid.uuid4()}.dict'
+        temp_dict_index_path = f'{args.temp_folder}/scmo_temp_reference_index_path_{uuid.uuid4()}.dict'
         assert args.ref is not None, 'The reference file could not be located, supply the path to the reference fasta file using -ref'
         create_fasta_dict_file(args.ref, target_path=temp_dict_index_path)
         assert os.path.exists(temp_dict_index_path), 'Genome dictionary failed'
@@ -1221,19 +1221,19 @@ def run_multiome_tagging(args):
 
         # Generate a whitelist file:
         # First sort the blacklist:
-        temp_sorted_bl = f'{args.temp_folder}/temp_sorted_bl_{uuid.uuid4()}.bed'
+        temp_sorted_bl = f'{args.temp_folder}/scmo_temp_sorted_bl_{uuid.uuid4()}.bed'
         tempfiles.append(temp_sorted_bl)
         print(f"Preparing to blacklist regions from {args.blacklist}")
         print('\tSorting')
         assert os.system(f'bedtools sort -i {args.blacklist} -g {temp_dict_index_path} > {temp_sorted_bl}')==0 and os.path.exists(temp_sorted_bl), 'bedtools sort failed on input blacklist file'
 
-        temp_whitelist_path = f'{args.temp_folder}/temp_wl_path_{uuid.uuid4()}.bed'
+        temp_whitelist_path = f'{args.temp_folder}/scmo_temp_wl_path_{uuid.uuid4()}.bed'
         tempfiles.append(temp_whitelist_path)
         print('\tTaking complement')
         assert os.system(f'bedtools complement -i "{temp_sorted_bl}" -g "{temp_dict_index_path}" > {temp_whitelist_path}')==0  and os.path.exists(temp_sorted_bl), 'bedtools complement failed on sorted blacklist file'
 
         # Subset the input bam file:
-        subset_bam_path = f'{args.temp_folder}/temp_subset_{uuid.uuid4()}.bam'
+        subset_bam_path = f'{args.temp_folder}/scmo_temp_subset_{uuid.uuid4()}.bam'
         tempfiles.append(subset_bam_path)
         print(f"\tNow subsetting to {subset_bam_path}")
         assert os.system(f'samtools view {args.bamin} -L {temp_whitelist_path} --write-index -o {subset_bam_path} -@ {args.tagthreads}')==0, 'Samtools sort failed'
