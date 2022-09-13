@@ -34,6 +34,8 @@ import pickle
 from datetime import datetime
 from time import sleep
 # Supress [E::idx_find_and_load] Could not retrieve index file for, see https://github.com/pysam-developers/pysam/issues/939
+
+__version__ = '1.1'
 pysam.set_verbosity(0)
 
 argparser = argparse.ArgumentParser(
@@ -150,6 +152,7 @@ argparser.add_argument(
     default='.',
     help="Temp folder location")
 
+argparser.add_argument('--version', action='version', version=__version__)
 
 fragment_settings = argparser.add_argument_group('Fragment settings')
 fragment_settings.add_argument('-read_group_format', type=int, default=0, help="0: Every cell/sequencing unit gets a read group, 1: Every library/sequencing unit gets a read group")
@@ -369,9 +372,9 @@ def tag_multiome_multi_processing(
         write_program_tag(
             input_header,
             program_name='bamtagmultiome',
-            command_line=" ".join(
+            command_line= " ".join(
                 sys.argv),
-            version=singlecellmultiomics.__version__,
+            version= __version__ + '_scmo_' + singlecellmultiomics.__version__,
             description=f'SingleCellMultiOmics molecule processing, executed at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
 
 
@@ -1241,8 +1244,8 @@ def run_multiome_tagging(args):
             raise NotImplementedError('Please use --multiprocess')
 
         # Alignments are passed as pysam handle:
-        if args.blacklist is not None:
-            raise NotImplementedError("Blacklist can only be used with --multiprocess")
+        assert args.blacklist is not None, 'The blacklist was not processed'
+
         tag_multiome_single_thread(
             args.bamin,
             args.o,
