@@ -188,17 +188,27 @@ class TaggedRecord():
             'CN': controlNumber
         })
 
-    def parse_illumina_header(self,fastqRecord, indexFileParser,  indexFileAlias):
+
+    def _parse_illumina_header(self,header, indexFileParser = None,  indexFileAlias = None):
+
         try:
-            instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber, indexSequence  = fastqRecord.header.replace(' ',':').split(':')
+            instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber, indexSequence  = header.replace(' ',':').split(':')
         except BaseException:
 
             try:
                 instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber = illuminaHeaderSplitRegex.split(
-                    fastqRecord.header.replace('::', ''))
+                    header.replace('::', ''))
                 indexSequence = "N"
             except BaseException:
-                raise
+
+                try:
+                    instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos = header.split(':')
+                    indexSequence = "N"
+                    readPairNumber = 1
+                    isFiltered = 0
+                    controlNumber = 0
+                except BaseException:
+                    raise
 
         self.tags.update({
             'Is': instrument,
@@ -239,6 +249,11 @@ class TaggedRecord():
         else:
             #self.addTagByTag('aA',indexSequence, isPhred=False)
             self.tags['aa'] = indexSequence
+
+
+    def parse_illumina_header(self,fastqRecord, indexFileParser = None,  indexFileAlias = None):
+        return self._parse_illumina_header(fastqRecord.header, indexFileParser=indexFileParser, indexFileAlias=indexFileAlias )
+
 
     def parse_scmo_header(self, fastqRecord, indexFileParser,  indexFileAlias):
         self.tags.update( dict( kv.split(':') for kv in fastqRecord.header.strip()[1:].split(';') ) )
@@ -338,7 +353,7 @@ class TaggedRecord():
             # Remove BI tag
             self.tags['bi'] = self.tags["BI"]
             del self.tags['BI']
-        else:
+        elif "LY" in self.tags:
             self.addTagByTag('SM', f'{self.tags["LY"]}_BULK', isPhred=False)
 
 
@@ -348,7 +363,7 @@ class TaggedRecord():
         # record:
         for tag, value in self.tags.items():
             # print(tag,value)
-            if self.tagDefinitions[tag].isPhred:
+            if tag in self.tagDefinitions and self.tagDefinitions[tag].isPhred:
                 value = fastqHeaderSafeQualitiesToPhred(value, method=3)
             read.set_tag(tag, value)
 
@@ -363,9 +378,21 @@ class TaggedRecord():
             self.addTagByTag(key, value, decodePhred=True)
 
     def fromTaggedBamRecord(self, pysamRecord):
-        for keyValue in pysamRecord.query_name.strip().split(';'):
-            key, value = keyValue.split(':')
-            self.addTagByTag(key, value, isPhred=False)
+        try:
+            for keyValue in pysamRecord.query_name.strip().split(';'):
+                key, value = keyValue.split(':')
+                self.addTagByTag(key, value, isPhred=False)
+        except ValueError:
+            # Try to parse "Single Cell Discoveries" header
+            # These have the following header:
+            #NBXXXXXX:530:HXXXXXX:2:2:17:6;SS:GTCATTAG;CB:GTCATTAG;QT:eeeeeeee;RX:CTGAAC;RQ:aaaaae;SM:SAMPLE_NAME
+            illumina_header, attributes = pysamRecord.query_name.strip().split(';',1)
+
+            self._parse_illumina_header(illumina_header, indexFileParser=None, indexFileAlias=None )
+
+            for keyValue in attributes.split(';'):
+                key, value = keyValue.split(':')
+                self.addTagByTag(key, value, isPhred=False)
 
 
 def reverseComplement(seq):

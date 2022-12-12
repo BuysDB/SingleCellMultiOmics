@@ -784,13 +784,14 @@ def run_multiome_tagging(args):
             'auto_set_intron_exon_features': True,
         }
 
-
+    # Parameter defaults: (Might be overriden by protocol specific settings)
     bp_per_job = 10_000_000
     pooling_method=1
     bp_per_segment = 999_999_999 #@todo make this None or so
     fragment_size = 500
     one_contig_per_process=False
     max_time_per_segment = args.max_time_per_segment
+    ####
 
     ### Method specific configuration ###
     if args.method == 'qflag':
@@ -814,8 +815,6 @@ def run_multiome_tagging(args):
         fragment_size = 1000
         #if max_time_per_segment is None:
     #        max_time_per_segment = 20*60 #
-
-
 
     elif args.method == 'nla' or args.method == 'nla_no_overhang':
         molecule_class = singlecellmultiomics.molecule.NlaIIIMolecule
