@@ -6,5 +6,6 @@
     "counting_min_mq":10,
     "trans_mapper":"STAR",
     "4sU":"enabled",
-    "known_variants":"/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/all_snps.vcf.gz"
+    "known_variants":"/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/all_snps.vcf.gz",
+    "gtf" : "/hpc/hub_oudenaarden/group_references/ensembl/97/homo_sapiens/annotations.gtf"
 }
