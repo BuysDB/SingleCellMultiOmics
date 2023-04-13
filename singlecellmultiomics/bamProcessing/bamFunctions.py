@@ -565,6 +565,7 @@ def sorted_bam_file(
             )
     else:
         os.rename(unsorted_path, write_path)
+        pysam.index(write_path,'-@4')
 
 def write_program_tag(input_header,
                       program_name,
@@ -1086,3 +1087,9 @@ def mate_iter(alignments, **kwargs):
                 yield buffer.pop(read.query_name), read
         else:
             buffer[read.query_name] = read
+    # Yield remains from buffer:
+    for qname, read in buffer.items():
+        if read.is_read1:
+            yield read, buffer.pop(read.query_name)
+        elif read.is_read2:
+            yield buffer.pop(read.query_name), read
