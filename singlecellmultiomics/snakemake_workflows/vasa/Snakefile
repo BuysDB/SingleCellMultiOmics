@@ -53,7 +53,7 @@ rule all:
     input:
         # get_target_demux_list() use this for demux only
         get_target_tagged_bam_list(),
-
+        expand("processed_transcriptome/{library}/rna_counts/{library}.loom", library=libraries),
         expand("processed_transcriptome/{library}/plots/ReadCount.png", library=libraries),
         expand("processed_transcriptome/{library}/gene_counts.csv", library=libraries),
         expand("processed_transcriptome/{library}/intron_counts.csv", library=libraries)
@@ -223,3 +223,80 @@ rule count_introns:
 
     shell:
       "bamToCountTable.py {input.bam} -sampleTags SM -joinedFeatureTags reference_name,IN -o {output.csv} --dedup --r1only > {log.stdout} 2> {log.stderr}"
+
+
+# 7. Filter bam file based on minimum mapping quality specified in config file
+rule transcriptome_7_SCMO_QCfiltering:
+    input:
+        bam = "processed_transcriptome/{library}/tagged.bam",
+        bam_index = "processed_transcriptome/{library}/tagged.bam.bai"
+    params:
+        counting_min_mq = config['counting_min_mq']
+    output:
+        bam = temp("processed_transcriptome/{library}/tagged_filtered.bam"),
+        bam_index = temp("processed_transcriptome/{library}/tagged_filtered.bam.bai")
+    log:
+        stdout="log/bamFilter/transcriptome_{library}.stdout",
+        stderr="log/bamFilter/transcriptome_{library}.stderr"
+
+    shell:
+        '''bamFilter.py {input.bam} -o {output.bam} \
+        'r.has_tag("MQ") and (r.get_tag("MQ") >= {params.counting_min_mq} )' > {log.stdout} 2> {log.stderr} '''
+
+
+# 8. Add cellranger headers as preparation for velocyto
+rule transcriptome_8_convert:
+    input:
+        bam = "processed_transcriptome/{library}/tagged_filtered.bam"
+    output:
+        bam = temp("processed_transcriptome/{library}/tagged_converted.bam"),
+        index = temp("processed_transcriptome/{library}/tagged_converted.bam.bai")
+    log:
+        stdout="log/RNAconvert/transcriptome_{library}.stdout",
+        stderr="log/RNAconvert/transcriptome_{library}.stderr"
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: 20000 + attempt * 4000
+
+    shell:
+        "scmoConvert.py {input.bam} {output.bam} -fmt cellranger > {log.stdout} 2> {log.stderr}"
+
+
+# 9. Do deduplication using samtools as preparation for RNA velocity
+rule transcriptome_9_dedupBam:
+    input:
+        bam = "processed_transcriptome/{library}/tagged_converted.bam"
+    output:
+        bam = temp("processed_transcriptome/{library}/tagged_samtools-dedup.bam"),
+        index = temp("processed_transcriptome/{library}/tagged_samtools-dedup.bam.bai")
+    log:
+        stdout="log/RNAdedup/transcriptome_{library}.stdout",
+        stderr="log/RNAdedup/transcriptome_{library}.stderr"
+    params: runtime="30h"
+    resources:
+        mem_mb=lambda wildcards, attempt: 20000 + attempt * 4000
+
+    shell:
+        "samtools view -F 1024 {input.bam} -bS -@32 > {output.bam}; samtools index {output.bam} > {log.stdout} 2> {log.stderr}"
+
+
+# 10. Run velocyto for RNA velocity
+rule transcriptome_10_RNAvelocity:
+    input:
+        bam = "processed_transcriptome/{library}/tagged_samtools-dedup.bam",
+        gtf = config['gtf']
+    output:
+        loom = "processed_transcriptome/{library}/rna_counts/{library}.loom"
+    log:
+        stdout="log/RNAvelocyto/transcriptome_{library}.stdout",
+        stderr="log/RNAvelocyto/transcriptome_{library}.stderr"
+    params:
+        dir = "processed_transcriptome/{library}/rna_counts",
+        sampleName = "{library}",
+        runtime="40h"
+    threads: 8
+    resources:
+        mem_mb=lambda wildcards, attempt: 80000 + attempt * 8000
+
+    shell:
+        "velocyto run -e {params.sampleName} -@ {threads} -o {params.dir} {input.bam} {input.gtf} -U > {log.stdout} 2> {log.stderr}"
