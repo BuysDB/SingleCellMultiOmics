@@ -75,7 +75,7 @@ def create_fasta_dict_file(refpath: str,  skip_if_exists=True, target_path=None)
     Returns:
         dpath (str) : path to the dict index file
     """
-    
+
     dpath = target_path if target_path is not None else refpath.replace('.fa','').replace('.fasta','')+'.dict'
 
 
@@ -128,7 +128,7 @@ def is_main_chromosome(chrom: str, exclude_mt=False) -> bool:
         return False
 
     if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('JH') or chrom.startswith('GL') or chrom.startswith(
-            'KI') or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom or chrom.endswith('_alt') or "HLA-" in chrom or chrom.startswith('Un_') or 'decoy' in chrom:
+            'KI') or chrom.startswith('Unmapped_') or '0000' in chrom or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom or chrom.endswith('_alt') or "HLA-" in chrom or chrom.startswith('Un_') or 'decoy' in chrom:
         return False
     return True
 

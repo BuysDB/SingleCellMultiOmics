@@ -350,6 +350,10 @@ class FeatureContainer(Prefetcher):
                 elif len(parts)==3:
                     chrom, chromStart, chromEnd = parts[:3]
                     name = str(line_idx)
+                elif len(parts)==2:
+                    chrom, chromStart = parts[:2]
+                    chromEnd = int(chromStart)+1
+                    name = str(line_idx)
                 else:
                     raise ValueError('Could not read the supplied bed file, it has too little columns, expecting at least 3 columns: contig,start,end[,value]')
 
