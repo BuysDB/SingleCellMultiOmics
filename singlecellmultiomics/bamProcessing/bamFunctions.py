@@ -1087,9 +1087,14 @@ def mate_iter(alignments, **kwargs):
                 yield buffer.pop(read.query_name), read
         else:
             buffer[read.query_name] = read
+
     # Yield remains from buffer:
-    for qname, read in buffer.items():
+    for qname in list(buffer.keys()):
+        if qname not in buffer:
+            continue
+        read = buffer[qname]
         if read.is_read1:
             yield read, buffer.pop(read.query_name)
         elif read.is_read2:
             yield buffer.pop(read.query_name), read
+
