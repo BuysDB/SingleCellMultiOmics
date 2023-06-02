@@ -81,13 +81,20 @@ def vectorize_bw_multi(paths: list, selected_contigs:list, formatsample: Callabl
         )
         for path in paths
     ]
-    with Pool(n_threads) as workers:
-        densities=[]
-        for ser in workers.imap(
-            pool_wrapper,
-            commands
-        ):
-            densities.append(ser)
+    if n_threads==1:
+        densities = [
+            fnc(**kwargs)
+            for fnc,kwargs in commands
+        ]
+
+    else:
+        with Pool(n_threads) as workers:
+            densities=[]
+            for ser in workers.imap(
+                pool_wrapper,
+                commands
+            ):
+                densities.append(ser)
 
     return pd.concat(densities,axis=1).T
 
