@@ -152,96 +152,103 @@ class FeatureContainer(Prefetcher):
             else:
                 print(f"Loading {path}, for contig {contig}:{region_start}-{region_end}")
         added = 0
+        is_gff= False
         with (gzip.open(path, 'rt') if path.endswith('.gz') else open(path, 'r')) as f:
             for line_id, line in enumerate(f):
                 if head is not None and added > head:
                     break
-                if line[0] != '#':
-                    parts = line.rstrip().split(None, 8)
+                if line[0] == '#':
+                    if line.startswith('##gff-version 3'):
+                        is_gff = True
+                    continue
+                parts = line.rstrip().split(None, 8)
 
-                    chrom = parts[0]
-                    if contig is not None and chrom != contig:
+                chrom = parts[0]
+                if contig is not None and chrom != contig:
+                    continue
+
+                if thirdOnly is not None:
+                    if parts[2] not in thirdOnly:
                         continue
 
-                    if thirdOnly is not None:
-                        if parts[2] not in thirdOnly:
-                            continue
+                # Example line: (gene)
+                # 1  havana  gene    11869   14409   .   +   .   gene_id "ENSG00000223972"; gene_version "5"; gene_name "DDX11L1"; gene_source "havana"; gene_biotype "transcribed_unprocessed_pseudogene"; havana_gene "OTTHUMG00000000961"; havana_gene_version "2";
+                # Example line (exon)
+                # 1  havana  exon    11869   12227   .   +   .   gene_id "ENSG00000223972"; gene_version "5"; transcript_id "ENST00000456328"; transcript_version "2"; exon_number "1"; gene_name "DDX11L1"; gene_source "havana"; gene_biotype "transcribed_unprocessed_pseudogene"; havana_gene "OTTHUMG00000000961"; havana_gene_version "2"; transcript_name "DDX11L1-002"; transcript_source "havana"; transcript_biotype "processed_transcript"; havana_transcript "OTTHUMT00000362751"; havana_transcript_version "1"; exon_id "ENSE00002234944"; exon_version "1"; tag "basic"; transcript_support_level "1";
+                #Part, info
+                # 0  Chromosome
+                # 1  Source
+                # 2  Feature type (matches thirdOnly)
+                # 3 Feature Start
+                # 4 Feature End
+                # 5 .
+                # 6 Strand
+                # 7 .
+                # 8 KEY "VALUE";
+                #keyValues = { part.strip().split()[0]:part.strip().split()[1].replace('"','') for part in parts[-1].split(';') }
 
-                    # Example line: (gene)
-                    # 1  havana  gene    11869   14409   .   +   .   gene_id "ENSG00000223972"; gene_version "5"; gene_name "DDX11L1"; gene_source "havana"; gene_biotype "transcribed_unprocessed_pseudogene"; havana_gene "OTTHUMG00000000961"; havana_gene_version "2";
-                    # Example line (exon)
-                    # 1  havana  exon    11869   12227   .   +   .   gene_id "ENSG00000223972"; gene_version "5"; transcript_id "ENST00000456328"; transcript_version "2"; exon_number "1"; gene_name "DDX11L1"; gene_source "havana"; gene_biotype "transcribed_unprocessed_pseudogene"; havana_gene "OTTHUMG00000000961"; havana_gene_version "2"; transcript_name "DDX11L1-002"; transcript_source "havana"; transcript_biotype "processed_transcript"; havana_transcript "OTTHUMT00000362751"; havana_transcript_version "1"; exon_id "ENSE00002234944"; exon_version "1"; tag "basic"; transcript_support_level "1";
-                    #Part, info
-                    # 0  Chromosome
-                    # 1  Source
-                    # 2  Feature type (matches thirdOnly)
-                    # 3 Feature Start
-                    # 4 Feature End
-                    # 5 .
-                    # 6 Strand
-                    # 7 .
-                    # 8 KEY "VALUE";
-                    #keyValues = { part.strip().split()[0]:part.strip().split()[1].replace('"','') for part in parts[-1].split(';') }
+                #keyValues = {i.group(1) : i.group(2) for i in (prog.match(j) for j in parts[-1].split('; '))}
+                if select_feature_type is not None and not parts[2] in select_feature_type:
+                    continue
 
-                    #keyValues = {i.group(1) : i.group(2) for i in (prog.match(j) for j in parts[-1].split('; '))}
-                    if select_feature_type is not None and not parts[2] in select_feature_type:
-                        continue
+                exon = parts[7]
+                if exon_select is not None and exon not in exon_select:
+                    continue
 
-                    exon = parts[7]
-                    if exon_select is not None and exon not in exon_select:
-                        continue
-
-                    keyValues = {}
-                    for part in parts[-1].split(';'):
+                keyValues = {}
+                for part in parts[-1].split(';'):
+                    if is_gff:
+                        kv = part.strip().split('=',1)
+                    else:
                         kv = part.strip().split()
-                        if len(kv) == 2:
-                            key = kv[0]
-                            value = kv[1].replace('"', '')
-                            keyValues[key] = value
+                    if len(kv) == 2:
+                        key = kv[0]
+                        value = kv[1].replace('"', '')
+                        keyValues[key] = value
 
-                    #self.addFeature( self.remapKeys.get(parts[0], parts[0]), int(parts[3]), int(parts[4]), parts[9].replace('"','').replace(';',''))
+                #self.addFeature( self.remapKeys.get(parts[0], parts[0]), int(parts[3]), int(parts[4]), parts[9].replace('"','').replace(';',''))
 
-                    chrom = self.remapKeys.get(chrom, chrom)
-                    chromosome = chrom if ignChr == False else chrom.replace(
-                        'chr', '')
+                chrom = self.remapKeys.get(chrom, chrom)
+                chromosome = chrom if ignChr == False else chrom.replace(
+                    'chr', '')
 
-                    if identifierFields is None:
-                        if parts[2] == 'exon':
-                            featureName = keyValues['exon_id']
-                            #featureName = ','.join([keyValues['exon_id'],keyValues['transcript_id']])
-                        elif parts[2] == 'gene':
-                            featureName = keyValues['gene_id']
-                        elif parts[2] == 'transcript':
-                            featureName = keyValues['transcript_id']
-                        else:
-                            featureName = ','.join(
-                                [parts[2], parts[3], parts[4], keyValues['transcript_id']])
+                if identifierFields is None:
+                    if parts[2] == 'exon':
+                        featureName = keyValues['exon_id']
+                        #featureName = ','.join([keyValues['exon_id'],keyValues['transcript_id']])
+                    elif parts[2] == 'gene':
+                        featureName = keyValues['gene_id']
+                    elif parts[2] == 'transcript':
+                        featureName = keyValues['transcript_id']
                     else:
                         featureName = ','.join(
-                            [keyValues.get(i, 'none') for i in identifierFields if i in keyValues])
+                            [parts[2], parts[3], parts[4], keyValues['transcript_id']])
+                else:
+                    featureName = ','.join(
+                        [keyValues.get(i, 'none') for i in identifierFields if i in keyValues])
 
 
-                    start = int( parts[3] ) + offset
-                    end = int( parts[4] ) + offset
+                start = int( parts[3] ) + offset
+                end = int( parts[4] ) + offset
 
-                    if region_end is not None and region_start is not None and ( end<region_start or start>region_end):
-                        continue
+                if region_end is not None and region_start is not None and ( end<region_start or start>region_end):
+                    continue
 
-                    if store_all:
-                        keyValues['type'] = parts[2]
-                        self.addFeature(
-                            self.remapKeys.get(
-                                chromosome, chromosome),start,end, strand=parts[6], name=featureName, data=tuple(
-                                keyValues.items()))
+                if store_all:
+                    keyValues['type'] = parts[2]
+                    self.addFeature(
+                        self.remapKeys.get(
+                            chromosome, chromosome),start,end, strand=parts[6], name=featureName, data=tuple(
+                            keyValues.items()))
 
-                    else:
-                        self.addFeature(
-                            self.remapKeys.get(
-                                chromosome, chromosome), start,end, strand=parts[6], name=featureName, data=','.join(
-                                (':'.join(
-                                    ('type', parts[2])), ':'.join(
-                                    ('gene_id', keyValues['gene_id'])))))
-                    added += 1
+                else:
+                    self.addFeature(
+                        self.remapKeys.get(
+                            chromosome, chromosome), start,end, strand=parts[6], name=featureName, data=','.join(
+                            (':'.join(
+                                ('type', parts[2])), ':'.join(
+                                ('gene_id', keyValues['gene_id'])))))
+                added += 1
 
             if self.verbose:
                 print("Loaded %s features, now sorting" %
