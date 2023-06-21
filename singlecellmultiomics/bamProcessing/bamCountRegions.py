@@ -38,7 +38,7 @@ def _count_regions_cell_index(bamfile, regions, max_idx=384):
 def _count_regions(bamfile, regions):
     sample_list = get_samples_from_bam(bamfile)
     smap = {s:i for i,s in enumerate(sample_list)}
-    counts = np.zeros((len(smap),len(regions)))
+    counts = np.zeros((len(smap),len(regions)),dtype=np.uintc) # Unsinged integer, maximum 4_294_967_295 (negative or fractional counts don't exist)
 
     with pysam.AlignmentFile(bamfile) as alns:
         for i,(contig,start,end,label) in enumerate(regions):
@@ -65,19 +65,22 @@ def count_regions(bed_path: str, bam_paths: list,  n_threads=None) -> pd.DataFra
             start,end = int(start), int(end)
             cmds.append((contig,start,end,tssid))
 
-    dfs = []
-    with Pool(n_threads) as workers:
-        for df in workers.imap( pool_wrapper, (
-            (_count_regions,
-                 { 'bamfile': lib,
-                   'regions': cmds,
-                  # 'max_idx':max_idx
-                   } )
-            for lib in bam_paths
-        )):
-            dfs.append(df)
+    if n_threads==1 and len(bam_paths)==1: # When only one bam is processed, do not use multiprocessing
+        return _count_regions(bamfile=bam_paths[0], regions=cmds)
+    else:
+        dfs = []
+        with Pool(n_threads) as workers:
+            for df in workers.imap( pool_wrapper, (
+                (_count_regions,
+                     { 'bamfile': lib,
+                       'regions': cmds,
+                      # 'max_idx':max_idx
+                       } )
+                for lib in bam_paths
+            )):
+                dfs.append(df)
 
-    return pd.concat( dfs )
+        return pd.concat( dfs )
 
 
 if __name__ == '__main__':
@@ -94,7 +97,9 @@ if __name__ == '__main__':
     #argparser.add_argument('-max_idx', type=int, default=384, help='Maximum barcode index (the amount of wells in the plate)')
 
     args = argparser.parse_args()
-    df = count_regions(args.regions, args.alignmentfiles, n_threads=args.t)
+
+
+    df = count_regions(args.regions, args.alignmentfiles, n_threads=(args.t if len(args.alignmentfiles)>1 else 1))
 
     if args.o.endswith('pickle.gz') or args.o.endswith('.pickle'):
         df.to_pickle(args.o)
