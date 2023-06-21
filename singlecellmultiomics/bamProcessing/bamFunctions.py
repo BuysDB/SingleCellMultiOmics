@@ -35,12 +35,12 @@ def _get_r1_counts_per_cell(args):
     """Obtain the amount of unique read1 reads per cell (Function is used as Pool chunk)
 
     Args:
-        args: bam_path, contig, prefix
+        args: bam_path, contig, prefix, assoc_all_to_sample
 
     Returns:
         cell_obs (Counter) : {sampleA:n_molecules, sampleB:m_molecules, ...}
     """
-    bam_path, contig, prefix = args
+    bam_path, contig, prefix, assoc_all_to_sample = args
     cell_obs = Counter()
 
 
@@ -48,18 +48,25 @@ def _get_r1_counts_per_cell(args):
         for read in alignments.fetch(contig):
             if read.is_qcfail or read.is_duplicate or not read.is_read1:
                 continue
-            if prefix is not None:
-                cell_obs[prefix, read.get_tag('SM')]+=1
+
+            if assoc_all_to_sample:
+                sm = assoc_all_to_sample
             else:
-                cell_obs[read.get_tag('SM')]+=1
+                sm = read.get_tag('SM')
+
+            if prefix is not None:
+                cell_obs[prefix, sm]+=1
+            else:
+                cell_obs[sm]+=1
     return cell_obs
 
-def get_r1_counts_per_cell(bam_path, prefix_with_bam=False):
+def get_r1_counts_per_cell(bam_path, prefix_with_bam=False, assoc_all_to_sample:str=None):
     """Obtain the amount of unique read1 reads per cell
 
     Args:
         bam_path : str
         prefix_with_bam(bool) : add bam name as prefix of cell name
+        assoc_all_to_sample: force all reads to be assigned to this sample
     Returns:
         cell_obs (Counter) : {sampleA:n_molecules, sampleB:m_molecules, ...}
     """
@@ -88,7 +95,9 @@ def get_r1_counts_per_cell(bam_path, prefix_with_bam=False):
     with Pool() as workers:
         for cell_obs_for_contig in workers.imap_unordered(
             _get_r1_counts_per_cell,
-            generate_commands(bam_paths, prefix_with_bam)):
+            ((*cmd, assoc_all_to_sample)
+             for cmd in generate_commands(bam_paths, prefix_with_bam))
+        ):
 
             cell_obs += cell_obs_for_contig
 
@@ -364,7 +373,7 @@ def get_contig_sizes(bam):
             'Supply either a path to a bam file or pysam.AlignmentFile object')
 
 
-def get_samples_from_bam(bam):
+def get_samples_from_bam(bam) -> set:
     """Get a list of samples present in the bam_file
 
     Args:
