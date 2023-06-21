@@ -35,12 +35,12 @@ def _count_regions_cell_index(bamfile, regions, max_idx=384):
                         columns=[ label for (contig,start,end,label) in regions ])
 
 
-def _count_regions(bamfile, regions):
-    sample_list = get_samples_from_bam(bamfile)
+def _count_regions(bamfile, regions, read_threads=1):
+    sample_list = list(get_samples_from_bam(bamfile))
     smap = {s:i for i,s in enumerate(sample_list)}
     counts = np.zeros((len(smap),len(regions)),dtype=np.uintc) # Unsinged integer, maximum 4_294_967_295 (negative or fractional counts don't exist)
 
-    with pysam.AlignmentFile(bamfile) as alns:
+    with pysam.AlignmentFile(bamfile, threads=read_threads) as alns:
         for i,(contig,start,end,label) in enumerate(regions):
             for read in alns.fetch(contig,start,end):
                 if not read.is_read1:
@@ -66,7 +66,8 @@ def count_regions(bed_path: str, bam_paths: list,  n_threads=None) -> pd.DataFra
             cmds.append((contig,start,end,tssid))
 
     if n_threads==1 and len(bam_paths)==1: # When only one bam is processed, do not use multiprocessing
-        return _count_regions(bamfile=bam_paths[0], regions=cmds)
+        print("Using one process as only one bam file is provided.")
+        return _count_regions(bamfile=bam_paths[0], regions=cmds, read_threads=4)
     else:
         dfs = []
         with Pool(n_threads) as workers:
