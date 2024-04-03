@@ -109,6 +109,7 @@ if __name__ == '__main__':
         help="Every cell gets a separate FQ file",
         action='store_true')
 
+    
 
     bcArgs = argparser.add_argument_group('Barcode', '')
     bcArgs.add_argument(
