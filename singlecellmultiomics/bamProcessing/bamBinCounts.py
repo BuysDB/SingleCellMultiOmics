@@ -8,7 +8,7 @@ import pickle
 import gzip
 import pandas as pd
 import multiprocessing
-from singlecellmultiomics.bamProcessing import get_contig_sizes, get_contig_size, get_contigs
+from singlecellmultiomics.bamProcessing import get_contig_sizes, get_contig_size, get_contigs, get_samples_from_bam
 from statsmodels.nonparametric.smoothers_lowess import lowess
 from datetime import datetime
 from itertools import chain
@@ -469,6 +469,21 @@ def blacklisted_binning_contigs(contig_length_resource: str, bin_size: int, frag
                         blacklist=sorted(blacklist_dict.get(contig, []))):
                 yield contig, bin_start, bin_end
 
+def invert_ranges( ranges: list, max_coord:int, min_coord=0 ):
+    # Invert genomic ranges
+    # given a range list [   [start,end> ,  ]
+    # Generate inverted ranges starting from min_coord, not overlapping
+    # with the supplied ranges
+    # Make sure there are no overlaps by running merge_overlapping_ranges before applying this function
+    current  = min_coord
+    # fetch until the first range start pos:
+    for b_start, b_end in ranges:
+        if b_start!=current:
+            assert b_start > current, 'Run merge_overlapping_ranges before using this function'
+            yield current, b_start
+        current = b_end
+    if b_end<max_coord:
+        yield b_end,max_coord
 
 def blacklisted_binning(start_coord: int, end_coord: int, bin_size: int, blacklist: list = None,
                         fragment_size: int = None):
@@ -1041,6 +1056,96 @@ def count_fragments_binned_wrap(args):
     os.remove(tp)
     return result
 
+
+def count_fixed_width_binned_regions(path:str,
+                                     contig:str,
+                                     bin_size:int,
+                                     n_bins:int,
+                                     contig_starts:int,
+                                     smap:dict,
+                                     min_mapq: int = 1,
+                                     identifier=None):
+    """
+    Count using fixed width regions with bin_size
+    The header is precomputed
+    """
+    counts = np.zeros((len(smap),n_bins))
+    with pysam.AlignmentFile(path) as a:
+
+        for read in a.fetch(contig):
+            if not read.is_read1 or read.is_qcfail or read.is_duplicate:
+                continue
+            if not read.has_tag('DS'):
+                continue
+            if read.mapping_quality<min_mapq:
+                continue
+            ds = read.get_tag('DS')
+            #bi = int(read.get_tag('bi'))
+            bi = smap[read.get_tag('SM')]
+            bx = int(ds/bin_size) + contig_starts[contig]
+            counts[bi,bx] +=1
+    if identifier is not None:
+        return counts,identifier
+    else:
+        return counts
+
+
+def count_multi_sample(patientsToBam, bin_size, n_threads=None, exclude_contigs=('MT',), verbose=False, include_contigs=None):
+
+    cmds = []
+    headers = dict()
+    sample_lists  = dict()
+    countsDict = {}
+    if verbose:
+        print("Obtaining list of samples and contigs")
+    for patient,bampath in patientsToBam.items():
+        cs = {c:s for c,s in get_contig_sizes(bampath).items() if (is_main_chromosome(c) and not c in exclude_contigs) and (include_contigs is None or c in include_contigs)}
+        header = []
+        contig_starts = {}
+        for c,s in cs.items():
+            contig_starts[c] = len(header)
+            for bin_start in range(0,s,bin_size):
+                bin_end = bin_start+bin_size
+                bs = bin_end - bin_start
+                if bs==bin_size: # drop non complete bins:
+                    header.append((c,bin_start,bin_end))
+
+        # create single cell matrix:
+        sample_list = list(get_samples_from_bam(bampath))
+        smap = {s:i for i,s in enumerate(sample_list)}
+        counts = np.zeros((len(smap),len(header)))
+        countsDict[patient] = counts # Initialise empty matrix
+        cmds += [
+            (count_fixed_width_binned_regions, {
+                'path':bampath,
+                'n_bins':len(header),
+                'contig_starts':contig_starts,
+                'bin_size':bin_size,
+                'contig':contig,
+                'smap':smap,
+                'identifier':patient
+                          }) for contig in cs.keys()
+        ]
+        headers[patient] = header
+        sample_lists[patient] = sample_list
+
+    if verbose:
+        print("Counting")
+    with Pool(n_threads) as workers:
+
+        for i,(r,identifier) in enumerate(workers.map(pool_wrapper, cmds)):
+            countsDict[identifier] += r
+            if verbose:
+                print(f"Progress: {(i/len(cmds))*100:.2f}%  ", end='\r')
+    if verbose:
+        print("Finished counting, Now creating dataframes")
+    for identifier in countsDict:
+        countsDict[identifier] = pd.DataFrame(
+                countsDict[identifier],
+                columns=pd.MultiIndex.from_tuples(headers[identifier]),
+                index=sample_lists[identifier])
+
+    return countsDict
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
