@@ -135,6 +135,7 @@ def run_tagging_task(alignments, output,
                 if cut_site_contig!=contig or cut_site_pos<start or cut_site_pos>=end: # End is exclusive
                     continue
 
+        molecule.set_meta('ix', i)
         molecule.write_tags()
 
         # Update read groups @todo: reduce LOC here?
