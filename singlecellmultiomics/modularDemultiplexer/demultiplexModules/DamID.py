@@ -107,6 +107,7 @@ class DamID2_c8_u3_cs2(UmiBarcodeDemuxMethod):
         # Obtain TX barcode and umi
         try:
             tx_tagged_records = self.transcriptome_demux.demultiplex(records, probe=probe, **kwargs)
+            
         except NonMultiplexable:
             tx_tagged_records = None
 
