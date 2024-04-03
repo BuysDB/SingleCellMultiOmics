@@ -29,6 +29,7 @@ def split_bam_by_tag( input_bam_path, output_prefix, tag, head=None, max_handles
         head(int) : write this amount of reads, then exit
 
     """
+
     bamFile = pysam.AlignmentFile(input_bam_path, "rb")
     header = bamFile.header.copy()
 
@@ -57,7 +58,7 @@ def split_bam_by_tag( input_bam_path, output_prefix, tag, head=None, max_handles
                 waiting.add(value)
                 continue
             print(f'\rOpened bam file for {value}            ', end='')
-            output_handles[value] = pysam.AlignmentFile(f'{output_prefix}.{value}.bam', "wb", header=header)
+            output_handles[value] = pysam.AlignmentFile(f'{output_prefix}{value}.bam', "wb", header=header)
 
         output_handles[value].write(r)
         written+=1
@@ -94,11 +95,22 @@ if __name__ == '__main__':
     argparser.add_argument(
         '-o',
         type=str,
-        required=True,
+        required=False,
         help='output bam prefix, to the end of the file name the tag value is appended')
+    argparser.add_argument(
+        '-o_folder',
+        type=str,
+        required=True,
+        help='All files will be written to this folder, with just using the tag as file name')
 
     argparser.add_argument('-head', type=int)
     args = argparser.parse_args()
+    if args.o_folder is not None:
+        if not os.path.exists(args.o_folder):
+            os.makedirs(args.o_folder)
+        output_prefix= args.o_folder
+    else:
+        output_prefix = args.o
 
     skip= set()
 
@@ -106,7 +118,7 @@ if __name__ == '__main__':
     iteration = 1
     while len(waiting)>0:
         print(f'Iteration {iteration}')
-        done, waiting = split_bam_by_tag(args.bamfile, args.o, args.tag, head=args.head, max_handles=args.max_handles,skip=skip )
+        done, waiting = split_bam_by_tag(args.bamfile, tag=args.tag, output_prefix=output_prefix,  head=args.head, max_handles=args.max_handles,skip=skip )
         print('Wrote bam files for tag values:')
         for d in done:
             print(f'\t{d}')

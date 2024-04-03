@@ -41,14 +41,10 @@ def sample_locations(targets, bam_path, radius, bp_per_bin, extra_sample_rad=500
             fetch_coords = [centroid-radius-extra_sample_rad,centroid+radius+extra_sample_rad]
             fetch_coords = np.clip(fetch_coords,0, alns.get_reference_length(f_contig))
             for read in alns.fetch(f_contig, *fetch_coords):
-                if not read.has_tag('DS') or read.is_duplicate:
+                if read.is_qcfail or read.is_duplicate:
                     continue
-
-        #         # Based on DS:
-        #         index = coord_to_index(read.get_tag('DS'),centroid,radius,mirror)
-        #         if index is not None:
-        #             obs[0,index]+=1
-
+                if read.reference_start is None or read.reference_end is None:
+                    continue
                 # Based on coordinates
                 index_start= coord_to_index_clip(read.reference_start,centroid,radius,mirror,bp_per_bin)
                 index_end= coord_to_index_clip(read.reference_end,centroid,radius,mirror,bp_per_bin)

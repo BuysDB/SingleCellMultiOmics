@@ -9,7 +9,7 @@ import singlecellmultiomics
 from singlecellmultiomics.fragment import Fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import get_read_group_from_read, sorted_bam_file, write_program_tag
 
-def set_read_group( in_bam_path, out_bam_path, id:str, pl:str, lb:str, sm:str, pu:str, threads=4  ):
+def set_read_group( in_bam_path, out_bam_path, id:str, pl:str, lb:str, sm:str, pu:str, threads=4, sm2reads=False  ):
     """
     Set read group format of bam file
 
@@ -55,6 +55,8 @@ def set_read_group( in_bam_path, out_bam_path, id:str, pl:str, lb:str, sm:str, p
             for read in input_bam:
                 rg_id = id
                 read.set_tag('RG',rg_id)
+                if sm2reads:
+                    read.set_tag('SM',sm)
                 out.write(read)
 
 
@@ -102,6 +104,12 @@ if __name__=='__main__':
         default=4,
         help="Threads")
 
+
+    argparser.add_argument(
+        '--sm2reads',
+        action='store_true',
+        help="Also write the supplied SM tag to all reads")
+
     argparser.add_argument('-o', type=str, help="output bam file", required=True)
     args = argparser.parse_args()
     set_read_group(
@@ -112,4 +120,5 @@ if __name__=='__main__':
         lb = args.lb,
         sm = args.sm,
         pu = args.pu,
+        sm2reads= args.sm2reads,
         threads = args.t)
