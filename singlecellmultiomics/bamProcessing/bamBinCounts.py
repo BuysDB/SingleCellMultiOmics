@@ -1073,7 +1073,7 @@ def count_fixed_width_binned_regions(path:str,
     with pysam.AlignmentFile(path) as a:
 
         for read in a.fetch(contig):
-            if not read.is_read1 or read.is_qcfail or read.is_duplicate:
+            if read.is_read2 or read.is_qcfail or read.is_duplicate:
                 continue
             if not read.has_tag('DS'):
                 continue

@@ -1012,7 +1012,7 @@ def replace_bam_header(origin_bam_path, header, target_bam_path=None, header_wri
             pass
 
         # Concatenate and remove origin
-        rehead_cmd = f"""{{ cat '{headerSamFilePath}'; samtools view '{origin_bam_path}'; }} | samtools view -b > '{complete_temp_path}' &&
+        rehead_cmd = f"""{{ cat '{headerSamFilePath}'; samtools view -@4 '{origin_bam_path}'; }} | samtools view -b -@4> '{complete_temp_path}' &&
                 mv '{complete_temp_path}' '{target_bam_path}' && rm '{headerSamFilePath}';
                 """
         assert (os.system(rehead_cmd)==0) and os.path.exists(target_bam_path), f'Reheading failed. Command: {rehead_cmd} '
