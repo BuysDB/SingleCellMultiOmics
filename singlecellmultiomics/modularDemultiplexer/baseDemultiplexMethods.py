@@ -509,9 +509,7 @@ class IlluminaBaseDemultiplexer(DemultiplexingStrategy):
         except NonMultiplexable:
             raise
 
-# Base strategy for read pairs which have both an umi and sample barcode
-
-
+# Base strategy for read pairs which have both an umi and sample barcode, the barcode and umi are next to another and continuous 
 class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
 
     def __init__(
@@ -589,7 +587,11 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
                 self.random_primer_slice = slice(0, random_primer_length, None)
 
     def __repr__(self):
-        return f'{self.longName} bc: {self.barcodeStart}:{self.barcodeLength}, umi: {self.umiStart}:{self.umiLength} {self.description}'
+        try:
+            return f'{self.longName} bc: {self.barcodeStart}:{self.barcodeLength}, umi: {self.umiStart}:{self.umiLength} {self.description}'
+        except AttributeError: # Happens when this class is inherited and some of the attributes might have not been set
+            return f'{self.longName}, {self.description}'
+    
 
     def demultiplex(self, records, **kwargs):
 
@@ -673,3 +675,108 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
 
         # return fastqIterator.FastqRecord(header, records[1].sequence,
         # records[1].plus,  records[1].qual )
+
+
+# Base strategy for read pairs which have both an umi and sample barcode, but are not contiguous, 
+# for example UMI-BCA-UMI_BCB
+
+def apply_slices_seq(record, slices):
+    if len(slices)==0 or record is None:
+        return ''
+    return ''.join( (record.sequence[sc] for sc in slices))
+
+def apply_slices_qual(record, slices):
+    if len(slices)==0 or record is None:
+        return ''
+    return ''.join( (record.qual[sc] for sc in slices))
+
+
+class ScatteredUmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
+
+    def __init__(
+            self,
+            barcode_slices = None, # 2-len Tuple of List of slices where the cell barcode is present in the read (slice(), slice(), ...], [ slice())
+            umi_slices = None, # 2-len List of slices where the UMI is present in the read [slice(), slice(), ...], [slice()] # 
+            capture_slices = None, # Slices which indicate what region of read 1 and read2 to store in the final read (required) (slice, slice)
+            # Note that there is only one slice per read for the capture
+            barcodeFileParser=None,
+            barcodeFileAlias=None,
+            indexFileParser=None,
+            indexFileAlias='illumina_merged_ThruPlex48S_RP',
+            random_primer_read=None,
+            random_primer_length=6,
+            random_primer_end=False, # True for end, False for start
+            **kwargs):
+        self.description = ''
+        self.barcodeFileAlias = barcodeFileAlias
+        self.barcodeFileParser = barcodeFileParser
+        IlluminaBaseDemultiplexer.__init__(
+            self,
+            indexFileParser=indexFileParser,
+            indexFileAlias=indexFileAlias)
+        self.barcodeSummary = self.barcodeFileAlias
+        self.barcode_slices = barcode_slices
+        self.umi_slices = umi_slices
+        self.capture_slices = capture_slices
+        self.random_primer_read = random_primer_read
+        self.random_primer_length = random_primer_length
+        self.random_primer_end = random_primer_end
+
+        
+
+    def demultiplex(self, records, **kwargs):
+
+        # Check if the supplied reads are mate-pair or single end
+        if len(records) not in (1, 2):
+            raise NonMultiplexable('Not mate pair or single end')
+
+
+        # Perform first pass demultiplexing of the illumina fragments:
+        try:
+            taggedRecords = IlluminaBaseDemultiplexer.demultiplex(
+                self, records, inherited=True, **kwargs)
+        except NonMultiplexable:
+            raise
+        
+
+        # Extract the UMI barcode_slices
+        umi, umi_qual = ''.join( (apply_slices_seq(record, slicer) for record, slicer in zip(records, self.umi_slices)) ), ''.join( (apply_slices_qual(record, slicer) for record, slicer in zip(records, self.umi_slices)) )
+        raw_barcode, raw_barcode_qual = ''.join( (apply_slices_seq(record, slicer) for record, slicer in zip(records, self.barcode_slices)) ), ''.join( (apply_slices_qual(record, slicer) for record, slicer in zip(records, self.barcode_slices)) )
+
+        barcodeIdentifier, barcode, hammingDistance = self.barcodeFileParser.getIndexCorrectedBarcodeAndHammingDistance(
+            alias=self.barcodeFileAlias, barcode=raw_barcode)
+        
+        if barcodeIdentifier is None:
+            raise NonMultiplexable(
+                f'bc:{raw_barcode}_not_matching_{self.barcodeFileAlias}')
+
+        random_primer = None
+        if self.random_primer_read is not None:
+            random_primer = records[self.random_primer_read].sequence[self.random_primer_slice]
+        
+
+        for tr in taggedRecords:
+            #tr.addTagByTag('uL', self.umiLength, isPhred=False)
+            if len(umi)>0:
+                tr.tags['RX'] =  umi
+                tr.addTagByTag('RQ', umi_qual, isPhred=True,cast_type=None)
+               
+            tr.tags.update({
+                'bi': barcodeIdentifier,
+                'bc': raw_barcode,
+                'MX': self.shortName,
+                'BC': barcode
+            })
+            if random_primer is not None:
+                tr.addTagByTag('rS',
+                               random_primer,
+                               isPhred=False,
+                               make_safe=False)
+
+        for rid, (record, taggedRecord) in enumerate(
+                zip(records, taggedRecords)):
+            taggedRecord.sequence = record.sequence[self.capture_slices[rid]]
+            taggedRecord.qualities = record.qual[self.capture_slices[rid]]
+            taggedRecord.plus = record.plus
+
+        return taggedRecords
