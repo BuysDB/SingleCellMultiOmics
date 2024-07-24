@@ -128,7 +128,11 @@ def is_main_chromosome(chrom: str, exclude_mt=False) -> bool:
         return False
 
     if chrom.startswith('KN') or chrom.startswith('KZ') or chrom.startswith('JH') or chrom.startswith('GL') or chrom.startswith(
-            'KI') or chrom.startswith('Unmapped_') or '0000' in chrom or chrom.startswith('chrUn') or chrom.endswith('_random') or 'ERCC' in chrom or chrom.endswith('_alt') or "HLA-" in chrom or chrom.startswith('Un_') or 'decoy' in chrom:
+            'KI') or chrom.startswith('Unmapped_') or '0000' in chrom or chrom.startswith('chrUn') or chrom.endswith('_random') or \
+            'ERCC' in chrom or chrom.endswith('_alt') or \
+            "HLA-" in chrom or chrom.startswith('Un_') or \
+            'decoy' in chrom or \
+            chrom.endswith('_PATCH') or chrom.startswith('HSCHR') or chrom.endswith('_NOVEL_TEST'):
         return False
     return True
 
