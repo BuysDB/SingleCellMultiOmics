@@ -138,7 +138,7 @@ class SequencingLibraryLister():
                     lane = library
                     library = slib
                 else:
-                    lane = '0'
+                    lane = 'single_file'
 
                 if library not in self.libraries:
                     self.libraries[library] = {lane: {}}
