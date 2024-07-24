@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     argparser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="""%sMulti-library Single cell-demultiplexing%s, written by Buys de Barbanson, Hubrecht institute 2016-2021
+        description="""%sMulti-library Single cell-demultiplexing%s, written by Buys de Barbanson, 2016-2024
 										%sExample usage:%s
 
 										List how the demultiplexer will interpret the data: (No demultiplexing is executed)
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     argparser.add_argument(
         '-use',
         default=None,
-        help='use these demultplexing strategies, comma separate to select multiple. For example for cellseq 2 data with 6 basepair umi: -use CS2C8U6 , for combined mspji and Celseq2: MSPJIC8U3,CS2C8U6 if nothing is specified, the best scoring method is selected')
+        help='use these demultiplexing strategies, comma separate to select multiple. For example for cellseq 2 data with 6 basepair umi: -use CS2C8U6 , for combined mspji and Celseq2: MSPJIC8U3,CS2C8U6 if nothing is specified, the best scoring method is selected')
 
     #argparser.add_argument(
 #        '-ignoreMethods',
@@ -342,10 +342,10 @@ if __name__ == '__main__':
                 maxAutoDetectMethods=args.maxAutoDetectMethods,
                 minAutoDetectPct=args.minAutoDetectPct)
             selectedStrategies = dmx.getSelectedStrategiesFromStringList(
-                selectedStrategies)
+                selectedStrategies, verbose = False)
         else:
             selectedStrategies = dmx.getSelectedStrategiesFromStringList(
-                args.use.split(','))
+                args.use.split(','), verbose = False)
 
         print(f'Library {library} will be demultiplexed using:')
         for stra in selectedStrategies:
@@ -443,16 +443,31 @@ if __name__ == '__main__':
                     continue
 
             prefix = '' if args.g is None else f'{args.g}_TEMP_'
+
+            # Check whether the output contains paired or single end reads
+            paired_end = False
+            for lane, readPairs in libraries[library].items():
+                
+                if len(readPairs)==2:
+                    paired_end=True
+                    print(f'\t- {Style.DIM}{lane}{Style.NORMAL} paired-end' )    
+                else:
+                    assert not paired_end, "Cannot demultiplex a mixture of single and paired end reads"
+                    print(f'\t- {Style.DIM}{lane}{Style.NORMAL} single-end' )    
+            if paired_end:
+                print(f'\tAll data is {Style.BRIGHT}paired{Style.NORMAL} end')
+            else:
+                print(f'\tAll data is {Style.BRIGHT}single{Style.NORMAL} end')
             handle = FastqHandle(
                 f'{args.o}/{library}/{prefix}demultiplexed',
-                True,
+                paired_end,
                 single_cell=args.scsepf,
                 maxHandles=args.fh)
             if args.norejects:
                 rejectHandle = None
             else:
                 rejectHandle = FastqHandle(
-                    f'{args.o}/{library}/{prefix}rejects', True)
+                    f'{args.o}/{library}/{prefix}rejects', paired_end)
             """Set up statistic file"""
 
             log_location = os.path.abspath(
@@ -491,6 +506,7 @@ if __name__ == '__main__':
             if not args.norejects:
                 rejectHandle.close()
             log_handle.write(f'Demultiplexing finished\n')
+            log_handle.close()
 
     if args.sched is not None:
         print('Final job ids:', ','.join(final_jobs))
