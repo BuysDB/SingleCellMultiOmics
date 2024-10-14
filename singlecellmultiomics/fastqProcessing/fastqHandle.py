@@ -26,7 +26,7 @@ class FastqHandle:
                         'R2.fastq.gz',
                         'wt',compresslevel=1)]
             else:
-                self.handles = [gzip.open(path + 'reads.fastq.gz', 'wt')]
+                self.handles = [gzip.open(path + 'R1.fastq.gz', 'wt',compresslevel=1)]
         else:
 
             self.handles = HandleLimiter(
