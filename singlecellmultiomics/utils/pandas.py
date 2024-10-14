@@ -59,16 +59,25 @@ def createRowColorDataFrame( discreteStatesDataFrame, nanColor =(0,0,0), predete
     """
     # Should look like:
     # discreteStatesDataFrame = pd.DataFrame( [['A','x'],['A','y']],index=['A','B'], columns=['First', 'Second'] )
+    if predeterminedColorMapping is None:
+        predeterminedColorMapping = dict()
     colorMatrix = []
     luts = {}
     for column in discreteStatesDataFrame:
+        
+        predet = predeterminedColorMapping if (not column in predeterminedColorMapping or not type(predeterminedColorMapping[column])==dict) else predeterminedColorMapping[column]
         states = [x for x in discreteStatesDataFrame[column].unique() if not pd.isnull(x)]
-        undeterminedColorStates = [x for x in discreteStatesDataFrame[column].unique() if not pd.isnull(x) and not x in predeterminedColorMapping]
+        
+        undeterminedColorStates = [x for x in discreteStatesDataFrame[column].unique() if not pd.isnull(x) and not x in predet]
 
         cols = sns.color_palette('hls',len(undeterminedColorStates))
         #lut = { i:sns.color_palette('bright').jet(x) for i,x in zip(states, np.linspace(0,1,len(states)) )}
         lut = { state:cols[i] for i,state in enumerate(undeterminedColorStates) }
-        lut.update({key:value for key,value in predeterminedColorMapping.items() if key in states})
+        if column in predeterminedColorMapping and type(predeterminedColorMapping[column])==dict:
+            # Nested input by column
+            lut.update({key:value for key,value in predeterminedColorMapping[column].items() if key in states})
+        else:
+            lut.update({key:value for key,value in predeterminedColorMapping.items() if key in states})
         lut[np.nan] = nanColor
         colorMatrix.append( [ nanColor if pd.isnull(x) else lut[x] for x in  discreteStatesDataFrame[column] ] )
         luts[column] = lut

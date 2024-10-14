@@ -88,7 +88,7 @@ class TestRegionCount(unittest.TestCase):
         dfob = pd.DataFrame(targets).fillna(0)
 
         for feature, row in dfob.iterrows():
-            for sample,value in row.iteritems():
+            for sample,value in row.items():
                 self.assertTrue( df.loc[sample][feature] == value )
 
         os.remove(temp_bam_path)

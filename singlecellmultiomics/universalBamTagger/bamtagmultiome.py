@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 import pysam
 from itertools import chain
 from singlecellmultiomics.molecule import MoleculeIterator, ReadIterator
@@ -14,7 +13,6 @@ from singlecellmultiomics.utils.submission import submit_job
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger, BulkFlagger
 import singlecellmultiomics.features
-from pysamiterators import MatePairIteratorIncludingNonProper, MatePairIterator
 from singlecellmultiomics.universalBamTagger.tagging import generate_tasks, prefetch, run_tagging_tasks, write_job_gen_to_bed
 from singlecellmultiomics.bamProcessing.bamBinCounts import blacklisted_binning_contigs,get_bins_from_bed_iter
 from singlecellmultiomics.utils.binning import bp_chunked
@@ -29,8 +27,6 @@ import uuid
 import os
 import sys
 import colorama
-import pkg_resources
-import pickle
 from datetime import datetime
 from time import sleep
 import shutil

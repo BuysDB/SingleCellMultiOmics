@@ -67,8 +67,8 @@ class GenomicPlot():
         # Prune contigs with no length:
         self.contigs = [contig for contig in self.contigs if contig in self.lengths]
 
-    def cn_heatmap(self, df,cell_font_size=3, max_cn=4, method='ward', cmap='bwr', yticklabels=True,
-            figsize=(15,20), xlabel = 'Contigs', ylabel='Cells', vmin=0, xtickfontsize=8, **kwargs ):
+    def cn_heatmap(self, df:pd.DataFrame, cell_font_size=3, max_cn=4, method='ward', cmap='bwrm', yticklabels=True,
+            figsize=(15,20), xlabel = 'Contigs', ylabel='Cells', xtickfontsize=8, mask: pd.DataFrame=None, **kwargs ):
         """
         Create a heatmap from a copy number matrix
 
@@ -88,9 +88,13 @@ class GenomicPlot():
 
         ylabel (str) : Label for the x-axis, by default this is Cells
 
+        mask (pd.Dataframe)  : boolean dataframe, values which are True will be masked
         **kwargs : Arguments which will be passed to seaborn.clustermap
 
         """
+        if cmap=='bwrm':
+            cmap = plt.get_cmap('bwr').copy()
+            cmap.set_bad( (0.85,0.85,0.85) ) 
 
         allelic_mode = len(df.columns[0])==4
         if allelic_mode:
@@ -112,12 +116,16 @@ class GenomicPlot():
             # Figure out what contigs are present in the dataframe:
             contigs_to_plot = [contig for contig in self.contigs if contig in set(df.columns.get_level_values(0))]
             df = df.sort_index(axis=1)[contigs_to_plot]
+            
+        # When the mask is set, reindex it to match the order in the cn dataframe:
+        if mask is not None:
+            mask = mask.loc[df.index, df.columns]
         try:
 
             clmap = sns.clustermap(df,
                 col_cluster=False,method=method,
-                cmap=cmap, vmax=max_cn,vmin=0,
-                yticklabels=yticklabels, figsize=figsize, **kwargs)
+                cmap=cmap, vmax=max_cn,
+                yticklabels=yticklabels, figsize=figsize, mask=mask, **kwargs)
             ax_heatmap = clmap.ax_heatmap
         except Exception as e:
             print(e)
@@ -125,7 +133,7 @@ class GenomicPlot():
 
             fig, ax_heatmap = plt.subplots(figsize=figsize)
             clmap = sns.heatmap(df,cmap=cmap,
-                vmax=max_cn,vmin=vmin, yticklabels=True, ax=ax_heatmap, **kwargs)
+                vmax=max_cn, yticklabels=True, ax=ax_heatmap, mask=mask, **kwargs)
 
 
         prev = None
