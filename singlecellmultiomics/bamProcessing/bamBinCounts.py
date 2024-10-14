@@ -1007,13 +1007,23 @@ def count_fragments_binned(args):
                 continue
 
             # Extract the site
-            site = int(read.get_tag('DS'))
-
+            try:
+                site = int(read.get_tag('DS'))
+            except KeyError:
+                if read.reference_start is not None:
+                    site = read.reference_start 
+                elif read.reference_end is not None:
+                    site = read.reference_end
+                else:
+                    continue
             # Don't count sites outside the selected bounds
             if site < start or site >= end:
                 continue
-
-            sample = read.get_tag('SM')
+            
+            try:
+                sample = read.get_tag('SM')
+            except KeyError:
+                sample = 'bulk'
 
             # Process alternative contig counts:
             if alt_spans is not None and contig in alt_spans:
@@ -1064,33 +1074,47 @@ def count_fixed_width_binned_regions(path:str,
                                      contig_starts:int,
                                      smap:dict,
                                      min_mapq: int = 1,
-                                     identifier=None):
+                                     identifier=None,
+                                     read_pass_function=None # Function which is called for every read, when True, the read is taken into account needs (DS) tag
+                                     ):
     """
     Count using fixed width regions with bin_size
     The header is precomputed
     """
     counts = np.zeros((len(smap),n_bins))
     with pysam.AlignmentFile(path) as a:
-
-        for read in a.fetch(contig):
-            if read.is_read2 or read.is_qcfail or read.is_duplicate:
-                continue
-            if not read.has_tag('DS'):
-                continue
-            if read.mapping_quality<min_mapq:
-                continue
-            ds = read.get_tag('DS')
-            #bi = int(read.get_tag('bi'))
-            bi = smap[read.get_tag('SM')]
-            bx = int(ds/bin_size) + contig_starts[contig]
-            counts[bi,bx] +=1
+        
+        # Standard filter loop
+        if read_pass_function is not None:
+            for read in a.fetch(contig):
+                if not read_pass_function(read):
+                    continue
+                ds = read.get_tag('DS')
+                #bi = int(read.get_tag('bi'))
+                bi = smap[read.get_tag('SM')]
+                bx = int(ds/bin_size) + contig_starts[contig]
+                counts[bi,bx] +=1
+        else:
+            for read in a.fetch(contig):
+                if read.is_read2 or read.is_qcfail or read.is_duplicate:
+                    continue
+                if not read.has_tag('DS'):
+                    continue
+                if read.mapping_quality<min_mapq:
+                    continue
+                ds = read.get_tag('DS')
+                #bi = int(read.get_tag('bi'))
+                bi = smap[read.get_tag('SM')]
+                bx = int(ds/bin_size) + contig_starts[contig]
+                counts[bi,bx] +=1
+            
     if identifier is not None:
         return counts,identifier
     else:
         return counts
 
 
-def count_multi_sample(patientsToBam, bin_size, n_threads=None, exclude_contigs=('MT',), verbose=False, include_contigs=None):
+def count_multi_sample(patientsToBam, bin_size, n_threads=None, exclude_contigs=('MT',), verbose=False, include_contigs=None, read_pass_function=None):
 
     cmds = []
     headers = dict()
@@ -1123,6 +1147,7 @@ def count_multi_sample(patientsToBam, bin_size, n_threads=None, exclude_contigs=
                 'bin_size':bin_size,
                 'contig':contig,
                 'smap':smap,
+                'read_pass_function':read_pass_function,
                 'identifier':patient
                           }) for contig in cs.keys()
         ]
@@ -1133,10 +1158,11 @@ def count_multi_sample(patientsToBam, bin_size, n_threads=None, exclude_contigs=
         print("Counting")
     with Pool(n_threads) as workers:
 
-        for i,(r,identifier) in enumerate(workers.map(pool_wrapper, cmds)):
+        for i,(r,identifier) in enumerate(workers.imap(pool_wrapper, cmds, chunksize=1)):
             countsDict[identifier] += r
             if verbose:
                 print(f"Progress: {(i/len(cmds))*100:.2f}%  ", end='\r')
+         
     if verbose:
         print("Finished counting, Now creating dataframes")
     for identifier in countsDict:
