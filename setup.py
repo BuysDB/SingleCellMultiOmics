@@ -64,6 +64,9 @@ setup(
         'singlecellmultiomics/fastaProcessing/createMappabilityIndex.py',
         'singlecellmultiomics/fastaProcessing/fastaCreateDict.py',
 
+        # Fastq
+        'singlecellmultiomics/fastqProcessing/fastq_filter_by_dt.py',
+
         # Tagging
         'singlecellmultiomics/universalBamTagger/universalBamTagger.py',
         'singlecellmultiomics/universalBamTagger/bamtagmultiome_multi.py',
