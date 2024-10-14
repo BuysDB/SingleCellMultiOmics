@@ -312,7 +312,7 @@ def get_read_group_format(bam):
 
         if len(format_type_obs)==1:
             return format_type_obs.most_common(1)[0][0]
-        raise ValueError('Failed to indentify read group format ')
+        raise ValueError('Failed to identify read group format ')
 
 
 def _get_sample_to_read_group_dict(handle):
