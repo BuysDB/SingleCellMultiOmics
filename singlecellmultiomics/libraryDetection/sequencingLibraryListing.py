@@ -93,7 +93,7 @@ class SequencingLibraryLister():
             # Check if we are dealing with a raw illumina or SRR fastq file:
 
             if fastqFileName.endswith('_R1') or fastqFileName.endswith('_R2'):
-                lane = '0'  # Create "fake" lane
+                lane = 'single_file'  # Create "fake" lane
                 library = self.libraryReplace(
                     fastqFileName.rsplit('_R', 1)[0], replace)
                 r1ORr2 = fastqFileName.rsplit('_', 1)[-1]
@@ -111,7 +111,7 @@ class SequencingLibraryLister():
                 #print(path, library, r1ORr2, self.libraries)
 
             elif fastqFileName.endswith('R1') or fastqFileName.endswith('R2'):
-                lane = '0'  # Create "fake" lane
+                lane = 'single_file'  # Create "fake" lane
                 library = self.libraryReplace(
                     fastqFileName.rsplit('R', 1)[0], replace)
                 r1ORr2 = 'R' + fastqFileName[-1]
