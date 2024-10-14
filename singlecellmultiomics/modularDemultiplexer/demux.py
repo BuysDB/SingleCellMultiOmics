@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import pkg_resources
+import importlib.resources as resources
 import logging
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import NonMultiplexable
 from colorama import init
@@ -15,7 +15,6 @@ import sys
 import os
 from singlecellmultiomics.utils.submission import submit_job
 
-f"!!! PLEASE USE PYTHON 3.6 OR HIGHER !!!"
 
 if __name__ == '__main__':
 
@@ -109,7 +108,6 @@ if __name__ == '__main__':
         help="Every cell gets a separate FQ file",
         action='store_true')
 
-    
 
     bcArgs = argparser.add_argument_group('Barcode', '')
     bcArgs.add_argument(
@@ -123,11 +121,9 @@ if __name__ == '__main__':
         action='store_true')
     bcArgs.add_argument(
         '-barcodeDir',
-        default=pkg_resources.resource_filename(
-            'singlecellmultiomics',
-            'modularDemultiplexer/barcodes/'),
+        default=str( resources.files('singlecellmultiomics') / 'modularDemultiplexer/barcodes/' ),
         help="Directory from which to obtain the barcodes, when nothing is supplied the package resources are used")
-
+    
     indexArgs = argparser.add_argument_group('Sequencing indices', '')
     indexArgs.add_argument(
         '--li',
@@ -135,9 +131,7 @@ if __name__ == '__main__':
         action='store_true')
     indexArgs.add_argument(
         '-indexDir',
-        default=pkg_resources.resource_filename(
-            'singlecellmultiomics',
-            'modularDemultiplexer/indices/'),
+        default=str( resources.files('singlecellmultiomics') / 'modularDemultiplexer/indices/' ),
         help="Directory from which to obtain the sequencing indices,  when nothing is supplied the package resources are used")
     indexArgs.add_argument(
         '-si', help="Select only these sequencing indices -si CGATGT,TTAGGC")
@@ -168,7 +162,7 @@ if __name__ == '__main__':
         default=None)
     techArgs.add_argument(
         '-fh',
-        help="When demultiplexing to mutliple cell files in multiple threads, the amount of opened files can exceed the limit imposed by your operating system. The amount of open handles per thread is kept below this parameter to prevent this from happening.",
+        help="When demultiplexing to multiple cell files in multiple threads, the amount of opened files can exceed the limit imposed by your operating system. The amount of open handles per thread is kept below this parameter to prevent this from happening.",
         default=500,
         type=int)
     techArgs.add_argument(
