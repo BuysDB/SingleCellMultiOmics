@@ -7,15 +7,15 @@ from singlecellmultiomics.modularDemultiplexer.demultiplexModules.CELSeq2 import
 from singlecellmultiomics.modularDemultiplexer.demultiplexModules.scCHIC import SCCHIC_384w_c8_u3_cs2
 from singlecellmultiomics.modularDemultiplexer.demultiplexModules.DamID import DamID2andT_SCA,DamID2_SCA
 from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod
-import pkg_resources
 from singlecellmultiomics.utils import reverse_complement
+import importlib.resources
 
 class TestUmiBarcodeDemux(unittest.TestCase):
 
     def test_UmiBarcodeDemuxMethod_matching_barcode(self):
 
-        barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
-        index_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/')
+        barcode_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/'))
+        index_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/indices/'))
         barcode_parser = BarcodeParser(barcode_folder, lazyLoad='*')
         index_parser = BarcodeParser(index_folder, lazyLoad='*')
 
@@ -53,8 +53,8 @@ class TestUmiBarcodeDemux(unittest.TestCase):
 
     def test_CS2_NH_matching_barcode(self):
 
-        barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
-        index_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/')
+        barcode_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/'))
+        index_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/indices/'))
         barcode_parser = BarcodeParser(barcode_folder, lazyLoad='*')
         index_parser = BarcodeParser(index_folder, lazyLoad='*')
 
@@ -100,8 +100,8 @@ class TestUmiBarcodeDemux(unittest.TestCase):
 
     def test_TCHIC(self):
 
-        barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
-        index_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/')
+        barcode_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/'))
+        index_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/indices/'))
         barcode_parser = BarcodeParser(barcode_folder, lazyLoad='*',)
         index_parser = BarcodeParser(index_folder, lazyLoad='*')
 
@@ -165,8 +165,8 @@ class TestUmiBarcodeDemux(unittest.TestCase):
     
     def test_DAMID(self):
 
-        barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
-        index_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/indices/')
+        barcode_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/'))
+        index_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/indices/'))
         barcode_parser = BarcodeParser(barcode_folder, lazyLoad='*',)
         index_parser = BarcodeParser(index_folder, lazyLoad='*')
 
@@ -214,7 +214,8 @@ class TestUmiBarcodeDemux(unittest.TestCase):
 
     def test_3DEC_UmiBarcodeDemuxMethod_matching_barcode(self):
 
-        barcode_folder = pkg_resources.resource_filename('singlecellmultiomics','modularDemultiplexer/barcodes/')
+        barcode_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/'))
+        
         barcode_parser = BarcodeParser(barcode_folder,lazyLoad='*')
 
         r1 = FastqRecord(

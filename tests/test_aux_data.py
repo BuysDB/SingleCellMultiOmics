@@ -3,6 +3,7 @@
 import unittest
 import pkg_resources
 import singlecellmultiomics
+import importlib.resources
 """
 These tests check if the Molecule module is working correctly
 """
@@ -11,7 +12,7 @@ class TestAuxData(unittest.TestCase):
 
     def test_barcode_files_presence(self):
         """Test if the barcode files can be accessed"""
-        available_barcodes = pkg_resources.resource_listdir('singlecellmultiomics','modularDemultiplexer/barcodes/')
+        available_barcodes =  [p.name  for p in (importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/')).iterdir() if p.is_file()]
 
         at_least_required = ['nla_bisulfite.bc',
          'lennart96NLA.bc',
@@ -30,7 +31,7 @@ class TestAuxData(unittest.TestCase):
 
     def test_index_files_presence(self):
         """Test if the index files can be accessed"""
-        available_barcodes = pkg_resources.resource_listdir('singlecellmultiomics','modularDemultiplexer/indices/')
+        available_barcodes = available_barcodes =  [p.name  for p in (importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/indices/')).iterdir() if p.is_file()]
 
         at_least_required = ['illumina_TruSeq_indices.bc',
              'illumina_RP_indices.bc',
