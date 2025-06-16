@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import unittest
-import pkg_resources
 import singlecellmultiomics
 import importlib.resources
 """
@@ -27,11 +26,11 @@ class TestAuxData(unittest.TestCase):
          'celseq2.bc']
 
         for a in at_least_required:
-            self.assertIn(a,at_least_required)
+            self.assertIn(a,available_barcodes)
 
     def test_index_files_presence(self):
         """Test if the index files can be accessed"""
-        available_barcodes = available_barcodes =  [p.name  for p in (importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/indices/')).iterdir() if p.is_file()]
+        available_barcodes =  [p.name  for p in (importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/indices/')).iterdir() if p.is_file()]
 
         at_least_required = ['illumina_TruSeq_indices.bc',
              'illumina_RP_indices.bc',
@@ -41,7 +40,7 @@ class TestAuxData(unittest.TestCase):
              'illumina_i7_indices.bc']
 
         for a in at_least_required:
-            self.assertIn(a,at_least_required)
+            self.assertIn(a,available_barcodes)
 
 if __name__ == '__main__':
     unittest.main()

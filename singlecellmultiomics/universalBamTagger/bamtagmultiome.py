@@ -20,7 +20,7 @@ from singlecellmultiomics.bamProcessing import merge_bams, get_contigs_with_read
 from singlecellmultiomics.fastaProcessing import CachedFastaNoHandle
 from singlecellmultiomics.utils.prefetch import UnitialisedClass
 from singlecellmultiomics.utils import create_fasta_dict_file
-from multiprocessing import Pool
+import multiprocessing
 from typing import Generator
 import argparse
 import uuid
@@ -401,40 +401,50 @@ def tag_multiome_multi_processing(
         # @todo : Progress indication
 
         bam_files_generated = []
+        total_processed_molecules = 0
 
         if use_pool:
-            workers = Pool(n_threads)
-            job_generator = workers.imap_unordered(run_tagging_tasks, tasks)
-
-        else:
-            job_generator = (run_tagging_tasks(task) for task in tasks)
-
-        total_processed_molecules = 0
-        for bam, meta in job_generator:
-            if bam is not None:
-                bam_files_generated.append(bam)
-            if len(meta):
-                total_processed_molecules+=meta['total_molecules']
-                timeouts = meta.get('timeout_tasks',[])
-                for timeout in timeouts:
-                    print('blacklisted', timeout['contig'], timeout['start'], timeout['end'])
-                    add_blacklisted_region(input_header,
-                        contig=timeout['contig'],
-                        start=timeout['start'],
-                        end=timeout['end']
-                    )
-            if head is not None and total_processed_molecules>head:
-                print('Head was supplied, stopping')
-                break
-        tagged_bam_generator = [temp_header_bam_path] +  bam_files_generated
-
+            with multiprocessing.get_context('spawn').Pool(n_threads) as workers:
+                for bam, meta in workers.imap_unordered(run_tagging_tasks, tasks):
+                    if bam is not None:
+                        bam_files_generated.append(bam)
+                    if len(meta):
+                        total_processed_molecules+=meta['total_molecules']
+                        timeouts = meta.get('timeout_tasks',[])
+                        for timeout in timeouts:
+                            print('blacklisted', timeout['contig'], timeout['start'], timeout['end'])
+                            add_blacklisted_region(input_header,
+                                contig=timeout['contig'],
+                                start=timeout['start'],
+                                end=timeout['end']
+                            )
+                    if head is not None and total_processed_molecules>head:
+                        print('Head was supplied, stopping') 
+                        break
+            tagged_bam_generator = [temp_header_bam_path] +  bam_files_generated
+        else: # 
+            for bam, meta in (run_tagging_tasks(task) for task in tasks):
+                if bam is not None:
+                    bam_files_generated.append(bam)
+                if len(meta):
+                    total_processed_molecules+=meta['total_molecules']
+                    timeouts = meta.get('timeout_tasks',[])
+                    for timeout in timeouts:
+                        print('blacklisted', timeout['contig'], timeout['start'], timeout['end'])
+                        add_blacklisted_region(input_header,
+                            contig=timeout['contig'],
+                            start=timeout['start'],
+                            end=timeout['end']
+                        )
+                if head is not None and total_processed_molecules>head:
+                    print('Head was supplied, stopping') 
+                    break
         with pysam.AlignmentFile(temp_header_bam_path, 'wb', header=input_header) as out:
             pass
 
         pysam.index(temp_header_bam_path)
     # merge the results and clean up:
-    if use_pool:
-        workers.close()
+
     print('Merging final bam files')
     merge_bams(list(tagged_bam_generator), out_bam_path, threads=n_threads)
 
@@ -605,7 +615,7 @@ def run_multiome_tagging(args):
 
         unphased_alleles(str) : Path to VCF containing unphased germline SNPs
 
-        mapfile (str) : 'Path to \*.safe.bgzf file, used to decide if molecules are uniquely mappable, generate one using createMapabilityIndex.py
+        mapfile (str) : 'Path to /*.safe.bgzf file, used to decide if molecules are uniquely mappable, generate one using createMapabilityIndex.py
 
         annotmethod (int) : Annotation resolving method. 0: molecule consensus aligned blocks. 1: per read per aligned base
 
