@@ -95,7 +95,6 @@ if __name__ == '__main__':
     statistics_paths = []
     count_table_paths = []
     for path in args.count_tables_sortchicstats_statistics:
-
         if path.endswith('statistics.pickle.gz'):
             statistics_paths.append(path)
         elif path.endswith('sortchicstats.json'):
@@ -111,7 +110,10 @@ if __name__ == '__main__':
     # Read the count tables
     df = pd.concat([read_count_table(path) for path in count_table_paths])
     # Add mark as first level of df, library second, cell third
-    df.index = pd.MultiIndex.from_tuples([(sample_sheet['marks'][cell.split('_')[0]], cell.split('_')[0], int(cell.split('_')[1])) for cell in df.index])
+    df.index = pd.MultiIndex.from_tuples([(
+        sample_sheet['marks'][cell.split('_')[0]],
+        cell.split('_')[0], int(cell.split('_')[1]))
+        for cell in df.index])
 
     avail_marks = df.index.get_level_values(0).unique()
     print('Target marks:')
@@ -135,7 +137,8 @@ if __name__ == '__main__':
     y = cell_labels=='empty'
     rf = RandomForestClassifier(class_weight='balanced')
 
-    X = plate_stats.loc[y.index]
+    y=y.loc[[idx for idx in y.index if idx in plate_stats.index]]
+    X = plate_stats.loc[[idx for idx in y.index if idx in plate_stats.index]]
     X[('AA', 'ligated molecules')]/=X[('total mapped',       '# molecules')]
     X[('TA', 'fraction ligated molecules')]= X[('TA', 'ligated molecules')] / X[('total mapped',       '# molecules')]
     X[('TT', 'ligated molecules')]/=X[('total mapped',       '# molecules')]
@@ -143,7 +146,8 @@ if __name__ == '__main__':
     X[('duprate', 'pct')] =X[('total mapped',       '# molecules')]/X[('total mapped', '# reads')]
 
     y[X[('total mapped','# reads')]<500] = True
-    X = X.join(contaminant_info)
+    X = X.join(contaminant_info).fillna(0)
+    X = X.replace([np.inf,], 0)
 
     predictions = []
     for train_index, test_index in KFold(n_splits=8, shuffle=True, random_state=None).split(X):

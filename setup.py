@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from setuptools import setup
+from setuptools import setup, find_namespace_packages
 import os
 import sys
 
@@ -24,36 +24,12 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     author='Buys de Barbanson',
-    author_email='b.barbanson@hubrecht.eu',
+    author_email='github@barbansonbiotech.com',
     url='https://github.com/BuysDB/SingleCellMultiOmics',
     download_url = 'https://github.com/BuysDB/SingleCellMultiOmics/archive/v0.1.9.tar.gz',
 
     license='MIT',
-    packages=['singlecellmultiomics',
-
-        'singlecellmultiomics.alleleTools',
-        'singlecellmultiomics.bamProcessing',
-        'singlecellmultiomics.barcodeFileParser',
-        'singlecellmultiomics.countTableProcessing',
-        'singlecellmultiomics.features',
-        'singlecellmultiomics.fragment',
-        'singlecellmultiomics.fastqProcessing',
-        'singlecellmultiomics.fastaProcessing',
-        'singlecellmultiomics.libraryDetection',
-        'singlecellmultiomics.libraryProcessing',
-        'singlecellmultiomics.modularDemultiplexer',
-        'singlecellmultiomics.molecule',
-        'singlecellmultiomics.methylation',
-        'singlecellmultiomics.pyutils',
-        'singlecellmultiomics.variants',
-        'singlecellmultiomics.tags',
-        'singlecellmultiomics.statistic',
-        'singlecellmultiomics.tagtools',
-        'singlecellmultiomics.universalBamTagger',
-        'singlecellmultiomics.utils',
-        'singlecellmultiomics.modularDemultiplexer.demultiplexModules'
-        ],
-
+    packages=find_namespace_packages(),
 
     scripts=[
         # Demultiplexing
@@ -121,7 +97,6 @@ setup(
         # Library processing:
         'singlecellmultiomics/libraryProcessing/libraryStatistics.py',
         'singlecellmultiomics/libraryProcessing/scsortchicstats.py',
-        'singlecellmultiomics/libraryDetection/archivestats.py',
         'singlecellmultiomics/alleleTools/heterozygousSNPedit.py',
         'singlecellmultiomics/libraryProcessing/scsortchicfeaturedensitytable.py',
         'singlecellmultiomics/libraryProcessing/scsortchicqc.py',

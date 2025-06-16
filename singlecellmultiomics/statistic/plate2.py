@@ -49,7 +49,7 @@ class PlateStatistic2(object):
 
             if read.has_tag('MX'):
                 mux= read.get_tag('MX')
-                format = 384 if ('384' in mux or mux.startswith('CS2')) else 96
+                format = 96 if ( mux.startswith('CS1C8U4') or mux.startswith('NLAIII96') or mux.startswith('MSPJIC8U3')) else 384
                 if format==384:
                     n_rows = 16
                     n_cols = 24

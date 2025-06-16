@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import unittest
-import itertools
 import pysam
 import os
-import singlecellmultiomics.universalBamTagger.universalBamTagger as ut
 import singlecellmultiomics.universalBamTagger.bamtagmultiome as tm
 
 """

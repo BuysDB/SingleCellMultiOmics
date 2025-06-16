@@ -3,7 +3,7 @@
 import unittest
 import itertools
 import singlecellmultiomics.barcodeFileParser.barcodeFileParser as barcodeFileParser
-import pkg_resources
+import importlib.resources
 
 """
 These tests check if the barcode file parser is working correctly
@@ -26,7 +26,7 @@ class TestBarcodeParser(unittest.TestCase):
         self.assertEqual(barcode,'AAA')
         self.assertEqual(hd,0)
 
-    def test_hamming_expansion(self):
+    def test_hamming_expansion_algo(self):
 
         b = barcodeFileParser.BarcodeParser()
         b.addBarcode( barcodeFileAlias = 'test', barcode='AAA', index='TEST1')
@@ -103,10 +103,9 @@ class TestBarcodeParser(unittest.TestCase):
 
 
     def lazy_load_case(self, lazyloadsetting):
-        b = barcodeFileParser.BarcodeParser(pkg_resources.resource_filename(
-            'singlecellmultiomics',
-            'modularDemultiplexer/barcodes/'), lazyLoad = lazyloadsetting,hammingDistanceExpansion=1)
-
+        b = barcodeFileParser.BarcodeParser(
+            str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/'))
+            , lazyLoad = lazyloadsetting,hammingDistanceExpansion=1)
 
         index, barcode, hd = b.getIndexCorrectedBarcodeAndHammingDistance('GAATCTCG','celseq1')
         self.assertEqual(index,49)

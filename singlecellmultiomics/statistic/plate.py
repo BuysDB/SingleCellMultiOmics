@@ -166,7 +166,7 @@ class PlateStatistic(object):
 
         offset = 0 # Offset is zero for all protocols since 0.1.12
 
-        format = 384 if ('384' in mux or mux.startswith('CS2')) else 96
+        format = 96 if ( mux.startswith('CS1C8U4') or mux.startswith('NLAIII96') or mux.startswith('MSPJIC8U3')) else 384
 
         df['col'] = [index2well[format]
                      [(offset + int(x.rsplit('_')[-1]))][1] for x in df.index]
