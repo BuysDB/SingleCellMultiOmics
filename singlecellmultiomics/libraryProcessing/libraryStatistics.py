@@ -87,6 +87,10 @@ if __name__ == '__main__':
     argparser.add_argument('--v', action='store_true')
     argparser.add_argument('--nort', action='store_true')
     argparser.add_argument('--nolorenz', action='store_true')
+
+    argparser.add_argument('-demux_R1_path', type=str)
+    argparser.add_argument('-demux_R2_path', type=str)
+
     args = argparser.parse_args()
 
     for library in args.libraries:
@@ -127,6 +131,13 @@ if __name__ == '__main__':
         if(args.t in ['chic-stats', 'all-stats']):
             statistics.extend([ScCHICLigation(args)])
 
+        if args.t=='non-scmo-stats':
+            statistics.extend([
+                ScCHICLigation(args)
+
+            ])
+
+
         if(args.t in ['demult-stats', 'all-stats']):
             statistics.extend([
                 TrimmingStats(args),
@@ -137,13 +148,20 @@ if __name__ == '__main__':
                 PlateStatistic2(args)
             ])
 
-        demuxFastqFilesLookup = [
-            (f'{library}/demultiplexedR1.fastq.gz',
-             f'{library}/demultiplexedR2.fastq.gz'),
-            (f'{library}/demultiplexedR1_val_1.fq.gz',
-             f'{library}/demultiplexedR2_val_2.fq.gz'),
-            (f'{library}/demultiplexedR1_val_1.fq',
-             f'{library}/demultiplexedR2_val_2.fq')]
+        if args.demux_R1_path is not None:
+            assert  args.demux_R2_path is not None
+            demuxFastqFilesLookup = [
+                (args.demux_R1_path,args.demux_R2_path),
+            ]
+        else:
+            demuxFastqFilesLookup = [
+                (f'{library}/demultiplexedR1.fastq.gz',
+                 f'{library}/demultiplexedR2.fastq.gz'),
+                (f'{library}/demultiplexedR1_val_1.fq.gz',
+                 f'{library}/demultiplexedR2_val_2.fq.gz'),
+                (f'{library}/demultiplexedR1_val_1.fq',
+                 f'{library}/demultiplexedR2_val_2.fq')
+            ]
 
         rejectFilesLookup = [
             (f'{library}/rejectsR1.fastq.gz', f'{library}/rejectsR2.fastq.gz'),
