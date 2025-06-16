@@ -1,7 +1,6 @@
-[![Documentation Status](https://readthedocs.org/projects/singlecellmultiomics/badge/?version=latest)](https://singlecellmultiomics.readthedocs.io/en/latest/?badge=latest) [![PyPI version](https://badge.fury.io/py/singlecellmultiomics.svg)](https://badge.fury.io/py/singlecellmultiomics) [![DOI](https://zenodo.org/badge/187592829.svg)](https://zenodo.org/badge/latestdoi/187592829) [![Anaconda-Server Badge](https://anaconda.org/buysdb/singlecellmultiomics/badges/installer/conda.svg)](https://anaconda.org/buysdb/singlecellmultiomics)
-
+[![Documentation Status](https://readthedocs.org/projects/singlecellmultiomics/badge/?version=latest)](https://singlecellmultiomics.readthedocs.io/en/latest/?badge=latest) [![PyPI version](https://badge.fury.io/py/singlecellmultiomics.svg)](https://badge.fury.io/py/singlecellmultiomics) [![DOI](https://zenodo.org/badge/187592829.svg)](https://zenodo.org/badge/latestdoi/187592829)
 ## Single cell multi omics
-Single cell multi omics is a set of tools to deal with multiple measurements from the same cell. This package has been developed by the [van Oudenaarden group](https://www.hubrecht.eu/research-groups/van-oudenaarden-group/).
+Single cell multi omics is a set of tools to deal with multiple measurements from the same cell. This package is maintained by [Barbanson Biotech](https://barbansonbiotech.com/).
 
 # Installation
 ```
@@ -32,7 +31,7 @@ The mapped reads are encoded in a BAM file. This BAM file still contains the enc
  methylation digest sequencing:SC MSPJI ,  
  lineage tracing:SCARTRACE,
  DNA digest sequencing: NLAIII,
- histone modification sequencing: scCHIC,
+ Epigenetic modification sequencing: scCHIC, scCHIC+Transcriptome, DamID, DamID+T
  Single cell methylation : TAPs (in combination with any other supported protocol).
 
 4) Assigns reads to molecules to allow for deduplication, adds duplication BAM flag
