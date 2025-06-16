@@ -104,7 +104,8 @@ class TestBarcodeParser(unittest.TestCase):
 
     def lazy_load_case(self, lazyloadsetting):
         b = barcodeFileParser.BarcodeParser(
-            str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/')), lazyLoad = lazyloadsetting,hammingDistanceExpansion=1)
+            str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/'))
+            , lazyLoad = lazyloadsetting,hammingDistanceExpansion=1)
 
         index, barcode, hd = b.getIndexCorrectedBarcodeAndHammingDistance('GAATCTCG','celseq1')
         self.assertEqual(index,49)
