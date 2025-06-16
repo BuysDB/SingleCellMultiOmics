@@ -2,16 +2,16 @@
 # -*- coding: utf-8 -*-
 import singlecellmultiomics
 import argparse
-import pkg_resources
 from colorama import Fore, Style
 import os
 from shutil import copyfile
-
+import importlib.resources
 
 def get_workflow_list(include_hidden=False):
-    return [ workflow
-        for workflow in pkg_resources.resource_listdir('singlecellmultiomics','snakemake_workflows')
-         if not workflow.endswith('.py') and (include_hidden or not workflow.startswith('_') ) ]
+    workflows_dir = importlib.resources.files('singlecellmultiomics').joinpath('snakemake_workflows')
+    return [workflow.name
+            for workflow in workflows_dir.iterdir()
+            if workflow.is_dir() and (include_hidden or not workflow.name.startswith('_'))]
 
 
 def deploy_workflow_files(name, clean=False, directory='./'):
@@ -28,18 +28,19 @@ def deploy_workflow_files(name, clean=False, directory='./'):
         raise ValueError(f"Unkown workflow {name}")
 
 
-    base_path = f'snakemake_workflows/{name}'
-    for file_to_copy in pkg_resources.resource_listdir('singlecellmultiomics',base_path):
+    base_path = importlib.resources.files('singlecellmultiomics').joinpath(f'snakemake_workflows/{name}')
+    for file_to_copy in base_path.iterdir():
         # Files starting with a _ are never copied
-        if file_to_copy.startswith('_'):
+        if file_to_copy.name.startswith('_'):
             continue
-        print(Fore.GREEN + f'Creating {file_to_copy}' + Style.RESET_ALL, end="\t")
+        print(Fore.GREEN + f'Creating {file_to_copy.name}' + Style.RESET_ALL, end="\t")
 
-        target = directory+f'/{file_to_copy}'
+        target = os.path.join(directory, file_to_copy.name)
         if os.path.exists(target) and not clean:
             print(Fore.RED + f'The file {target} already exists! Skipping!' + Style.RESET_ALL)
         else:
-            copyfile( pkg_resources.resource_filename('singlecellmultiomics', base_path+'/'+file_to_copy),target )
+            with importlib.resources.path('singlecellmultiomics', f'snakemake_workflows/{name}/{file_to_copy.name}') as source:
+                copyfile(source, target)
             print(Fore.GREEN + f'[ok]' + Style.RESET_ALL)
 
 if __name__=='__main__':
