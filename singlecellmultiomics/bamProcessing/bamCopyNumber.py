@@ -644,6 +644,15 @@ if __name__ == '__main__':
     ignore_contigs = None if args.ignore_contigs is None else args.ignore_contigs.split(',')
 
     reference = pysam.FastaFile(args.ref)
+    # Determine contig lengths and skip contigs which are smaller than the provided bin size:
+    for contig, clen in zip(reference.references, reference.lengths):
+        if clen < bin_size:
+            if ignore_contigs is None:
+                ignore_contigs = [contig]
+            elif contig not in ignore_contigs:
+                ignore_contigs.append(contig)
+        
+    
     h=GenomicPlot(reference, ignore_contigs=ignore_contigs)
     contigs = GenomicPlot(reference).contigs
 
