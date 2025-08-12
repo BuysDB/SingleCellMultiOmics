@@ -502,7 +502,7 @@ def create_count_table(args, return_df=False):
                 for i, read in enumerate(pysam_iterator):
                     if i % 1_000_000 == 0:
                         print(
-                            f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate))}%")
+                            f"{bamFile} Processed {i} reads, assigned {assigned}, completion:{100*(i/(0.001+f.mapped+f.unmapped+f.nocoordinate)):.2f}%")
 
                     if args.head is not None and i > args.head:
                         break
@@ -547,7 +547,9 @@ def create_count_table(args, return_df=False):
                 f"Finished: {bamFile} Processed {i} reads, assigned {assigned}")
     print(f"Finished counting, now exporting to {args.o}")
     df = pd.DataFrame.from_dict(countTable)
-
+    # Sort indices:
+    df = df.sort_index(axis=1).sort_index(axis=0)
+    
     # Set names of indices
     if not args.noNames:
         df.columns.set_names([tagToHumanName(t, TagDefinitions)
