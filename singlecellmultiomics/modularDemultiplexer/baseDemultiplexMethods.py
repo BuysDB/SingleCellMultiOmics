@@ -40,7 +40,7 @@ def metaFromRead(read, tag):
 
 
 # Clean a string to be able to be used in a fastq file header
-fastqCleanerRegex = re.compile('[^a-zA-Z0-9-_]', re.UNICODE)
+fastqCleanerRegex = re.compile('[^a-zA-Z0-9-_.]', re.UNICODE)
 
 def fqSafe(string) -> str:
     """
@@ -147,7 +147,13 @@ class TaggedRecord():
         return tag in self.tags
 
     def asIlluminaHeader(self):
-        return '{Is}:{RN}:{Fc}:{La}:{Ti}:{CX}:{CY}'.format(**self.tags)
+        try:
+            return '{Is}:{RN}:{Fc}:{La}:{Ti}:{CX}:{CY}'.format(**self.tags)
+        except KeyError as e:
+            if 'oh' in self.tags:
+                return self.tags['oh']
+            raise e
+
 
 
 
@@ -186,6 +192,11 @@ class TaggedRecord():
             'RP': readPairNumber,
             'Fi': isFiltered,
             'CN': controlNumber
+        })
+
+    def parse_other_header(self,fastqRecord, indexFileParser,  indexFileAlias):
+        self.tags.update({
+            'oh':fastqRecord.header[1:].replace(';','').split()[0] # original header
         })
 
 
@@ -270,7 +281,10 @@ class TaggedRecord():
             if fastqRecord.header.startswith('@Is'):
                 self.parse_scmo_header(fastqRecord, indexFileParser,  indexFileAlias)
             else:
-                self.parse_3dec_header(fastqRecord, indexFileParser,  indexFileAlias)
+                if fastqRecord.header.startswith('@Cluster'):
+                    self.parse_3dec_header(fastqRecord, indexFileParser,  indexFileAlias)
+                else:
+                    self.parse_other_header(fastqRecord, indexFileParser,  indexFileAlias)
 
 
             # NS500413:32:H14TKBGXX:2:11101:16448:1664 1:N:0::
@@ -379,10 +393,11 @@ class TaggedRecord():
 
     def fromTaggedBamRecord(self, pysamRecord):
         try:
+            
             for keyValue in pysamRecord.query_name.strip().split(';'):
                 key, value = keyValue.split(':')
                 self.addTagByTag(key, value, isPhred=False)
-        except ValueError:
+        except ValueError as e:
             # Try to parse "Single Cell Discoveries" header
             # These have the following header:
             #NBXXXXXX:530:HXXXXXX:2:2:17:6;SS:GTCATTAG;CB:GTCATTAG;QT:eeeeeeee;RX:CTGAAC;RQ:aaaaae;SM:SAMPLE_NAME

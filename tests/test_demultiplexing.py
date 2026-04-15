@@ -248,6 +248,42 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         self.assertEqual( demultiplexed_record[0].tags['BC'], 'ACACACTA')
         self.assertEqual( demultiplexed_record[0].tags['bi'], 1)
 
+    def test_sra_header(self):
+
+        barcode_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/'))
+        
+        barcode_parser = BarcodeParser(barcode_folder,lazyLoad='*')
+
+        r1 = FastqRecord(
+          '@SRR21016692.1 1/1',
+          'ATCACACACTATAGTCATTCAGGAGCAGGTTCTTCAGGTTCCCTGTAGTTGTGTGGTTTTGAGTGAGTTTTTTAAT',
+          '+',
+          'AAAAA#EEEEEEEEEEEAEEEEEEEAEEEEEEEEEEEEEEEEEE/EEEEEEEEEEEE/EEEEEEEEEEEEEEEEEE'
+        )
+        r2 = FastqRecord(
+          '@SRR21016692.1 1/2',
+          'ACCCCAGATCAACGTTGGACNTCNNCNTTNTNCTCNGCACCNNNNCNNNCTTATNCNNNANNNNNNNNNNTNNGN',
+          '+',
+          '6AAAAEEAEE/AEEEEEEEE#EE##<#6E#A#EEE#EAEEA####A###EE6EE#E###E##########E##A#'
+        )
+        demux = UmiBarcodeDemuxMethod(umiRead=0,
+            umiStart=0,
+            umiLength=3,
+            barcodeRead=0,
+            barcodeStart=3,
+            barcodeLength=8,
+            barcodeFileParser=barcode_parser,
+            barcodeFileAlias='maya_384NLA',
+            indexFileParser=None,
+            indexFileAlias='illumina_merged_ThruPlex48S_RP',
+            random_primer_read=None,
+            random_primer_length=6)
+
+        demultiplexed_record = demux.demultiplex([r1,r2])
+        # The barcode sequence is ACACACTA (first barcode)
+        self.assertEqual( demultiplexed_record[0].tags['BC'], 'ACACACTA')
+        self.assertEqual( demultiplexed_record[0].tags['bi'], 1)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -42,6 +42,7 @@ tags = [
     SamTag('QX', 'barcodeQual', isPhred=True),
     SamTag('bc', 'rawBarcode'),
     SamTag('hd', 'hammingDistanceRawBcAssignedBc'),
+    SamTag('oh', 'originalHeader'),
 
     SamTag('bi', 'barcodeIndex'),
 
