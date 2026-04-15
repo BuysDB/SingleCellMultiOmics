@@ -452,7 +452,7 @@ def tag_multiome_multi_processing(
     # Remove the temp dir:
     sleep(5)
     try:
-        shutil.rmtree(temp_folder, ignore_errors=False, onerror=None)
+        shutil.rmtree(temp_folder, ignore_errors=False)
     except Exception as e:
         sys.stderr.write(f'Failed to remove {temp_folder}\n')
         sys.stderr.write(f'{e}\n')
