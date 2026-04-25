@@ -333,18 +333,15 @@ def tag_multiome_multi_processing(
         small_contig_threshold = 100000
 
         job_gen =  [[('*',None,None,None,None),],]
-        current = []
+        small_contigs_jobs = []
         for contig,contig_len in get_contigs_with_reads(input_bam_path, True):
             if contig_len<small_contig_threshold:
-                current.append( (contig,None,None,None,None) )
+                small_contigs_jobs.append( (contig,None,None,None,None) )
             else:
-                if len(current)>1:
-                    job_gen.append(current)
-                    current=[]
-                else:
-                    job_gen.append([ (contig,None,None,None,None), ])
-        if len(current)>1:
-            job_gen.append(current)
+                job_gen.append([ (contig,None,None,None,None), ])
+        if len(small_contigs_jobs)>0:
+            job_gen.append(small_contigs_jobs)
+
         #job_gen =  [[('*',None,None,None,None),],] + [ [(contig,None,None,None,None),] for contig,contig_len in get_contigs_with_reads(input_bam_path, True) if contig!='*' ]
 
 
@@ -374,6 +371,7 @@ def tag_multiome_multi_processing(
                            temp_folder=temp_folder,
                            additional_args= additional_args,
                            max_time_per_segment=max_time_per_segment)
+
 
     # Create header bam:
     temp_header_bam_path = f'{temp_folder}/{uuid.uuid4()}_header.bam'

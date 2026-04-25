@@ -158,6 +158,15 @@ def run_tagging_task(alignments, output,
             'time_start': time_start}
 
 
+def task_to_alias(kwargs):
+    if kwargs.get('contig') is None:
+        return 'all'
+    contig = kwargs['contig'].replace('*', 'star')
+    if kwargs.get('start') is None:
+        return contig
+    if kwargs.get('end') is None:
+        return contig + '-' + kwargs['start']
+    return contig + '-' + kwargs['start'] + '-' + kwargs['end']
 
 def run_tagging_tasks(args: tuple):
     """ Run tagging for one or more tasks
@@ -169,11 +178,10 @@ def run_tagging_tasks(args: tuple):
 
     (alignments_path, temp_dir, timeout_time), arglist = args
 
-    target_file = f"{temp_dir}/{uuid4()}.bam"
-    while os.path.exists(target_file):
-        print(f'Collision at {target_file}')
-        target_file = f"{temp_dir}/{uuid4()}.bam"
 
+    target_file_prefix = '_'.join( [task_to_alias(kwargs)  for kwargs in arglist[:2]]) + (f'_{len(arglist)-2}more' if len(arglist) > 2 else '' )
+    target_file = f"{temp_dir}/{target_file_prefix}.bam"
+    assert not os.path.exists(target_file), f'File {target_file} already exists'
 
     timeout_tasks = []
     total_molecules = 0
