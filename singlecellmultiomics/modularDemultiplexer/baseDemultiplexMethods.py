@@ -201,21 +201,20 @@ class TaggedRecord():
 
         try:
             instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber, indexSequence  = header.replace(' ',':').split(':')
-        except BaseException:
+        except ValueError: # Triggered when the header does not have 11 parts
 
             try:
                 instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos, readPairNumber, isFiltered, controlNumber = illuminaHeaderSplitRegex.split(
                     header.replace('::', ''))
                 indexSequence = "N"
-            except BaseException:
-
+            except ValueError:
                 try:
                     instrument, runNumber, flowCellId, lane, tile, clusterXpos, clusterYpos = header.split(':')
                     indexSequence = "N"
                     readPairNumber = 1
                     isFiltered = 0
                     controlNumber = 0
-                except BaseException:
+                except ValueError:
                     raise
 
         self.tags.update({
@@ -274,8 +273,8 @@ class TaggedRecord():
 
         try:
             self.parse_illumina_header(fastqRecord, indexFileParser,  indexFileAlias)
-        except BaseException:
-            if fastqRecord.header.startswith('@Is'):
+        except ValueError:
+            if fastqRecord.header.startswith('@Is') or (';' in fastqRecord.header and ':' in fastqRecord.header): # Key value pairs of key:value separated by ;
                 self.parse_scmo_header(fastqRecord, indexFileParser,  indexFileAlias)
             else:
                 if fastqRecord.header.startswith('@Cluster'):
@@ -338,9 +337,9 @@ class TaggedRecord():
                         "Could not resolve hamming distance between {correctedIndex} and {indexSequence}")
                 self.addTagByTag('ah', hd, isPhred=False, cast_type=int)
 
-            self.addTagByTag('MI', moleculeIdentifier, isPhred=False)
+            self.addTagByTag('MI', moleculeIdentifier, isPhred=False, make_safe=False)
             if not QT_missing:
-                self.addTagByTag('QM', moleculeQuality, isPhred=False)
+                self.addTagByTag('QM', moleculeQuality, isPhred=False, make_safe=False)
 
         except NonMultiplexable:
 
@@ -646,7 +645,7 @@ class UmiBarcodeDemuxMethod(IlluminaBaseDemultiplexer):
                 pass
             else:
                 tr.tags['RX'] =  umi
-                tr.addTagByTag('RQ', umiQual, isPhred=True,cast_type=None)
+                tr.addTagByTag('RQ', umiQual, isPhred=True,cast_type=None, make_safe=False)
                 #tr.addTagByTag('MI', barcode+umi, isPhred=False)
                 #tr.addTagByTag('QM', barcodeQual+umiQual, isPhred=True)
 

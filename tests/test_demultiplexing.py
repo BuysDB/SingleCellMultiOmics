@@ -340,5 +340,41 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         self.assertEqual( demultiplexed_record[0].tags['bi'], 1)
         self.assertEqual( demultiplexed_record[0].tags['oh'], 'CUSTOM_HEADER-WHICH_is_NOT-in_A_specific:format')
 
+    def test_issue_290_header(self):
+
+      barcode_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/'))
+      barcode_parser = BarcodeParser(barcode_folder,lazyLoad='*')
+
+      r1 = FastqRecord(
+        '@LH00371:377:23JCYHLT3:1:1101:36621:1048 1:N:0:GACGAC',
+        'CNGAAGGCTACTGGAATTCTCGGGTGCCAAGGAACTCCAGTCACGACGACATCTGGTGGGGGGTGTTTTTGTTTGAAAAAAGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+        '+',
+        'I#IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII9IIII9III9I9I99II**III9I9I9IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII'
+      )
+      r2 = FastqRecord(
+        '@LH00371:377:23JCYHLT3:1:1101:36621:1048 1:N:0:GACGAC',
+        'ANACGGCTAGGCCCTGGAATTCTCGGGTGCCAAGGAACTCCAGTCACGACGACATCTAGGGGGGGGGGTTGTGGTTTGAAAAAGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG',
+        '+',
+        'I#IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII9I99I9999III9**9IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII'
+      )
+      demux = UmiBarcodeDemuxMethod(umiRead=0,
+          umiStart=0,
+          umiLength=3,
+          barcodeRead=0,
+          barcodeStart=3,
+          barcodeLength=8,
+          barcodeFileParser=barcode_parser,
+          barcodeFileAlias='maya_384NLA',
+          indexFileParser=None,
+          indexFileAlias='illumina_merged_ThruPlex48S_RP',
+          random_primer_read=None,
+          random_primer_length=6)
+
+      demultiplexed_record = demux.demultiplex([r1,r2])
+      assert 'oh' not in demultiplexed_record[0].tags
+
+
+    
+
 if __name__ == '__main__':
     unittest.main()
