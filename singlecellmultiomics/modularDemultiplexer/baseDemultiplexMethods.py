@@ -395,7 +395,7 @@ class TaggedRecord():
         try:
             
             for keyValue in pysamRecord.query_name.strip().split(';'):
-                key, value = keyValue.split(':')
+                key, value = keyValue.split(':',1)
                 self.addTagByTag(key, value, isPhred=False)
         except ValueError as e:
             # Try to parse "Single Cell Discoveries" header
