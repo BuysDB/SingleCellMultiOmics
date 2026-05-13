@@ -1075,7 +1075,9 @@ def count_fixed_width_binned_regions(path:str,
                                      smap:dict,
                                      min_mapq: int = 1,
                                      identifier=None,
-                                     read_pass_function=None # Function which is called for every read, when True, the read is taken into account needs (DS) tag
+                                     read_pass_function=None, # Function which is called for every read, when True, the read is taken into account needs (DS) tag
+                                     header=None,
+                                     contig_lengths=None # When this is set, the coordinates will be checked for bounds
                                      ):
     """
     Count using fixed width regions with bin_size
@@ -1092,8 +1094,8 @@ def count_fixed_width_binned_regions(path:str,
                 ds = read.get_tag('DS')
                 #bi = int(read.get_tag('bi'))
                 bi = smap[read.get_tag('SM')]
-                bx = int(ds/bin_size) + contig_starts[contig]
-                counts[bi,bx] +=1
+                bin_index = int(ds/bin_size) + contig_starts[contig]
+                counts[bi,bin_index] +=1
         else:
             for read in a.fetch(contig):
                 if read.is_read2 or read.is_qcfail or read.is_duplicate:
@@ -1105,8 +1107,23 @@ def count_fixed_width_binned_regions(path:str,
                 ds = read.get_tag('DS')
                 #bi = int(read.get_tag('bi'))
                 bi = smap[read.get_tag('SM')]
-                bx = int(ds/bin_size) + contig_starts[contig]
-                counts[bi,bx] +=1
+                
+                if contig_lengths is not None:
+                    if ds>contig_lengths[contig]:
+                        print(f'Tried to add count to coordinate {ds}, which is larger than the contig size of {contig} ({contig_lengths[contig]})')
+                        print(f'Offending read:')
+                        print(str(read))
+                        raise ValueError('Tried to add count to coordinate larger than the contig size')
+                
+                bin_index = int(ds/bin_size) + contig_starts[contig]
+                try:
+                    counts[bi,bin_index] +=1
+                except IndexError as e:
+                    print(f'Tried to add to contig {contig} at position {ds}, which will be bin {int(ds/bin_size)} + {contig_starts[contig]} => {bin_index}, there are {counts.shape[1]} bins available')
+                    print(contig_starts)
+                    print('Offending read:')
+                    print(str(read))
+                    raise e
             
     if identifier is not None:
         return counts,identifier
@@ -1130,9 +1147,7 @@ def count_multi_sample(patientsToBam, bin_size, n_threads=None, exclude_contigs=
             contig_starts[c] = len(header)
             for bin_start in range(0,s,bin_size):
                 bin_end = bin_start+bin_size
-                bs = bin_end - bin_start
-                if bs==bin_size: # drop non complete bins:
-                    header.append((c,bin_start,bin_end))
+                header.append((c,bin_start,bin_end))
 
         # create single cell matrix:
         sample_list = list(get_samples_from_bam(bampath))
@@ -1148,7 +1163,9 @@ def count_multi_sample(patientsToBam, bin_size, n_threads=None, exclude_contigs=
                 'contig':contig,
                 'smap':smap,
                 'read_pass_function':read_pass_function,
-                'identifier':patient
+                'identifier':patient,
+                'header':header,
+                'contig_lengths':cs
                           }) for contig in cs.keys()
         ]
         headers[patient] = header
