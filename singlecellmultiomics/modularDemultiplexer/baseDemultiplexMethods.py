@@ -40,7 +40,7 @@ def metaFromRead(read, tag):
 
 
 # Clean a string to be able to be used in a fastq file header
-fastqCleanerRegex = re.compile('[^a-zA-Z0-9-_.]', re.UNICODE)
+fastqCleanerRegex = re.compile('[^a-zA-Z0-9-_:.]', re.UNICODE)
 
 def fqSafe(string) -> str:
     """
@@ -153,9 +153,6 @@ class TaggedRecord():
             if 'oh' in self.tags:
                 return self.tags['oh']
             raise e
-
-
-
 
 
     def parse_3dec_header(self,fastqRecord, indexFileParser,  indexFileAlias):
