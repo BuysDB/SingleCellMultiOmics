@@ -263,7 +263,7 @@ class TaggedRecord():
 
 
     def parse_illumina_header(self,fastqRecord, indexFileParser = None,  indexFileAlias = None):
-        return self._parse_illumina_header(fastqRecord.header, indexFileParser=indexFileParser, indexFileAlias=indexFileAlias )
+        return self._parse_illumina_header(fastqRecord.header[1:], indexFileParser=indexFileParser, indexFileAlias=indexFileAlias )
 
 
     def parse_scmo_header(self, fastqRecord, indexFileParser,  indexFileAlias):

@@ -6,9 +6,14 @@ from singlecellmultiomics.barcodeFileParser.barcodeFileParser import BarcodePars
 from singlecellmultiomics.modularDemultiplexer.demultiplexModules.CELSeq2 import CELSeq2_c8_u6_NH
 from singlecellmultiomics.modularDemultiplexer.demultiplexModules.scCHIC import SCCHIC_384w_c8_u3_cs2
 from singlecellmultiomics.modularDemultiplexer.demultiplexModules.DamID import DamID2andT_SCA,DamID2_SCA
-from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import UmiBarcodeDemuxMethod
+from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import TaggedRecord, UmiBarcodeDemuxMethod, TagDefinitions
 from singlecellmultiomics.utils import reverse_complement
 import importlib.resources
+
+
+class Dummy_pysam_read:
+    def __init__(self, header:str):
+        self.query_name = header
 
 class TestUmiBarcodeDemux(unittest.TestCase):
 
@@ -48,6 +53,7 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         # The barcode sequence is ACACACTA (first barcode)
         self.assertEqual( demultiplexed_record[0].tags['BC'], 'ACACACTA')
         self.assertEqual( demultiplexed_record[0].tags['bi'], 1) # 1 from version 0.1.12
+        self.assertEqual( demultiplexed_record[0].tags['Is'], 'NS500414' ) # Instrument should just match NS500414 (no preceding @)
 
 
 
@@ -145,6 +151,7 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         self.assertEqual( demultiplexed_record[0].tags['dt'], 'VASA')
         self.assertEqual( demultiplexed_record[0].tags['RX'], 'GGC')
         self.assertEqual( demultiplexed_record[0].tags['rx'], 'CTTAAA')
+        assert 'oh' not in demultiplexed_record[0].tags # The presence of the oh tag means the record was not parsed as Illumina data
 
 
     def construct_read_pair(self, prefix, content):
@@ -163,6 +170,17 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         )
         return r1, r2
     
+    def test_decode_tagged(self):
+        tr = TaggedRecord(TagDefinitions)
+
+        tr.fromTaggedBamRecord(Dummy_pysam_read("Is:@LH00371;RN:377;Fc:23JCYHLT3;La:1;Ti:2146;CX:50248;CY:15716;Fi:N;CN:0;aa:GACGAC;oh:LH00371:377:23JCYHLT3:1:2146:50248:15716;LY:JvB-203-RPE1-scFP-EdU-seq-super-pl17;RX:AGC;RQ:jyy;bi:126;bc:GCGCTACG;MX:scCHIC384C8U3;BC:GCGCTACG;rS:CCTAGC;lh:TA;lq:OO"))
+        assert tr.tags['RN'] == '377'
+        assert tr.tags['Is'] == 'LH00371'
+        assert tr.tags['RX'] == 'AGC'
+
+        
+         
+
     def test_DAMID(self):
 
         barcode_folder = str(importlib.resources.files('singlecellmultiomics').joinpath('modularDemultiplexer/barcodes/'))
