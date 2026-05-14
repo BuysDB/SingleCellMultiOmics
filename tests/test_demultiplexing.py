@@ -173,14 +173,12 @@ class TestUmiBarcodeDemux(unittest.TestCase):
     def test_decode_tagged(self):
         tr = TaggedRecord(TagDefinitions)
 
-        tr.fromTaggedBamRecord(Dummy_pysam_read("Is:@LH00371;RN:377;Fc:23JCYHLT3;La:1;Ti:2146;CX:50248;CY:15716;Fi:N;CN:0;aa:GACGAC;oh:LH00371:377:23JCYHLT3:1:2146:50248:15716;LY:JvB-203-RPE1-scFP-EdU-seq-super-pl17;RX:AGC;RQ:jyy;bi:126;bc:GCGCTACG;MX:scCHIC384C8U3;BC:GCGCTACG;rS:CCTAGC;lh:TA;lq:OO"))
+        tr.fromTaggedBamRecord(Dummy_pysam_read("Is:LH00371;RN:377;Fc:23JCYHLT3;La:1;Ti:2146;CX:50248;CY:15716;Fi:N;CN:0;aa:GACGAC;oh:LH00371:377:23JCYHLT3:1:2146:50248:15716;LY:JvB-203-RPE1-scFP-EdU-seq-super-pl17;RX:AGC;RQ:jyy;bi:126;bc:GCGCTACG;MX:scCHIC384C8U3;BC:GCGCTACG;rS:CCTAGC;lh:TA;lq:OO"))
         assert tr.tags['RN'] == '377'
         assert tr.tags['Is'] == 'LH00371'
         assert tr.tags['RX'] == 'AGC'
         assert tr.tags['oh'] == 'LH00371:377:23JCYHLT3:1:2146:50248:15716'
 
-        
-         
 
     def test_DAMID(self):
 
