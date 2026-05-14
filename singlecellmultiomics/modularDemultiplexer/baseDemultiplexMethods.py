@@ -91,8 +91,8 @@ class TaggedRecord():
             isPhred=None,
             decodePhred=False,
             cast_type=str,
-            make_safe=True):
-
+            make_safe=True): # Make safe: make the tag value safe for fastq headers, only applicable for str type
+        
         if isPhred is None:
             isPhred = self.tagDefinitions[tagName].isPhred
         if cast_type and not isinstance(value, cast_type):
@@ -353,18 +353,18 @@ class TaggedRecord():
             self.addTagByTag(
                 'SM',
                 f'{self.tags["LY"]}_{self.tags["bi"]}',
-                isPhred=False)
+                isPhred=False, make_safe=False)
         elif 'BI' in self.tags:
             self.addTagByTag(
                 'SM',
                 f'{self.tags["LY"]}_{self.tags["BI"]}',
-                isPhred=False)
+                isPhred=False, make_safe=False)
 
             # Remove BI tag
             self.tags['bi'] = self.tags["BI"]
             del self.tags['BI']
         elif "LY" in self.tags:
-            self.addTagByTag('SM', f'{self.tags["LY"]}_BULK', isPhred=False)
+            self.addTagByTag('SM', f'{self.tags["LY"]}_BULK', isPhred=False, make_safe=False)
 
 
 
@@ -392,7 +392,7 @@ class TaggedRecord():
             
             for keyValue in pysamRecord.query_name.strip().split(';'):
                 key, value = keyValue.split(':',1)
-                self.addTagByTag(key, value, isPhred=False)
+                self.addTagByTag(key, value, isPhred=False, make_safe=False)
         except ValueError as e:
             # Try to parse "Single Cell Discoveries" header
             # These have the following header:
@@ -403,7 +403,7 @@ class TaggedRecord():
 
             for keyValue in attributes.split(';'):
                 key, value = keyValue.split(':')
-                self.addTagByTag(key, value, isPhred=False)
+                self.addTagByTag(key, value, isPhred=False, make_safe=False)
 
 
 def reverseComplement(seq):
