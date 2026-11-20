@@ -7,6 +7,7 @@ import itertools
 import pandas as pd
 import importlib
 import singlecellmultiomics.universalBamTagger.universalBamTagger as ut
+from singlecellmultiomics.molecule import MoleculeIterator
 import pysamiterators.iterators as pyts
 import matplotlib.lines as mlines
 import os
@@ -82,8 +83,8 @@ if __name__ == '__main__':
     gc_capture = False
     with pysam.AlignmentFile(args.bamFile) as a:
         for i, molecule in enumerate(
-            ut.MoleculeIterator_OLD(
-                a, umi_hamming_distance=1)):
+            MoleculeIterator(
+                a, fragment_class_args={'umi_hamming_distance': 1})):
 
             if not args.notstrict and not nlaIII_molecule_acceptance_function(
                     molecule):
