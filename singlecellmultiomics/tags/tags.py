@@ -70,7 +70,6 @@ tags = [
     SamTag('RS', 'recognizedStrand'),
     SamTag('LI', 'ligationMotif'),
     SamTag('RC', 'moleculeOverseqCountIndex'),
-    SamTag('af', 'associatedFragmentCount'),
     SamTag('RR', 'rejectionReason'),
     SamTag('DT', 'sourceType'),
     SamTag('EX', 'exons'),
