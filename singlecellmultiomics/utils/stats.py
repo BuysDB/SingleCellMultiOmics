@@ -52,11 +52,11 @@ def vectorize_bw(path: str, bin_size: int, selected_contigs:list ,sample=None) -
         for contig, size in handle.chroms().items():
             if not contig in selected_contigs:
                 continue
-            nbins = int(size/bin_size)+1
+            nbins = -(-size // bin_size)
             density = np.zeros( nbins)
             for bin_index, bin_start in enumerate(range(0,size,bin_size)):
                 bin_end = bin_start + bin_size
-                bin_end=  min(bin_end,size-1)
+                bin_end=  min(bin_end,size)
                 try:
                     density[bin_index] = np.array( handle.intervals(contig,bin_start, bin_end) )[:,2].mean()
                 except IndexError:
