@@ -10,6 +10,8 @@ from singlecellmultiomics.modularDemultiplexer.baseDemultiplexMethods import Tag
 from singlecellmultiomics.modularDemultiplexer.demultiplexingStrategyLoader import DemultiplexingStrategyLoader
 from singlecellmultiomics.utils import reverse_complement
 import importlib.resources
+import subprocess
+import sys
 import tempfile
 import os
 class Dummy_pysam_read:
@@ -538,6 +540,100 @@ class TestUmiBarcodeDemux(unittest.TestCase):
         finally:
             os.unlink(temp_r1)
             os.unlink(temp_r2)
+
+
+class TestTaggedFastqRoundTrip(unittest.TestCase):
+    """Check if encode-decode round trip does not lose data"""
+
+    def _parse(self, header):
+        tr = TaggedRecord(TagDefinitions)
+        tr.fromTaggedFastq(FastqRecord(header, 'ACGT', '+', 'IIII'))
+        return tr.tags
+
+    def test_roundtrip_tag_value_with_colons(self):
+        # The fallback codec stores the original (non-illumina) header, colons included:
+        oh = 'instrument:run:flowcell:lane:tile:x:y'
+        tr = TaggedRecord(TagDefinitions)
+        tr.tags.update({'Is': 'UNK', 'RN': '1', 'SM': 'lib_1', 'BC': 'ACACACTA',
+                        'RX': 'ACGT', 'oh': oh})
+        fastq = tr.asFastq(sequence='ACGT', dirAtt='+', baseQualities='IIII')
+        parsed = self._parse(fastq.rstrip('\n').split('\n')[0])
+        self.assertEqual(parsed['oh'], oh)
+        # The other tags must not be affected:
+        for tag in ('Is', 'RN', 'SM', 'BC', 'RX'):
+            self.assertEqual(parsed[tag], tr.tags[tag])
+
+
+    def test_roundtrip_colon_in_rejection_reason(self):
+        reason = 'NoBarcodeMatch:ACGT'
+        tr = TaggedRecord(TagDefinitions, reason=reason)
+        fastq = tr.asFastq(sequence='ACGT', dirAtt='+', baseQualities='IIII')
+        parsed = self._parse(fastq.rstrip('\n').split('\n')[0])
+        self.assertEqual(parsed['RR'], reason)
+
+    def test_segment_without_colon_is_skipped(self):
+        # Legacy / malformed tail segments must not crash the parser:
+        parsed = self._parse('@BC:ACACACTA;trailingjunk')
+        self.assertEqual(parsed['BC'], 'ACACACTA')
+        self.assertEqual(len(parsed), 1)
+
+    def test_unregistered_key_does_not_crash(self):
+        # Reject files written by the strategy loader carry the unregistered 'Rr' key:
+        parsed = self._parse('@RR:not_a_reason;Rr:some error')
+        self.assertEqual(parsed['RR'], 'not_a_reason')
+        self.assertIn('Rr', parsed)
+
+    def test_phred_tag_still_decoded(self):
+        # QT is a registered phred tag: stored header-safe encoded by addTagByTag,
+        # must be decoded back to ascii-phred by fromTaggedFastq:
+        ascii_phred = 'IIIII'
+        tr = TaggedRecord(TagDefinitions)
+        tr.addTagByTag('QT', ascii_phred, isPhred=True)
+        self.assertNotEqual(tr.tags['QT'], ascii_phred)  # encoded on write
+        fastq = tr.asFastq(sequence='ACGT', dirAtt='+', baseQualities='IIII')
+        parsed = self._parse(fastq.rstrip('\n').split('\n')[0])
+        self.assertEqual(parsed['QT'], ascii_phred)
+
+    def test_demultiplexed_fastq_conversion_tool(self):
+        # End-to-end: demultiplexedFastqConversion.py must handle a file whose
+        # headers carry an oh tag with colons (used to crash with ValueError):
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        script = os.path.join(repo_root, 'singlecellmultiomics',
+                              'modularDemultiplexer', 'demultiplexedFastqConversion.py')
+        tr = TaggedRecord(TagDefinitions)
+        tr.tags.update({'BC': 'ACACACTA', 'QT': 'IIIIIIII',
+                        'RX': 'ACGT', 'RQ': 'IIII',
+                        'oh': 'instrument:run:flowcell:lane:tile:x:y'})
+        with tempfile.NamedTemporaryFile('w', suffix='.fastq', delete=False) as handle:
+            handle.write(tr.asFastq(sequence='NNNN', dirAtt='+', baseQualities='IIII'))
+            temp_path = handle.name
+        env = dict(os.environ, PYTHONPATH=repo_root)
+        try:
+            run = subprocess.run(
+                [sys.executable, script,
+                 '-seqfeatures', 'BC,RX', '-qualityfeatures', 'QT,RQ',
+                 '-format', 'fq', temp_path],
+                capture_output=True, text=True, env=env)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertIn('ACACACTAACGT', run.stdout)
+
+            # -format is required now: unset must fail instead of silently emitting nothing
+            run = subprocess.run(
+                [sys.executable, script,
+                 '-seqfeatures', 'BC,RX', '-qualityfeatures', 'QT,RQ', temp_path],
+                capture_output=True, text=True, env=env)
+            self.assertNotEqual(run.returncode, 0)
+
+            # A missing tag must raise an error naming the tag:
+            run = subprocess.run(
+                [sys.executable, script,
+                 '-seqfeatures', 'BC,NO', '-qualityfeatures', 'QT,RQ',
+                 '-format', 'fq', temp_path],
+                capture_output=True, text=True, env=env)
+            self.assertNotEqual(run.returncode, 0)
+            self.assertIn('NO', run.stderr)
+        finally:
+            os.unlink(temp_path)
 
 
 if __name__ == '__main__':
