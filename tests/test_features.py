@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 import unittest
 import itertools
+import gzip
+import os
+import tempfile
 
 from singlecellmultiomics.features import FeatureContainer
+from singlecellmultiomics.features.exonGTFtoIntronGTF import exonGTF_to_intronGTF
 
 """
 These tests check if the feature container is working correctly
@@ -161,6 +165,63 @@ class TestFeatureContainer(unittest.TestCase):
 
         #printFormatted("[BRIGHT]Test for finding closest feature")
         self.expect(  f.findNearestFeature('chr1', 0, None ), '1')
+
+
+class TestExonGTFtoIntronGTF(unittest.TestCase):
+
+    gtfLines = [
+        'chr1\ttest\texon\t100\t199\t.\t+\t.\ttranscript_id "T1"; gene_id "G1";\n',
+        'chr1\ttest\texon\t300\t399\t.\t+\t.\ttranscript_id "T1"; gene_id "G1";\n',
+        'chr2\ttest\texon\t601\t699\t.\t+\t.\ttranscript_id "T2"; gene_id "G2";\n',
+        'chr2\ttest\texon\t801\t899\t.\t+\t.\ttranscript_id "T2"; gene_id "G2";\n',
+        'chr2\ttest\texon\t1001\t1099\t.\t+\t.\ttranscript_id "T2"; gene_id "G2";\n',
+        'chr3\ttest\texon\t50\t99\t.\t-\t.\ttranscript_id "T3"; gene_id "G3";\n',
+        'chr3\ttest\texon\t200\t299\t.\t-\t.\ttranscript_id "T3"; gene_id "G3";\n',
+    ]
+
+    expectedIntrons = {
+        ('chr1', 200, 299, '+'),
+        ('chr2', 700, 800, '+'),  
+        ('chr2', 900, 1000, '+'),
+        ('chr3', 100, 199, '-'),
+    }
+
+    def writeGtf(self, path, gz=False):
+        with (gzip.open(path, 'wt') if gz else open(path, 'w')) as handle:
+            handle.writelines(self.gtfLines)
+
+    def getIntrons(self, path):
+        introns = set()
+        for line in exonGTF_to_intronGTF(path, 'transcript_id'):
+            if line.startswith('#'):
+                continue
+            fields = line.rstrip('\n').split('\t')
+            self.assertEqual(fields[2], 'intron')
+            introns.add((fields[0], int(fields[3]), int(fields[4]), fields[6]))
+        return introns
+
+    def test_introns_across_chromosome_changes(self):
+        with tempfile.TemporaryDirectory() as tmpDir:
+            for gz in (False, True):
+                path = os.path.join(tmpDir, f'exons.gtf{".gz" if gz else ""}')
+                self.writeGtf(path, gz)
+                self.assertEqual(
+                    self.getIntrons(path),
+                    self.expectedIntrons,
+                    msg=f'chromosome={path} gz={gz}'
+                )
+
+    def test_intronic_meta_data_passthrough(self):
+        with tempfile.TemporaryDirectory() as tmpDir:
+            path = os.path.join(tmpDir, 'exons.gtf')
+            self.writeGtf(path)
+            for line in exonGTF_to_intronGTF(path, 'transcript_id'):
+                fields = line.rstrip('\n').split('\t')
+                if (fields[0], int(fields[3]), int(fields[4])) == ('chr2', 700, 800):
+                    self.assertIn('T2', fields[8])
+                    break
+            else:
+                self.fail('intron chr2:700-800 was not emitted')
 
 
 if __name__ == '__main__':

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import pysam
+from pysamiterators import MatePairIteratorIncludingNonProper
 from itertools import chain
 from singlecellmultiomics.molecule import MoleculeIterator, ReadIterator
 import singlecellmultiomics

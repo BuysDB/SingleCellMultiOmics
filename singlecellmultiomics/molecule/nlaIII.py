@@ -112,9 +112,9 @@ class NlaIIIMolecule(Molecule):
 
         seq = self.get_fragment_span_sequence(reference)
         total = seq.count('CATG')
-        if self.strand == 0 and seq.endswith('CATG'):
+        if self.strand == 0 and seq.startswith('CATG'):
             total -= 1
-        elif self.strand == 1 and seq.startswith('CATG'):
+        elif self.strand == 1 and seq.endswith('CATG'):
             total -= 1
         return total
 

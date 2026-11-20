@@ -6,9 +6,11 @@ import singlecellmultiomics.fragment
 import pysam
 import pysamiterators.iterators
 import os
+import shutil
+import tempfile
+from singlecellmultiomics.molecule import MoleculeIterator, CHICMolecule, NlaIIIMolecule
+from singlecellmultiomics.fragment import CHICFragment, NlaIIIFragment
 
-from singlecellmultiomics.molecule import MoleculeIterator, CHICMolecule
-from singlecellmultiomics.fragment import CHICFragment
 
 """
 These tests check if the Molecule module is working correctly
@@ -359,6 +361,81 @@ class TestMolecule(unittest.TestCase):
             fragment_class=singlecellmultiomics.fragment.NlaIIIFragment
             )
             pass
+
+    def test_nlaIII_undigested_site_count(self):
+        """The Us tag of an NLA molecule must not count the molecule's own recognition site.
+
+        Per fragment/nlaIII.py identify_site(): a forward molecule starts with its
+        CATG at spanStart and a reverse molecule ends with it at spanEnd, so the
+        occurrence within the molecule has to be subtracted correctly
+        """
+
+
+        # 200 bp reference with CATG sites at 40, 55, 110 and 126 (0-based).
+        refseq = ('A' * 40 + 'CATG' + 'A' * 11 + 'CATG' + 'A' * 51 +
+                  'CATG' + 'A' * 12 + 'CATG' + 'A' * 70)
+
+        temp_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, temp_dir)
+        ref_path = f'{temp_dir}/nla_us_ref.fa'
+        with open(ref_path, 'w') as handle:
+            handle.write(f'>chr1\n{refseq}\n')
+        pysam.faidx(ref_path)
+        reference = pysam.FastaFile(ref_path)
+        self.addCleanup(reference.close)
+
+        def get_nla_read(header, start, end, is_reverse):
+            read = pysam.AlignedSegment(header)
+            read.query_name = f'nla_{start}_{end}'
+            read.reference_name = 'chr1'
+            read.reference_start = start
+            read.query_sequence = refseq[start:end]
+            read.cigarstring = f'{end - start}M'
+            read.qual = 'I' * (end - start)
+            read.mapping_quality = 60
+            read.is_read1 = True
+            read.is_reverse = is_reverse
+            read.set_tag('SM', 'CELL_1')
+            read.set_tag('RX', 'ACGT')
+            return read
+
+        # (start, end, is_reverse, expected amount of undigested sites)
+        cases = [
+            # Forward molecule, span starts with its own CATG@40, no other site:
+            (40, 52, False, 0),
+            # Forward molecule, own site @40 + a undigested site @55:
+            (40, 70, False, 1),
+            # Reverse molecule, span ends with its own CATG@126, no other site:
+            (118, 130, True, 0),
+            # Reverse molecule, a undigested site @110 + own site @126:
+            (100, 130, True, 1),
+        ]
+
+        with pysam.AlignmentFile(f'{temp_dir}/out.sam', 'w',
+                                 reference_names=['chr1'],
+                                 reference_lengths=[len(refseq)]) as out_sam:
+            for start, end, is_reverse, expected in cases:
+                read = get_nla_read(out_sam.header, start, end, is_reverse)
+                molecule = NlaIIIMolecule(NlaIIIFragment([read, None]),
+                                          reference=reference)
+
+                # Sanity checks: the fragment identified the site & strand:
+                self.assertEqual(molecule.strand, 1 if is_reverse else 0)
+                self.assertEqual(molecule.get_cut_site()[1],
+                                 start if not is_reverse else end - 4)
+                seq = molecule.get_fragment_span_sequence()
+                self.assertIn('CATG', seq)
+
+                # Only undigested sites should be counted, the molecule's own recognition site excluded:
+                self.assertEqual(molecule.get_undigested_site_count(), expected,
+                                 f'strand={molecule.strand}, span sequence {seq} '
+                                 'contains the own CATG site which must not be '
+                                 'counted as undigested')
+
+                # The same value must end up in the Us tag when tags are written:
+                molecule.write_tags()
+                self.assertEqual(read.get_tag('Us'), expected)
+
 
     def test_consensus(self):
         """Test if a right consensus sequence can be produced from a noisy molecule"""

@@ -268,8 +268,17 @@ class TaggedRecord():
 
     def fromTaggedFastq(self, fastqRecord):
         for keyValue in fastqRecord.header.replace('@', '').strip().split(';'):
-            key, value = keyValue.split(':')
-            self.addTagByTag(key, value, decodePhred=True)
+            if ':' not in keyValue:
+                continue # This is not a key value apparently...
+            # maxsplit=1: tag values may contain colons, e.g. the 'oh' fallback tag
+            # (original read header) or rejection reasons written to reject files
+            key, value = keyValue.split(':', 1)
+            if key in self.tagDefinitions:
+                isPhred = self.tagDefinitions[key].isPhred
+            else:
+                # Unregistered keys are not phred encoded
+                isPhred = False
+            self.addTagByTag(key, value, isPhred=isPhred, decodePhred=True)
 
     def fromTaggedBamRecord(self, pysamRecord):
         """Parse header from tagged BAM record (already processed, usually in SCMO key-value format)."""

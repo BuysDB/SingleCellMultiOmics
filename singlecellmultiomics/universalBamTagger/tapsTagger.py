@@ -419,68 +419,68 @@ if __name__ == '__main__':
             statistics['Methylation']['unmethylated Cs'] += unmethylated_hits
             molecule.write_tags()
             molecule.write_pysam(output)
-# close bed
-    if args.bed is not None:
-        bed.close()
+        # close bed
+        if args.bed is not None:
+            bed.close()
 
-    if args.transcriptome:
-        print(
-            colorama.Style.BRIGHT +
-            f"Running transcriptome recovery on {len(rejected_reads)} reads")
-        for i, molecule in enumerate(
-            singlecellmultiomics.molecule.MoleculeIterator(
-                # plug in the possible_transcripts as read source
-                alignments=rejected_reads,
-                # Drop the TAPS and NLAIII checks
-                molecule_class=singlecellmultiomics.molecule.FeatureAnnotatedMolecule,
-                # Plain fragment, no NLAIII
-                fragment_class=singlecellmultiomics.fragment.Fragment,
-                fragment_class_args={
-                    'umi_hamming_distance': args.uhd,
-                    # this is the amount of bases R1 can shift to be assigned to the same molecule
-                    'assignment_radius': args.recovery_umi_pool_radius
-                },
+        if args.transcriptome:
+            print(
+                colorama.Style.BRIGHT +
+                f"Running transcriptome recovery on {len(rejected_reads)} reads")
+            for i, molecule in enumerate(
+                singlecellmultiomics.molecule.MoleculeIterator(
+                    # plug in the possible_transcripts as read source
+                    alignments=rejected_reads,
+                    # Drop the TAPS and NLAIII checks
+                    molecule_class=singlecellmultiomics.molecule.FeatureAnnotatedMolecule,
+                    # Plain fragment, no NLAIII
+                    fragment_class=singlecellmultiomics.fragment.Fragment,
+                    fragment_class_args={
+                        'umi_hamming_distance': args.uhd,
+                        # this is the amount of bases R1 can shift to be assigned to the same molecule
+                        'assignment_radius': args.recovery_umi_pool_radius
+                    },
 
-                yield_invalid=True,
-                molecule_class_args={
-                        'features': transcriptome_features,
-                    'reference': reference,
-                            'min_max_mapping_quality': 20
-                }
-            )):
-            if not molecule.is_valid():
-                statistics['Filtering']['rejected at transcriptome recovery step'] += 1
-                statistics['Filtering']['rejected'] += 1
-                molecule.set_meta('RF', 'rejected_recovery_invalid')
+                    yield_invalid=True,
+                    molecule_class_args={
+                            'features': transcriptome_features,
+                        'reference': reference,
+                                'min_max_mapping_quality': 20
+                    }
+                )):
+                if not molecule.is_valid():
+                    statistics['Filtering']['rejected at transcriptome recovery step'] += 1
+                    statistics['Filtering']['rejected'] += 1
+                    molecule.set_meta('RF', 'rejected_recovery_invalid')
+                    molecule.write_tags()
+                    molecule.write_pysam(output)
+                    continue
+
+                molecule.set_meta('mi', f'TRAN_{i}')
+
+                # Add gene annotations:
+                molecule.annotate(0)
+                molecule.set_intron_exon_features()
+                if len(molecule.genes) == 0:
+                    molecule.set_meta('RF', 'rejected_recovery_no_gene')
+                    statistics['Filtering']['rejected_recovery_no_gene'] += 1
+                    molecule.write_tags()
+                    molecule.write_pysam(output)
+                    continue
+                if len(molecule.junctions):
+                    molecule.set_meta('RF', 'recovered_transcript_junction')
+                    statistics['Filtering']['recovered_transcript_junction'] += 1
+                    statistics['Data type detection'][
+                        f'RNA because junction found and no {args.method} site mapped'] += 1
+                else:
+                    molecule.set_meta('RF', 'recovered_transcript_gene')
+                    statistics['Data type detection'][
+                        f'RNA because gene found and no {args.method} site mapped'] += 1
+                    statistics['Filtering']['recovered_transcript_gene'] += 1
+                molecule.set_meta('dt', 'RNA')
+                statistics['Data type detection']['RNA'] += 1
                 molecule.write_tags()
                 molecule.write_pysam(output)
-                continue
-
-            molecule.set_meta('mi', f'TRAN_{i}')
-
-            # Add gene annotations:
-            molecule.annotate(0)
-            molecule.set_intron_exon_features()
-            if len(molecule.genes) == 0:
-                molecule.set_meta('RF', 'rejected_recovery_no_gene')
-                statistics['Filtering']['rejected_recovery_no_gene'] += 1
-                molecule.write_tags()
-                molecule.write_pysam(output)
-                continue
-            if len(molecule.junctions):
-                molecule.set_meta('RF', 'recovered_transcript_junction')
-                statistics['Filtering']['recovered_transcript_junction'] += 1
-                statistics['Data type detection'][
-                    f'RNA because junction found and no {args.method} site mapped'] += 1
-            else:
-                molecule.set_meta('RF', 'recovered_transcript_gene')
-                statistics['Data type detection'][
-                    f'RNA because gene found and no {args.method} site mapped'] += 1
-                statistics['Filtering']['recovered_transcript_gene'] += 1
-            molecule.set_meta('dt', 'RNA')
-            statistics['Data type detection']['RNA'] += 1
-            molecule.write_tags()
-            molecule.write_pysam(output)
 
     # Show statistics:
     print(

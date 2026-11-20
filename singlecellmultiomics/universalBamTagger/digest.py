@@ -182,8 +182,8 @@ class DigestFlagger():
 
         self.cacheWrites += 1
         if self.cacheWrites > self.cachePurgeEvery:
-            for sample in self.observedSites:
-                self.observedSites[sample].purge(*cutSite)
+            for s in self.observedSites:
+                self.observedSites[s].purge(*cutSite)
             self.cacheWrites = 0
 
         if self.moleculeRadius != 0:

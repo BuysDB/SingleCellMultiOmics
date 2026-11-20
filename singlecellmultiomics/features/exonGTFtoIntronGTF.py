@@ -52,16 +52,17 @@ def exonGTF_to_intronGTF(exon_path, id):
             id_to_features[meta[id]] = {
                 c: meta.get(c) for c in capture if c in meta
             }
-            geneToExonRanges[(
-                meta[id], chromosome, strand, source
-            )
-            ].append(range(int(feature_start), int(feature_end) + 1))
 
             if prevChrom is not None and prevChrom != chromosome:
                 for intr in generate_introns(
                         geneToExonRanges, id, id_to_features):
                     yield intr
                 geneToExonRanges = collections.defaultdict(list)
+
+            geneToExonRanges[(
+                meta[id], chromosome, strand, source
+            )
+            ].append(range(int(feature_start), int(feature_end) + 1))
 
             prevChrom = chromosome
 

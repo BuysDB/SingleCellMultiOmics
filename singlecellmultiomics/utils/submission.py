@@ -9,7 +9,7 @@ import glob
 import time
 import datetime
 import subprocess
-import distutils.spawn
+import shutil
 import uuid
 
 def create_job_file_paths(target_directory,job_alias=None, prefix=None, job_file_name=None):
@@ -140,8 +140,8 @@ def submit_job(command,  target_directory,  working_directory,
         job_id(str) : id of sumbitted job
     """
 
-    qsub_available = (distutils.spawn.find_executable("qsub") is not None)
-    sbatch_available = (distutils.spawn.find_executable("sbatch") is not None)
+    qsub_available = (shutil.which("qsub") is not None)
+    sbatch_available = (shutil.which("sbatch") is not None)
 
     if scheduler == 'auto':
         if qsub_available:
@@ -215,7 +215,7 @@ if __name__ == '__main__':
     defaultEmail = os.getenv('EMAIL')
 
 
-    qsub_available = (distutils.spawn.find_executable("qsub") is not None)
+    qsub_available = (shutil.which("qsub") is not None)
 
     PY36ENV = os.getenv('PY36ENV')
     if PY36ENV is None:

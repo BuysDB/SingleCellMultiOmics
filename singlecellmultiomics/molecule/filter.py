@@ -37,10 +37,12 @@ def molecule_iterator_filter(
             continue
 
 
-        if min_ivt_duplicates is not None and len( molecule.get_rt_reactions() ) <  min_ivt_duplicates:
-            continue
-        if min_ivt_duplicates is not None and len( molecule.get_rt_reactions() ) >  max_ivt_duplicates:
-            continue
+        if min_ivt_duplicates is not None or max_ivt_duplicates is not None:
+            n_rt_reactions = len(molecule.get_rt_reactions())
+            if min_ivt_duplicates is not None and n_rt_reactions < min_ivt_duplicates:
+                continue
+            if max_ivt_duplicates is not None and n_rt_reactions > max_ivt_duplicates:
+                continue
 
         if both_pairs_mapped is not None:
             found_both = False

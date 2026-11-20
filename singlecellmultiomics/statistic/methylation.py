@@ -17,7 +17,7 @@ class MethylationContextHistogram(StatisticHistogram):
         self.hasdata = False
     def processRead(self, R1,R2):
 
-        for read in [R2,R2]:
+        for read in [R1,R2]:
             if read is None:
                 continue
 
