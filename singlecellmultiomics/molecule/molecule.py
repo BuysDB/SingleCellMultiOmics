@@ -1780,7 +1780,7 @@ class Molecule():
                     end = f_end
                 else:
                     start = min(f_start, start)
-                    end = min(f_end, end)
+                    end = max(f_end, end)
 
         if end is None:
             raise ValueError('Not safe')
