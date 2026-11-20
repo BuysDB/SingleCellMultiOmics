@@ -415,7 +415,7 @@ class MoleculeIterator():
                             self.yielded_fragments += len(m)
 
                     for i, j in enumerate(to_pop):
-                        m = self.molecules.pop(i - j)
+                        m = self.molecules.pop(j - i)
                         m.__finalise__()
                         yield from self.yield_func(m)
                 else:
