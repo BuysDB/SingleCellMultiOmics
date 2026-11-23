@@ -100,11 +100,9 @@ class TaggedRecord():
         if isPhred:
             if decodePhred:
                 # Convert encoded phred scores back to original ascii
-                self.tags[tagName] = fastqHeaderSafeQualitiesToPhred(
-                    value, method=3)
+                self.tags[tagName] = fastqHeaderSafeQualitiesToPhred(value)
             else:
-                self.tags[tagName] = phredToFastqHeaderSafeQualities(
-                    value, method=3)
+                self.tags[tagName] = phredToFastqHeaderSafeQualities(value)
         else:
             if cast_type is str:
                 if make_safe:
@@ -258,7 +256,7 @@ class TaggedRecord():
         for tag, value in self.tags.items():
             # print(tag,value)
             if tag in self.tagDefinitions and self.tagDefinitions[tag].isPhred:
-                value = fastqHeaderSafeQualitiesToPhred(value, method=3)
+                value = fastqHeaderSafeQualitiesToPhred(value)
             read.set_tag(tag, value)
 
         if not QT_missing and read.has_tag('QM') and len(
@@ -320,20 +318,18 @@ def reverseComplement(seq):
     return("".join(complement.get(base, base) for base in reversed(seq)))
 
 
-def phredToFastqHeaderSafeQualities(asciiEncodedPhredScores, method=3):
-    """ Convert ASCII encoded pred string to fastq safe string.
-    numeric encoded string (method 0),
-    or 65 shifted (method 1) which is safe to use in the fastq header"""
-    if method == 0:
-        return(",".join([str(ord(phred) - 33) for phred in asciiEncodedPhredScores]))
-    elif method == 1:
-        return("".join([chr(ord(phred) + 32) for phred in asciiEncodedPhredScores]))
-    else:
-        return("".join([string.ascii_letters[min(max(0, ord(phred) - 33), len(string.ascii_letters))] for phred in asciiEncodedPhredScores]))
+def phredToFastqHeaderSafeQualities(asciiEncodedPhredScores):
+    """ Convert ASCII encoded phred string to a fastq header safe string.
+
+    Quality values are mapped onto string.ascii_letters (Q0 -> 'a' ... Q51 -> 'Z'),
+    higher qualities are clamped to the last letter."""
+    # Clamp to the last valid index: quality chars above 'T' would otherwise index out of range:
+    return("".join([string.ascii_letters[min(max(0, ord(phred) - 33), len(string.ascii_letters) - 1)] for phred in asciiEncodedPhredScores]))
 
 
-def fastqHeaderSafeQualitiesToPhred(phred, method=3):
-    # print(phred)
+def fastqHeaderSafeQualitiesToPhred(phred):
+    """ Decode a header-safe quality string (see phredToFastqHeaderSafeQualities)
+    back to ASCII encoded phred scores."""
     return "".join((chr(string.ascii_letters.index(v) + 33) for v in phred))
 
 
