@@ -310,11 +310,13 @@ def tag_multiome_multi_processing(
     else:
         contig_blacklist = []
 
+    include_unmapped = molecule_iterator_args.get('contig') is None and molecule_iterator in (None, MoleculeIterator) # Include unmapped reads when no specific contig is requested
+
     if molecule_iterator_args.get('contig',None) is not None:
         assert molecule_iterator_args.get('start') is None, 'regions are not implemented'
         contig_whitelist = [molecule_iterator_args['contig']]
     else:
-        contig_whitelist = [contig for contig in get_contigs_with_reads(input_bam_path) if not contig in contig_blacklist]
+        contig_whitelist = [contig for contig in get_contigs_with_reads(input_bam_path) if (not contig in contig_blacklist and contig != '*')]
 
     for prune in ['start', 'end', 'contig', 'progress_callback_function','alignments']:
         if prune in molecule_iterator_args:
@@ -334,9 +336,11 @@ def tag_multiome_multi_processing(
         # Still put very small contigs together (<100000 bp)
         small_contig_threshold = 100000
 
-        job_gen =  [[('*',None,None,None,None),],]
+        job_gen =  [[('*',None,None,None,None),],] if include_unmapped else []
         small_contigs_jobs = []
         for contig,contig_len in get_contigs_with_reads(input_bam_path, True):
+            if contig == '*':
+                continue
             if contig_len<small_contig_threshold:
                 small_contigs_jobs.append( (contig,None,None,None,None) )
             else:
@@ -357,7 +361,7 @@ def tag_multiome_multi_processing(
             )
 
         # Chunk into jobs of roughly equal size: (A single job will process multiple segments)
-        job_gen =  [[('*',None,None,None,None),],] + list(bp_chunked(regions, bp_per_job))
+        job_gen = ([[('*',None,None,None,None),],] if include_unmapped else []) + list(bp_chunked(regions, bp_per_job))
 
 
     if job_bed_file is not None:
@@ -498,12 +502,14 @@ def tag_multiome_single_thread(
 
 
     molecule_iterator_args_wo_alignment = {k:v for k, v in molecule_iterator_args.items() if k != 'alignments'}
-    molecule_iterator_args_wo_alignment_unmapped = molecule_iterator_args_wo_alignment.copy()
-    molecule_iterator_args_wo_alignment_unmapped['contig'] = '*'
-
-    molecule_iterator_exec = chain(
-                molecule_iterator(input_bam, **molecule_iterator_args_wo_alignment_unmapped), molecule_iterator(input_bam, **molecule_iterator_args_wo_alignment),
-                )
+    if molecule_iterator_args_wo_alignment.get('contig') is None:
+        molecule_iterator_args_wo_alignment_unmapped = molecule_iterator_args_wo_alignment.copy()
+        molecule_iterator_args_wo_alignment_unmapped['contig'] = '*'
+        molecule_iterator_exec = chain(
+                    molecule_iterator(input_bam, **molecule_iterator_args_wo_alignment_unmapped), molecule_iterator(input_bam, **molecule_iterator_args_wo_alignment),
+                    )
+    else:
+        molecule_iterator_exec = molecule_iterator(input_bam, **molecule_iterator_args_wo_alignment)
 
 
     print('Params:',molecule_iterator_args)
@@ -1129,24 +1135,26 @@ def run_multiome_tagging(args):
 
             found_alts = 0
             files_to_merge = []
-            for ci,chrom in enumerate([_chrom  for _chrom in
+            contigs_to_process = [_chrom  for _chrom in
                         (list(input_bam.references) + [MISC_ALT_CONTIGS_SCMO])
-                        if not _chrom in skip_contig]):
+                        if not _chrom in skip_contig]
+            if input_bam.unmapped > 0 and '*' not in skip_contig:
+                contigs_to_process = ['*'] + contigs_to_process
 
-                if not is_main_chromosome(chrom):
+            for ci,chrom in enumerate(contigs_to_process):
+                if chrom != '*' and not is_main_chromosome(chrom):
                     found_alts += 1
                     continue
                 if chrom == MISC_ALT_CONTIGS_SCMO and found_alts == 0:
                     continue
-
-                temp_bam_path = f'{temp_prefix}_{chrom}.bam'
+                temp_bam_path = f"{temp_prefix}_{chrom.replace('*', 'unmapped')}.bam" # No star in the filename
 
                 if os.path.exists(temp_bam_path):
                     print(f"Removing existing temporary file {temp_bam_path}")
                     os.remove(temp_bam_path)
 
                 arguments = " ".join(
-                    [x for x in sys.argv if not x == args.o and x != '-o']) + f" -contig {chrom} -o {temp_bam_path}"
+                    [x for x in sys.argv if not x == args.o and x != '-o']) + f" -contig '{chrom}' -o {temp_bam_path}"
                 files_to_merge.append(temp_bam_path)
                 if consensus_model_path is not None:
                     arguments += f' -consensus_model {consensus_model_path}'
