@@ -292,7 +292,8 @@ def tag_multiome_multi_processing(
         one_contig_per_process: bool =False,
         additional_args: dict = None,
         n_threads=None,
-        job_bed_file: str = None # Writes job blocks to a bed file for inspection
+        job_bed_file: str = None, # Writes job blocks to a bed file for inspection
+        alt_contigs_only: bool = False
     ):
 
     assert bp_per_job is not None
@@ -315,6 +316,9 @@ def tag_multiome_multi_processing(
     if molecule_iterator_args.get('contig',None) is not None:
         assert molecule_iterator_args.get('start') is None, 'regions are not implemented'
         contig_whitelist = [molecule_iterator_args['contig']]
+    elif alt_contigs_only:
+        # -contig MISC_ALT_CONTIGS_SCMO: pools all non-main contigs into one job
+        contig_whitelist = [contig for contig in get_contigs_with_reads(input_bam_path) if (not contig in contig_blacklist and not is_main_chromosome(contig))]
     else:
         contig_whitelist = [contig for contig in get_contigs_with_reads(input_bam_path) if (not contig in contig_blacklist and contig != '*')]
 
@@ -324,7 +328,7 @@ def tag_multiome_multi_processing(
 
     iteration_args = {
         'molecule_iterator_args': molecule_iterator_args,
-        'molecule_iterator_class': MoleculeIterator
+        'molecule_iterator_class': molecule_iterator or MoleculeIterator  # A custom molecule iterator can be passed, when None is specified the default is used
     }
 
     if blacklist_path is not None:
@@ -339,7 +343,7 @@ def tag_multiome_multi_processing(
         job_gen =  [[('*',None,None,None,None),],] if include_unmapped else []
         small_contigs_jobs = []
         for contig,contig_len in get_contigs_with_reads(input_bam_path, True):
-            if contig == '*':
+            if contig == '*' or not contig in contig_whitelist: # Unmapped reads are handled by the dedicated task above
                 continue
             if contig_len<small_contig_threshold:
                 small_contigs_jobs.append( (contig,None,None,None,None) )
@@ -1018,9 +1022,11 @@ def run_multiome_tagging(args):
         contig = args.contig
 
     # This decides to only extract a single genomic region:
-    if args.region_start is not None:
-        if args.region_end is None:
-            raise ValueError('When supplying -region_start then also supply -region_end')
+    if args.region_start is not None or args.region_end is not None:
+        if args.region_start is None or args.region_end is None:
+            raise ValueError('For region selection both -region_start and -region_end are required')
+        if args.contig is None or args.contig == MISC_ALT_CONTIGS_SCMO:
+            raise ValueError('A region (-region_start/-region_end) requires a single contig to be specified with -contig')
         region_start = args.region_start
         region_end = args.region_end
     else:
@@ -1258,7 +1264,8 @@ def run_multiome_tagging(args):
                                       fragment_size=fragment_size, blacklist_path=args.blacklist,bp_per_job=bp_per_job,
                                       bp_per_segment=bp_per_segment, temp_folder_root=args.temp_folder, max_time_per_segment=max_time_per_segment,
                                       additional_args=consensus_model_args, n_threads=args.tagthreads, one_contig_per_process=one_contig_per_process,
-                                      job_bed_file=args.jobbed
+                                      job_bed_file=args.jobbed, 
+                                      alt_contigs_only=(args.contig == MISC_ALT_CONTIGS_SCMO)
                                       )
     else:
 
