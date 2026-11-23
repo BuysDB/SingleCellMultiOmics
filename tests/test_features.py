@@ -6,6 +6,8 @@ import gzip
 import os
 import tempfile
 
+import pysam
+
 from singlecellmultiomics.features import FeatureContainer
 from singlecellmultiomics.features.exonGTFtoIntronGTF import exonGTF_to_intronGTF
 
@@ -165,6 +167,94 @@ class TestFeatureContainer(unittest.TestCase):
 
         #printFormatted("[BRIGHT]Test for finding closest feature")
         self.expect(  f.findNearestFeature('chr1', 0, None ), '1')
+
+
+    def make_read(self, reference_start, cigarstring):
+        """Create an aligned segment with the given alignment."""
+        header = pysam.AlignmentHeader.from_dict(
+            {'HD': {'VN': '1.6'}, 'SQ': [{'LN': 100000, 'SN': 'chr1'}]})
+        read = pysam.AlignedSegment(header)
+        read.query_name = 'test_read'
+        read.reference_id = 0
+        read.reference_start = reference_start
+        read.cigarstring = cigarstring
+        query_length = sum(
+            length for op, length in read.cigartuples if op in (0, 1))
+        read.query_sequence = 'A' * query_length
+        read.qual = 'I' * query_length
+        read.mapping_quality = 60
+        return read
+
+    def test_findFeaturesAtPysamAlign_abutting_blocks(self):
+        """A read block ending exactly at a feature's first base must NOT hit it.
+
+        pysam blocks are half-open [start, end), the container stores closed
+        intervals (loadGTF offset=-1), so querying with the raw block end
+        counted a phantom base one past the alignment.
+        """
+        f = FeatureContainer()
+        # closed interval covering bases 100..199, as loadGTF stores exon 100-200:
+        f.addFeature('chr1', 100, 199, 'ABUT', '+', None)
+        f.sort()
+
+        # block (50, 100) covers bases 50..99 only -> zero overlap:
+        self.assertEqual(f.findFeaturesAtPysamAlign(self.make_read(50, '50M')), set())
+        # one base further, block (50, 101) covers base 100 -> genuine overlap:
+        self.assertEqual(
+            {h[2] for h in f.findFeaturesAtPysamAlign(self.make_read(50, '51M'))},
+            {'ABUT'})
+        # abutting on the right was already rejected correctly before:
+        self.assertEqual(f.findFeaturesAtPysamAlign(self.make_read(200, '10M')), set())
+
+    def test_findFeaturesAtPysamAlign_methods_agree(self):
+        """Base-wise (method 0) and block-wise (method 1) queries must agree."""
+        f = FeatureContainer()
+        f.addFeature('chr1', 40, 60, 'INSIDE_BLOCK1', '+', None)         # inside first block
+        f.addFeature('chr1', 89, 95, 'LAST_BASE_BLOCK1', '+', None)      # touches last base of block 1
+        f.addFeature('chr1', 90, 109, 'IN_GAP_ABUTTING', '+', None)      # intron bases only
+        f.addFeature('chr1', 170, 200, 'ABUT_AFTER_BLOCK2', '+', None)   # starts 1 past last base
+        f.sort()
+
+        # blocks (50, 90) and (110, 170): covers bases 50..89 and 110..169:
+        read = self.make_read(50, '40M20N60M')
+        method0 = f.findFeaturesAtPysamAlign(read, method=0)
+        method1 = f.findFeaturesAtPysamAlign(read, method=1)
+        self.assertEqual(method0, method1)
+        self.assertEqual(
+            {h[2] for h in method0}, {'INSIDE_BLOCK1', 'LAST_BASE_BLOCK1'})
+
+    def test_loadBED_closed_intervals(self):
+        """BED is half-open and must be stored as closed intervals (like GTF)."""
+        with tempfile.TemporaryDirectory() as tmpDir:
+            path = os.path.join(tmpDir, 'regions.bed')
+            with open(path, 'w') as bed:
+                # region [50, 100) covers bases 50..99:
+                bed.write('chr1\t50\t100\tSIMPLE\n')
+                # blocked line: blocks covering 1000..1009 and 1050..1069:
+                bed.write('chr1\t1000\t1100\tBLOCKED\t0\t+\t1000\t1100\t0\t2\t10,20,\t0,50,\n')
+                # second block has zero length and covers nothing:
+                bed.write('chr1\t2000\t2100\tZEROLEN\t0\t+\t2000\t2100\t0\t2\t10,0,\t0,50,\n')
+            f = FeatureContainer()
+            f.loadBED(path)
+
+            def names_at(coord):
+                return {h[2] for h in f.findFeaturesAt('chr1', coord)}
+
+            self.assertEqual(names_at(50), {'SIMPLE'})
+            self.assertEqual(names_at(99), {'SIMPLE'})
+            # base 100 is just past the end of [50, 100):
+            self.assertEqual(names_at(100), set())
+
+            self.assertEqual(names_at(1000), {'BLOCKED'})
+            self.assertEqual(names_at(1009), {'BLOCKED'})
+            self.assertEqual(names_at(1010), set())
+            self.assertEqual(names_at(1050), {'BLOCKED'})
+            self.assertEqual(names_at(1069), {'BLOCKED'})
+            self.assertEqual(names_at(1070), set())
+
+            # zero-length block: the first block still hits, the empty one does not:
+            self.assertEqual(names_at(2005), {'ZEROLEN'})
+            self.assertEqual(names_at(2050), set())
 
 
 class TestExonGTFtoIntronGTF(unittest.TestCase):

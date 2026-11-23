@@ -390,10 +390,12 @@ class FeatureContainer(Prefetcher):
                         print('')
                         print(line, chromStart, chromEnd, blocks)
                 for start, length in blocks:
+                    if length <= 0:
+                        continue
                     self.addFeature(
                         chrom,
                         start,
-                        start + length,
+                        start + length - 1,
                         name,
                         strand=strand,
                         data=None)
@@ -437,7 +439,14 @@ class FeatureContainer(Prefetcher):
             sampleStart,
             sampleEnd,
             strand=None):
+        """Obtain all features overlapping the region [sampleStart, sampleEnd].
 
+        Both sampleStart and sampleEnd are closed (inclusive) coordinates,
+        matching the closed intervals this container stores features in
+        (loadGTF applies offset=-1 to achieve this).
+        Note that pysam's get_blocks() and BED coordinates are half-open
+        [start, end): pass end - 1 when querying with those.
+        """
         if chromosome not in self.startCoordinates:
             if self.debug:
                 self.debugMsg(
@@ -768,6 +777,9 @@ class FeatureContainer(Prefetcher):
         """Obtain all features mapping the pysam aligned segment.
         method 0: Query EVERY base
         method 1: Query every subsequent block of reads (pysam aligned segment .get_blocks)
+
+        Note: get_blocks() returns half-open ranges [start, end), which are
+        converted to the closed intervals used by this container here.
         """
         if pysamRead.reference_name not in self.startCoordinates:
             if self.debug:
@@ -787,7 +799,9 @@ class FeatureContainer(Prefetcher):
                 self.findFeaturesBetween(
                     pysamRead.reference_name,
                     lookupCoordinateStart,
-                    lookupCoordinateEnd,
+                    # convert the half-open block end to the closed coordinate
+                    # convention used by this container:
+                    lookupCoordinateEnd - 1,
                     strand=strand)
                 for lookupCoordinateStart, lookupCoordinateEnd
                 in pysamRead.get_blocks()])))

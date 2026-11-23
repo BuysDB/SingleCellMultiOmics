@@ -1042,11 +1042,13 @@ class SingleEndTranscriptFragment(Fragment, FeatureAnnotatedObject):
             strand = ('-' if read_strand else '+')
             read.set_tag('mr',strand)
             for start, end in read.get_blocks():
-
+                # pysam blocks are half-open [start, end), but the feature
+                # container stores closed intervals, so query until the last
+                # aligned base:
                 for hit in self.features.findFeaturesBetween(
                         chromosome=read.reference_name,
                         sampleStart=start,
-                        sampleEnd=end,
+                        sampleEnd=end - 1,
                         strand=(None if self.stranded is None else strand)) :
 
                     hit_start, hit_end, hit_id, hit_strand, hit_ids = hit

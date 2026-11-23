@@ -4,7 +4,10 @@ from more_itertools import consecutive_groups
 
 
 def find_ranges(iterable):
-    """Yield range of consecutive numbers."""
+    """Yield range of consecutive numbers.
+
+    The returned ranges are closed intervals: (start, end) with end inclusive.
+    """
     for group in consecutive_groups(iterable):
         group = list(group)
         if len(group) == 1:

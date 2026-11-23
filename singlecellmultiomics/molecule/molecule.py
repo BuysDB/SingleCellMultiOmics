@@ -1367,6 +1367,8 @@ class Molecule():
 
         Returns:
             sorted list of aligned blocks (list) : [ (start, end), (start, end) ]
+            ! The blocks are closed intervals (end inclusive) !
+            Not the same as AlignedSegment.get_blocks() which returns half-open ranges.
         """
         return find_ranges(
             sorted(list(set(

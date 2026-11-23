@@ -177,5 +177,51 @@ class TestTAPs(unittest.TestCase):
                     self.assertIn( frag.get_strand(), [0,1])
 
 
+class TestSingleEndTranscriptAnnotation(unittest.TestCase):
+    """Regression tests for SingleEndTranscriptFragment.annotate 
+    pysam: half-open [start, end)
+    FeatureContainer: closed intervals [start, end]"""
+
+    def make_read(self, reference_start, cigarstring='50M'):
+        header = pysam.AlignmentHeader.from_dict(
+            {'HD': {'VN': '1.6'}, 'SQ': [{'LN': 100000, 'SN': 'chr1'}]})
+        read = pysam.AlignedSegment(header)
+        read.query_name = f'frag_test_{reference_start}'
+        read.reference_id = 0
+        read.reference_start = reference_start
+        read.cigarstring = cigarstring
+        query_length = sum(
+            length for op, length in read.cigartuples if op in (0, 1))
+        read.query_sequence = 'A' * query_length
+        read.qual = 'I' * query_length
+        read.mapping_quality = 60
+        read.is_read1 = True
+        read.set_tag('SM', 'CELL_A')
+        read.set_tag('RX', 'ACGTACGT')
+        return read
+
+    def get_features(self):
+        from singlecellmultiomics.features import FeatureContainer
+        features = FeatureContainer()
+        features.addFeature('chr1', 200, 300, 'E1', '+', None)
+        features.sort()
+        return features
+
+    def get_hit_locations(self, frag):
+        return {
+            location
+            for locations in frag.hits.values() for location in locations}
+
+    def test_touching_fragment_has_no_hits(self):
+        frag = singlecellmultiomics.fragment.SingleEndTranscriptFragment(
+            [self.make_read(150)], features=self.get_features(), stranded=None)
+        self.assertEqual(len(frag.hits), 0)
+
+    def test_overlapping_fragment_has_hit(self):
+        frag = singlecellmultiomics.fragment.SingleEndTranscriptFragment(
+            [self.make_read(151)], features=self.get_features(), stranded=None)
+        self.assertIn(('chr1', (200, 300)), self.get_hit_locations(frag))
+
+
 if __name__ == '__main__':
     unittest.main()
