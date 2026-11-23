@@ -1,0 +1,18 @@
+# Dependencies for building the documentation on Read the Docs.
+# Heavy native/workflow dependencies (cutadapt, pyBigWig, sklearn,
+# statsmodels, snakemake) are intentionally NOT installed here; they are
+# replaced by autodoc_mock_imports in docs/conf.py.
+sphinx>=7,<9
+sphinx_rtd_theme
+numpy<2
+pandas
+scipy
+matplotlib
+seaborn
+colorama
+more-itertools
+tabulate
+cached_property
+biopython
+pysam
+pysamiterators

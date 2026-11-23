@@ -4,10 +4,10 @@ singlecellmultiomics.fastaProcessing package
 Submodules
 ----------
 
-singlecellmultiomics.fastaProcessing.createMapabilityIndex module
------------------------------------------------------------------
+singlecellmultiomics.fastaProcessing.createMappabilityIndex module
+------------------------------------------------------------------
 
-.. automodule:: singlecellmultiomics.fastaProcessing.createMapabilityIndex
+.. automodule:: singlecellmultiomics.fastaProcessing.createMappabilityIndex
    :members:
    :undoc-members:
    :show-inheritance:

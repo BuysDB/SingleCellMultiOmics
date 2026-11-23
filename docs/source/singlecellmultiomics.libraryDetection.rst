@@ -4,14 +4,6 @@ singlecellmultiomics.libraryDetection package
 Submodules
 ----------
 
-singlecellmultiomics.libraryDetection.archivestats module
----------------------------------------------------------
-
-.. automodule:: singlecellmultiomics.libraryDetection.archivestats
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 singlecellmultiomics.libraryDetection.sequencingLibraryListing module
 ---------------------------------------------------------------------
 

@@ -10,6 +10,7 @@ Welcome to SingleCellMultiOmics's documentation!
    :maxdepth: 4
    :caption: Contents:
 
+   source/singlecellmultiomics
 
 Indices and tables
 ==================
