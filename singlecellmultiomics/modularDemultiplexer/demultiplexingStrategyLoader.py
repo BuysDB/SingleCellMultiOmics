@@ -46,7 +46,7 @@ class DemultiplexingStrategyLoader:
             dm.CELSeq1_c8_u4,
             dm.CELSeq2_c8_u6,
             dm.CELSeq2_c8_u6_NH,
-            dm.CELSeq2_c8_u8,
+            dm.CELSeq2_c8_u8S,
             dm.CELSeq2_c8_u8_NNLAIII,
 
             dm.CELSeq2_c8_u6_swapped_reads,

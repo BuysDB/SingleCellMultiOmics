@@ -81,7 +81,7 @@ class CELSeq2_c8_u8S(UmiBarcodeDemuxMethod):
             barcodeRead=1,
             barcodeStart=8,
             barcodeLength=8,
-            random_primer_read=1,
+            random_primer_read=0,
             random_primer_length=6,
             barcodeFileAlias=self.barcodeFileAlias,
             barcodeFileParser=barcodeFileParser,
