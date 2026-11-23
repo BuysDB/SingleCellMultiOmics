@@ -113,6 +113,10 @@ def is_autosome(chrom: str) -> bool:
 
 
 
+# Pseudo contig name used to pool all alternative contigs, see get_contig_list_from_fasta:
+MISC_ALT_CONTIGS_SCMO = 'MISC_ALT_CONTIGS_SCMO'
+
+
 def is_main_chromosome(chrom: str, exclude_mt=False) -> bool:
     """ Returns True when the chromsome is a main chromsome,
     not an alternative locus, scaffold, decoy or spike-in
@@ -176,7 +180,7 @@ def get_contig_list_from_fasta(fasta_path: str, with_length: bool=False) -> list
         fa.close()
 
     if has_alt:
-        contig_list.append('MISC_ALT_CONTIGS_SCMO')
+        contig_list.append(MISC_ALT_CONTIGS_SCMO)
         if with_length:
             lens.append(None)
 

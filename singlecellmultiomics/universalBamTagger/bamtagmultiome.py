@@ -3,13 +3,13 @@
 import pysam
 from pysamiterators import MatePairIteratorIncludingNonProper
 from itertools import chain
-from singlecellmultiomics.molecule import MoleculeIterator, ReadIterator
+from singlecellmultiomics.molecule import MoleculeIterator, ReadIterator, misc_alt_contig_molecule_generator
 import singlecellmultiomics
 import singlecellmultiomics.molecule
 from singlecellmultiomics.molecule.consensus import calculate_consensus
 import singlecellmultiomics.fragment
 from singlecellmultiomics.bamProcessing.bamFunctions import sorted_bam_file, get_reference_from_pysam_alignmentFile, write_program_tag, MapabilityReader, verify_and_fix_bam,add_blacklisted_region
-from singlecellmultiomics.utils import is_main_chromosome
+from singlecellmultiomics.utils import is_main_chromosome, MISC_ALT_CONTIGS_SCMO
 from singlecellmultiomics.utils.submission import submit_job
 import singlecellmultiomics.alleleTools
 from singlecellmultiomics.universalBamTagger.customreads import CustomAssingmentQueryNameFlagger, BulkFlagger
@@ -32,9 +32,10 @@ from datetime import datetime
 from time import sleep
 import shutil
 # Supress [E::idx_find_and_load] Could not retrieve index file for, see https://github.com/pysam-developers/pysam/issues/939
-
-__version__ = '1.1'
 pysam.set_verbosity(0)
+
+__version__ = '1.2'
+
 
 argparser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -647,7 +648,6 @@ def run_multiome_tagging(args):
 
     """
 
-    MISC_ALT_CONTIGS_SCMO = 'MISC_ALT_CONTIGS_SCMO'
     every_fragment_as_molecule = args.every_fragment_as_molecule
     skip_contig = set(args.skip_contig.split(',')) if args.skip_contig is not None else set()
 
@@ -1085,16 +1085,10 @@ def run_multiome_tagging(args):
 
     if args.contig == MISC_ALT_CONTIGS_SCMO:
         # When MISC_ALT_CONTIGS_SCMO is set as argument, all molecules with reads
-        # mapping to a contig returning True from the is_main_chromosome
+        # mapping to a contig returning False from the is_main_chromosome
         # function are used
 
-        def Misc_contig_molecule_generator(input_bam, **molecule_iterator_args):
-            for reference in input_bam.references:
-                if not is_main_chromosome(reference):
-                    molecule_iterator_args['contig'] = reference
-                    yield from MoleculeIterator(input_bam, **molecule_iterator_args)
-
-        molecule_iterator = Misc_contig_molecule_generator
+        molecule_iterator = misc_alt_contig_molecule_generator
     else:
         molecule_iterator = MoleculeIterator
 

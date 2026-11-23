@@ -3,6 +3,7 @@
 from singlecellmultiomics.molecule import Molecule
 from singlecellmultiomics.fragment import Fragment
 from singlecellmultiomics.utils.prefetch import initialise_dict, initialise
+from singlecellmultiomics.utils import is_main_chromosome, MISC_ALT_CONTIGS_SCMO
 from singlecellmultiomics.universalBamTagger import QueryNameFlagger
 import pysamiterators.iterators
 import collections
@@ -447,3 +448,32 @@ class MoleculeIterator():
                     m.__finalise__()
                     yield from self.yield_func(m)
         self._clear_cache()
+
+
+def misc_alt_contig_molecule_generator(input_bam, contig=None, **molecule_iterator_args):
+    """Iterate molecules on all non-main (alt) contigs.
+
+    (contig=None) yields every alt contig
+    (contig='*') and main chromosomes yield nothing
+    (using contig="{alt_chr_name}") alt contig yields only the supplied contig. 
+
+    Args:
+        input_bam (pysam.AlignmentFile): file to iterate over
+
+        contig (str): contig filter, see description
+
+        **molecule_iterator_args: arguments passed to MoleculeIterator
+    """
+    if contig in (None, MISC_ALT_CONTIGS_SCMO):
+        # Every non-main chromosome:
+        references = [reference for reference in input_bam.references
+                      if not is_main_chromosome(reference)]
+    elif not is_main_chromosome(contig):
+        # A single alt contig:
+        references = [contig]
+    else:
+        # Unmapped reads or a main chromosome are not part of the alt contig pool:
+        return
+    for reference in references:
+        yield from MoleculeIterator(
+            input_bam, **{**molecule_iterator_args, 'contig': reference})
