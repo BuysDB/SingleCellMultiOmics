@@ -193,7 +193,7 @@ def recall_variants(args):
 
                     if germline_variants_sample is None:
                         # If any of the samples is not heterozygous: continue
-                        if any( (ar_variant.samples[sample].alleles!=2 for sample in ar_variant.samples) ):
+                        if any( (len(set(ar_variant.samples[sample].alleles))!=2 for sample in ar_variant.samples) ):
                             continue
                     elif len(set(ar_variant.samples[germline_variants_sample].alleles))!=2:
                         continue
