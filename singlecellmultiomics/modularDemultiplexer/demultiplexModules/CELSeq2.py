@@ -69,32 +69,8 @@ class CELSeq2_c8_u6_swapped_reads(UmiBarcodeDemuxMethod):
         self.description = 'R2 starts with a 6bp UMI  followed by a 8bp cell barcode. R1 ends with a 6bp random primer'
 
 
-# Cell seq 2 with 8bp UMI
-class CELSeq2_c8_u8(UmiBarcodeDemuxMethod):
-    def __init__(self, barcodeFileParser, **kwargs):
-        self.barcodeFileAlias = 'celseq2'
-        UmiBarcodeDemuxMethod.__init__(
-            self,
-            umiRead=0,
-            umiStart=0,
-            umiLength=8,
-            random_primer_read=1,
-            random_primer_length=6,
-            barcodeRead=0,
-            barcodeStart=8,
-            barcodeLength=8,
-            barcodeFileAlias=self.barcodeFileAlias,
-            barcodeFileParser=barcodeFileParser,
-            **kwargs)
-        self.shortName = 'CS2C8U8'
-        self.longName = 'CELSeq 2, CB: 8bp, UMI: 8bp'
-        self.autoDetectable = True
-        self.description = 'R1 starts with a longer 8bp UMI  followed by a 8bp cell barcode. R2 ends with a 6bp random primer'
-
 # Reversed case:
-
-
-class CELSeq2_c8_u8(UmiBarcodeDemuxMethod):
+class CELSeq2_c8_u8S(UmiBarcodeDemuxMethod):
     def __init__(self, barcodeFileParser, **kwargs):
         self.barcodeFileAlias = 'celseq2'
         UmiBarcodeDemuxMethod.__init__(
