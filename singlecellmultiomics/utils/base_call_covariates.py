@@ -394,7 +394,8 @@ def extract_covariates(bam_path: str,
             try:
                 with pysam.VariantFile(path) as bf:
                     for record in bf.fetch(contig, start_fetch, end_fetch):
-                        blacklist.add(record.pos)
+                        # pysam VCF positions are 1-based, refpos is 0-based:
+                        blacklist.add(record.pos - 1)
             except ValueError:
                 print(f'Contig {contig} is missing in the vcf file')
 

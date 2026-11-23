@@ -829,10 +829,11 @@ def count_methylation_binned(args):
         try:
             with pysam.VariantFile(kwargs['known']) as variants:
                 for record in variants.fetch(contig, start, end):
+                    # pysam VCF positions are 1-based, pysam alignments are 0-based:
                     if record.ref=='C' and 'T' in record.alts:
-                        known.add( record.pos)
+                        known.add(record.pos - 1)
                     if record.ref=='G' and 'A' in record.alts:
-                        known.add(record.pos)
+                        known.add(record.pos - 1)
         except ValueError:
             # This happends on contigs not present in the vcf
             pass
